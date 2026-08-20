@@ -1,0 +1,162 @@
+.board {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 15%, rgb(61 157 255 / 9%), transparent 45%),
+    radial-gradient(circle at 82% 78%, rgb(255 207 112 / 7%), transparent 45%),
+    var(--bg-sunken);
+  /* Android will happily treat a drag as a scroll unless told otherwise. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.board-empty {
+  position: absolute;
+  inset: auto 24px 50%;
+  margin: 0;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 14px;
+  line-height: 1.5;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.board.has-tokens .board-empty {
+  opacity: 0;
+}
+
+/* ------------------------------------------------------------------ token */
+
+.token {
+  position: absolute;
+  width: var(--token);
+  height: var(--token);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  background: linear-gradient(180deg, var(--surface), var(--bg-raised));
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%);
+  touch-action: none;
+  will-change: transform;
+  animation: token-pop 180ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.token-emoji {
+  font-size: 26px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.token-name {
+  font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--text-dim);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.token.is-dragging {
+  z-index: 40;
+  cursor: grabbing;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 55%);
+  animation: none;
+}
+
+/* The element currently under the dragged one. */
+.token.is-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-strong), 0 8px 24px rgb(61 157 255 / 35%);
+}
+
+.token.is-rejected {
+  animation: token-reject 320ms ease;
+}
+
+.token.is-new {
+  animation: token-pop 260ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgb(255 207 112 / 60%), 0 8px 26px rgb(255 207 112 / 25%);
+}
+
+@keyframes token-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes token-reject {
+  25% {
+    transform: translateX(-6px) rotate(-3deg);
+  }
+  50% {
+    transform: translateX(6px) rotate(3deg);
+  }
+  75% {
+    transform: translateX(-3px) rotate(-1deg);
+  }
+}
+
+/* ------------------------------------------------------------------ trash */
+
+.trash {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
+  transition: opacity 150ms ease, transform 150ms ease, background 150ms ease;
+  z-index: 30;
+}
+
+.board.is-dragging .trash {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.trash.is-target {
+  background: rgb(255 132 137 / 22%);
+  border-color: var(--danger);
+  border-style: solid;
+  transform: scale(1.14);
+}
+
+/* The floating copy that follows the finger when dragging out of inventory. */
+.drag-ghost {
+  position: absolute;
+  width: var(--token);
+  height: var(--token);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: linear-gradient(180deg, var(--surface-hover), var(--surface));
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 55%);
+  opacity: 0.92;
+  pointer-events: none;
+}

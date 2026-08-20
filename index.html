@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover so the layout can reach under Android's gesture bar,
+         with safe-area insets doing the actual spacing. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#0d1220" />
+    <meta name="description" content="Combine air, earth, fire and water to discover a world of elements." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <title>Alchemy Forge</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">⚗️</span>
+          <h1>Alchemy Forge</h1>
+        </div>
+        <p id="progress" class="progress" aria-live="polite">0 / 0 discovered</p>
+        <nav id="controls" class="controls" aria-label="Game controls"></nav>
+      </header>
+
+      <main id="stage">
+        <section id="board" class="board" aria-label="Workspace">
+          <p id="board-empty" class="board-empty">
+            Drag two elements together to see what happens.
+          </p>
+          <button id="trash" class="trash" type="button" aria-label="Drop here to remove">
+            🗑️
+          </button>
+          <!-- Inside the board so toasts always clear the drawer or sidebar,
+               whatever height it currently has. -->
+          <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+        </section>
+
+        <aside id="inventory" class="inventory" aria-label="Discovered elements">
+          <button
+            id="drawer-handle"
+            class="drawer-handle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="inventory-body"
+          >
+            <span class="drawer-grip" aria-hidden="true"></span>
+            <span id="drawer-label" class="drawer-label">Elements</span>
+          </button>
+          <div id="inventory-body" class="inventory-body">
+            <div class="search">
+              <label class="visually-hidden" for="search-input">Search elements</label>
+              <input
+                id="search-input"
+                class="search-input"
+                type="search"
+                placeholder="Search elements…"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+              />
+            </div>
+            <div id="inventory-grid" class="inventory-grid"></div>
+            <p id="inventory-empty" class="inventory-empty" hidden>Nothing matches that.</p>
+          </div>
+        </aside>
+      </main>
+
+      <div id="drag-layer" class="drag-layer" aria-hidden="true"></div>
+    </div>
+
+    <dialog id="modal" class="modal">
+      <div id="modal-content" class="modal-content"></div>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

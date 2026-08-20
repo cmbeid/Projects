@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Alchemy Forge">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2540" />
+      <stop offset="1" stop-color="#090d18" />
+    </linearGradient>
+    <linearGradient id="flask" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7cc4ff" />
+      <stop offset="1" stop-color="#3d9dff" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.62" r="0.5">
+      <stop offset="0" stop-color="#ffcf70" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#ffcf70" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)" />
+  <circle cx="256" cy="300" r="150" fill="url(#glow)" />
+
+  <!-- Four base elements, arranged around the flask. -->
+  <circle cx="128" cy="126" r="26" fill="#7cc4ff" opacity="0.85" />
+  <circle cx="384" cy="126" r="26" fill="#ff8489" opacity="0.85" />
+  <circle cx="96" cy="330" r="20" fill="#8fd694" opacity="0.7" />
+  <circle cx="416" cy="330" r="20" fill="#ffcf70" opacity="0.7" />
+
+  <!-- Flask -->
+  <path
+    d="M212 96h88v22h-16v76l84 150a56 56 0 0 1-48 84H196a56 56 0 0 1-48-84l84-150v-76h-16z"
+    fill="url(#flask)"
+    stroke="#e8edf9"
+    stroke-width="10"
+    stroke-linejoin="round"
+  />
+  <path d="M196 300h120l44 78a34 34 0 0 1-30 50H182a34 34 0 0 1-30-50z" fill="#ffcf70" opacity="0.92" />
+  <circle cx="228" cy="372" r="13" fill="#fff" opacity="0.75" />
+  <circle cx="286" cy="392" r="9" fill="#fff" opacity="0.6" />
+  <circle cx="256" cy="346" r="7" fill="#fff" opacity="0.5" />
+</svg>

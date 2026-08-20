@@ -12,9 +12,12 @@
     "test:watch": "vitest",
     "validate": "tsx scripts/validate-data.ts",
     "icons": "tsx scripts/make-icons.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify": "tsx scripts/verify-ui.ts"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
+    "playwright": "^1.62.1",
     "sharp": "^0.35.3",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
