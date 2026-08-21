@@ -1,0 +1,121 @@
+name: Deploy Alchemy Forge
+
+# Path-filtered so that adding a second project to this repo does not trigger
+# a redeploy of this one.
+on:
+  push:
+    branches:
+      - main
+      - claude/alchemy-2-android-game-82bmo8
+    paths:
+      - 'alchemy-forge/**'
+      - '.github/workflows/deploy-alchemy-forge.yml'
+  workflow_dispatch:
+
+# Never let two deploys write to the same prefix at once. The newer one wins.
+concurrency:
+  group: deploy-alchemy-forge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Override either of these with repository variables if the target moves.
+  S3_BUCKET: ${{ vars.S3_BUCKET || 's3.cmbeid.com' }}
+  S3_PREFIX: alchemy-forge
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Holds AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+    environment:
+      name: AWS
+      url: http://${{ vars.S3_BUCKET || 's3.cmbeid.com' }}/alchemy-forge/
+
+    defaults:
+      run:
+        working-directory: alchemy-forge
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: alchemy-forge/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # The content gate. A recipe that no player could ever reach should stop
+      # a release, not ship quietly.
+      - name: Validate element data
+        run: npm run validate
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          target="s3://${S3_BUCKET}/${S3_PREFIX}"
+
+          # Order matters. Hashed bundles go up first, so the HTML that
+          # references them is never live before the files it points at.
+          echo "::group::Hashed assets (immutable)"
+          aws s3 sync dist/assets/ "${target}/assets/" \
+            --delete --no-progress --acl public-read \
+            --cache-control 'public,max-age=31536000,immutable'
+          echo "::endgroup::"
+
+          # Icons are not content-hashed, so they revalidate daily rather than
+          # being pinned for a year.
+          echo "::group::Icons"
+          aws s3 sync dist/icons/ "${target}/icons/" \
+            --delete --no-progress --acl public-read \
+            --cache-control 'public,max-age=86400'
+          echo "::endgroup::"
+
+          # Entry points last, and never cached. If sw.js or index.html were
+          # cacheable, a deploy would stay invisible until browsers felt like
+          # rechecking — which for a service worker can be a very long time.
+          echo "::group::Entry points (no-cache)"
+          aws s3 sync dist/ "${target}/" \
+            --delete --no-progress --acl public-read \
+            --exclude 'assets/*' --exclude 'icons/*' \
+            --cache-control 'no-cache'
+          echo "::endgroup::"
+
+          # Belt and braces: runners without a webmanifest MIME mapping would
+          # otherwise serve this as binary and the manifest would be ignored.
+          aws s3 cp dist/manifest.webmanifest "${target}/manifest.webmanifest" \
+            --no-progress --acl public-read \
+            --content-type 'application/manifest+json' \
+            --cache-control 'no-cache'
+
+      - name: Summarise
+        run: |
+          url="http://${S3_BUCKET}/${S3_PREFIX}/index.html"
+          {
+            echo "### Alchemy Forge deployed"
+            echo ""
+            echo "- **URL:** [${url}](${url})"
+            echo "- **Bucket:** \`${S3_BUCKET}\` under \`${S3_PREFIX}/\`"
+            echo "- **Commit:** \`${GITHUB_SHA::7}\`"
+            echo ""
+            echo "> Served over plain HTTP, so the service worker does not"
+            echo "> register: the game plays normally but has no offline mode"
+            echo "> and cannot be installed to a home screen. HTTPS fixes both."
+          } >> "$GITHUB_STEP_SUMMARY"
