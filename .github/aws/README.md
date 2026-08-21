@@ -129,14 +129,21 @@ Copy the role ARN from the top of the role page.
 ## Wiring up a repository
 
 Add a **repository variable** (Settings → Secrets and variables → Actions →
-Variables) named `AWS_ROLE_ARN`, set to the ARN the script printed:
+**Variables** tab) named `AWS_ROLE_ARN`, set to the ARN the setup script
+printed:
 
 ```
 arn:aws:iam::<account-id>:role/github-actions-s3-deploy
 ```
 
-A variable, not a secret — the ARN is not sensitive, and it identifies rather
-than authenticates. You can equally hardcode it in the workflow.
+A variable, not a secret — it identifies a role rather than authenticating as
+one, and the role cannot be assumed without an OIDC token from this GitHub
+account. It lives in repository settings rather than in the workflow file so
+that it is not published if the repository is ever made public: an AWS account
+id is not a credential, but it is reconnaissance material worth withholding.
+
+Repository variables are one per repo. That is the one manual step for each new
+repository — everything else, including the role itself, is already done.
 
 The workflow then needs two things, both already present in
 `deploy-alchemy-forge.yml`:
@@ -151,9 +158,7 @@ permissions:
     aws-region: us-east-1
 ```
 
-`deploy-alchemy-forge.yml` uses the role when `AWS_ROLE_ARN` is set and falls
-back to `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` when it is not, so
-switching over is a one-variable change and reversible.
+`deploy-alchemy-forge.yml` is a working example.
 
 ## What this grants, and to whom
 

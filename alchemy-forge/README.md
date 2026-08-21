@@ -122,20 +122,19 @@ from the Actions tab.
 
 ### What it needs
 
-Either of two ways in — the workflow uses whichever is configured.
+One repository variable, once the account-level setup is done.
 
-**Preferred: no stored credentials.** Run the setup script once —
-[`setup.ps1`](../.github/aws/setup.ps1) on Windows,
-[`setup.sh`](../.github/aws/setup.sh) elsewhere — then set a repository
-variable `AWS_ROLE_ARN` to the role it prints. That
+The workflow assumes an IAM role through OIDC and receives short-lived
+credentials, so no AWS keys are stored anywhere. Set `AWS_ROLE_ARN` under
+Settings → Secrets and variables → Actions → **Variables** to the ARN printed
+by [`setup.ps1`](../.github/aws/setup.ps1) on Windows or
+[`setup.sh`](../.github/aws/setup.sh) elsewhere. A variable, not a secret.
+
+It is kept out of the workflow file so it is not published if this repository
+is made public. That
 role works for every repo on the account, so no further repo needs setting up.
 See [`.github/aws/README.md`](../.github/aws/README.md).
 
-**Fallback: access keys.** Leave `AWS_ROLE_ARN` unset and put two secrets in a
-GitHub Environment named **`AWS`**:
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
 
 The bucket (`s3.cmbeid.com`) and region (`us-east-1`) are defaults in the
 workflow. Override either with a repository variable — `S3_BUCKET` or

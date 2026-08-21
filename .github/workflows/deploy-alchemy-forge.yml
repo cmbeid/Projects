@@ -33,7 +33,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # Holds AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+    # Kept for the deployment URL and any protection rules; it no longer
+    # holds credentials.
     environment:
       name: AWS
       url: http://${{ vars.S3_BUCKET || 's3.cmbeid.com' }}/alchemy-forge/
@@ -70,20 +71,26 @@ jobs:
       # Two ways in, preferred first. Set an AWS_ROLE_ARN variable and this repo
       # needs no stored credentials at all; leave it unset and it falls back to
       # the access keys in the AWS environment. See .github/aws/README.md.
-      - name: Authenticate to AWS (OIDC)
-        if: vars.AWS_ROLE_ARN != ''
+      # Fail here with something actionable rather than letting the next step
+      # produce an opaque OIDC error.
+      - name: Check the AWS role is configured
+        env:
+          ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "${ROLE_ARN}" ]; then
+            echo "::error::Repository variable AWS_ROLE_ARN is not set. Add it under Settings -> Secrets and variables -> Actions -> Variables. Run .github/aws/setup.ps1 (or setup.sh) to get the ARN."
+            exit 1
+          fi
+          echo "Assuming ${ROLE_ARN}"
+
+      # No stored credentials: the job presents a signed OIDC token and AWS
+      # hands back short-lived ones. The ARN lives in a repository variable
+      # rather than in this file, so it is not published if the repo is public.
+      - name: Authenticate to AWS
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           role-session-name: deploy-alchemy-forge
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Authenticate to AWS (access keys)
-        if: vars.AWS_ROLE_ARN == ''
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy to S3
