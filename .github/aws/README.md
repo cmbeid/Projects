@@ -28,22 +28,61 @@ GitHub account, `822434` — rather than on repository names. That choice matter
   `sub` against `repo:cmbeid/*` silently stops working for new repos. One
   matching `repository_owner_id` does not.
 
-## Setup
+## Setup, with the CLI
 
-Run once, with admin AWS credentials:
+Run once, with AWS credentials that can create IAM roles:
 
 ```bash
 .github/aws/setup.sh
 ```
 
-It creates the OIDC provider, the role, and the S3 policy, and prints the role
-ARN. It is idempotent — re-run it to change the bucket or widen permissions.
+It checks its prerequisites first, then creates the OIDC provider, the role and
+the S3 policy, and prints the role ARN. It is idempotent — re-run it to change
+the bucket or widen permissions.
 
-Defaults can be overridden with environment variables:
+Defaults can be overridden:
 
 ```bash
 S3_BUCKET=other-bucket ROLE_NAME=my-role .github/aws/setup.sh
 ```
+
+## Setup, in the AWS console
+
+Same result, if you would rather click. Roughly five minutes.
+
+**1. Add the identity provider** — IAM → Identity providers → Add provider
+
+- Provider type: **OpenID Connect**
+- Provider URL: `https://token.actions.githubusercontent.com`
+- Audience: `sts.amazonaws.com`
+- Click **Get thumbprint** if it insists; the value is not used for this
+  provider any more.
+
+If it says a provider with that URL already exists, you are done with this
+step — there is only ever one per account.
+
+**2. Create the role** — IAM → Roles → Create role
+
+- Trusted entity type: **Web identity**
+- Identity provider: the one just created
+- Audience: `sts.amazonaws.com`
+- Skip the GitHub org/repo boxes — they generate a `sub` condition, which is
+  the fragile kind. The next step replaces it.
+- Skip permissions for now, name it `github-actions-s3-deploy`, create.
+
+**3. Fix the trust policy** — open the role → Trust relationships → Edit
+
+Replace the whole document with the contents of `trust-policy.json`,
+substituting your 12-digit AWS account id for `__AWS_ACCOUNT_ID__` and leaving
+`__GITHUB_OWNER_ID__` as `822434`.
+
+**4. Attach permissions** — the role → Permissions → Add permissions →
+Create inline policy → JSON
+
+Paste `s3-deploy-policy.json`, replacing both `__S3_BUCKET__` placeholders
+with `s3.cmbeid.com`. Name it anything.
+
+Copy the role ARN from the top of the role page.
 
 ## Wiring up a repository
 

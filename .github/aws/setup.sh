@@ -17,6 +17,22 @@
 
 set -euo pipefail
 
+# --- 0. Preflight -----------------------------------------------------------
+# Fail here, with a useful message, rather than halfway through creating things.
+if ! command -v aws >/dev/null 2>&1; then
+  echo "The AWS CLI is not installed. Either install it:" >&2
+  echo "  https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html" >&2
+  echo "or follow the click-through steps in .github/aws/README.md." >&2
+  exit 1
+fi
+
+if ! aws sts get-caller-identity >/dev/null 2>&1; then
+  echo "AWS credentials are missing, expired, or invalid." >&2
+  echo "Run 'aws configure' (or export AWS_PROFILE) with an identity that can" >&2
+  echo "create IAM roles, then run this again." >&2
+  exit 1
+fi
+
 GITHUB_OWNER_ID="${GITHUB_OWNER_ID:-822434}"   # numeric id of the GitHub user/org
 S3_BUCKET="${S3_BUCKET:-s3.cmbeid.com}"
 ROLE_NAME="${ROLE_NAME:-github-actions-s3-deploy}"
@@ -29,7 +45,16 @@ echo "AWS account   : ${account_id}"
 echo "GitHub owner  : ${GITHUB_OWNER_ID}"
 echo "Bucket        : ${S3_BUCKET}"
 echo "Role          : ${ROLE_NAME}"
+echo "Identity      : $(aws sts get-caller-identity --query Arn --output text)"
 echo
+
+# A typo in the bucket name would produce a role that silently cannot deploy.
+if ! aws s3api head-bucket --bucket "${S3_BUCKET}" >/dev/null 2>&1; then
+  echo "Warning: cannot see bucket '${S3_BUCKET}' with these credentials." >&2
+  echo "         Continuing anyway — the role's policy does not require the" >&2
+  echo "         bucket to be visible to you right now — but check the name." >&2
+  echo >&2
+fi
 
 # --- 1. OIDC provider -------------------------------------------------------
 # There can only be one provider per URL per account, so this is a no-op after
@@ -80,5 +105,11 @@ echo "Done. Use this role ARN — it is not a secret:"
 echo
 echo "  arn:aws:iam::${account_id}:role/${ROLE_NAME}"
 echo
-echo "Set it as a repository or organization variable named AWS_ROLE_ARN and"
-echo "the deploy workflow will stop using access keys."
+echo "Next, in each repository that deploys:"
+echo "  Settings -> Secrets and variables -> Actions -> Variables tab"
+echo "  -> New repository variable"
+echo "     Name:  AWS_ROLE_ARN"
+echo "     Value: arn:aws:iam::${account_id}:role/${ROLE_NAME}"
+echo
+echo "That is a variable, not a secret. Once set, the workflow stops using"
+echo "access keys and you can delete them."
