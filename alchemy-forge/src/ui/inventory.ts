@@ -13,8 +13,12 @@ interface Refs {
   grid: HTMLElement;
   empty: HTMLElement;
   search: HTMLInputElement;
+  filterFinals: HTMLButtonElement;
   dragLayer: HTMLElement;
 }
+
+/** Movement, in CSS pixels, within which the list may still be a scroll. */
+const SCROLL_DECIDE_MS = 150;
 
 /**
  * The list of discovered elements.
@@ -25,6 +29,7 @@ interface Refs {
  */
 export class Inventory {
   private query = '';
+  private hideFinals = false;
   private open = false;
   private ghost: HTMLElement | null = null;
 
@@ -42,6 +47,12 @@ export class Inventory {
     });
 
     this.refs.handle.addEventListener('click', () => this.toggle());
+
+    this.refs.filterFinals.addEventListener('click', () => {
+      this.hideFinals = !this.hideFinals;
+      this.refs.filterFinals.setAttribute('aria-pressed', String(this.hideFinals));
+      this.render();
+    });
 
     store.subscribe(() => this.render());
     this.layout.subscribe(() => this.syncDrawerState());
@@ -69,7 +80,8 @@ export class Inventory {
     const matches = discovered
       .map((id) => activeIndex().byId.get(id))
       .filter((element): element is NonNullable<typeof element> => element !== undefined)
-      .filter((element) => !this.query || element.name.toLowerCase().includes(this.query));
+      .filter((element) => !this.query || element.name.toLowerCase().includes(this.query))
+      .filter((element) => !this.hideFinals || !activeIndex().finalIds.has(element.id));
 
     // Alphabetical: with hundreds of elements, discovery order stops being a
     // way anyone can find anything.
@@ -104,9 +116,10 @@ export class Inventory {
 
     this.refs.grid.replaceChildren(fragment);
     this.refs.empty.hidden = matches.length > 0;
-    this.refs.label.textContent = this.query
-      ? `${matches.length} of ${discovered.length}`
-      : `Elements · ${discovered.length}`;
+    this.refs.label.textContent =
+      this.query || this.hideFinals
+        ? `${matches.length} of ${discovered.length}`
+        : `Elements · ${discovered.length}`;
   }
 
   private attachItemGestures(item: HTMLElement, elementId: string): void {
@@ -120,6 +133,10 @@ export class Inventory {
       onDragStart: (point) => this.beginGhost(elementId, point),
       onDragMove: (point) => this.moveGhost(point),
       onDragEnd: (point) => this.endGhost(elementId, point),
+      onScrollMove: (delta) => {
+        this.refs.grid.scrollTop -= delta.y;
+      },
+      dragArmDelay: SCROLL_DECIDE_MS,
     });
   }
 

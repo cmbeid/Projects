@@ -40,15 +40,24 @@ export class Board {
     this.layout.subscribe(() => this.reposition());
   }
 
-  /** Drops a new token onto the board at a point in client coordinates. */
+  /**
+   * Drops a new token onto the board at a point in client coordinates.
+   *
+   * If the point lands close to an existing token, the new one is combined
+   * with it immediately — dragging an element from the list onto another one
+   * should work exactly like dragging two board tokens together.
+   */
   spawnAt(elementId: string, clientX: number, clientY: number): void {
     const rect = this.root.getBoundingClientRect();
-    const { fx, fy } = toFractions(
-      clientX - rect.left,
-      clientY - rect.top,
-      this.layout.getSize(),
-    );
-    store.addToken(elementId, fx, fy);
+    const center = { x: clientX - rect.left, y: clientY - rect.top };
+    const { fx, fy } = toFractions(center.x, center.y, this.layout.getSize());
+
+    const targetNode = this.findTokenUnder(center, -1);
+    const token = store.addToken(elementId, fx, fy);
+    if (!targetNode) return;
+
+    const targetUid = Number(targetNode.dataset['uid']);
+    this.resolveCombine(token.uid, targetUid);
   }
 
   /** Drops a new token somewhere sensible without the player aiming. */
@@ -220,10 +229,15 @@ export class Board {
     if (!drag.target) return;
 
     const targetUid = Number(drag.target.dataset['uid']);
-    const result = store.combineTokens(drag.uid, targetUid);
+    this.resolveCombine(drag.uid, targetUid);
+  }
+
+  /** Attempts to combine two tokens already on the board and reacts to the result. */
+  private resolveCombine(sourceUid: number, targetUid: number): void {
+    const result = store.combineTokens(sourceUid, targetUid);
 
     if (result.kind === 'none') {
-      this.rejectAt(drag.uid);
+      this.rejectAt(sourceUid);
       play('reject');
       return;
     }
