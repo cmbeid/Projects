@@ -1,8 +1,8 @@
 # Alchemy Forge
 
 A crafting puzzle game for the phone. Start with air, earth, fire and water;
-drag two together and see what comes out. There are **495 elements** and **981
-combinations** to find. 
+drag two together and see what comes out. There are **833 elements** and **1656
+combinations** to find, plus an optional adults-only pack of 52 more.
 
 Plain HTML5 — it installs to the home screen and plays fully offline.
 
@@ -77,6 +77,20 @@ recipe graph, never hand-authored, so it cannot fall out of step.
 The element set is original to this project. It is the same genre as Little
 Alchemy 2, not a copy of its content.
 
+### Spicy mode
+
+`src/data/packs/14-spicy.ts` is a pack of crude adult joke elements, switched
+off by default and revealed by a toggle in Settings. Its elements carry
+`spicy: true`, and the game keeps two indexes — `TAME_INDEX` and `FULL_INDEX`
+in `src/data/index.ts` — with `activeIndex()` choosing between them, so flipping
+the toggle costs an assignment rather than a reload.
+
+The pack is a strict leaf layer: a spicy element may be *made from* tame ones,
+but no tame element is ever produced from a spicy input. The validator enforces
+that as an error and walks reachability twice, once with the pack subtracted, so
+the default game can never end up depending on content it does not show.
+Discoveries made in spicy mode stay in the save when it is switched back off.
+
 ### The data gate
 
 ```bash
@@ -87,7 +101,8 @@ Hand-authoring a thousand recipes goes wrong in ways you cannot see by reading
 them, so this walks the graph outward from air/earth/fire/water and fails if
 anything is unreachable — content the player could never see. It also catches
 dangling ids, recipes that produce one of their own inputs, duplicates, and
-pairs that accidentally yield two different elements.
+pairs that accidentally yield two different elements. It reports the tame and
+spicy sets separately and validates both.
 
 To add content: add elements and recipes to a pack, then run the validator.
 

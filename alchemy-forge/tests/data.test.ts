@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ELEMENTS, INDEX, RECIPES } from '../src/data/index';
+import { ELEMENTS, INDEX, RECIPES, TAME_ELEMENTS, TAME_INDEX, TAME_RECIPES } from '../src/data/index';
+import { spicyPack } from '../src/data/packs/14-spicy';
 import { validateData } from '../src/data/validate';
 import { pairKey, reachableDepths } from '../src/data/indexes';
 import { BASE_ELEMENT_IDS } from '../src/data/types';
@@ -37,6 +38,36 @@ describe('recipe data', () => {
     // Sanity: the tree should have leaves, but not consist mostly of them.
     expect(INDEX.finalIds.size).toBeGreaterThan(0);
     expect(INDEX.finalIds.size).toBeLessThan(ELEMENTS.length / 2);
+  });
+});
+
+describe('spicy content', () => {
+  it('marks every element in the spicy pack, and nothing outside it', () => {
+    for (const element of spicyPack.elements) expect(element.spicy).toBe(true);
+
+    const spicyIds = new Set(spicyPack.elements.map((element) => element.id));
+    const strays = ELEMENTS.filter((element) => element.spicy && !spicyIds.has(element.id));
+    expect(strays.map((element) => element.id)).toEqual([]);
+  });
+
+  it('never lets a spicy input produce a tame element', () => {
+    // The invariant the whole toggle rests on: subtracting the spicy set must
+    // never leave a tame element with no way in.
+    const spicyIds = new Set(ELEMENTS.filter((element) => element.spicy).map((e) => e.id));
+    const leaks = RECIPES.filter(
+      (recipe) => (spicyIds.has(recipe.a) || spicyIds.has(recipe.b)) && !spicyIds.has(recipe.out),
+    );
+    expect(leaks).toEqual([]);
+  });
+
+  it('validates cleanly with the spicy pack subtracted', () => {
+    const tameReport = validateData(TAME_ELEMENTS, TAME_RECIPES);
+    expect(tameReport.errors).toEqual([]);
+    expect(tameReport.stats.unreachable).toEqual([]);
+  });
+
+  it('leaves a full-sized game for players who never turn spicy mode on', () => {
+    expect(TAME_INDEX.all.length).toBeGreaterThanOrEqual(800);
   });
 });
 
