@@ -33,7 +33,8 @@ if ! aws sts get-caller-identity >/dev/null 2>&1; then
   exit 1
 fi
 
-GITHUB_OWNER_ID="${GITHUB_OWNER_ID:-822434}"   # numeric id of the GitHub user/org
+GITHUB_OWNER="${GITHUB_OWNER:-cmbeid}"         # login of the GitHub user/org
+GITHUB_OWNER_ID="${GITHUB_OWNER_ID:-822434}"   # numeric id of the same
 S3_BUCKET="${S3_BUCKET:-s3.cmbeid.com}"
 ROLE_NAME="${ROLE_NAME:-github-actions-s3-deploy}"
 
@@ -42,7 +43,7 @@ account_id="$(aws sts get-caller-identity --query Account --output text)"
 provider_arn="arn:aws:iam::${account_id}:oidc-provider/token.actions.githubusercontent.com"
 
 echo "AWS account   : ${account_id}"
-echo "GitHub owner  : ${GITHUB_OWNER_ID}"
+echo "GitHub owner  : ${GITHUB_OWNER} (${GITHUB_OWNER_ID})"
 echo "Bucket        : ${S3_BUCKET}"
 echo "Role          : ${ROLE_NAME}"
 echo "Identity      : $(aws sts get-caller-identity --query Arn --output text)"
@@ -90,6 +91,7 @@ fi
 trust="$(mktemp)"
 sed -e "s|__AWS_ACCOUNT_ID__|${account_id}|g" \
     -e "s|__GITHUB_OWNER_ID__|${GITHUB_OWNER_ID}|g" \
+    -e "s|__GITHUB_OWNER__|${GITHUB_OWNER}|g" \
     "${here}/trust-policy.json" > "${trust}"
 
 if aws iam get-role --role-name "${ROLE_NAME}" >/dev/null 2>&1; then
@@ -101,7 +103,7 @@ else
   echo "Creating role..."
   aws iam create-role \
     --role-name "${ROLE_NAME}" \
-    --description "GitHub Actions deploys for repos owned by ${GITHUB_OWNER_ID}" \
+    --description "GitHub Actions deploys for repos owned by ${GITHUB_OWNER}" \
     --max-session-duration 3600 \
     --assume-role-policy-document "file://${trust}" >/dev/null
 fi

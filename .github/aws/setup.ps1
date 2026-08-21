@@ -18,6 +18,10 @@
     Afterwards there is nothing secret to add to GitHub. The role ARN it prints
     goes in a repository *variable* named AWS_ROLE_ARN.
 
+.PARAMETER GitHubOwner
+    Login of the GitHub user or organisation. Needed because AWS insists the
+    trust policy constrain the `sub` claim, and `sub` carries the name.
+
 .PARAMETER GitHubOwnerId
     Numeric id of the GitHub user or organisation that owns the repositories.
     Deliberately the numeric id rather than the name: it is immutable, so the
@@ -38,6 +42,7 @@
 #>
 [CmdletBinding()]
 param(
+    [string] $GitHubOwner   = 'cmbeid',
     [string] $GitHubOwnerId = '822434',
     [string] $S3Bucket      = 's3.cmbeid.com',
     [string] $RoleName      = 'github-actions-s3-deploy'
@@ -145,6 +150,12 @@ $trustPolicyTemplate = @'
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
           "token.actions.githubusercontent.com:repository_owner_id": "__GITHUB_OWNER_ID__"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:__GITHUB_OWNER__/*",
+            "repo:__GITHUB_OWNER__@__GITHUB_OWNER_ID__/*"
+          ]
         }
       }
     }
@@ -208,7 +219,7 @@ $roleArn     = "arn:aws:iam::${accountId}:role/${RoleName}"
 Write-Host ''
 Write-Host "AWS account   : $accountId"
 Write-Host "Identity      : $($caller.Arn)"
-Write-Host "GitHub owner  : $GitHubOwnerId"
+Write-Host "GitHub owner  : $GitHubOwner ($GitHubOwnerId)"
 Write-Host "Bucket        : $S3Bucket"
 Write-Host "Role          : $RoleName"
 Write-Host ''
@@ -270,7 +281,8 @@ else {
 $trustPath = New-JsonTempFile -Content (
     $trustPolicyTemplate `
         -replace '__AWS_ACCOUNT_ID__', $accountId `
-        -replace '__GITHUB_OWNER_ID__', $GitHubOwnerId
+        -replace '__GITHUB_OWNER_ID__', $GitHubOwnerId `
+        -replace '__GITHUB_OWNER__', $GitHubOwner
 )
 
 try {

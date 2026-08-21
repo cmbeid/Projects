@@ -15,18 +15,35 @@ configured to trust that issuer, and an IAM role's trust policy says which of
 those tokens it will accept. The job trades the token for credentials that
 expire in an hour.
 
-The trust policy keys on **`repository_owner_id`** — the numeric id of the
-GitHub account, `822434` — rather than on repository names. That choice matters:
+The trust policy carries two conditions, and both are load-bearing.
 
-- it covers every repo under the account, including ones created later, with no
-  further AWS changes;
-- it survives repository renames and transfers;
-- it is unaffected by GitHub's July 2026 switch to *immutable subject claims*,
-  which changed the `sub` claim for newly created repos from
-  `repo:owner/repo:ref:refs/heads/main` to
-  `repo:owner@822434/repo@123456:ref:refs/heads/main`. A trust policy matching
-  `sub` against `repo:cmbeid/*` silently stops working for new repos. One
-  matching `repository_owner_id` does not.
+**`repository_owner_id`, exact match.** The numeric id of the GitHub account,
+`822434`. This is the real security boundary: it is immutable, so it covers
+every repo under the account including ones created later, and it survives
+renames and transfers.
+
+**`sub`, a `StringLike` on two patterns.** AWS *requires* a GitHub OIDC trust
+policy to constrain `sub` or `job_workflow_ref`; a policy relying on
+`repository_owner_id` alone is rejected outright with
+`MalformedPolicyDocument`. The guardrail exists because a role trusting the
+GitHub issuer without a `sub` condition can be assumed from *anybody's*
+repository.
+
+Two patterns are needed because GitHub changed the format on 15 July 2026:
+
+| Repo created | `sub` looks like | Matched by |
+| --- | --- | --- |
+| before | `repo:cmbeid/Projects:environment:AWS` | `repo:cmbeid/*` |
+| after | `repo:cmbeid@822434/Projects@987654:environment:AWS` | `repo:cmbeid@822434/*` |
+
+Listing only the first — the pattern most guides still show — silently stops
+working for every repo created from now on. Listing both covers all of them,
+and neither is a match-everything wildcard, so AWS accepts it.
+
+One consequence worth knowing: because AWS forces the `sub` condition and `sub`
+carries the account *name*, renaming the GitHub account means updating this
+policy. Re-running the setup script with `-GitHubOwner`/`GITHUB_OWNER` set to
+the new name is enough.
 
 ## Setup, with a script
 

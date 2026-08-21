@@ -12,6 +12,12 @@
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
           "token.actions.githubusercontent.com:repository_owner_id": "__GITHUB_OWNER_ID__"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:__GITHUB_OWNER__/*",
+            "repo:__GITHUB_OWNER__@__GITHUB_OWNER_ID__/*"
+          ]
         }
       }
     }
