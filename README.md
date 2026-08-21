@@ -22,8 +22,11 @@ Each project's own README covers the rest.
 
 Each project owns a workflow in [`.github/workflows/`](.github/workflows),
 path-filtered so a change to one project never redeploys another. They publish
-to the `s3.cmbeid.com` bucket, each under its own prefix, using credentials from
-a GitHub Environment named `AWS`.
+to the `s3.cmbeid.com` bucket, each under its own prefix.
+
+Access is via a single account-wide IAM role assumed through OIDC, so no AWS
+credentials are stored in GitHub and a new repo needs no per-repo setup — see
+[`.github/aws/README.md`](.github/aws/README.md).
 
 | Project | Live at |
 | --- | --- |

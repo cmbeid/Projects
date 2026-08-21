@@ -19,6 +19,9 @@ concurrency:
 
 permissions:
   contents: read
+  # Required for the OIDC path: it lets the job request a signed identity token
+  # from GitHub, which AWS trades for short-lived credentials.
+  id-token: write
 
 env:
   # Override either of these with repository variables if the target moves.
@@ -64,10 +67,26 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Two ways in, preferred first. Set an AWS_ROLE_ARN variable and this repo
+      # needs no stored credentials at all; leave it unset and it falls back to
+      # the access keys in the AWS environment. See .github/aws/README.md.
+      - name: Authenticate to AWS (OIDC)
+        if: vars.AWS_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: deploy-alchemy-forge
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Authenticate to AWS (access keys)
+        if: vars.AWS_ROLE_ARN == ''
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Deploy to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
           target="s3://${S3_BUCKET}/${S3_PREFIX}"

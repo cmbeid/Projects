@@ -122,7 +122,15 @@ from the Actions tab.
 
 ### What it needs
 
-A GitHub Environment named **`AWS`** holding two secrets:
+Either of two ways in — the workflow uses whichever is configured.
+
+**Preferred: no stored credentials.** Run [`.github/aws/setup.sh`](../.github/aws/setup.sh)
+once, then set a repository variable `AWS_ROLE_ARN` to the role it prints. That
+role works for every repo on the account, so no further repo needs setting up.
+See [`.github/aws/README.md`](../.github/aws/README.md).
+
+**Fallback: access keys.** Leave `AWS_ROLE_ARN` unset and put two secrets in a
+GitHub Environment named **`AWS`**:
 
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
@@ -131,7 +139,7 @@ The bucket (`s3.cmbeid.com`) and region (`us-east-1`) are defaults in the
 workflow. Override either with a repository variable — `S3_BUCKET` or
 `AWS_REGION` — without editing the file.
 
-The IAM user needs, on that bucket and the `alchemy-forge/*` prefix:
+The IAM identity needs, on that bucket and the `alchemy-forge/*` prefix:
 `s3:ListBucket`, `s3:PutObject`, `s3:PutObjectAcl`, `s3:DeleteObject`.
 `PutObjectAcl` is required because uploads are made `public-read`, matching how
 the rest of the bucket is served. If the bucket has ACLs disabled and uses a
