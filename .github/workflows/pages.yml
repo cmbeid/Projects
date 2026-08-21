@@ -1,0 +1,126 @@
+name: Deploy to GitHub Pages
+
+# Publishes to https://cmbeid.github.io/Projects/ — over HTTPS, which is what
+# makes the game installable and lets its service worker register at all.
+#
+# Manual-only until Pages is enabled (Settings -> Pages -> Source: GitHub
+# Actions), because the deploy step fails until then and a wall of red runs
+# helps nobody. Once it is enabled, uncomment the push trigger below and this
+# deploys on every change, like the S3 workflow.
+on:
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  #     - claude/alchemy-2-android-game-82bmo8
+  #   paths:
+  #     - 'alchemy-forge/**'
+  #     - '.github/workflows/pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  # Proves to Pages that the deployment came from this workflow.
+  id-token: write
+
+# Pages hosts one site per repository, so deployments must not overlap.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: alchemy-forge/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: alchemy-forge
+
+      - name: Validate element data
+        run: npm run validate
+        working-directory: alchemy-forge
+
+      - name: Test
+        run: npm test
+        working-directory: alchemy-forge
+
+      - name: Build
+        run: npm run build
+        working-directory: alchemy-forge
+
+      # One Pages site, many projects: each gets a subdirectory, mirroring the
+      # prefixes used on S3. Adding a project means building it and copying it
+      # in beside this one.
+      - name: Assemble the site
+        run: |
+          set -euo pipefail
+          mkdir -p _site/alchemy-forge
+          cp -r alchemy-forge/dist/. _site/alchemy-forge/
+
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>Projects</title>
+              <style>
+                :root { color-scheme: dark; }
+                body {
+                  margin: 0; min-height: 100dvh; display: grid; place-items: center;
+                  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+                  background: #0d1220; color: #e8edf9;
+                }
+                main { padding: 32px; max-width: 32rem; }
+                h1 { font-size: 20px; margin: 0 0 20px; }
+                a.card {
+                  display: flex; align-items: center; gap: 14px;
+                  padding: 16px 18px; border-radius: 14px; text-decoration: none;
+                  background: #1b2540; border: 1px solid #2a3757; color: inherit;
+                }
+                a.card:hover { background: #243052; }
+                .emoji { font-size: 30px; }
+                .name { font-weight: 650; }
+                .desc { font-size: 13px; color: #97a3c0; margin-top: 2px; }
+              </style>
+            </head>
+            <body>
+              <main>
+                <h1>Projects</h1>
+                <a class="card" href="./alchemy-forge/">
+                  <span class="emoji" aria-hidden="true">⚗️</span>
+                  <span>
+                    <span class="name">Alchemy Forge</span>
+                    <span class="desc">Combine elements to discover 495 of them. Installs and plays offline.</span>
+                  </span>
+                </a>
+              </main>
+            </body>
+          </html>
+          HTML
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

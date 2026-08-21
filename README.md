@@ -42,4 +42,6 @@ The root `.gitignore` covers the usual build output (`node_modules/`, `dist/`)
 at any depth, so a new project generally needs no ignore rules of its own.
 
 To deploy it, copy `deploy-alchemy-forge.yml`, then change the path filter, the
-`S3_PREFIX` and the working directory. The `AWS` environment is shared.
+`S3_PREFIX` and the working directory, and set the `AWS_ROLE_ARN` repository
+variable. The IAM role behind it is account-wide, so that variable is the only
+per-repository step.
