@@ -1,4 +1,4 @@
-import { INDEX } from '../data/index';
+import { activeIndex } from '../data/index';
 import { store } from '../state/store';
 import { play, primeAudio } from '../audio/sfx';
 import type { Board } from './board';
@@ -67,7 +67,7 @@ export class Inventory {
   private render(): void {
     const discovered = store.get().discovered;
     const matches = discovered
-      .map((id) => INDEX.byId.get(id))
+      .map((id) => activeIndex().byId.get(id))
       .filter((element): element is NonNullable<typeof element> => element !== undefined)
       .filter((element) => !this.query || element.name.toLowerCase().includes(this.query));
 
@@ -82,7 +82,7 @@ export class Inventory {
       item.className = 'inv-item';
       item.dataset['elementId'] = element.id;
 
-      const isFinal = INDEX.finalIds.has(element.id);
+      const isFinal = activeIndex().finalIds.has(element.id);
       if (isFinal) {
         item.classList.add('is-final');
         item.title = `${element.name} — final element`;
@@ -130,7 +130,7 @@ export class Inventory {
    * item itself, so the list keeps its layout and can still scroll underneath.
    */
   private beginGhost(elementId: string, point: Point): void {
-    const element = INDEX.byId.get(elementId);
+    const element = activeIndex().byId.get(elementId);
     if (!element) return;
 
     primeAudio();

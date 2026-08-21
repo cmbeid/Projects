@@ -3,7 +3,7 @@ import './styles/board.css';
 import './styles/inventory.css';
 import './styles/modal.css';
 
-import { INDEX } from './data/index';
+import { activeIndex } from './data/index';
 import { pickHint, progress } from './game/engine';
 import { store } from './state/store';
 import { primeAudio } from './audio/sfx';
@@ -74,7 +74,7 @@ const controls: Control[] = [
     icon: '💡',
     label: 'Get a hint',
     action: () => {
-      const hint = pickHint(INDEX, store.get().discovered);
+      const hint = pickHint(activeIndex(), store.get().discovered);
       if (hint) store.recordHintUsed();
       openHint(hint);
     },
@@ -108,7 +108,7 @@ for (const control of controls) {
 // --- Progress counter ------------------------------------------------------
 
 function renderProgress(): void {
-  const stats = progress(INDEX, store.discovered);
+  const stats = progress(activeIndex(), store.discovered);
   progressElement.textContent = `${stats.found} / ${stats.total} discovered`;
   progressElement.title = `${stats.percent}% complete · ${stats.finalsFound} of ${stats.finalsTotal} final elements`;
 }

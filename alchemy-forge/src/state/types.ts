@@ -18,6 +18,8 @@ export interface Token {
 
 export interface Settings {
   sound: boolean;
+  /** Opt-in adult joke content. Off unless the player has explicitly said yes. */
+  spicy: boolean;
 }
 
 export interface GameState {

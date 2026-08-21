@@ -15,6 +15,8 @@ console.log('---------------------------');
 console.log(`Elements       ${stats.elements}`);
 console.log(`Recipes        ${stats.recipes}`);
 console.log(`Final elements ${stats.finalElements}`);
+console.log(`Tame set       ${stats.tameElements} elements / ${stats.tameRecipes} recipes`);
+console.log(`Spicy pack     ${stats.spicyElements} elements / ${stats.spicyRecipes} recipes`);
 console.log(`Max depth      ${stats.maxDepth}`);
 console.log('');
 console.log('Elements by depth from air/earth/fire/water:');

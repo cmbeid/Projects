@@ -1,4 +1,4 @@
-import { INDEX } from '../data/index';
+import { FULL_INDEX, activeIndex, setSpicyEnabled } from '../data/index';
 import { combine } from '../game/engine';
 import { clearSave, createInitialState, loadState, saveState } from './persistence';
 import type { CombineResult, GameState, Token } from './types';
@@ -24,6 +24,10 @@ class Store {
   constructor(initial: GameState) {
     this.state = initial;
     this.discoveredSet = new Set(initial.discovered);
+    // A save made in spicy mode can carry spicy tokens; if the mode is off now
+    // they have no element behind them and must not reach the board.
+    const visible = activeIndex().byId;
+    this.state.tokens = this.state.tokens.filter((token) => visible.has(token.elementId));
   }
 
   get(): Readonly<GameState> {
@@ -87,7 +91,7 @@ class Store {
     const target = this.state.tokens.find((token) => token.uid === targetUid);
     if (!source || !target || source.uid === target.uid) return { kind: 'none' };
 
-    const result = combine(INDEX, this.discoveredSet, source.elementId, target.elementId);
+    const result = combine(activeIndex(), this.discoveredSet, source.elementId, target.elementId);
     if (result.kind === 'none') return result;
 
     const fx = (source.fx + target.fx) / 2;
@@ -131,8 +135,27 @@ class Store {
     this.changed();
   }
 
+  /**
+   * Turns the spicy pack on or off mid-game.
+   *
+   * Discoveries are never dropped — they stay in the save and come back when
+   * the toggle returns — but tokens for content that is now hidden have to
+   * leave the board, or they would render as blanks nothing can combine.
+   */
+  setSpicy(enabled: boolean): void {
+    this.state.settings.spicy = enabled;
+    setSpicyEnabled(enabled);
+    if (!enabled) {
+      const visible = activeIndex().byId;
+      this.state.tokens = this.state.tokens.filter((token) => visible.has(token.elementId));
+    }
+    this.changed();
+  }
+
   resetProgress(): void {
+    const spicy = this.state.settings.spicy;
     this.state = createInitialState();
+    this.state.settings.spicy = spicy;
     this.discoveredSet = new Set(this.state.discovered);
     clearSave();
     this.changed();
@@ -171,6 +194,12 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
-const knownIds = new Set(INDEX.all.map((element) => element.id));
+// Deliberately the full set: a save made in spicy mode must survive being
+// loaded with spicy mode off, so those discoveries are still there when it
+// goes back on.
+const knownIds = new Set(FULL_INDEX.all.map((element) => element.id));
 
-export const store = new Store(loadState(knownIds));
+const initialState = loadState(knownIds);
+setSpicyEnabled(initialState.settings.spicy);
+
+export const store = new Store(initialState);

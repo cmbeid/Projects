@@ -1,4 +1,4 @@
-import { INDEX } from '../data/index';
+import { activeIndex } from '../data/index';
 import type { Element } from '../data/types';
 import { progress, routesTo } from '../game/engine';
 import { store } from '../state/store';
@@ -63,12 +63,12 @@ function open(build: (body: HTMLElement) => void, title: string, subtitle: strin
 
 /** Element detail: what it is, and how the player got there. */
 export function openElementDetail(elementId: string): void {
-  const element = INDEX.byId.get(elementId);
+  const element = activeIndex().byId.get(elementId);
   if (!element) return;
 
-  const isFinal = INDEX.finalIds.has(element.id);
-  const routes = routesTo(INDEX, store.discovered, element.id);
-  const usedIn = INDEX.usedIn.get(element.id)?.length ?? 0;
+  const isFinal = activeIndex().finalIds.has(element.id);
+  const routes = routesTo(activeIndex(), store.discovered, element.id);
+  const usedIn = activeIndex().usedIn.get(element.id)?.length ?? 0;
 
   open(
     (body) => {
@@ -93,7 +93,7 @@ export function openElementDetail(elementId: string): void {
         list.className = 'recipe-list';
 
         for (const [a, b] of routes.known) {
-          list.append(recipeRow(INDEX.byId.get(a), INDEX.byId.get(b)));
+          list.append(recipeRow(activeIndex().byId.get(a), activeIndex().byId.get(b)));
         }
         if (routes.hiddenCount > 0) {
           const hidden = document.createElement('li');
@@ -128,7 +128,7 @@ export function openElementDetail(elementId: string): void {
 export function openEncyclopedia(): void {
   open(
     (body) => {
-      const stats = progress(INDEX, store.discovered);
+      const stats = progress(activeIndex(), store.discovered);
 
       const search = document.createElement('input');
       search.type = 'search';
@@ -143,7 +143,7 @@ export function openEncyclopedia(): void {
         const term = query.trim().toLowerCase();
         const items = store
           .get()
-          .discovered.map((id) => INDEX.byId.get(id))
+          .discovered.map((id) => activeIndex().byId.get(id))
           .filter((element): element is Element => element !== undefined)
           .filter((element) => !term || element.name.toLowerCase().includes(term))
           .sort((a, b) => a.name.localeCompare(b.name));
@@ -153,7 +153,7 @@ export function openEncyclopedia(): void {
           const button = document.createElement('button');
           button.type = 'button';
           button.className = 'inv-item';
-          if (INDEX.finalIds.has(element.id)) button.classList.add('is-final');
+          if (activeIndex().finalIds.has(element.id)) button.classList.add('is-final');
           button.append(iconSpan(element, 'inv-emoji'));
           const name = document.createElement('span');
           name.className = 'inv-name';
@@ -186,7 +186,7 @@ export function openEncyclopedia(): void {
 export function openSettings(onReset: () => void): void {
   open(
     (body) => {
-      const stats = progress(INDEX, store.discovered);
+      const stats = progress(activeIndex(), store.discovered);
 
       body.append(sectionTitle('Progress'));
       const grid = document.createElement('div');
@@ -228,6 +228,37 @@ export function openSettings(onReset: () => void): void {
 
       soundRow.append(soundLabel, soundToggle);
       body.append(soundRow);
+
+      const spicyRow = document.createElement('div');
+      spicyRow.className = 'setting-row';
+      const spicyLabel = document.createElement('div');
+      const spicyText = document.createElement('div');
+      spicyText.className = 'setting-label';
+      spicyText.textContent = 'Spicy mode';
+      const spicyNote = document.createElement('p');
+      spicyNote.className = 'setting-note';
+      spicyNote.textContent =
+        'Adds a pack of crude adult joke elements, and the recipes leading to them. Your discovery total changes to match. Not for the family tablet.';
+      spicyLabel.append(spicyText, spicyNote);
+
+      const spicyToggle = document.createElement('button');
+      spicyToggle.type = 'button';
+      spicyToggle.className = 'button';
+      const paintSpicy = () => {
+        const on = store.get().settings.spicy;
+        spicyToggle.textContent = on ? 'On' : 'Off';
+        spicyToggle.setAttribute('aria-pressed', String(on));
+      };
+      spicyToggle.addEventListener('click', () => {
+        store.setSpicy(!store.get().settings.spicy);
+        paintSpicy();
+        // The totals above this row are now wrong; rebuild the panel in place.
+        openSettings(onReset);
+      });
+      paintSpicy();
+
+      spicyRow.append(spicyLabel, spicyToggle);
+      body.append(spicyRow);
 
       const resetRow = document.createElement('div');
       resetRow.className = 'setting-row';
@@ -286,11 +317,11 @@ export function openHint(hint: Hint | null): void {
 
       const pair = document.createElement('div');
       pair.className = 'hint-pair';
-      pair.append(hintChip(INDEX.byId.get(hint.inputs[0])));
+      pair.append(hintChip(activeIndex().byId.get(hint.inputs[0])));
       const plus = document.createElement('span');
       plus.className = 'recipe-op';
       plus.textContent = '+';
-      pair.append(plus, hintChip(INDEX.byId.get(hint.inputs[1])));
+      pair.append(plus, hintChip(activeIndex().byId.get(hint.inputs[1])));
       wrapper.append(pair);
 
       wrapper.append(
@@ -385,6 +416,14 @@ function categoryLabel(element: Element): string {
     technology: 'Technology',
     culture: 'Culture & Myth',
     cosmos: 'Cosmos',
+    mythology: 'Myth & Legend',
+    kitchen: 'Food & Drink',
+    ocean: 'Ocean',
+    body: 'Body & Medicine',
+    modern: 'Modern Life',
+    arcana: 'Arcana',
+    apocalypse: 'Endings',
+    spicy: 'Spicy',
   };
   return labels[element.category];
 }
