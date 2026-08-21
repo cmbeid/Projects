@@ -55,10 +55,37 @@ $ErrorActionPreference = 'Stop'
 function Invoke-Aws {
     param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $Arguments)
 
-    $output = & aws @Arguments 2>&1
+    # Windows PowerShell 5.1 wraps a native command's stderr in an ErrorRecord,
+    # and with $ErrorActionPreference = 'Stop' that becomes a *terminating*
+    # NativeCommandError - even when the stream is redirected, and even when the
+    # command did what we wanted. Several calls below are existence probes where
+    # writing to stderr is the expected answer, so scope the preference to this
+    # function. The exit code is what decides success, not the stream.
+    #
+    # PowerShell 7 does not behave this way, but the script has to work on the
+    # 5.1 that ships with Windows.
+    $ErrorActionPreference = 'Continue'
+
+    $raw = & aws @Arguments 2>&1
+    $exitCode = $LASTEXITCODE   # capture before anything else can overwrite it
+
+    # Keep the two streams apart. The AWS CLI writes warnings to stderr even on
+    # success, and merging them into stdout corrupts JSON output. Merged stderr
+    # lines arrive as ErrorRecord objects, so their type separates them
+    # reliably on both 5.1 and 7.
+    $stdout = ($raw | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } | Out-String).Trim()
+    $stderr = ($raw | Where-Object { $_ -is   [System.Management.Automation.ErrorRecord] } | Out-String).Trim()
+
+    # Whichever stream actually explains a failure, for display. Computed here
+    # rather than inline, so the hashtable stays a plain literal.
+    $message = $stderr
+    if (-not $message) { $message = $stdout }
+
     [pscustomobject]@{
-        ExitCode = $LASTEXITCODE
-        Output   = ($output | Out-String).Trim()
+        ExitCode = $exitCode
+        StdOut   = $stdout
+        StdErr   = $stderr
+        Message  = $message
     }
 }
 
@@ -84,9 +111,9 @@ function Assert-Aws {
 
     $result = Invoke-Aws @Arguments
     if ($result.ExitCode -ne 0) {
-        Stop-WithMessage "$Activity failed (aws exit code $($result.ExitCode)).`n`nThe CLI said:`n$($result.Output)"
+        Stop-WithMessage "$Activity failed (aws exit code $($result.ExitCode)).`n`nThe CLI said:`n$($result.Message)"
     }
-    $result.Output
+    $result.StdOut
 }
 
 # The AWS CLI reads policy documents from disk rather than the command line,
@@ -169,11 +196,11 @@ Run 'aws configure' (or set `$env:AWS_PROFILE) with an identity allowed to
 create IAM roles, then run this again.
 
 The CLI said:
-$($identity.Output)
+$($identity.Message)
 "@
 }
 
-$caller     = $identity.Output | ConvertFrom-Json
+$caller     = $identity.StdOut | ConvertFrom-Json
 $accountId  = $caller.Account
 $providerArn = "arn:aws:iam::${accountId}:oidc-provider/token.actions.githubusercontent.com"
 $roleArn     = "arn:aws:iam::${accountId}:role/${RoleName}"

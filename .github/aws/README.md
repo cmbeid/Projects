@@ -55,6 +55,19 @@ and the S3 policy, and prints the role ARN. Both are idempotent — re-run to
 change the bucket or widen permissions — and both name the inline policy
 identically, so running one after the other does not leave duplicates.
 
+### If you are on Windows PowerShell 5.1
+
+`setup.ps1` supports it. Two 5.1-specific behaviours it works around, in case
+you adapt the script:
+
+- 5.1 turns a native command's stderr into an `ErrorRecord`, which under
+  `$ErrorActionPreference = 'Stop'` becomes a terminating `NativeCommandError`
+  even when the command succeeded. The AWS CLI is invoked with that preference
+  scoped down, and success is judged by exit code alone.
+- stderr and stdout are separated by record type rather than merged, because
+  the CLI writes warnings to stderr even on success and merging them corrupts
+  the JSON it writes to stdout.
+
 ## Setup, in the AWS console
 
 Same result, if you would rather click. Roughly five minutes.
