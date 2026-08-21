@@ -36,6 +36,15 @@ describe('a fresh game', () => {
     expect(state.discovered).toEqual(['air', 'earth', 'fire', 'water']);
     expect(state.tokens).toEqual([]);
     expect(state.settings.sound).toBe(true);
+    expect(state.settings.spicy).toBe(false);
+  });
+
+  it('leaves spicy mode off when an old save has no such setting', () => {
+    localStorage.setItem(
+      'alchemy-forge:save',
+      JSON.stringify({ version: 1, discovered: ['steam'], tokens: [], settings: { sound: true }, hintsUsed: 0 }),
+    );
+    expect(loadState(KNOWN).settings.spicy).toBe(false);
   });
 });
 
@@ -45,7 +54,7 @@ describe('round trip', () => {
       ...createInitialState(),
       discovered: ['air', 'earth', 'fire', 'water', 'steam'],
       tokens: [{ uid: 1, elementId: 'steam', fx: 0.25, fy: 0.75 }],
-      settings: { sound: false },
+      settings: { sound: false, spicy: true },
       hintsUsed: 3,
       nextUid: 2,
     };
@@ -55,6 +64,7 @@ describe('round trip', () => {
     expect(loaded.discovered).toEqual(['air', 'earth', 'fire', 'water', 'steam']);
     expect(loaded.tokens).toEqual([{ uid: 1, elementId: 'steam', fx: 0.25, fy: 0.75 }]);
     expect(loaded.settings.sound).toBe(false);
+    expect(loaded.settings.spicy).toBe(true);
     expect(loaded.hintsUsed).toBe(3);
   });
 

@@ -69,9 +69,14 @@ export function pickHint(
 /** Discovery progress, for the counter and the stats panel. */
 export function progress(index: ElementIndex, discovered: ReadonlySet<string>) {
   const total = index.all.length;
-  const found = discovered.size;
+  // Counted against the index rather than straight off the set: with spicy
+  // mode off the save can still hold discoveries this index does not contain,
+  // and "512 / 495" is not a progress bar anyone trusts.
+  let found = 0;
   let finalsFound = 0;
   for (const id of discovered) {
+    if (!index.byId.has(id)) continue;
+    found += 1;
     if (index.finalIds.has(id)) finalsFound += 1;
   }
 

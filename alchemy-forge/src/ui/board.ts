@@ -1,4 +1,4 @@
-import { INDEX } from '../data/index';
+import { activeIndex } from '../data/index';
 import type { Element } from '../data/types';
 import { store } from '../state/store';
 import type { Token } from '../state/types';
@@ -108,7 +108,7 @@ export class Board {
   }
 
   private createToken(token: Token): HTMLElement {
-    const element = INDEX.byId.get(token.elementId);
+    const element = activeIndex().byId.get(token.elementId);
     const node = document.createElement('div');
     node.className = 'token';
     node.dataset['uid'] = String(token.uid);
@@ -231,7 +231,7 @@ export class Board {
     if (result.discoveries.length > 0) {
       play('discover');
       for (const id of result.discoveries) {
-        const element = INDEX.byId.get(id);
+        const element = activeIndex().byId.get(id);
         if (element) toastDiscovery(element);
       }
       this.flagNewTokens(result.discoveries);

@@ -12,6 +12,11 @@ export interface ValidationReport {
     maxDepth: number;
     depthHistogram: number[];
     unreachable: string[];
+    spicyElements: number;
+    spicyRecipes: number;
+    tameElements: number;
+    tameRecipes: number;
+    tameUnreachable: string[];
   };
 }
 
@@ -72,6 +77,20 @@ export function validateData(elements: Element[], recipes: Recipe[]): Validation
     outputsByPair.set(key, outputs);
   }
 
+  // --- Spicy content is a strict leaf layer -------------------------------
+  // Spicy mode is a runtime toggle, so the tame set has to stand on its own.
+  // A tame element produced from a spicy input would vanish the moment the
+  // toggle flipped off, which is exactly the bug this check makes impossible.
+  const spicyIds = new Set(elements.filter((element) => element.spicy).map((element) => element.id));
+  for (const recipe of recipes) {
+    const inputIsSpicy = spicyIds.has(recipe.a) || spicyIds.has(recipe.b);
+    if (inputIsSpicy && !spicyIds.has(recipe.out)) {
+      errors.push(
+        `Recipe "${recipe.a} + ${recipe.b} = ${recipe.out}" makes tame content from a spicy input; spicy elements must only ever produce spicy elements`,
+      );
+    }
+  }
+
   // --- Reachability -------------------------------------------------------
   const index = buildIndex(elements, recipes);
   const depths = reachableDepths(index);
@@ -81,6 +100,22 @@ export function validateData(elements: Element[], recipes: Recipe[]): Validation
     const element = index.byId.get(id);
     errors.push(
       `Unreachable: "${element?.name ?? id}" (${id}) cannot be produced from air/earth/fire/water`,
+    );
+  }
+
+  // The same walk again with the spicy pack subtracted: the game as a player
+  // who never turns spicy mode on actually sees it.
+  const tameElements = elements.filter((element) => !element.spicy);
+  const tameIds = new Set(tameElements.map((element) => element.id));
+  const tameRecipeList = recipes.filter(
+    (recipe) => tameIds.has(recipe.a) && tameIds.has(recipe.b) && tameIds.has(recipe.out),
+  );
+  const tameDepths = reachableDepths(buildIndex(tameElements, tameRecipeList));
+  const tameUnreachable = tameElements.map((e) => e.id).filter((id) => !tameDepths.has(id));
+  for (const id of tameUnreachable) {
+    const element = index.byId.get(id);
+    errors.push(
+      `Unreachable with spicy mode off: "${element?.name ?? id}" (${id}) is only produced via spicy content`,
     );
   }
 
@@ -130,6 +165,11 @@ export function validateData(elements: Element[], recipes: Recipe[]): Validation
       maxDepth,
       depthHistogram,
       unreachable,
+      spicyElements: spicyIds.size,
+      spicyRecipes: recipes.length - tameRecipeList.length,
+      tameElements: tameElements.length,
+      tameRecipes: tameRecipeList.length,
+      tameUnreachable,
     },
   };
 }

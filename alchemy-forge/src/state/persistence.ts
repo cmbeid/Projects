@@ -8,7 +8,7 @@ interface SaveFile {
   version: number;
   discovered: string[];
   tokens: Token[];
-  settings: { sound: boolean };
+  settings: { sound: boolean; spicy: boolean };
   hintsUsed: number;
 }
 
@@ -16,7 +16,7 @@ export function createInitialState(): GameState {
   return {
     discovered: [...BASE_ELEMENT_IDS],
     tokens: [],
-    settings: { sound: true },
+    settings: { sound: true, spicy: false },
     hintsUsed: 0,
     nextUid: 1,
   };
@@ -78,7 +78,7 @@ export function loadState(knownIds: Set<string>): GameState {
   return {
     discovered: ordered,
     tokens,
-    settings: { sound: parsed.settings?.sound !== false },
+    settings: { sound: parsed.settings?.sound !== false, spicy: parsed.settings?.spicy === true },
     hintsUsed: typeof parsed.hintsUsed === 'number' ? parsed.hintsUsed : 0,
     nextUid,
   };

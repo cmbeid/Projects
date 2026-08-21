@@ -15,6 +15,11 @@ export interface Element {
   category: Category;
   /** One-line flavour text shown in the detail modal. */
   blurb: string;
+  /**
+   * Adult joke content. Hidden entirely unless the player opts into spicy
+   * mode, so the default game stays safe to hand to anyone.
+   */
+  spicy?: true;
 }
 
 export type Category =
@@ -25,7 +30,15 @@ export type Category =
   | 'civilization'
   | 'technology'
   | 'culture'
-  | 'cosmos';
+  | 'cosmos'
+  | 'mythology'
+  | 'kitchen'
+  | 'ocean'
+  | 'body'
+  | 'modern'
+  | 'arcana'
+  | 'apocalypse'
+  | 'spicy';
 
 /**
  * One combination. Order-agnostic: `a` and `b` are interchangeable, and every
