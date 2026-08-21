@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - main
-      - claude/alchemy-2-android-game-82bmo8
     paths:
       - 'alchemy-forge/**'
       - '.github/workflows/deploy-alchemy-forge.yml'
