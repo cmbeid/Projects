@@ -41,6 +41,7 @@ const inventory = new Inventory(
     grid: required('inventory-grid'),
     empty: required('inventory-empty'),
     search: required<HTMLInputElement>('search-input'),
+    filterFinals: required<HTMLButtonElement>('filter-finals'),
     dragLayer: required('drag-layer'),
   },
   layout,
