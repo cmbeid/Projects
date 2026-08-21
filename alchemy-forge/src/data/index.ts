@@ -10,13 +10,14 @@ import { culturePack } from './packs/05-culture';
 import { cosmosPack } from './packs/06-cosmos';
 import { mythologyPack } from './packs/07-mythology';
 import { kitchenPack } from './packs/08-kitchen';
+import { oceanPack } from './packs/09-ocean';
 
 /**
  * Packs are merged in order. Splitting content this way keeps each themed
  * branch of the tree editable on its own, and lets the validator report which
  * bundle a problem came from.
  */
-export const PACKS: Pack[] = [basePack, primordialPack, naturePack, civilizationPack, technologyPack, culturePack, cosmosPack, mythologyPack, kitchenPack];
+export const PACKS: Pack[] = [basePack, primordialPack, naturePack, civilizationPack, technologyPack, culturePack, cosmosPack, mythologyPack, kitchenPack, oceanPack];
 
 export const ELEMENTS: Element[] = PACKS.flatMap((pack) => pack.elements);
 export const RECIPES: Recipe[] = PACKS.flatMap((pack) => pack.recipes);
