@@ -2,7 +2,7 @@
 
 A crafting puzzle game for the phone. Start with air, earth, fire and water;
 drag two together and see what comes out. There are **495 elements** and **981
-combinations** to find.
+combinations** to find. 
 
 Plain HTML5 — it installs to the home screen and plays fully offline.
 
