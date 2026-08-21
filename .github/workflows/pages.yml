@@ -9,13 +9,12 @@ name: Deploy to GitHub Pages
 # deploys on every change, like the S3 workflow.
 on:
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - main
-  #     - claude/alchemy-2-android-game-82bmo8
-  #   paths:
-  #     - 'alchemy-forge/**'
-  #     - '.github/workflows/pages.yml'
+   push:
+     branches:
+       - main
+     paths:
+       - 'alchemy-forge/**'
+       - '.github/workflows/pages.yml'
 
 permissions:
   contents: read
