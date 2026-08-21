@@ -124,8 +124,10 @@ from the Actions tab.
 
 Either of two ways in — the workflow uses whichever is configured.
 
-**Preferred: no stored credentials.** Run [`.github/aws/setup.sh`](../.github/aws/setup.sh)
-once, then set a repository variable `AWS_ROLE_ARN` to the role it prints. That
+**Preferred: no stored credentials.** Run the setup script once —
+[`setup.ps1`](../.github/aws/setup.ps1) on Windows,
+[`setup.sh`](../.github/aws/setup.sh) elsewhere — then set a repository
+variable `AWS_ROLE_ARN` to the role it prints. That
 role works for every repo on the account, so no further repo needs setting up.
 See [`.github/aws/README.md`](../.github/aws/README.md).
 

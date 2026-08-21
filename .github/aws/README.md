@@ -28,23 +28,32 @@ GitHub account, `822434` — rather than on repository names. That choice matter
   `sub` against `repo:cmbeid/*` silently stops working for new repos. One
   matching `repository_owner_id` does not.
 
-## Setup, with the CLI
+## Setup, with a script
 
-Run once, with AWS credentials that can create IAM roles:
+Run once, with AWS credentials that can create IAM roles. Both scripts do the
+same thing and drive the AWS CLI; pick whichever suits your machine.
+
+**Windows** — `setup.ps1` is self-contained, so it also works copied anywhere:
+
+```powershell
+.\.github\aws\setup.ps1
+
+# or with different targets
+.\.github\aws\setup.ps1 -S3Bucket other-bucket -RoleName my-role
+```
+
+**macOS / Linux** — `setup.sh` reads the two policy files beside it, so run it
+from a checkout:
 
 ```bash
 .github/aws/setup.sh
-```
-
-It checks its prerequisites first, then creates the OIDC provider, the role and
-the S3 policy, and prints the role ARN. It is idempotent — re-run it to change
-the bucket or widen permissions.
-
-Defaults can be overridden:
-
-```bash
 S3_BUCKET=other-bucket ROLE_NAME=my-role .github/aws/setup.sh
 ```
+
+Either checks its prerequisites first, then creates the OIDC provider, the role
+and the S3 policy, and prints the role ARN. Both are idempotent — re-run to
+change the bucket or widen permissions — and both name the inline policy
+identically, so running one after the other does not leave duplicates.
 
 ## Setup, in the AWS console
 
@@ -138,7 +147,8 @@ deploy workflow must remember to.
 
 | | |
 | --- | --- |
-| `setup.sh` | One-time (idempotent) AWS setup |
+| `setup.ps1` | One-time AWS setup, Windows. Self-contained |
+| `setup.sh` | The same, for macOS and Linux |
 | `trust-policy.json` | Who may assume the role |
 | `s3-deploy-policy.json` | What the role may do |
 
