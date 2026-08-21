@@ -77,8 +77,11 @@ Same result, if you would rather click. Roughly five minutes.
 - Provider type: **OpenID Connect**
 - Provider URL: `https://token.actions.githubusercontent.com`
 - Audience: `sts.amazonaws.com`
-- Click **Get thumbprint** if it insists; the value is not used for this
-  provider any more.
+- Click **Get thumbprint** if it insists. IAM validates this endpoint against
+  its own trusted root CAs, so the stored value is not what actually secures
+  it. If asked for one explicitly, GitHub's two documented intermediates are
+  `6938fd4d98bab03faadb97b34396831e3780aea1` and
+  `1c58a3a8518e8759bf075b76b750d4f2df264fcd` — supply both.
 
 If it says a provider with that URL already exists, you are done with this
 step — there is only ever one per account.

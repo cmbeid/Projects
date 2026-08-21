@@ -234,10 +234,35 @@ if ($existingProvider.ExitCode -eq 0) {
 }
 else {
     Write-Host 'Creating OIDC provider...'
-    [void] (Assert-Aws -Activity 'Creating the OIDC provider' `
-        iam create-open-id-connect-provider `
-        --url https://token.actions.githubusercontent.com `
-        --client-id-list sts.amazonaws.com)
+
+    $providerArgs = @(
+        'iam', 'create-open-id-connect-provider',
+        '--url', 'https://token.actions.githubusercontent.com',
+        '--client-id-list', 'sts.amazonaws.com'
+    )
+
+    # Try without a thumbprint first. IAM has validated this endpoint against
+    # its own trusted root CAs since July 2023 and fetches the thumbprint
+    # itself, so nothing configured here can go stale. Some AWS CLI versions
+    # still require the argument at the parser level, though, and only find out
+    # by asking.
+    $created = Invoke-Aws @providerArgs
+
+    if ($created.ExitCode -ne 0 -and $created.Message -match 'thumbprint') {
+        Write-Host '  This AWS CLI requires a thumbprint; supplying GitHub''s documented values.'
+        # Both of GitHub's intermediate thumbprints, as they advise, so the
+        # provider keeps working across their certificate rotations.
+        $withThumbprints = $providerArgs + @(
+            '--thumbprint-list',
+            '6938fd4d98bab03faadb97b34396831e3780aea1',
+            '1c58a3a8518e8759bf075b76b750d4f2df264fcd'
+        )
+        $created = Invoke-Aws @withThumbprints
+    }
+
+    if ($created.ExitCode -ne 0) {
+        Stop-WithMessage "Creating the OIDC provider failed (aws exit code $($created.ExitCode)).`n`nThe CLI said:`n$($created.Message)"
+    }
 }
 
 # --- 2. Role ----------------------------------------------------------------

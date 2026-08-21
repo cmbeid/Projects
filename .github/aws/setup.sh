@@ -64,9 +64,26 @@ if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "${provid
   echo "OIDC provider already exists, leaving it alone."
 else
   echo "Creating OIDC provider..."
-  aws iam create-open-id-connect-provider \
-    --url https://token.actions.githubusercontent.com \
-    --client-id-list sts.amazonaws.com >/dev/null
+  # Try without a thumbprint first: IAM validates this endpoint against its own
+  # trusted root CAs and fetches the thumbprint itself, so nothing configured
+  # here can go stale. Some AWS CLI versions still require the argument at the
+  # parser level, so fall back to GitHub's two documented values.
+  if ! err="$(aws iam create-open-id-connect-provider \
+      --url https://token.actions.githubusercontent.com \
+      --client-id-list sts.amazonaws.com 2>&1)"; then
+    if printf '%s' "${err}" | grep -qi thumbprint; then
+      echo "  This AWS CLI requires a thumbprint; supplying GitHub's documented values."
+      aws iam create-open-id-connect-provider \
+        --url https://token.actions.githubusercontent.com \
+        --client-id-list sts.amazonaws.com \
+        --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 \
+                          1c58a3a8518e8759bf075b76b750d4f2df264fcd >/dev/null
+    else
+      echo "Creating the OIDC provider failed:" >&2
+      printf '%s\n' "${err}" >&2
+      exit 1
+    fi
+  fi
 fi
 
 # --- 2. Role ----------------------------------------------------------------
