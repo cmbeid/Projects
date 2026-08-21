@@ -2,7 +2,7 @@
 
 A home for several standalone projects. Each lives in its own directory with
 its own `package.json`, dependencies and scripts — there is no shared build and
-nothing at the root to install.
+nothing at the root to install. 
 
 | Project | What it is |
 | --- | --- |
