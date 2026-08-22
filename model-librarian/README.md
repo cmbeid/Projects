@@ -10,10 +10,15 @@ or deletes anything. See [`PLAN.md`](../PLAN.md) at the repo root for the full d
 
 ## Install
 
+**Windows:** double-click `install.bat` (or run it from a terminal). It creates `.venv`
+next to it and installs the app into it.
+
+**macOS/Linux:**
+
 ```bash
 cd model-librarian
 python -m venv .venv
-source .venv/bin/activate      # .venv\Scripts\activate on Windows
+source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
@@ -21,6 +26,10 @@ The optional `[step]` extra pulls in `cadquery-ocp` (~200MB) for STEP 3D preview
 never required to start the app. STEP files get metadata-only support without it.
 
 ## Run
+
+**Windows:** double-click `run.bat` (after running `install.bat` once).
+
+**macOS/Linux:**
 
 ```bash
 python -m model_librarian                  # GUI
