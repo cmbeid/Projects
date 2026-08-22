@@ -19,6 +19,10 @@ interface Refs {
 
 /** Movement, in CSS pixels, within which the list may still be a scroll. */
 const SCROLL_DECIDE_MS = 150;
+/** Exponential decay per millisecond applied to momentum-scroll velocity. */
+const MOMENTUM_FRICTION = 0.0035;
+/** Momentum stops once velocity drops below this, in pixels per millisecond. */
+const MOMENTUM_MIN_VELOCITY = 0.02;
 
 /**
  * The list of discovered elements.
@@ -32,6 +36,7 @@ export class Inventory {
   private hideFinals = false;
   private open = false;
   private ghost: HTMLElement | null = null;
+  private momentumFrame: number | null = null;
 
   constructor(
     private readonly refs: Refs,
@@ -134,10 +139,53 @@ export class Inventory {
       onDragMove: (point) => this.moveGhost(point),
       onDragEnd: (point) => this.endGhost(elementId, point),
       onScrollMove: (delta) => {
+        this.stopMomentum();
         this.refs.grid.scrollTop -= delta.y;
       },
+      onScrollEnd: (velocity) => this.startMomentum(-velocity.y),
       dragArmDelay: SCROLL_DECIDE_MS,
     });
+  }
+
+  // --- Momentum scroll -------------------------------------------------
+
+  /** velocity is in CSS pixels per millisecond, scrollTop-direction. */
+  private startMomentum(velocity: number): void {
+    if (Math.abs(velocity) < MOMENTUM_MIN_VELOCITY) return;
+
+    let v = velocity;
+    let last = performance.now();
+
+    const step = (now: number) => {
+      const dt = now - last;
+      last = now;
+
+      v *= Math.exp(-MOMENTUM_FRICTION * dt);
+      if (Math.abs(v) < MOMENTUM_MIN_VELOCITY) {
+        this.momentumFrame = null;
+        return;
+      }
+
+      const grid = this.refs.grid;
+      const before = grid.scrollTop;
+      grid.scrollTop += v * dt;
+      // Hit the top or bottom: nothing left to fling into.
+      if (grid.scrollTop === before) {
+        this.momentumFrame = null;
+        return;
+      }
+
+      this.momentumFrame = requestAnimationFrame(step);
+    };
+
+    this.momentumFrame = requestAnimationFrame(step);
+  }
+
+  private stopMomentum(): void {
+    if (this.momentumFrame !== null) {
+      cancelAnimationFrame(this.momentumFrame);
+      this.momentumFrame = null;
+    }
   }
 
   // --- Drag out of the list ------------------------------------------------
