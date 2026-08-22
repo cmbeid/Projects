@@ -36,6 +36,13 @@ python -m model_librarian                  # GUI
 model-librarian scan DIR --json            # headless index, CLI
 ```
 
+## Uninstall
+
+**Windows:** double-click `uninstall.bat`. It removes `.venv` after confirmation; your
+scanned index (`%LOCALAPPDATA%\model-librarian`) is left alone.
+
+**macOS/Linux:** delete the `.venv` directory.
+
 ## Test
 
 ```bash
