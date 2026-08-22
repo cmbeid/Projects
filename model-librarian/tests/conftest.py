@@ -138,7 +138,9 @@ def bambu_3mf(tmp_path):
     configs, a plate PNG."""
     path = tmp_path / "bambu_project.3mf"
     body_mesh = _mesh_xml(_CUBE_VERTICES, _CUBE_TRIANGLES)
-    support_mesh = _mesh_xml(_CUBE_VERTICES[:4], _CUBE_TRIANGLES[:4])
+    # Only the first two triangles reference vertices 0-3, so this stays a
+    # geometrically valid (if degenerate) mesh that trimesh can load.
+    support_mesh = _mesh_xml(_CUBE_VERTICES[:4], _CUBE_TRIANGLES[:2])
     objects_xml = (
         f'<object id="1" type="model" name="Body">{body_mesh}</object>'
         f'<object id="2" type="model" name="Support">{support_mesh}</object>'

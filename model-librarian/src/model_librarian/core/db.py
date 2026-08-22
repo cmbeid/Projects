@@ -14,7 +14,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from model_librarian.core.models import FileFacts
+from model_librarian.core.models import FileFacts, FingerprintInfo
 
 PROBE_VERSION = 1
 
@@ -75,9 +75,11 @@ CREATE TABLE IF NOT EXISTS objects (
     bbox_y REAL,
     bbox_z REAL,
     volume_mm3 REAL,
-    material TEXT
+    material TEXT,
+    identifier_hash TEXT  -- tier-2, for the "contained-in" dupe signal (dupes.py)
 );
 CREATE INDEX IF NOT EXISTS idx_objects_file ON objects(file_id);
+CREATE INDEX IF NOT EXISTS idx_objects_identifier_hash ON objects(identifier_hash);
 
 CREATE TABLE IF NOT EXISTS settings (
     file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
@@ -295,26 +297,47 @@ def _insert_children(conn: sqlite3.Connection, file_id: int, facts: FileFacts) -
         )
 
     if facts.fingerprint is not None:
-        fp = facts.fingerprint
-        conn.execute(
-            """
-            INSERT INTO fingerprints (
-                file_id, identifier_hash, tri_count, vert_count, volume, area,
-                bbox_key, watertight, connected_components
-            ) VALUES (?,?,?,?,?,?,?,?,?)
-            """,
-            (
-                file_id,
-                fp.identifier_hash,
-                fp.triangle_count,
-                fp.vertex_count,
-                fp.volume_mm3,
-                fp.area_mm2,
-                json.dumps(fp.bbox_key),
-                int(fp.watertight),
-                fp.connected_components,
-            ),
-        )
+        _insert_fingerprint(conn, file_id, facts.fingerprint)
+
+
+def _insert_fingerprint(conn: sqlite3.Connection, file_id: int, fp: FingerprintInfo) -> None:
+    conn.execute(
+        """
+        INSERT INTO fingerprints (
+            file_id, identifier_hash, tri_count, vert_count, volume, area,
+            bbox_key, watertight, connected_components
+        ) VALUES (?,?,?,?,?,?,?,?,?)
+        """,
+        (
+            file_id,
+            fp.identifier_hash,
+            fp.triangle_count,
+            fp.vertex_count,
+            fp.volume_mm3,
+            fp.area_mm2,
+            json.dumps(fp.bbox_key),
+            int(fp.watertight),
+            fp.connected_components,
+        ),
+    )
+
+
+def set_fingerprint(conn: sqlite3.Connection, file_id: int, fp: FingerprintInfo) -> None:
+    """Store a tier-2 whole-file fingerprint, replacing any previous one."""
+    conn.execute("DELETE FROM fingerprints WHERE file_id = ?", (file_id,))
+    _insert_fingerprint(conn, file_id, fp)
+    conn.commit()
+
+
+def set_object_identifier_hashes(
+    conn: sqlite3.Connection, file_id: int, hashes_by_name: dict[str, str]
+) -> None:
+    """Store tier-2 per-object geometry hashes (3MF), keyed by object name."""
+    conn.executemany(
+        "UPDATE objects SET identifier_hash = ? WHERE file_id = ? AND name = ?",
+        [(h, file_id, name) for name, h in hashes_by_name.items()],
+    )
+    conn.commit()
 
 
 def mark_missing(conn: sqlite3.Connection, root_id: int, seen_paths: set[str]) -> int:
