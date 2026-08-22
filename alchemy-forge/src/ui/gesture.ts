@@ -18,6 +18,12 @@ export interface GestureHandlers {
    */
   onScrollMove?: (delta: Point) => void;
   /**
+   * Fired when a scroll gesture (see `onScrollMove`) ends, with the release
+   * velocity in CSS pixels per millisecond. Lets the caller keep scrolling
+   * with momentum after the finger lifts.
+   */
+  onScrollEnd?: (velocity: Point) => void;
+  /**
    * If set, movement past the drag threshold only starts a drag once this
    * many milliseconds have elapsed since the press began; a threshold-crossing
    * swipe earlier than that is routed to `onScrollMove` instead. Lets a list
@@ -29,6 +35,8 @@ export interface GestureHandlers {
 /** Movement, in CSS pixels, that turns a press into a drag or a scroll. */
 const DRAG_THRESHOLD = 7;
 const LONG_PRESS_MS = 450;
+/** Only recent samples count toward release velocity, so a swipe that pauses before lifting doesn't fling. */
+const VELOCITY_WINDOW_MS = 100;
 
 /**
  * One pointer-events gesture recogniser for taps, long-presses and drags.
@@ -46,6 +54,7 @@ export function attachGesture(element: HTMLElement, handlers: GestureHandlers): 
   let scrolling = false;
   let longPressed = false;
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let samples: { point: Point; time: number }[] = [];
 
   const clearLongPress = () => {
     if (longPressTimer !== null) {
@@ -65,6 +74,7 @@ export function attachGesture(element: HTMLElement, handlers: GestureHandlers): 
     dragging = false;
     scrolling = false;
     longPressed = false;
+    samples = [{ point: start, time: startTime }];
 
     element.setPointerCapture(event.pointerId);
 
@@ -87,6 +97,9 @@ export function attachGesture(element: HTMLElement, handlers: GestureHandlers): 
     if (scrolling) {
       handlers.onScrollMove?.(delta);
       last = point;
+      const now = performance.now();
+      samples.push({ point, time: now });
+      while (samples.length > 1 && now - samples[0]!.time > VELOCITY_WINDOW_MS) samples.shift();
       return;
     }
 
@@ -101,6 +114,7 @@ export function attachGesture(element: HTMLElement, handlers: GestureHandlers): 
         scrolling = true;
         handlers.onScrollMove?.(delta);
         last = point;
+        samples.push({ point, time: performance.now() });
         return;
       }
 
@@ -123,6 +137,15 @@ export function attachGesture(element: HTMLElement, handlers: GestureHandlers): 
 
     if (dragging) {
       handlers.onDragEnd?.({ x: event.clientX, y: event.clientY });
+    } else if (scrolling && !cancelled) {
+      const first = samples[0]!;
+      const last = samples[samples.length - 1]!;
+      const dt = last.time - first.time;
+      const velocity =
+        dt > 0
+          ? { x: (last.point.x - first.point.x) / dt, y: (last.point.y - first.point.y) / dt }
+          : { x: 0, y: 0 };
+      handlers.onScrollEnd?.(velocity);
     } else if (!longPressed && !cancelled && !scrolling) {
       handlers.onTap?.();
     }
@@ -130,6 +153,7 @@ export function attachGesture(element: HTMLElement, handlers: GestureHandlers): 
     dragging = false;
     scrolling = false;
     longPressed = false;
+    samples = [];
   };
 
   const onPointerUp = (event: PointerEvent) => finish(event, false);
