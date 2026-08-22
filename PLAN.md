@@ -373,5 +373,9 @@ Phases 2–4 (write actions, STEP previews, zip peeking) are separate follow-up 
 
 ## Status
 
-Planning only. Nothing in this document has been implemented yet — this branch contains
-this plan and nothing else. Implementation starts at step 1 of the order above.
+v1 implemented: steps 1-6 of the order above plus a working PySide6 GUI (step 4-ish),
+covering all four format probes, the scanner/SQLite index/CLI, tier-2 geometry
+fingerprinting and duplicate/clutter detection, and the file table with
+Preview/Objects/Settings/Info tabs. See `model-librarian/README.md` for the current
+status and known gaps (interactive 3D viewport and process-pool concurrency are
+unverified without a real GPU/display; built and tested in a headless container).

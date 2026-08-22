@@ -7,10 +7,15 @@ each parser test can assert exactly which bytes produced which fact.
 from __future__ import annotations
 
 import json
+import os
 import struct
 import zipfile
 
 import pytest
+
+# Headless CI/dev containers have no display; PySide6 needs to know to use
+# its offscreen platform plugin before anything constructs a QApplication.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 _CUBE_VERTICES = [
     (0, 0, 0),
