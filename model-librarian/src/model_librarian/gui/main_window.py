@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self.table_view.horizontalHeader().setStretchLastSection(True)
         self.table_view.selectionModel().selectionChanged.connect(self._on_selection_changed)
 
-        self.preview_panel = PreviewPanel()
+        self.preview_panel = PreviewPanel(self.conn)
         self.objects_panel = ObjectsPanel()
         self.settings_panel = SettingsPanel()
         self.info_panel = InfoPanel()

@@ -373,5 +373,24 @@ def get_settings(conn: sqlite3.Connection, file_id: int) -> list[sqlite3.Row]:
     ).fetchall()
 
 
+def get_thumb(conn: sqlite3.Connection, cache_key: str, kind: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM thumbs WHERE content_hash = ? AND kind = ?", (cache_key, kind)
+    ).fetchone()
+
+
+def set_thumb(
+    conn: sqlite3.Connection, cache_key: str, kind: str, width: int, height: int, png: bytes
+) -> None:
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO thumbs (content_hash, kind, width, height, png)
+        VALUES (?,?,?,?,?)
+        """,
+        (cache_key, kind, width, height, png),
+    )
+    conn.commit()
+
+
 def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

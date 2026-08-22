@@ -41,6 +41,26 @@ def test_objects_and_settings_are_persisted(bambu_3mf):
     assert any(s["key"] == "layer_height" for s in settings)
 
 
+def test_thumb_cache_roundtrip():
+    conn = db.connect(":memory:")
+    assert db.get_thumb(conn, "abc", "rendered") is None
+
+    db.set_thumb(conn, "abc", "rendered", 512, 512, b"fakepng")
+    row = db.get_thumb(conn, "abc", "rendered")
+
+    assert row["png"] == b"fakepng"
+    assert row["width"] == 512
+
+
+def test_thumb_cache_replaces_existing_entry():
+    conn = db.connect(":memory:")
+    db.set_thumb(conn, "abc", "rendered", 512, 512, b"first")
+    db.set_thumb(conn, "abc", "rendered", 512, 512, b"second")
+
+    row = db.get_thumb(conn, "abc", "rendered")
+    assert row["png"] == b"second"
+
+
 def test_mark_missing_flags_deleted_files(binary_stl, tmp_path):
     conn = db.connect(":memory:")
     root_id = db.upsert_scan_root(conn, str(tmp_path))

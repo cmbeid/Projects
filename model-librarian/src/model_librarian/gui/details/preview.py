@@ -1,12 +1,17 @@
-"""Preview tab: embedded PNG first, then an interactive 3D viewport.
+"""Preview tab: embedded PNG, then an interactive 3D viewport, then a
+cached offscreen render as a fallback when no viewport is available.
 
 One `pyvistaqt.QtInteractor` instance is created once and reused across
 selections rather than rebuilt (PLAN.md) — recreating a VTK render window
 per row is the difference between snappy and unusable. If pyvistaqt can't
-initialize (no GPU/display), the panel degrades to a text placeholder.
+initialize (no GPU/display), the panel falls back to a static offscreen
+render (still trying to show *something*) before degrading to a text
+placeholder.
 """
 
 from __future__ import annotations
+
+import sqlite3
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
@@ -25,8 +30,9 @@ _STEP_PLACEHOLDER_TEXT = "Preview unavailable — install the `step` extra for 3
 
 
 class PreviewPanel(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, conn: sqlite3.Connection, parent=None):
         super().__init__(parent)
+        self._conn = conn
         self._label = QLabel(_NO_PREVIEW_TEXT)
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -53,7 +59,7 @@ class PreviewPanel(QWidget):
             self._interactor.clear()
 
     def show_file(self, row) -> None:
-        path, ext = row["path"], row["ext"]
+        file_id, path, ext = row["id"], row["path"], row["ext"]
 
         png_bytes = thumbs.embedded_preview_png(path, ext)
         if png_bytes and self._show_pixmap(png_bytes):
@@ -66,6 +72,11 @@ class PreviewPanel(QWidget):
                 self._interactor.add_mesh(mesh, color="lightgray")
                 self._interactor.reset_camera()
                 self._stack.setCurrentWidget(self._interactor)
+                return
+
+        if ext in _RENDERABLE:
+            rendered = thumbs.get_or_render_thumbnail(self._conn, file_id, path, ext)
+            if rendered and self._show_pixmap(rendered):
                 return
 
         self._label.setPixmap(QPixmap())

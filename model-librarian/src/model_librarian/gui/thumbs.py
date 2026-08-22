@@ -15,8 +15,10 @@ from __future__ import annotations
 
 import logging
 import os
+import sqlite3
 import tempfile
 
+from model_librarian.core import db
 from model_librarian.core.formats import threemf
 
 logger = logging.getLogger(__name__)
@@ -82,3 +84,27 @@ def render_thumbnail_png(path: str, ext: str, *, size: int = 512) -> bytes | Non
                 os.unlink(tmp_path)
             except OSError:
                 pass
+
+
+def get_or_render_thumbnail(
+    conn: sqlite3.Connection, file_id: int, path: str, ext: str, *, size: int = 512
+) -> bytes | None:
+    """Offscreen VTK renders are the expensive tier (PLAN.md preview
+    priority #2), so results are cached — unlike an embedded 3MF PNG, which
+    is cheap to re-extract from the zip's central directory every time and
+    is not cached here.
+
+    Cached by `file_id` rather than the `content_hash` the schema's `thumbs`
+    table is designed around: nothing populates `files.content_hash` yet
+    (dupes.py hashes on demand instead), so this cache does not yet survive
+    a rename — only repeated selection and app restarts for the same path.
+    """
+    cache_key = str(file_id)
+    cached = db.get_thumb(conn, cache_key, "rendered")
+    if cached is not None:
+        return cached["png"]
+
+    png_bytes = render_thumbnail_png(path, ext, size=size)
+    if png_bytes is not None:
+        db.set_thumb(conn, cache_key, "rendered", size, size, png_bytes)
+    return png_bytes
