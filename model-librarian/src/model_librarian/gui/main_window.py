@@ -27,7 +27,7 @@ from model_librarian.gui.details.info import InfoPanel
 from model_librarian.gui.details.objects import ObjectsPanel
 from model_librarian.gui.details.preview import PreviewPanel
 from model_librarian.gui.details.settings import SettingsPanel
-from model_librarian.gui.file_table import FileTableModel
+from model_librarian.gui.file_table import SORT_ROLE, FileTableModel
 from model_librarian.gui.workers import ScanWorker
 
 
@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
         self.proxy_model.setSourceModel(self.table_model)
         self.proxy_model.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.proxy_model.setFilterKeyColumn(0)
+        self.proxy_model.setSortRole(SORT_ROLE)
 
         self.table_view = QTableView(self)
         self.table_view.setModel(self.proxy_model)
