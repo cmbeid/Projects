@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "model-librarian"
+version = "0.1.0"
+description = "Desktop triage tool for a hoard of .step/.3mf/.stl/.obj files"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PySide6>=6.6",
+    "trimesh>=4.0",
+    "numpy>=1.26",
+    "pyvista>=0.43",
+    "pyvistaqt>=0.11",
+]
+
+[project.optional-dependencies]
+step = ["cadquery-ocp>=7.7"]
+dev = [
+    "pytest>=8.0",
+    "pytest-qt>=4.4",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+model-librarian = "model_librarian.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
