@@ -55,18 +55,19 @@ none are committed as binaries.
 
 ## Status
 
-All of v1's implementation order in `PLAN.md` is built: tier-1 format probes for all
-four extensions, the recursive scanner and SQLite index, a headless CLI, tier-2
-geometry fingerprinting and duplicate/clutter detection, and a PySide6 GUI (file
-table, Preview/Objects/Settings/Info tabs, background scanning). 37 tests pass.
+All of v1's implementation order in `PLAN.md` is built and verified working on a real
+Windows machine: tier-1 format probes for all four extensions, the recursive scanner
+and SQLite index, a headless CLI, tier-2 geometry fingerprinting and duplicate/clutter
+detection, and a PySide6 GUI. 59 tests pass.
 
-Known gaps to verify on a real Windows machine with a GPU, since this was built in a
-headless Linux container:
+The file browser groups results by folder (`gui/file_tree.py`) instead of one flat,
+interleaved list, and has a second "Treemap" tab (`gui/treemap_view.py`,
+`core/treemap.py`) — a WinDirStat-style squarified treemap colored by extension, sized
+by file size, click-to-select — for spotting what's actually taking up space at a
+glance. Both views drive the same Preview/Objects/Settings/Info detail tabs.
 
-- The interactive 3D viewport and offscreen thumbnail rendering (pyvista/VTK) degrade
-  to a placeholder here for lack of a GPU/display. The code path is in place
-  (`gui/thumbs.py`, `gui/details/preview.py`) but only exercised end-to-end with a
-  real embedded-PNG preview, not a rendered mesh.
+Remaining gaps:
+
 - Tier-1/2 probing currently runs synchronously per file on a single `QThread`, not
   the `ProcessPoolExecutor` design PLAN.md describes for true multi-core throughput
   on a library of hundreds of files — functionally correct and non-blocking, but not

@@ -17,6 +17,8 @@ import os
 
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
 
+from model_librarian.gui.format_utils import human_size
+
 _COLUMNS = ("Name", "Ext", "Format", "Size", "Objects", "Triangles", "Status")
 
 # Sort by the underlying numeric/text value rather than the formatted display
@@ -108,6 +110,13 @@ class FileTreeModel(QAbstractItemModel):
             return None
         return node.row["id"]
 
+    def index_for_file_id(self, file_id: int) -> QModelIndex:
+        """For syncing selection from another view (e.g. the treemap)."""
+        node = self._file_nodes_by_id.get(file_id)
+        if node is None:
+            return QModelIndex()
+        return self.createIndex(node.row_in_parent(), 0, node)
+
     # --- QAbstractItemModel plumbing ---
 
     def index(self, row: int, column: int, parent: QModelIndex = QModelIndex()) -> QModelIndex:  # noqa: B008
@@ -151,7 +160,7 @@ class FileTreeModel(QAbstractItemModel):
             if column == "Name":
                 return node.name if sort else f"{node.name} ({node.file_count})"
             if column == "Size":
-                return node.total_size if sort else _human_size(node.total_size)
+                return node.total_size if sort else human_size(node.total_size)
             return None
 
         row = node.row
@@ -162,7 +171,7 @@ class FileTreeModel(QAbstractItemModel):
         if column == "Format":
             return row["format"]
         if column == "Size":
-            return row["size"] if sort else _human_size(row["size"])
+            return row["size"] if sort else human_size(row["size"])
         if column == "Objects":
             return _object_sort_key(row) if sort else _format_object_count(row)
         if column == "Triangles":
@@ -186,12 +195,3 @@ def _format_object_count(row: dict) -> str:
 def _object_sort_key(row: dict) -> int:
     defined = row.get("defined_object_count")
     return -1 if defined is None else defined
-
-
-def _human_size(num_bytes: int) -> str:
-    value = float(num_bytes)
-    for unit in ("B", "KB", "MB", "GB"):
-        if value < 1024 or unit == "GB":
-            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
-        value /= 1024
-    return f"{value:.1f} TB"

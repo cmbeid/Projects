@@ -7,7 +7,7 @@ via `refresh_table()` once a scan completes.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSortFilterProxyModel, Qt
+from PySide6.QtCore import QItemSelectionModel, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -28,6 +28,7 @@ from model_librarian.gui.details.objects import ObjectsPanel
 from model_librarian.gui.details.preview import PreviewPanel
 from model_librarian.gui.details.settings import SettingsPanel
 from model_librarian.gui.file_tree import SORT_ROLE, FileTreeModel
+from model_librarian.gui.treemap_view import TreemapView
 from model_librarian.gui.workers import ScanWorker
 
 
@@ -75,6 +76,13 @@ class MainWindow(QMainWindow):
         self.tree_view.header().setStretchLastSection(True)
         self.tree_view.selectionModel().selectionChanged.connect(self._on_selection_changed)
 
+        self.treemap_view = TreemapView(self)
+        self.treemap_view.fileSelected.connect(self._on_treemap_file_selected)
+
+        self.browser_tabs = QTabWidget(self)
+        self.browser_tabs.addTab(self.tree_view, "List")
+        self.browser_tabs.addTab(self.treemap_view, "Treemap")
+
         self.preview_panel = PreviewPanel(self.conn)
         self.objects_panel = ObjectsPanel()
         self.settings_panel = SettingsPanel()
@@ -87,7 +95,7 @@ class MainWindow(QMainWindow):
         self.detail_tabs.addTab(self.info_panel, "Info")
 
         splitter = QSplitter(self)
-        splitter.addWidget(self.tree_view)
+        splitter.addWidget(self.browser_tabs)
         splitter.addWidget(self.detail_tabs)
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 1)
@@ -133,8 +141,10 @@ class MainWindow(QMainWindow):
 
     def refresh_table(self) -> None:
         root_paths = {row["id"]: row["path"] for row in db.list_scan_roots(self.conn)}
-        self.tree_model.set_rows(db.list_files(self.conn), root_paths)
+        rows = db.list_files(self.conn)
+        self.tree_model.set_rows(rows, root_paths)
         self.tree_view.expandAll()
+        self.treemap_view.set_rows(rows, root_paths)
 
     def _on_filter_changed(self, text: str) -> None:
         self.proxy_model.setFilterFixedString(text)
@@ -146,6 +156,22 @@ class MainWindow(QMainWindow):
             return
         source_index = self.proxy_model.mapToSource(indexes[0])
         self._show_file(self.tree_model.file_id_for_index(source_index))
+
+    def _on_treemap_file_selected(self, file_id: int) -> None:
+        self._show_file(file_id)
+
+        # Keep the List tab's selection in sync so switching tabs doesn't
+        # lose track of what's currently shown in the detail panels.
+        source_index = self.tree_model.index_for_file_id(file_id)
+        if not source_index.isValid():
+            return
+        proxy_index = self.proxy_model.mapFromSource(source_index)
+        self.tree_view.selectionModel().select(
+            proxy_index,
+            QItemSelectionModel.SelectionFlag.ClearAndSelect
+            | QItemSelectionModel.SelectionFlag.Rows,
+        )
+        self.tree_view.scrollTo(proxy_index)
 
     def _show_file(self, file_id: int | None) -> None:
         if file_id is None:
