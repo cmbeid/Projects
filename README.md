@@ -7,6 +7,7 @@ nothing at the root to install.
 | Project | What it is |
 | --- | --- |
 | [`alchemy-forge/`](alchemy-forge/) | An element-crafting puzzle game for the phone. 495 elements to find; installs and plays offline when served over HTTPS. |
+| [`model-librarian/`](model-librarian/) | A desktop app (Python/PySide6) for triaging a hoard of `.step`/`.3mf`/`.stl`/`.obj` files — previews, object inspection, and duplicate detection. Read-only in v1. |
 
 ## Working on one
 
@@ -16,13 +17,18 @@ npm install
 npm run dev
 ```
 
-Each project's own README covers the rest.
+Each project's own README covers the rest. Not every project is a Node/web
+project or gets a deploy workflow — `model-librarian/` is a Python desktop
+app with its own `pyproject.toml` and no `.github/workflows/` entry, since
+that directory only exists to push static sites to S3.
 
 ## Deploying
 
-Each project owns a workflow in [`.github/workflows/`](.github/workflows),
-path-filtered so a change to one project never redeploys another. They publish
-to the `s3.cmbeid.com` bucket, each under its own prefix.
+Each *deployable* project owns a workflow in
+[`.github/workflows/`](.github/workflows), path-filtered so a change to one
+project never redeploys another. They publish to the `s3.cmbeid.com` bucket,
+each under its own prefix. A project with no "Live at" row below simply isn't
+a static site and has no deploy workflow — that's expected, not an oversight.
 
 Access is via a single account-wide IAM role assumed through OIDC, so no AWS
 credentials are stored in GitHub and a new repo needs no per-repo setup — see
