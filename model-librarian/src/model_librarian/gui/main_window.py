@@ -27,6 +27,7 @@ from model_librarian.gui.details.info import InfoPanel
 from model_librarian.gui.details.objects import ObjectsPanel
 from model_librarian.gui.details.preview import PreviewPanel
 from model_librarian.gui.details.settings import SettingsPanel
+from model_librarian.gui.duplicates_view import DuplicatesView
 from model_librarian.gui.file_tree import SORT_ROLE, FileTreeModel
 from model_librarian.gui.treemap_view import TreemapView
 from model_librarian.gui.workers import ScanWorker
@@ -42,6 +43,7 @@ class MainWindow(QMainWindow):
         self.conn = db.connect(self.db_path)
         self._scan_worker: ScanWorker | None = None
         self._scanned_count = 0
+        self._scan_ended_normally = False
 
         self._build_ui()
         self.refresh_table()
@@ -50,9 +52,14 @@ class MainWindow(QMainWindow):
         toolbar = QToolBar("Main", self)
         self.addToolBar(toolbar)
 
-        open_action = QAction("Open Folder…", self)
-        open_action.triggered.connect(self._on_open_folder)
-        toolbar.addAction(open_action)
+        self.open_action = QAction("Open Folder…", self)
+        self.open_action.triggered.connect(self._on_open_folder)
+        toolbar.addAction(self.open_action)
+
+        self.cancel_action = QAction("Cancel", self)
+        self.cancel_action.setEnabled(False)
+        self.cancel_action.triggered.connect(self._on_cancel_clicked)
+        toolbar.addAction(self.cancel_action)
 
         self.filter_edit = QLineEdit(self)
         self.filter_edit.setPlaceholderText("Filter by name…")
@@ -77,11 +84,16 @@ class MainWindow(QMainWindow):
         self.tree_view.selectionModel().selectionChanged.connect(self._on_selection_changed)
 
         self.treemap_view = TreemapView(self)
-        self.treemap_view.fileSelected.connect(self._on_treemap_file_selected)
+        self.treemap_view.fileSelected.connect(self._on_view_file_selected)
+
+        self.duplicates_view = DuplicatesView(self.conn, self)
+        self.duplicates_view.fileSelected.connect(self._on_view_file_selected)
 
         self.browser_tabs = QTabWidget(self)
         self.browser_tabs.addTab(self.tree_view, "List")
         self.browser_tabs.addTab(self.treemap_view, "Treemap")
+        self.browser_tabs.addTab(self.duplicates_view, "Duplicates")
+        self.browser_tabs.currentChanged.connect(self._on_browser_tab_changed)
 
         self.preview_panel = PreviewPanel(self.conn)
         self.objects_panel = ObjectsPanel()
@@ -116,13 +128,22 @@ class MainWindow(QMainWindow):
         if self._scan_worker is not None and self._scan_worker.isRunning():
             return
         self._scanned_count = 0
+        self._scan_ended_normally = False
         self.statusBar().showMessage(f"Indexing {directory}…")
+        self.open_action.setEnabled(False)
+        self.cancel_action.setEnabled(True)
 
         self._scan_worker = ScanWorker(self.db_path, directory, self)
         self._scan_worker.file_done.connect(self._on_file_done)
         self._scan_worker.finished_scan.connect(self._on_scan_finished)
         self._scan_worker.failed.connect(self._on_scan_failed)
+        self._scan_worker.finished.connect(self._on_scan_thread_finished)
         self._scan_worker.start()
+
+    def _on_cancel_clicked(self) -> None:
+        if self._scan_worker is not None and self._scan_worker.isRunning():
+            self._scan_worker.cancel()
+            self.statusBar().showMessage("Cancelling…")
 
     def _on_file_done(self, path: str, cached: bool) -> None:
         self._scanned_count += 1
@@ -130,6 +151,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"{self._scanned_count} files {verb} so far… ({path})")
 
     def _on_scan_finished(self, stats) -> None:
+        self._scan_ended_normally = True
         self.statusBar().showMessage(
             f"Scanned {stats.scanned} files: {stats.probed} probed, {stats.cached} cached, "
             f"{stats.errors} errors, {stats.missing} newly missing."
@@ -137,7 +159,17 @@ class MainWindow(QMainWindow):
         self.refresh_table()
 
     def _on_scan_failed(self, message: str) -> None:
+        self._scan_ended_normally = True
         self.statusBar().showMessage(f"Scan failed: {message}")
+
+    def _on_scan_thread_finished(self) -> None:
+        # finished_scan/failed are skipped entirely on cancellation, so this
+        # QThread-native signal (which always fires) is what resets the
+        # buttons and reports a cancellation the other two signals can't.
+        self.open_action.setEnabled(True)
+        self.cancel_action.setEnabled(False)
+        if not self._scan_ended_normally:
+            self.statusBar().showMessage("Scan cancelled.")
 
     def refresh_table(self) -> None:
         root_paths = {row["id"]: row["path"] for row in db.list_scan_roots(self.conn)}
@@ -145,6 +177,7 @@ class MainWindow(QMainWindow):
         self.tree_model.set_rows(rows, root_paths)
         self.tree_view.expandAll()
         self.treemap_view.set_rows(rows, root_paths)
+        self.duplicates_view.mark_stale()
 
     def _on_filter_changed(self, text: str) -> None:
         self.proxy_model.setFilterFixedString(text)
@@ -157,7 +190,9 @@ class MainWindow(QMainWindow):
         source_index = self.proxy_model.mapToSource(indexes[0])
         self._show_file(self.tree_model.file_id_for_index(source_index))
 
-    def _on_treemap_file_selected(self, file_id: int) -> None:
+    def _on_view_file_selected(self, file_id: int) -> None:
+        """Shared by the Treemap and Duplicates tabs, whose selection model
+        isn't the tree's — each just emits a plain file id."""
         self._show_file(file_id)
 
         # Keep the List tab's selection in sync so switching tabs doesn't
@@ -172,6 +207,13 @@ class MainWindow(QMainWindow):
             | QItemSelectionModel.SelectionFlag.Rows,
         )
         self.tree_view.scrollTo(proxy_index)
+
+    def _on_browser_tab_changed(self, _index: int) -> None:
+        if (
+            self.browser_tabs.currentWidget() is self.duplicates_view
+            and self.duplicates_view.is_stale
+        ):
+            self.duplicates_view.refresh()
 
     def _show_file(self, file_id: int | None) -> None:
         if file_id is None:

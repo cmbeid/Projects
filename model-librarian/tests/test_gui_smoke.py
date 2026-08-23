@@ -79,3 +79,54 @@ def test_main_window_starts_empty(tmp_path, qtbot):
 
     assert window.tree_model.rowCount() == 0
     assert window.info_panel.toPlainText() == ""
+
+
+def test_cancel_action_enabled_only_while_scanning(qtbot, tmp_path, binary_stl):
+    db_path = tmp_path / "index.sqlite3"
+    window = MainWindow(db_path=str(db_path))
+    qtbot.addWidget(window)
+
+    assert window.cancel_action.isEnabled() is False
+    assert window.open_action.isEnabled() is True
+
+    window.start_scan(str(binary_stl.parent))
+    assert window.cancel_action.isEnabled() is True
+    assert window.open_action.isEnabled() is False
+
+    with qtbot.waitSignal(window._scan_worker.finished, timeout=15000):
+        pass
+
+    assert window.cancel_action.isEnabled() is False
+    assert window.open_action.isEnabled() is True
+
+
+def test_treemap_selection_selects_matching_row_in_list(qtbot, tmp_path, binary_stl):
+    db_path = tmp_path / "index.sqlite3"
+    window = MainWindow(db_path=str(db_path))
+    qtbot.addWidget(window)
+
+    window.start_scan(str(binary_stl.parent))
+    with qtbot.waitSignal(window._scan_worker.finished_scan, timeout=15000):
+        pass
+
+    file_id = window.treemap_view._rects[0].node.file_id
+    window._on_view_file_selected(file_id)
+
+    selected = window.tree_view.selectionModel().selectedRows()
+    assert len(selected) == 1
+    source_index = window.proxy_model.mapToSource(selected[0])
+    assert window.tree_model.file_id_for_index(source_index) == file_id
+
+
+def test_switching_to_duplicates_tab_triggers_a_refresh(qtbot, tmp_path, binary_stl):
+    db_path = tmp_path / "index.sqlite3"
+    window = MainWindow(db_path=str(db_path))
+    qtbot.addWidget(window)
+
+    window.start_scan(str(binary_stl.parent))
+    with qtbot.waitSignal(window._scan_worker.finished_scan, timeout=15000):
+        pass
+
+    assert window.duplicates_view.is_stale is True
+    window.browser_tabs.setCurrentWidget(window.duplicates_view)
+    assert window.duplicates_view.is_stale is False

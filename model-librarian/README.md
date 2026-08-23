@@ -58,16 +58,31 @@ none are committed as binaries.
 All of v1's implementation order in `PLAN.md` is built and verified working on a real
 Windows machine: tier-1 format probes for all four extensions, the recursive scanner
 and SQLite index, a headless CLI, tier-2 geometry fingerprinting and duplicate/clutter
-detection, and a PySide6 GUI. 59 tests pass.
+detection, and a PySide6 GUI. 68 tests pass.
 
-The file browser groups results by folder (`gui/file_tree.py`) instead of one flat,
-interleaved list, and has a second "Treemap" tab (`gui/treemap_view.py`,
-`core/treemap.py`) — a WinDirStat-style squarified treemap colored by extension, sized
-by file size, click-to-select — for spotting what's actually taking up space at a
-glance. Both views drive the same Preview/Objects/Settings/Info detail tabs.
+The file browser has three tabs over the same scanned library:
+
+- **List** (`gui/file_tree.py`) — grouped by folder instead of one flat, interleaved
+  list.
+- **Treemap** (`gui/treemap_view.py`, `core/treemap.py`) — a WinDirStat-style
+  squarified treemap colored by extension, sized by file size, click-to-select, for
+  spotting what's actually taking up space at a glance.
+- **Duplicates** (`gui/duplicates_view.py`) — `core/dupes.py`'s byte-identical,
+  geometry-identical, "loose file also found inside a project", and clutter findings
+  as a clickable list. Computed on demand (opening the tab, or the Refresh button)
+  rather than on every scan, since it reads file contents.
+
+All three drive the same Preview/Objects/Settings/Info detail tabs and stay selection-
+synced with each other. A scan in progress can be stopped with the toolbar's Cancel
+button.
 
 Remaining gaps:
 
+- No tags yet — the `tags`/`file_tags` schema exists but nothing in the GUI uses it.
+- `files.content_hash` is never populated (dedupe hashes on demand instead), so the
+  render-thumbnail cache keys off `file_id` rather than content and doesn't survive a
+  rename.
+- Settings tab has no "compare two files" mode.
 - Tier-1/2 probing currently runs synchronously per file on a single `QThread`, not
   the `ProcessPoolExecutor` design PLAN.md describes for true multi-core throughput
   on a library of hundreds of files — functionally correct and non-blocking, but not

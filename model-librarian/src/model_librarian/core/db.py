@@ -365,6 +365,17 @@ def list_files(conn: sqlite3.Connection, *, root_id: int | None = None) -> list[
     ).fetchall()
 
 
+def get_files_by_ids(conn: sqlite3.Connection, ids) -> list[sqlite3.Row]:
+    ids = list(ids)
+    if not ids:
+        return []
+    placeholders = ",".join("?" for _ in ids)
+    return conn.execute(
+        f"SELECT * FROM files WHERE id IN ({placeholders})",
+        ids,  # noqa: S608
+    ).fetchall()
+
+
 def get_objects(conn: sqlite3.Connection, file_id: int) -> list[sqlite3.Row]:
     return conn.execute(
         "SELECT * FROM objects WHERE file_id = ? ORDER BY idx", (file_id,)

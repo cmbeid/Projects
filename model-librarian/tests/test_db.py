@@ -61,6 +61,24 @@ def test_thumb_cache_replaces_existing_entry():
     assert row["png"] == b"second"
 
 
+def test_get_files_by_ids_returns_matching_rows(binary_stl, ascii_stl, tmp_path):
+    conn = db.connect(":memory:")
+    root_id = db.upsert_scan_root(conn, str(tmp_path))
+    id_a = db.upsert_file_facts(conn, root_id, probe.probe_path(str(binary_stl)))
+    id_b = db.upsert_file_facts(conn, root_id, probe.probe_path(str(ascii_stl)))
+
+    rows = db.get_files_by_ids(conn, [id_a])
+    assert {r["id"] for r in rows} == {id_a}
+
+    rows = db.get_files_by_ids(conn, [id_a, id_b])
+    assert {r["id"] for r in rows} == {id_a, id_b}
+
+
+def test_get_files_by_ids_empty_input_returns_empty_list():
+    conn = db.connect(":memory:")
+    assert db.get_files_by_ids(conn, []) == []
+
+
 def test_mark_missing_flags_deleted_files(binary_stl, tmp_path):
     conn = db.connect(":memory:")
     root_id = db.upsert_scan_root(conn, str(tmp_path))
