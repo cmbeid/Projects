@@ -69,8 +69,11 @@ class PreviewPanel(QWidget):
             mesh = thumbs.load_pyvista_mesh(path)
             if mesh is not None:
                 self._interactor.clear()
-                self._interactor.add_mesh(mesh, color="lightgray")
-                self._interactor.reset_camera()
+                self._interactor.add_mesh(mesh, color="lightgray", smooth_shading=True)
+                # A dead-on default view plus flat shading reads as a flat gray
+                # silhouette for boxy models — an angled camera and computed
+                # normals are what make faces actually look shaded and 3D.
+                self._interactor.camera_position = "iso"
                 self._stack.setCurrentWidget(self._interactor)
                 return
 

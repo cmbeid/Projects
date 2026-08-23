@@ -65,7 +65,7 @@ def render_thumbnail_png(path: str, ext: str, *, size: int = 512) -> bytes | Non
     tmp_path = None
     try:
         plotter = pv.Plotter(off_screen=True, window_size=(size, size))
-        plotter.add_mesh(mesh, color="lightgray")
+        plotter.add_mesh(mesh, color="lightgray", smooth_shading=True)
         plotter.set_background("white")
         plotter.camera_position = "iso"
         plotter.camera.zoom(1.2)
