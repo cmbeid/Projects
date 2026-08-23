@@ -1,7 +1,7 @@
-"""The main window: search bar, virtualized file table, and detail tabs.
+"""The main window: search bar, folder-grouped file tree, and detail tabs.
 
 `_scan_worker` runs on a `QThread` (gui/workers.py) so indexing hundreds of
-files never blocks this event loop; results are pulled back into the table
+files never blocks this event loop; results are pulled back into the tree
 via `refresh_table()` once a scan completes.
 """
 
@@ -15,9 +15,9 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QSplitter,
-    QTableView,
     QTabWidget,
     QToolBar,
+    QTreeView,
     QVBoxLayout,
     QWidget,
 )
@@ -27,7 +27,7 @@ from model_librarian.gui.details.info import InfoPanel
 from model_librarian.gui.details.objects import ObjectsPanel
 from model_librarian.gui.details.preview import PreviewPanel
 from model_librarian.gui.details.settings import SettingsPanel
-from model_librarian.gui.file_table import SORT_ROLE, FileTableModel
+from model_librarian.gui.file_tree import SORT_ROLE, FileTreeModel
 from model_librarian.gui.workers import ScanWorker
 
 
@@ -58,20 +58,22 @@ class MainWindow(QMainWindow):
         self.filter_edit.textChanged.connect(self._on_filter_changed)
         toolbar.addWidget(self.filter_edit)
 
-        self.table_model = FileTableModel(self)
+        self.tree_model = FileTreeModel(self)
         self.proxy_model = QSortFilterProxyModel(self)
-        self.proxy_model.setSourceModel(self.table_model)
+        self.proxy_model.setSourceModel(self.tree_model)
         self.proxy_model.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.proxy_model.setFilterKeyColumn(0)
+        self.proxy_model.setRecursiveFilteringEnabled(True)
         self.proxy_model.setSortRole(SORT_ROLE)
 
-        self.table_view = QTableView(self)
-        self.table_view.setModel(self.proxy_model)
-        self.table_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.table_view.setSortingEnabled(True)
-        self.table_view.horizontalHeader().setStretchLastSection(True)
-        self.table_view.selectionModel().selectionChanged.connect(self._on_selection_changed)
+        self.tree_view = QTreeView(self)
+        self.tree_view.setModel(self.proxy_model)
+        self.tree_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tree_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.tree_view.setSortingEnabled(True)
+        self.tree_view.setUniformRowHeights(True)
+        self.tree_view.header().setStretchLastSection(True)
+        self.tree_view.selectionModel().selectionChanged.connect(self._on_selection_changed)
 
         self.preview_panel = PreviewPanel(self.conn)
         self.objects_panel = ObjectsPanel()
@@ -85,7 +87,7 @@ class MainWindow(QMainWindow):
         self.detail_tabs.addTab(self.info_panel, "Info")
 
         splitter = QSplitter(self)
-        splitter.addWidget(self.table_view)
+        splitter.addWidget(self.tree_view)
         splitter.addWidget(self.detail_tabs)
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 1)
@@ -130,18 +132,20 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Scan failed: {message}")
 
     def refresh_table(self) -> None:
-        self.table_model.set_rows(db.list_files(self.conn))
+        root_paths = {row["id"]: row["path"] for row in db.list_scan_roots(self.conn)}
+        self.tree_model.set_rows(db.list_files(self.conn), root_paths)
+        self.tree_view.expandAll()
 
     def _on_filter_changed(self, text: str) -> None:
         self.proxy_model.setFilterFixedString(text)
 
     def _on_selection_changed(self, *_args) -> None:
-        indexes = self.table_view.selectionModel().selectedRows()
+        indexes = self.tree_view.selectionModel().selectedRows()
         if not indexes:
             self._show_file(None)
             return
         source_index = self.proxy_model.mapToSource(indexes[0])
-        self._show_file(self.table_model.file_id_at(source_index.row()))
+        self._show_file(self.tree_model.file_id_for_index(source_index))
 
     def _show_file(self, file_id: int | None) -> None:
         if file_id is None:

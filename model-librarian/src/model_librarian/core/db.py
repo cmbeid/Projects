@@ -158,6 +158,10 @@ def get_file_by_path(conn: sqlite3.Connection, path: str) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM files WHERE path = ?", (path,)).fetchone()
 
 
+def list_scan_roots(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    return conn.execute("SELECT id, path FROM scan_roots").fetchall()
+
+
 def upsert_file_facts(
     conn: sqlite3.Connection,
     root_id: int,
