@@ -32,6 +32,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | Project | Live at |
 | --- | --- |
 | `alchemy-forge/` | http://s3.cmbeid.com/alchemy-forge/index.html |
+| `von-neumann/` | http://s3.cmbeid.com/von-neumann/index.html |
 
 ## Adding another
 

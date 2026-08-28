@@ -436,8 +436,14 @@ the S3 one, the same split alchemy-forge already documents.
 
 Phases 1-3 are built: the `Decimal`, the engine, the full three-era content
 ladder, upgrades, unlock gating, the responsive UI and render loop, and the
-automation ladder. Phases 4-8 — both prestige layers, the narrative log,
-offline catch-up, the balance pass and deploy wiring — are not.
+automation ladder. The deploy wiring of §10 is done too, ahead of its place in
+the order, so the game is reachable while the rest is built. Both prestige
+layers, the narrative log, offline catch-up and the balance pass are not.
+
+The deploy differs from §10 in one way worth knowing: this project has no PWA
+yet, so `deploy-von-neumann.yml` has no icons or webmanifest phase. `aws s3
+sync` fails outright on a directory that does not exist, and a fresh clone has
+no `public/` at all. Phase 6 adds both, and the phase there is added back.
 
 Two things landed differently from the plan above, both worth knowing:
 
