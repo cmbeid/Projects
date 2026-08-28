@@ -1,0 +1,181 @@
+import type { Building } from '../types';
+
+/**
+ * Eleven producers across three eras, plus three depots.
+ *
+ * Costs are geometric — `base * growth^owned` — with growth climbing from 1.10
+ * to 1.14 as the tiers get rarer. Against roughly exponential income that
+ * produces the genre's characteristic feel of each tier taking about as long as
+ * the last.
+ *
+ * Era 2 and 3 buildings consume the previous resource. A converter starved of
+ * input runs at reduced rate rather than stalling; see `throttle` in engine.ts.
+ */
+export const BUILDINGS: readonly Building[] = [
+  // --- Era 1: rock into Ore -------------------------------------------------
+  {
+    id: 'probe',
+    name: 'Probe',
+    emoji: '🛰️',
+    blurb: 'One of you. It mines, and given enough ore, it builds another.',
+    era: 1,
+    output: { resource: 'ore', rate: 0.2 },
+    inputs: [],
+    cost: { resource: 'ore', base: 15, growth: 1.1 },
+    heat: 0.1,
+    unlock: { kind: 'always' },
+  },
+  {
+    id: 'drill',
+    name: 'Drill Rig',
+    emoji: '🔧',
+    blurb: 'Anchored to the rock. Slower to build, far harder to stop.',
+    era: 1,
+    output: { resource: 'ore', rate: 2 },
+    inputs: [],
+    cost: { resource: 'ore', base: 250, growth: 1.11 },
+    heat: 0.8,
+    unlock: { kind: 'lifetime', resource: 'ore', amount: 150 },
+  },
+  {
+    id: 'sifter',
+    name: 'Regolith Sifter',
+    emoji: '🌀',
+    blurb: 'Swallows a hillside and spits out the useful nine percent.',
+    era: 1,
+    output: { resource: 'ore', rate: 25 },
+    inputs: [],
+    cost: { resource: 'ore', base: 6_000, growth: 1.12 },
+    heat: 4,
+    unlock: { kind: 'lifetime', resource: 'ore', amount: 4_000 },
+  },
+  {
+    id: 'driver',
+    name: 'Mass Driver',
+    emoji: '🚀',
+    blurb: 'Throws the asteroid at itself, and catches what comes off.',
+    era: 1,
+    output: { resource: 'ore', rate: 400 },
+    inputs: [],
+    cost: { resource: 'ore', base: 150_000, growth: 1.13 },
+    heat: 20,
+    unlock: { kind: 'lifetime', resource: 'ore', amount: 100_000 },
+  },
+
+  // --- Era 2: Ore into Alloy ------------------------------------------------
+  {
+    id: 'refinery',
+    name: 'Refinery',
+    emoji: '🏭',
+    blurb: 'The first thing the swarm builds that is not a way to dig.',
+    era: 2,
+    output: { resource: 'alloy', rate: 0.1 },
+    inputs: [{ resource: 'ore', rate: 4 }],
+    cost: { resource: 'ore', base: 20_000, growth: 1.11 },
+    heat: 2,
+    unlock: { kind: 'lifetime', resource: 'ore', amount: 8_000 },
+  },
+  {
+    id: 'foundry',
+    name: 'Foundry',
+    emoji: '⚒️',
+    blurb: 'Pours structural members a kilometre long, continuously.',
+    era: 2,
+    output: { resource: 'alloy', rate: 1.5 },
+    inputs: [{ resource: 'ore', rate: 45 }],
+    cost: { resource: 'alloy', base: 200, growth: 1.12 },
+    heat: 6,
+    unlock: { kind: 'lifetime', resource: 'alloy', amount: 150 },
+  },
+  {
+    id: 'nanoforge',
+    name: 'Nanoforge',
+    emoji: '✳️',
+    blurb: 'Assembles to atomic tolerance. There is no waste stream at all.',
+    era: 2,
+    output: { resource: 'alloy', rate: 20 },
+    inputs: [{ resource: 'ore', rate: 500 }],
+    cost: { resource: 'alloy', base: 8_000, growth: 1.13 },
+    heat: 24,
+    unlock: { kind: 'lifetime', resource: 'alloy', amount: 5_000 },
+  },
+
+  // --- Era 3: Alloy into Compute -------------------------------------------
+  {
+    id: 'lattice',
+    name: 'Logic Lattice',
+    emoji: '🔷',
+    blurb: 'Alloy grown into a shape that happens to think.',
+    era: 3,
+    output: { resource: 'compute', rate: 0.05 },
+    inputs: [{ resource: 'alloy', rate: 1.2 }],
+    cost: { resource: 'alloy', base: 2_500, growth: 1.12 },
+    heat: 3,
+    unlock: { kind: 'lifetime', resource: 'alloy', amount: 800 },
+  },
+  {
+    id: 'cortex',
+    name: 'Cortex Node',
+    emoji: '🧩',
+    blurb: 'Enough lattice in one place to hold an opinion.',
+    era: 3,
+    output: { resource: 'compute', rate: 0.8 },
+    inputs: [{ resource: 'alloy', rate: 14 }],
+    cost: { resource: 'compute', base: 60, growth: 1.13 },
+    heat: 8,
+    unlock: { kind: 'lifetime', resource: 'compute', amount: 40 },
+  },
+  {
+    id: 'swarmmind',
+    name: 'Swarm Mind',
+    emoji: '👁️',
+    blurb: 'Every probe, thinking the same thought at the same time.',
+    era: 3,
+    output: { resource: 'compute', rate: 12 },
+    inputs: [{ resource: 'alloy', rate: 150 }],
+    cost: { resource: 'compute', base: 2_000, growth: 1.14 },
+    heat: 30,
+    unlock: { kind: 'lifetime', resource: 'compute', amount: 1_500 },
+  },
+
+  // --- Storage --------------------------------------------------------------
+  {
+    id: 'oredepot',
+    name: 'Ore Depot',
+    emoji: '📦',
+    blurb: 'Somewhere to put it all. Full depots waste everything they catch.',
+    era: 1,
+    output: { resource: 'ore', rate: 0 },
+    inputs: [],
+    cost: { resource: 'ore', base: 600, growth: 1.1 },
+    heat: 0,
+    capacity: { resource: 'ore', amount: 50_000 },
+    unlock: { kind: 'lifetime', resource: 'ore', amount: 900 },
+  },
+  {
+    id: 'alloybay',
+    name: 'Alloy Bay',
+    emoji: '🗄️',
+    blurb: 'Racked ingots, stacked to the horizon.',
+    era: 2,
+    output: { resource: 'alloy', rate: 0 },
+    inputs: [],
+    cost: { resource: 'alloy', base: 500, growth: 1.12 },
+    heat: 0,
+    capacity: { resource: 'alloy', amount: 4_000 },
+    unlock: { kind: 'lifetime', resource: 'alloy', amount: 400 },
+  },
+  {
+    id: 'memcore',
+    name: 'Memory Core',
+    emoji: '💾',
+    blurb: 'The swarm remembers. Mostly it remembers asteroids.',
+    era: 3,
+    output: { resource: 'compute', rate: 0 },
+    inputs: [],
+    cost: { resource: 'compute', base: 200, growth: 1.12 },
+    heat: 0,
+    capacity: { resource: 'compute', amount: 1_500 },
+    unlock: { kind: 'lifetime', resource: 'compute', amount: 120 },
+  },
+];

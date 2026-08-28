@@ -7,7 +7,7 @@ nothing at the root to install.
 | Project | What it is |
 | --- | --- |
 | [`alchemy-forge/`](alchemy-forge/) | An element-crafting puzzle game for the phone. 495 elements to find; installs and plays offline when served over HTTPS. |
-| [`von-neumann/`](von-neumann/) | An idle game about a self-replicating space probe. Planned only — [`PLAN.md`](von-neumann/PLAN.md) is the design and build order; there is no code yet. |
+| [`von-neumann/`](von-neumann/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
 
 ## Working on one
 

@@ -142,7 +142,7 @@ for a value that changes a few times a minute.
 
 ## 3. Numbers: build a minimal `Decimal`
 
-**Recommendation: implement it; don't rely on doubles.**
+**Decided: built.** (Was the open question below; resolved before phase 1.)
 
 Doubles top out at ~1.8e308. For a single-layer game that is plenty. It is not
 plenty here. With two prestige layers the late-game multiplier *stack* is the
@@ -432,11 +432,27 @@ The PWA only fully verifies over HTTPS — service workers do not register on
 plain HTTP — so installability is checked on the GitHub Pages deploy rather than
 the S3 one, the same split alchemy-forge already documents.
 
-## Open question
+## Status
 
-**§3, the `Decimal` type, is the one decision worth revisiting before phase 1.**
-It is ~250 lines and a test file of pure infrastructure before the game starts.
-The plan recommends building it, because two prestige layers reliably breach
-e308 and retrofitting it later touches every arithmetic site. If shipping sooner
-against a designed ceiling under 1e308 is preferable, decide that at phase 1 —
-the choice is cheap now and expensive in phase 7.
+Phases 1-3 are built: the `Decimal`, the engine, the full three-era content
+ladder, upgrades, unlock gating, the responsive UI and render loop, and the
+automation ladder. Phases 4-8 — both prestige layers, the narrative log,
+offline catch-up, the balance pass and deploy wiring — are not.
+
+Two things landed differently from the plan above, both worth knowing:
+
+- **The automation ladder is Auto-Miner, Replication Protocol, Load Balancer,
+  Procurement AI.** Converters draw from stock automatically, so there was no
+  manual "feeding" or "scheduling" left to retire; watching for full storage and
+  trawling the Tech panel are the manual chores that actually existed.
+- **Balance numbers are provisional and known to be so.** A greedy simulated
+  player finishes the automation ladder around 3h30m and then plateaus, which is
+  the correct pre-prestige shape — the plateau is the wall prestige exists to
+  break. `scripts/simulate.ts` and `balance.test.ts` (§9) are still phase 7 work,
+  so nothing yet holds those timings in place.
+
+One balance property is load-bearing enough to state outright: **the thermal
+threshold must stay high enough that total output never falls while the player is
+still building.** The penalty is global, so a low threshold means adding
+converters taxes the miners feeding them, and the swarm visibly shrinks as it
+grows. That reads as a bug, not as difficulty.

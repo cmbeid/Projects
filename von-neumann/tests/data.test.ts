@@ -1,0 +1,110 @@
+import { describe, expect, it } from 'vitest';
+import { CONTENT } from '../src/data/index';
+import { validateContent } from '../src/data/validate';
+import { buildIndex } from '../src/data/indexes';
+
+const report = validateContent(CONTENT);
+
+describe('shipped content', () => {
+  /** The same gate `npm run validate` runs, so CI catches it either way. */
+  it('has no integrity or reachability errors', () => {
+    expect(report.errors).toEqual([]);
+  });
+
+  it('has no warnings', () => {
+    expect(report.warnings).toEqual([]);
+  });
+
+  it('covers all three eras', () => {
+    expect([...report.stats.byEra.keys()].sort()).toEqual([1, 2, 3]);
+  });
+
+  it('prices every building above zero with a growing curve', () => {
+    for (const building of CONTENT.buildings) {
+      expect(building.cost.base).toBeGreaterThan(0);
+      expect(building.cost.growth).toBeGreaterThan(1);
+    }
+  });
+
+  /**
+   * Every era past the first must consume the one before it, or the resource
+   * ladder is three independent games sharing a screen.
+   */
+  it('chains the eras together through consumption', () => {
+    const consumed = new Set(CONTENT.buildings.flatMap((b) => b.inputs.map((i) => i.resource)));
+    expect(consumed.has('ore')).toBe(true);
+    expect(consumed.has('alloy')).toBe(true);
+  });
+
+  it('buys every automator with compute, which is what makes era 3 pay off', () => {
+    for (const automation of CONTENT.automation) {
+      expect(automation.cost.resource).toBe('compute');
+    }
+  });
+
+  it('gives every upgrade at least one effect', () => {
+    for (const upgrade of CONTENT.upgrades) {
+      expect(upgrade.effects.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('the index', () => {
+  const index = buildIndex(CONTENT);
+
+  it('maps every id', () => {
+    expect(index.buildingById.size).toBe(CONTENT.buildings.length);
+    expect(index.upgradeById.size).toBe(CONTENT.upgrades.length);
+    expect(index.automationById.size).toBe(CONTENT.automation.length);
+  });
+
+  it('files producers, consumers and depots separately', () => {
+    expect(index.producersOf.get('ore')?.length).toBeGreaterThan(0);
+    expect(index.consumersOf.get('ore')?.length).toBeGreaterThan(0);
+    expect(index.depotsOf.get('ore')?.length).toBe(1);
+    // A depot produces nothing, so it must not appear as a producer.
+    expect(index.producersOf.get('ore')?.some((b) => b.id === 'oredepot')).toBe(false);
+  });
+});
+
+describe('the validator itself', () => {
+  it('catches a dangling reference', () => {
+    const broken = {
+      ...CONTENT,
+      upgrades: [
+        {
+          id: 'bad', name: 'Bad', emoji: '', blurb: '', era: 1 as const,
+          cost: { resource: 'ore' as const, amount: 10 },
+          effects: [{ kind: 'additive' as const, building: 'nope', amount: 1 }],
+          unlock: { kind: 'always' as const },
+        },
+      ],
+    };
+    expect(validateContent(broken).errors.some((e) => e.includes('nope'))).toBe(true);
+  });
+
+  it('catches a cost curve that does not grow', () => {
+    const flat = {
+      ...CONTENT,
+      buildings: CONTENT.buildings.map((b) =>
+        b.id === 'probe' ? { ...b, cost: { ...b.cost, growth: 1 } } : b,
+      ),
+    };
+    expect(validateContent(flat).errors.some((e) => e.includes('not greater than 1'))).toBe(true);
+  });
+
+  it('catches content gated on itself', () => {
+    const cyclic = {
+      ...CONTENT,
+      upgrades: [
+        {
+          id: 'loop', name: 'Loop', emoji: '', blurb: '', era: 1 as const,
+          cost: { resource: 'ore' as const, amount: 10 },
+          effects: [{ kind: 'tap' as const, factor: 2 }],
+          unlock: { kind: 'upgrade' as const, upgrade: 'loop' },
+        },
+      ],
+    };
+    expect(validateContent(cyclic).errors.some((e) => e.includes('never be unlocked'))).toBe(true);
+  });
+});
