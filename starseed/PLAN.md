@@ -1,15 +1,16 @@
-# Von Neumann — plan
+# Starseed — plan
 
 An idle/incremental game about a self-replicating space probe. You start with
 one probe chewing on one asteroid and end up disassembling a galaxy.
 
-Nothing is built yet. This document is the design and the build order.
+This document is the design and the build order. **Status** at the end
+records what is actually built.
 
 ## Why this game
 
 "Build more of yourself" is the purest expression of the idle fantasy, and the
-theme earns its exponential curve rather than apologising for it — in a Von
-Neumann swarm, the runaway growth *is* the story.
+theme earns its exponential curve rather than apologising for it — in a swarm
+that builds copies of itself, the runaway growth *is* the story.
 
 Target shape:
 
@@ -32,7 +33,7 @@ Phone-first, installable, plays offline.
 ## 1. Layout
 
 ```
-von-neumann/
+starseed/
 ├── package.json          dev/build/preview/test/test:watch/typecheck/
 │                         validate/icons/verify — same names as alchemy-forge
 ├── tsconfig.json         copied verbatim
@@ -368,18 +369,18 @@ phase-timing table, so tuning is an evidence-based edit rather than a guess.
 
 ## 10. Deployment wiring
 
-1. **`.github/workflows/deploy-von-neumann.yml`** — copy
+1. **`.github/workflows/deploy-starseed.yml`** — copy
    `deploy-alchemy-forge.yml` and change the four things the root README names:
    the `paths:` filter, `S3_PREFIX`, `defaults.run.working-directory`, and the
    `concurrency.group`. Also the `environment.url`, `cache-dependency-path`, and
    the summary step's text.
-2. **`.github/workflows/pages.yml`** — add `von-neumann` to the `paths:` filter and
-   its install/validate/test/build steps, `cp -r von-neumann/dist/.
-   _site/von-neumann/`, and a second `<a class="card">` in the landing-page
+2. **`.github/workflows/pages.yml`** — add `starseed` to the `paths:` filter and
+   its install/validate/test/build steps, `cp -r starseed/dist/.
+   _site/starseed/`, and a second `<a class="card">` in the landing-page
    heredoc inside the *Assemble the site* step. That heredoc is hand-maintained;
    it is the one place a new project is not automatic.
 3. **Root `README.md`** — a row in the projects table, and a row in the deploying
-   table for `http://s3.cmbeid.com/von-neumann/index.html`.
+   table for `http://s3.cmbeid.com/starseed/index.html`.
 
 No `.gitignore` changes: the root one already covers `node_modules/` and `dist/`
 at any depth.
@@ -441,7 +442,7 @@ the order, so the game is reachable while the rest is built. Both prestige
 layers, the narrative log, offline catch-up and the balance pass are not.
 
 The deploy differs from §10 in one way worth knowing: this project has no PWA
-yet, so `deploy-von-neumann.yml` has no icons or webmanifest phase. `aws s3
+yet, so `deploy-starseed.yml` has no icons or webmanifest phase. `aws s3
 sync` fails outright on a directory that does not exist, and a fresh clone has
 no `public/` at all. Phase 6 adds both, and the phase there is added back.
 

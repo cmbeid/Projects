@@ -1,4 +1,4 @@
-# Von Neumann
+# Starseed
 
 An idle game about a self-replicating space probe. You start with one probe
 chewing on one asteroid, and you are meant to end up disassembling a galaxy.
@@ -13,7 +13,7 @@ not yet — see [`PLAN.md`](PLAN.md) for the design and what is left.
 
 ## Running it
 
-All commands run from this directory (`von-neumann/`), not the repository root.
+All commands run from this directory (`starseed/`), not the repository root.
 
 ```bash
 npm install

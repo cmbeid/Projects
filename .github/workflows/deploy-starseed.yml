@@ -1,4 +1,4 @@
-name: Deploy Von Neumann
+name: Deploy Starseed
 
 # Path-filtered so this and the Alchemy Forge workflow never trigger each other.
 # A change to one project must not redeploy the other.
@@ -7,15 +7,15 @@ on:
     branches:
       - main
     paths:
-      - 'von-neumann/**'
-      - '.github/workflows/deploy-von-neumann.yml'
+      - 'starseed/**'
+      - '.github/workflows/deploy-starseed.yml'
   workflow_dispatch:
 
 # Its own group, separate from deploy-alchemy-forge. Sharing one would make the
 # two projects queue behind each other for no reason — they write to different
 # prefixes and cannot conflict.
 concurrency:
-  group: deploy-von-neumann
+  group: deploy-starseed
   cancel-in-progress: false
 
 permissions:
@@ -27,7 +27,7 @@ permissions:
 env:
   # Override either of these with repository variables if the target moves.
   S3_BUCKET: ${{ vars.S3_BUCKET || 's3.cmbeid.com' }}
-  S3_PREFIX: von-neumann
+  S3_PREFIX: starseed
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
 
 jobs:
@@ -38,11 +38,11 @@ jobs:
     # holds credentials.
     environment:
       name: AWS
-      url: http://${{ vars.S3_BUCKET || 's3.cmbeid.com' }}/von-neumann/
+      url: http://${{ vars.S3_BUCKET || 's3.cmbeid.com' }}/starseed/
 
     defaults:
       run:
-        working-directory: von-neumann
+        working-directory: starseed
 
     steps:
       - name: Check out
@@ -53,7 +53,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: von-neumann/package-lock.json
+          cache-dependency-path: starseed/package-lock.json
 
       - name: Install
         run: npm ci
@@ -93,7 +93,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          role-session-name: deploy-von-neumann
+          role-session-name: deploy-starseed
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy to S3
@@ -117,7 +117,7 @@ jobs:
           # immediately rather than whenever browsers feel like rechecking.
           #
           # Deliberately no icons or webmanifest phase, unlike the Alchemy Forge
-          # workflow: this project has no PWA yet (phase 6 of von-neumann/PLAN.md
+          # workflow: this project has no PWA yet (phase 6 of starseed/PLAN.md
           # adds one), and `aws s3 sync` fails outright on a directory that does
           # not exist. The excludes apply to deletion too, so this pass cannot
           # remove the assets uploaded above.
@@ -132,7 +132,7 @@ jobs:
         run: |
           url="http://${S3_BUCKET}/${S3_PREFIX}/index.html"
           {
-            echo "### Von Neumann deployed"
+            echo "### Starseed deployed"
             echo ""
             echo "- **URL:** [${url}](${url})"
             echo "- **Bucket:** \`${S3_BUCKET}\` under \`${S3_PREFIX}/\`"

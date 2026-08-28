@@ -10,7 +10,7 @@ import { validateContent } from '../src/data/validate';
 const report = validateContent(CONTENT);
 const { stats } = report;
 
-console.log('Von Neumann — content report');
+console.log('Starseed — content report');
 console.log('----------------------------');
 console.log(`Resources   ${stats.resources}`);
 console.log(`Buildings   ${stats.buildings}`);

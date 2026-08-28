@@ -14,7 +14,7 @@ on:
        - main
      paths:
        - 'alchemy-forge/**'
-       - 'von-neumann/**'
+       - 'starseed/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -44,7 +44,7 @@ jobs:
           # they share this runner, and npm's cache is global to it.
           cache-dependency-path: |
             alchemy-forge/package-lock.json
-            von-neumann/package-lock.json
+            starseed/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -66,21 +66,21 @@ jobs:
         run: npm run build
         working-directory: alchemy-forge
 
-      - name: Install (von-neumann)
+      - name: Install (starseed)
         run: npm ci
-        working-directory: von-neumann
+        working-directory: starseed
 
       - name: Validate content
         run: npm run validate
-        working-directory: von-neumann
+        working-directory: starseed
 
-      - name: Test (von-neumann)
+      - name: Test (starseed)
         run: npm test
-        working-directory: von-neumann
+        working-directory: starseed
 
-      - name: Build (von-neumann)
+      - name: Build (starseed)
         run: npm run build
-        working-directory: von-neumann
+        working-directory: starseed
 
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
@@ -91,8 +91,8 @@ jobs:
           mkdir -p _site/alchemy-forge
           cp -r alchemy-forge/dist/. _site/alchemy-forge/
 
-          mkdir -p _site/von-neumann
-          cp -r von-neumann/dist/. _site/von-neumann/
+          mkdir -p _site/starseed
+          cp -r starseed/dist/. _site/starseed/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -133,10 +133,10 @@ jobs:
                       <span class="desc">Combine elements to discover 495 of them. Installs and plays offline.</span>
                     </span>
                   </a>
-                  <a class="card" href="./von-neumann/">
+                  <a class="card" href="./starseed/">
                     <span class="emoji" aria-hidden="true">🛰️</span>
                     <span>
-                      <span class="name">Von Neumann</span>
+                      <span class="name">Starseed</span>
                       <span class="desc">An idle game about a self-replicating space probe. One asteroid, eventually a galaxy.</span>
                     </span>
                   </a>

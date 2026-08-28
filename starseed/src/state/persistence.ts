@@ -4,7 +4,7 @@ import { RESOURCE_IDS } from '../data/types';
 import type { ContentIndex } from '../data/indexes';
 import type { BuyMode, GameState } from './types';
 
-const STORAGE_KEY = 'von-neumann:save';
+const STORAGE_KEY = 'starseed:save';
 const SAVE_VERSION = 1;
 
 interface SaveFile {

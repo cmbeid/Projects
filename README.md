@@ -7,7 +7,7 @@ nothing at the root to install.
 | Project | What it is |
 | --- | --- |
 | [`alchemy-forge/`](alchemy-forge/) | An element-crafting puzzle game for the phone. 495 elements to find; installs and plays offline when served over HTTPS. |
-| [`von-neumann/`](von-neumann/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
+| [`starseed/`](starseed/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
 
 ## Working on one
 
@@ -32,7 +32,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | Project | Live at |
 | --- | --- |
 | `alchemy-forge/` | http://s3.cmbeid.com/alchemy-forge/index.html |
-| `von-neumann/` | http://s3.cmbeid.com/von-neumann/index.html |
+| `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 
 ## Adding another
 
