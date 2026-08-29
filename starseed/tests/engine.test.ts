@@ -166,6 +166,16 @@ describe('milestones and tapping', () => {
     expect(w.state.milestones).toEqual(['ten-ore']);
   });
 
+  it('unlocks a log entry once, alongside the milestone that shares its condition', () => {
+    const w = world((s) => { s.buildings['miner'] = 100; });
+    const first = advance(w.state, w.index, w.cache, 1);
+    const second = advance(w.state, w.index, w.cache, 1);
+
+    expect(first.logUnlocked).toContain('ten-ore-log');
+    expect(second.logUnlocked).toEqual([]);
+    expect(w.state.log).toEqual(['ten-ore-log']);
+  });
+
   it('credits a tap and counts it', () => {
     const w = world();
     const gained = tap(w.state, w.cache);

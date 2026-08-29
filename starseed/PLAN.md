@@ -440,13 +440,38 @@ the S3 one, the same split alchemy-forge already documents.
 
 ## Status
 
-Phases 1-4 are built: the `Decimal`, the engine, the full three-era content
+Phases 1-5 are built: the `Decimal`, the engine, the full three-era content
 ladder, upgrades, unlock gating, the responsive UI and render loop, the
-automation ladder, and prestige layer 1 — Relaunch, the 15-node Schematics
-tree, and the directive loadout picker. The deploy wiring of §10 is done too,
-ahead of its place in the order, so the game is reachable while the rest is
-built. Prestige layer 2, the narrative log, offline catch-up and the balance
+automation ladder, prestige layer 1 — Relaunch, the 15-node Schematics tree,
+and the directive loadout picker — and the narrative log. The deploy wiring of
+§10 is done too, ahead of its place in the order, so the game is reachable
+while the rest is built. Prestige layer 2, offline catch-up and the balance
 pass are not.
+
+### What phase 5 built
+
+The narrative log is its own content type (`LogEntry`, in `07-log.ts`) rather
+than richer text bolted onto `Milestone`, gated through the same `Unlock`
+vocabulary and evaluated the same way (`newLogEntries`, alongside
+`newMilestones`, inside `engine.ts`'s `step`). Two things followed from
+keeping them separate:
+
+- **A milestone is "you got here"; a log entry is "here is what that meant."**
+  Early fragments share their trigger with a milestone on purpose — they are
+  the same beat, read from a different angle — but a milestone still toasts
+  on the tick it is crossed, and a log entry never does. It is found by
+  opening the Log panel, not interrupted for, because a narrative fragment
+  worth reading is not a notification.
+- **The log outlives the milestone list.** `04-milestones.ts` stops at era 3
+  and was never extended for prestige, so the log's later entries (first
+  Relaunch, a Schematics perk, a fourth Relaunch) are the only narrative
+  coverage phase 4's addition has. Nothing stopped the milestone list from
+  growing to match; the log was the more legible place to put it.
+
+`state.log` persists through a Relaunch, same as `state.milestones` — neither
+is in `prestige.ts`'s reset list. `SAVE_VERSION` moved to 3 for it; a v1 or v2
+save defaults to an empty log, which is correct rather than a loss, since a
+v2 swarm genuinely has not seen fragments that did not exist yet.
 
 The deploy differs from §10 in one way worth knowing: this project has no PWA
 yet, so `deploy-starseed.yml` has no icons or webmanifest phase. `aws s3

@@ -158,6 +158,14 @@ export const FIXTURE: Content = {
       condition: { kind: 'lifetime', resource: 'ore', amount: 10 },
     },
   ],
+  log: [
+    {
+      id: 'ten-ore-log',
+      title: 'Ten Ore',
+      text: '',
+      unlock: { kind: 'lifetime', resource: 'ore', amount: 10 },
+    },
+  ],
   /**
    * Just enough prestige content to exercise composition: one root perk, one
    * behind it, and four directives spread over three families — the minimum
@@ -263,6 +271,7 @@ export function snapshot(state: GameState): string {
     buildings: state.buildings,
     upgrades: state.upgrades,
     milestones: state.milestones,
+    log: state.log,
     accumulator: state.accumulator,
     played: state.stats.playedSeconds,
   });

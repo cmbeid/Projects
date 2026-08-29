@@ -43,6 +43,8 @@ export interface GameState {
   /** Automators can be switched off without being refunded. */
   automationOn: Record<string, boolean>;
   milestones: string[];
+  /** Narrative fragment ids unlocked so far, in unlock order. Survives a Relaunch. */
+  log: string[];
 
   prestige: PrestigeState;
 

@@ -5,17 +5,19 @@ import type { ContentIndex } from '../data/indexes';
 import type { BuyMode, GameState, PrestigeState } from './types';
 
 const STORAGE_KEY = 'starseed:save';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 /**
  * Versions this loader can still read.
  *
- * v1 predates prestige. It is migrated rather than discarded: every field it is
- * missing has a correct default (no Schematics, no perks, no Relaunches), and
- * throwing away a player's first three hours because the save shape grew a
- * field would be indefensible.
+ * v1 predates prestige. v2 predates the narrative log. Both are migrated
+ * rather than discarded: every field a version is missing has a correct
+ * default (no Schematics, no perks, no Relaunches; no log entries), and
+ * throwing away a player's first few hours because the save shape grew a
+ * field would be indefensible. A v2 swarm genuinely has not seen fragments
+ * that did not exist yet, so an empty log is not a loss — it is the truth.
  */
-const READABLE_VERSIONS = [1, 2];
+const READABLE_VERSIONS = [1, 2, 3];
 
 interface SaveFile {
   version: number;
@@ -28,6 +30,7 @@ interface SaveFile {
   automation: string[];
   automationOn: Record<string, boolean>;
   milestones: string[];
+  log: string[];
   prestige: {
     schematics: string;
     schematicsEarned: string;
@@ -63,6 +66,7 @@ export function createInitialState(now = Date.now()): GameState {
     automation: [],
     automationOn: {},
     milestones: [],
+    log: [],
     prestige: {
       schematics: Decimal.ZERO,
       schematicsEarned: Decimal.ZERO,
@@ -148,6 +152,7 @@ export function hydrate(
   state.milestones = uniqueKnown(parsed.milestones, (id) =>
     index.content.milestones.some((m) => m.id === id),
   );
+  state.log = uniqueKnown(parsed.log, (id) => index.content.log.some((entry) => entry.id === id));
 
   if (parsed.automationOn && typeof parsed.automationOn === 'object') {
     for (const [id, on] of Object.entries(parsed.automationOn)) {
@@ -182,6 +187,7 @@ export function serialise(state: GameState): SaveFile {
     automation: [...state.automation],
     automationOn: { ...state.automationOn },
     milestones: [...state.milestones],
+    log: [...state.log],
     prestige: {
       schematics: state.prestige.schematics.toString(),
       schematicsEarned: state.prestige.schematicsEarned.toString(),

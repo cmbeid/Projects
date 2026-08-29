@@ -86,3 +86,11 @@ export function newMilestones(state: GameState, index: ContentIndex): string[] {
     .filter((m) => !reached.has(m.id) && isSatisfied(m.condition, state))
     .map((m) => m.id);
 }
+
+/** Log entries newly unlocked this tick. The caller records them. */
+export function newLogEntries(state: GameState, index: ContentIndex): string[] {
+  const unlocked = new Set(state.log);
+  return index.content.log
+    .filter((entry) => !unlocked.has(entry.id) && isSatisfied(entry.unlock, state))
+    .map((entry) => entry.id);
+}

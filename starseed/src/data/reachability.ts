@@ -101,6 +101,11 @@ function unreachable(content: Content): string[] {
       errors.push(`milestone "${milestone.id}" can never be reached`);
     }
   }
+  for (const entry of content.log) {
+    if (!satisfiable(entry.unlock)) {
+      errors.push(`log entry "${entry.id}" can never be unlocked`);
+    }
+  }
   for (const perk of content.perks) {
     if (!reachablePerks.has(perk.id)) {
       errors.push(`perk "${perk.id}" can never be bought — its requirements cycle`);
