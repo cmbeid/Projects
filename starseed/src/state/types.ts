@@ -42,6 +42,14 @@ export interface GameState {
   automation: string[];
   /** Automators can be switched off without being refunded. */
   automationOn: Record<string, boolean>;
+  /**
+   * A producer or converter can be paused without being sold. `rates.ts` treats
+   * a paused building as contributing nothing — no output, no input draw, no
+   * heat — which is the escape hatch for a swarm whose converters have outrun
+   * what feeds them: pause the drain, let the feedstock recover, resume.
+   * Absent or `true` means running, matching `automationOn`'s convention.
+   */
+  buildingActive: Record<string, boolean>;
   milestones: string[];
   /** Narrative fragment ids unlocked so far, in unlock order. Survives a Relaunch. */
   log: string[];

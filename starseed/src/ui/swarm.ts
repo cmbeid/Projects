@@ -23,8 +23,18 @@ export function renderSwarm(store: Store, ticker: Ticker, mount: HTMLElement): v
   }
   mount.append(modes);
 
+  // Storage has nothing to pause — it never draws an input or adds heat, so
+  // there is no drain a pause toggle could ever relieve.
+  const pausable = (building: { output: { rate: number }; inputs: unknown[] }): boolean =>
+    building.output.rate > 0 || building.inputs.length > 0;
+
   const list = el('div', 'building-list');
   for (const building of visibleBuildings(store.get(), store.index)) {
+    // The pause toggle sits beside the card rather than inside it: the card
+    // itself stays one big tap target to buy, which nesting a second button
+    // inside would break (and browsers do not agree on what a button-inside-a-
+    // button should even do).
+    const wrap = el('div', 'building-wrap');
     const card = el('button', 'building');
     card.type = 'button';
     card.addEventListener('click', () => store.buyBuilding(building.id));
@@ -100,11 +110,18 @@ export function renderSwarm(store: Store, ticker: Ticker, mount: HTMLElement): v
       const owned = store.get().buildings[building.id] ?? 0;
       if (owned === 0) return '';
 
-      const entry = store.rates().perBuilding.find((r) => r.building.id === building.id);
       if (building.capacity) {
         const held = Decimal.from(building.capacity.amount * owned);
         return `${formatCount(owned)} holding ${formatDecimal(held)} ${building.capacity.resource}`;
       }
+      // Paused: every rate reads as zero, and "now 0 ore/s · −0 alloy/s" is
+      // technically true but reads like something broke. Say what actually
+      // happened instead of the zeroed-out arithmetic behind it.
+      if (store.get().buildingActive[building.id] === false) {
+        return `${formatCount(owned)} — paused, drawing nothing`;
+      }
+
+      const entry = store.rates().perBuilding.find((r) => r.building.id === building.id);
       if (!entry) return '';
 
       const drawn = entry.inputs
@@ -120,8 +137,23 @@ export function renderSwarm(store: Store, ticker: Ticker, mount: HTMLElement): v
       const quote = store.quote(building.id);
       return quote !== null && quote.count > 0;
     });
+    ticker.flag(card, 'is-paused', () => store.get().buildingActive[building.id] === false);
 
-    list.append(card);
+    wrap.append(card);
+
+    // Only once something is owned, and only for a building that draws or
+    // makes something — storage has nothing a pause would ever relieve.
+    if ((store.get().buildings[building.id] ?? 0) > 0 && pausable(building)) {
+      const pause = el('button', 'building-pause');
+      pause.type = 'button';
+      pause.title = 'Pause this producer without selling it';
+      pause.addEventListener('click', () => store.toggleBuilding(building.id));
+      ticker.text(pause, () => (store.get().buildingActive[building.id] === false ? '▶' : '⏸'));
+      ticker.flag(pause, 'is-paused', () => store.get().buildingActive[building.id] === false);
+      wrap.append(pause);
+    }
+
+    list.append(wrap);
   }
   mount.append(list);
 }

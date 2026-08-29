@@ -136,6 +136,125 @@ describe('conversion and starvation', () => {
   });
 });
 
+describe('pausing a building', () => {
+  /**
+   * The whole point: a converter running its feedstock into the ground can be
+   * stopped without selling it. Neither its output nor its input draw should
+   * move the world at all while paused.
+   */
+  it('draws nothing and makes nothing while paused', () => {
+    const w = world((s) => {
+      s.buildings['mill'] = 1;
+      s.resources.ore = dec(1000);
+      s.lifetime.ore = dec(1000);
+      s.buildingActive['mill'] = false;
+    });
+    advance(w.state, w.index, w.cache, 10);
+    expect(w.state.resources.ore.toNumber()).toBe(1000);
+    expect(w.state.resources.alloy.isZero).toBe(true);
+  });
+
+  it('is the default-on state: an absent flag runs exactly like `true`', () => {
+    const on = world((s) => { s.buildings['mill'] = 1; s.resources.ore = dec(100); s.lifetime.ore = dec(100); });
+    const flagged = world((s) => {
+      s.buildings['mill'] = 1;
+      s.resources.ore = dec(100);
+      s.lifetime.ore = dec(100);
+      s.buildingActive['mill'] = true;
+    });
+    advance(on.state, on.index, on.cache, 5);
+    advance(flagged.state, flagged.index, flagged.cache, 5);
+    expect(snapshot(on.state)).toBe(snapshot(flagged.state));
+  });
+
+  it('does not starve a resource it never touches while paused', () => {
+    const w = world((s) => {
+      s.buildings['miner'] = 1;
+      s.buildings['mill'] = 1;
+      s.buildingActive['mill'] = false;
+    });
+    advance(w.state, w.index, w.cache, 10);
+    // The miner keeps running; only the paused mill's own trade stops.
+    expect(w.state.resources.ore.toNumber()).toBeCloseTo(10, 6);
+    expect(w.state.resources.alloy.isZero).toBe(true);
+  });
+
+  it('stops contributing heat, so a paused reactor cools the rest of the swarm', () => {
+    // 6 reactors at 400 heat each clears HEAT_THRESHOLD (2000), same margin the
+    // existing thermal tests use.
+    const hot = world((s) => { s.buildings['reactor'] = 6; s.buildings['miner'] = 1; });
+    const paused = world((s) => {
+      s.buildings['reactor'] = 6;
+      s.buildings['miner'] = 1;
+      s.buildingActive['reactor'] = false;
+    });
+    const hotRates = computeRates(hot.state, hot.index);
+    const pausedRates = computeRates(paused.state, paused.index);
+
+    expect(hotRates.heat).toBeCloseTo(2400, 6);
+    expect(pausedRates.heat).toBe(0);
+    expect(hotRates.heat).toBeGreaterThan(HEAT_THRESHOLD);
+    expect(hotRates.heatPenalty).toBeLessThan(1);
+    expect(pausedRates.heatPenalty).toBe(1);
+  });
+
+  it('leaves ownership, and every other building, untouched', () => {
+    const w = world((s) => {
+      s.buildings['mill'] = 1;
+      s.buildings['miner'] = 3;
+      s.buildingActive['mill'] = false;
+    });
+    const rates = computeRates(w.state, w.index);
+    expect(w.state.buildings['mill']).toBe(1); // still owned, not sold
+    expect(rates.output.get('ore')?.toNumber()).toBeCloseTo(3, 9); // the miner is unaffected
+  });
+
+  it('has no effect on a building that is not actually owned', () => {
+    const owned = world((s) => { s.buildings['miner'] = 4; });
+    const flaggedButUnowned = world((s) => {
+      s.buildings['miner'] = 4;
+      s.buildingActive['mill'] = false; // never bought
+    });
+    expect(computeRates(owned.state, owned.index).output.get('ore')?.toNumber()).toBeCloseTo(
+      computeRates(flaggedButUnowned.state, flaggedButUnowned.index).output.get('ore')?.toNumber() ?? -1,
+      9,
+    );
+  });
+
+  // The determinism contract has to survive a pause toggled mid-run too, not
+  // only a fixed configuration held for the whole call.
+  it('stays deterministic across a pause that toggles mid-run', () => {
+    const bulk = world((s) => { s.buildings['mill'] = 2; s.resources.ore = dec(1000); s.lifetime.ore = dec(1000); });
+    const drip = world((s) => { s.buildings['mill'] = 2; s.resources.ore = dec(1000); s.lifetime.ore = dec(1000); });
+
+    advance(bulk.state, bulk.index, bulk.cache, 3);
+    bulk.state.buildingActive['mill'] = false;
+    advance(bulk.state, bulk.index, bulk.cache, 4);
+    bulk.state.buildingActive['mill'] = true;
+    advance(bulk.state, bulk.index, bulk.cache, 3);
+
+    for (let i = 0; i < 30; i += 1) advance(drip.state, drip.index, drip.cache, 0.1);
+    drip.state.buildingActive['mill'] = false;
+    for (let i = 0; i < 40; i += 1) advance(drip.state, drip.index, drip.cache, 0.1);
+    drip.state.buildingActive['mill'] = true;
+    for (let i = 0; i < 30; i += 1) advance(drip.state, drip.index, drip.cache, 0.1);
+
+    expect(snapshot(bulk.state)).toBe(snapshot(drip.state));
+  });
+
+  it('a marginal preview on a paused building honestly says buying more adds nothing', () => {
+    const w = world((s) => {
+      s.buildings['mill'] = 1;
+      s.resources.ore = dec(10_000);
+      s.lifetime.ore = dec(10_000);
+      s.buildingActive['mill'] = false;
+    });
+    const marginal = marginalRates(w.state, w.index, 'mill', 1);
+    for (const change of marginal.net.values()) expect(change.isZero).toBe(true);
+    expect(marginal.heat).toBe(0);
+  });
+});
+
 describe('storage', () => {
   it('clamps at the cap, discards the overflow, and reports it', () => {
     const w = world((s) => { s.buildings['miner'] = 1_000_000; });
