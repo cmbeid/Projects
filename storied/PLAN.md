@@ -717,4 +717,67 @@ promises `npm run validate` exists to catch instead of requiring by hand.
 122 tests pass (13 new, `tests/mutate.test.ts`). Typecheck, validate
 (zero errors, zero warnings on both stories), and build are all clean.
 
-Phase 7 (deploy wiring, README, `verify-ui.ts` screenshots) is next.
+**Phase 7 is done — the build order in §9 is complete.** Built:
+
+- **`.github/workflows/deploy-storied.yml`** — copied from
+  `deploy-starseed.yml` per §10, with the four named changes (`paths:`
+  filter, `S3_PREFIX`, `working-directory`, `concurrency.group`) plus
+  `environment.url`, `cache-dependency-path`, and the summary text. The
+  existing second sync pass (everything under `dist/` except `assets/*`,
+  `--cache-control 'no-cache'`) already covers `dist/content/**` exactly
+  right with no changes needed — confirming §10's original claim, which
+  hadn't been checked against a real build until now.
+- **`.github/workflows/pages.yml`** — `storied` added to the `paths:`
+  filter, the cache-dependency list, a full install/validate/test/build
+  step block, `cp -r storied/dist/. _site/storied/`, and a third landing
+  card. Both workflow files parse as valid YAML (checked directly, not just
+  by eye).
+- **Root `README.md`** — a row in the projects table and the deploying
+  table.
+- **`storied/README.md`** — didn't exist before this phase; written
+  mirroring `starseed/README.md`'s shape (what it is, running it, playing
+  it, layout of the code, checks) plus a "Writing a story" section that
+  exists nowhere else, pointing straight at `format.md` and at `aviary/`
+  as the feature-complete example to read alongside it.
+- **`scripts/verify-ui.ts`** — mirrors `starseed/scripts/verify-ui.ts`'s
+  shape: Playwright against a running `npm run preview`, three viewports,
+  screenshots committed under `screenshots/`.
+
+**Writing `verify-ui.ts` found a real, shipped dead end**, not a
+hypothetical one. Driving the exact path a real player could take — reach
+`hedges`, skip the key, go straight to `door` — hit a node where *both*
+real choices were `whenLocked: "disable"` and permanently unsatisfiable
+without backtracking, and `aviary`'s own `allowBack: false` meant there
+was no way out at all. `npm run validate` reported zero errors and zero
+warnings on this content in every phase-6 run; three separate manual
+Playwright playthroughs in phase 6 didn't catch it either, because none of
+them happened to skip the key. This is exactly the gap phase 6's own
+Status section already named as a known limitation of the possible-value
+warning check — proven out in practice one phase later, on the first
+script that tried a path the earlier manual testing hadn't. Fixed two
+ways: an always-available third choice at `door` ("Give up and turn
+back", straight to the neutral ending), and a new callout in `format.md`
+§5 (cross-referenced from §13) spelling out the actual rule — a `"disable"`
+choice keeps the deck non-empty, not usable, and proving "at least one
+choice is always available" isn't something `npm run validate` can check
+in general. `verify-ui.ts` now specifically drives this once-broken path
+on every run, so a regression here fails loudly instead of shipping quietly
+again.
+
+Verified: `npm run typecheck`, `npm test` (122 tests, unchanged this
+phase), and `npm run validate` (zero errors, zero warnings) all pass;
+`npm run build` followed by `CHROMIUM_PATH=/opt/pw-browsers/chromium npm
+run verify` against the real preview server ran clean at all three
+viewports and wrote 12 screenshots to `screenshots/`, committed for
+review alongside this change.
+
+**All seven phases of §9 are now built.** What's left is the two items
+the Verification section's manual checklist has always named and neither
+of which a script fully replaces: whether `format.md` is genuinely
+writable by someone who has never opened this project's TypeScript (the
+strongest evidence so far is that `aviary/story.json` was authored
+directly from the document, per phase 6's Status note — but that was
+still written by the same person who wrote the spec), and enabling GitHub
+Pages once, by hand, in the repository's own settings, which is the one
+step in `.github/workflows/pages.yml`'s own comment that no commit can do
+for it.

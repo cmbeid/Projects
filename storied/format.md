@@ -208,9 +208,23 @@ letterbox oddly.
 | `set` | Mutation[] | no | Applied in array order, **after** the destination node's `onEnter` mutations — see §7. |
 | `once` | boolean | no, default `false` | If `true`, this exact choice can be taken at most once per playthrough; a repeat visit to the node sees it as locked, following `whenLocked`. |
 
-A node with no choices left visible (everything hidden by `if`) is a dead
-end at runtime even though the validator sees a way out — see the
-reachability warning in §11.
+**A locked choice is not a safe choice.** `whenLocked: "disable"` keeps a
+choice in the deck so the player can see what they're missing — it does
+**not** mean the node has an escape. A node whose every choice is
+conditional, even if every one of them uses `"disable"` instead of
+`"hide"`, is a genuine dead end the moment none of those conditions are
+true at once — the deck looks non-empty, but nothing in it is clickable.
+`npm run validate` cannot catch this in general (proving "at least one
+choice is always available" would mean proving a fact about every
+reachable combination of variable values, which the validator's
+reachability and warning checks — deliberately conservative, per §13 —
+don't attempt). **The rule to write by:** every node should have either an
+`ending`, or at least one choice with no `if` at all, or, if every choice
+really is conditional, be certain by construction that the conditions
+can't all fail together. This is exactly the kind of bug that survives a
+clean `npm run validate` and a normal playtest that happens not to hit the
+unlucky path — it only shows up when someone takes the *other* branch. If
+`allowBack` is `false`, a dead end like this has no recovery at all.
 
 ---
 
@@ -605,3 +619,8 @@ problem:
 A story that fails validation still shows on the shelf, with the specific
 error in place of the blurb, rather than being silently dropped — so a
 typo in one story never hides it from the person trying to fix it.
+
+**What this doesn't catch:** a node where every choice is conditional and
+every one of those conditions could end up false at the same time — a real
+dead end that a clean `npm run validate` run and a lucky playtest can both
+miss. See the callout in §5.

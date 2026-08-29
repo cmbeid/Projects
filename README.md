@@ -8,6 +8,7 @@ nothing at the root to install.
 | --- | --- |
 | [`alchemy-forge/`](alchemy-forge/) | An element-crafting puzzle game for the phone. 495 elements to find; installs and plays offline when served over HTTPS. |
 | [`starseed/`](starseed/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
+| [`storied/`](storied/) | A phone-first reader for branching stories, driven entirely by JSON content in `storied/public/content/`. Two demo stories ship on the shelf. |
 
 ## Working on one
 
@@ -33,6 +34,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | --- | --- |
 | `alchemy-forge/` | http://s3.cmbeid.com/alchemy-forge/index.html |
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
+| `storied/` | http://s3.cmbeid.com/storied/index.html |
 
 ## Adding another
 
