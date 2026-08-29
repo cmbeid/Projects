@@ -14,6 +14,7 @@ on:
        - main
      paths:
        - 'alchemy-forge/**'
+       - 'starseed/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -39,9 +40,17 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: alchemy-forge/package-lock.json
+          # One cache keyed on both lockfiles: the projects are independent but
+          # they share this runner, and npm's cache is global to it.
+          cache-dependency-path: |
+            alchemy-forge/package-lock.json
+            starseed/package-lock.json
 
-      - name: Install
+      # Unlike the S3 workflows, this one builds every project into a single
+      # site, so all of them have to pass for any of them to publish. A failure
+      # here blocks the next deploy; it does not take the current one down —
+      # Pages keeps serving the last successful build.
+      - name: Install (alchemy-forge)
         run: npm ci
         working-directory: alchemy-forge
 
@@ -49,22 +58,41 @@ jobs:
         run: npm run validate
         working-directory: alchemy-forge
 
-      - name: Test
+      - name: Test (alchemy-forge)
         run: npm test
         working-directory: alchemy-forge
 
-      - name: Build
+      - name: Build (alchemy-forge)
         run: npm run build
         working-directory: alchemy-forge
 
+      - name: Install (starseed)
+        run: npm ci
+        working-directory: starseed
+
+      - name: Validate content
+        run: npm run validate
+        working-directory: starseed
+
+      - name: Test (starseed)
+        run: npm test
+        working-directory: starseed
+
+      - name: Build (starseed)
+        run: npm run build
+        working-directory: starseed
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
-      # in beside this one.
+      # in beside the others, then giving it a card below.
       - name: Assemble the site
         run: |
           set -euo pipefail
           mkdir -p _site/alchemy-forge
           cp -r alchemy-forge/dist/. _site/alchemy-forge/
+
+          mkdir -p _site/starseed
+          cp -r starseed/dist/. _site/starseed/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -82,6 +110,7 @@ jobs:
                 }
                 main { padding: 32px; max-width: 32rem; }
                 h1 { font-size: 20px; margin: 0 0 20px; }
+                .cards { display: grid; gap: 12px; }
                 a.card {
                   display: flex; align-items: center; gap: 14px;
                   padding: 16px 18px; border-radius: 14px; text-decoration: none;
@@ -96,13 +125,22 @@ jobs:
             <body>
               <main>
                 <h1>Projects</h1>
-                <a class="card" href="./alchemy-forge/">
-                  <span class="emoji" aria-hidden="true">⚗️</span>
-                  <span>
-                    <span class="name">Alchemy Forge</span>
-                    <span class="desc">Combine elements to discover 495 of them. Installs and plays offline.</span>
-                  </span>
-                </a>
+                <div class="cards">
+                  <a class="card" href="./alchemy-forge/">
+                    <span class="emoji" aria-hidden="true">⚗️</span>
+                    <span>
+                      <span class="name">Alchemy Forge</span>
+                      <span class="desc">Combine elements to discover 495 of them. Installs and plays offline.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./starseed/">
+                    <span class="emoji" aria-hidden="true">🛰️</span>
+                    <span>
+                      <span class="name">Starseed</span>
+                      <span class="desc">An idle game about a self-replicating space probe. One asteroid, eventually a galaxy.</span>
+                    </span>
+                  </a>
+                </div>
               </main>
             </body>
           </html>

@@ -1,0 +1,138 @@
+/* Dark, cold, and quiet — the palette of somewhere with no atmosphere. */
+:root {
+  color-scheme: dark;
+  --bg: #05080f;
+  --panel: #0e1524;
+  --panel-2: #141d31;
+  --line: #22304d;
+  --text: #e6ecfa;
+  --dim: #8798b8;
+  --accent: #5fd0ff;
+  --good: #59e5a5;
+  --warn: #ffb44d;
+  --hot: #ff6b6b;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  /* Tapping to mine must never select text or trigger a double-tap zoom. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.app {
+  display: grid;
+  height: 100dvh;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+.is-hidden { display: none !important; }
+
+.empty {
+  color: var(--dim);
+  font-size: 13px;
+  margin: 4px 0 14px;
+}
+
+.panel-title {
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 18px 0 8px;
+}
+.panel-title:first-child { margin-top: 4px; }
+
+/* --- The mine button ----------------------------------------------------- */
+.mine {
+  margin: 8px 12px;
+  padding: 15px;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #1d3350, #16273e);
+  border: 1px solid var(--line);
+  text-align: center;
+  font-weight: 650;
+  font-size: 16px;
+}
+.mine:active { transform: translateY(1px); background: #1a2c47; }
+
+/* --- Tabs ---------------------------------------------------------------- */
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.tab {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 9px 0 max(9px, env(safe-area-inset-bottom));
+  color: var(--dim);
+}
+.tab-icon { font-size: 17px; }
+.tab-label { font-size: 11px; }
+.tab.is-active { color: var(--accent); }
+
+/* --- Toasts -------------------------------------------------------------- */
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 6px;
+  width: min(92vw, 30rem);
+  pointer-events: none;
+  z-index: 10;
+}
+.toast {
+  background: #16233c;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  transition: opacity 0.3s ease;
+}
+.toast.is-leaving { opacity: 0; }
+
+/* --- The 700px switch ----------------------------------------------------
+   Applied live via matchMedia, because a foldable resizes the viewport
+   without reloading: folding shut must reshape the layout, not orphan it. */
+.app:not(.is-wide) .panel { display: none; }
+.app:not(.is-wide)[data-active='swarm'] .panel[data-panel='swarm'],
+.app:not(.is-wide)[data-active='tech'] .panel[data-panel='tech'],
+.app:not(.is-wide)[data-active='log'] .panel[data-panel='log'] { display: block; }
+
+.app.is-wide { grid-template-rows: auto minmax(0, 1fr) auto; }
+.app.is-wide .tabs { display: none; }
+.app.is-wide .panels {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 14px;
+  overflow: hidden;
+}
+.app.is-wide .panel { display: block; overflow-y: auto; }
+.app.is-wide .mine { max-width: 26rem; }

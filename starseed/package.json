@@ -1,0 +1,25 @@
+{
+  "name": "starseed",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An idle game about a self-replicating space probe. One asteroid, then a galaxy.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate": "tsx scripts/validate-data.ts",
+    "typecheck": "tsc --noEmit",
+    "verify": "tsx scripts/verify-ui.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "playwright": "^1.62.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,123 @@
+.panels { overflow-y: auto; }
+.panel { padding: 12px; }
+
+/* --- Buy mode ------------------------------------------------------------ */
+.buy-modes {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.buy-mode {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--dim);
+  font-size: 13px;
+}
+.buy-mode.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04121b;
+  font-weight: 650;
+}
+
+/* --- Buildings ----------------------------------------------------------- */
+.building-list, .upgrade-list { display: grid; gap: 8px; }
+
+.building, .upgrade, .automation {
+  display: block;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  /* Unaffordable is the default state, and it should read as inert rather
+     than broken — dimmed, not disabled. */
+  opacity: 0.55;
+  transition: opacity 0.12s ease, border-color 0.12s ease;
+}
+.building.is-affordable, .upgrade.is-affordable, .automation.is-affordable {
+  opacity: 1;
+  border-color: #35507d;
+  background: var(--panel-2);
+}
+.building.is-affordable:active, .upgrade.is-affordable:active { transform: translateY(1px); }
+
+.building-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+}
+.building-icon { font-size: 19px; }
+.building-naming { display: flex; gap: 7px; align-items: baseline; min-width: 0; }
+.building-name { font-weight: 640; }
+.building-count { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.building-price {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.building.is-affordable .building-price { color: var(--good); }
+.building-blurb { font-size: 12px; color: var(--dim); margin-top: 5px; }
+.building-effect { font-size: 12px; color: var(--accent); margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+/* --- Upgrades ------------------------------------------------------------ */
+.upgrade-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+}
+.upgrade-icon { font-size: 17px; }
+.upgrade-name { font-weight: 640; }
+.upgrade-price { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.upgrade.is-affordable .upgrade-price { color: var(--good); }
+.upgrade-blurb { font-size: 12px; color: var(--dim); margin-top: 5px; }
+
+/* --- Automation ---------------------------------------------------------- */
+.automation { margin-bottom: 8px; }
+.automation.owned { opacity: 1; border-color: #2f6f52; background: #10241c; }
+.automation-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+}
+.automation-icon { font-size: 17px; }
+.automation-name { font-weight: 640; }
+.automation-price { font-size: 13px; font-variant-numeric: tabular-nums; }
+.automation.is-affordable .automation-price { color: var(--good); }
+.automation-blurb { font-size: 12px; color: var(--dim); margin-top: 5px; }
+.automation-retires { font-size: 12px; color: var(--good); margin-top: 3px; }
+.automation-toggle {
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--dim);
+}
+.automation-toggle.is-on { color: var(--good); border-color: #2f6f52; }
+
+/* --- Log ----------------------------------------------------------------- */
+.log-feed { display: grid; gap: 8px; }
+.log-entry {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border-left: 3px solid var(--accent);
+}
+.log-name { font-weight: 640; font-size: 14px; }
+.log-blurb { font-size: 12px; color: var(--dim); margin-top: 3px; }
+.log-remaining { font-size: 12px; color: var(--dim); }
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+.stats dt { color: var(--dim); }
+.stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
