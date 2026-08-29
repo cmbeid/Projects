@@ -18,7 +18,15 @@ describe('round trip', () => {
     state.automationOn = { 'auto-miner': false };
     state.milestones = ['first-probe'];
     state.settings.buyMode = 'max';
-    state.stats = { playedSeconds: 4_321, taps: 88 };
+    state.stats = { playedSeconds: 4_321, runSeconds: 900, taps: 88 };
+    state.totals.ore = dec('4e42');
+    state.prestige = {
+      schematics: dec(12),
+      schematicsEarned: dec(30),
+      perks: ['seed-cache'],
+      directives: ['cold-logic'],
+      relaunches: 4,
+    };
 
     const restored = hydrate(serialise(state), REAL_INDEX);
 
@@ -30,7 +38,13 @@ describe('round trip', () => {
     expect(restored.automationOn['auto-miner']).toBe(false);
     expect(restored.milestones).toEqual(['first-probe']);
     expect(restored.settings.buyMode).toBe('max');
-    expect(restored.stats).toEqual({ playedSeconds: 4_321, taps: 88 });
+    expect(restored.stats).toEqual({ playedSeconds: 4_321, runSeconds: 900, taps: 88 });
+    expect(restored.totals.ore.toString()).toBe(state.totals.ore.toString());
+    expect(restored.prestige.schematics.toString()).toBe('1.2e1');
+    expect(restored.prestige.schematicsEarned.toString()).toBe('3e1');
+    expect(restored.prestige.perks).toEqual(['seed-cache']);
+    expect(restored.prestige.directives).toEqual(['cold-logic']);
+    expect(restored.prestige.relaunches).toBe(4);
     expect(restored.lastSeen).toBe(1_700_000_000_000);
   });
 
@@ -43,10 +57,66 @@ describe('round trip', () => {
   });
 });
 
+describe('migration', () => {
+  /**
+   * v1 predates prestige. Discarding those saves would throw away a player's
+   * first few hours because the shape grew a field, which is never the right
+   * trade — every missing field has a correct default.
+   */
+  it('reads a version 1 save and defaults everything prestige added', () => {
+    const v1 = {
+      version: 1,
+      seed: 7,
+      resources: { ore: '5e3', alloy: '0e0', compute: '0e0' },
+      lifetime: { ore: '9e5', alloy: '2e3', compute: '0e0' },
+      buildings: { probe: 22 },
+      upgrades: ['kinetic-hammer'],
+      automation: [],
+      automationOn: {},
+      milestones: ['first-probe'],
+      settings: { buyMode: 10 as const },
+      stats: { playedSeconds: 3_600, taps: 40 },
+      lastSeen: 1_700_000_000_000,
+    };
+    const restored = hydrate(v1, REAL_INDEX);
+
+    expect(restored.buildings).toEqual({ probe: 22 });
+    expect(restored.upgrades).toEqual(['kinetic-hammer']);
+    expect(restored.prestige.relaunches).toBe(0);
+    expect(restored.prestige.schematics.isZero).toBe(true);
+    expect(restored.prestige.perks).toEqual([]);
+    // Every v1 save is mid-first-run by definition, so the all-time clock and
+    // the run clock are the same number, and the run's lifetime is the honest
+    // floor for a total that was never recorded.
+    expect(restored.stats.runSeconds).toBe(3_600);
+    expect(restored.totals.ore.toString()).toBe(restored.lifetime.ore.toString());
+  });
+});
+
 describe('defensive loading', () => {
   it('treats an unknown save version as a new game', () => {
     expect(hydrate({ version: 99, buildings: { probe: 5 } }, REAL_INDEX).buildings).toEqual({});
     expect(hydrate({}, REAL_INDEX).buildings).toEqual({});
+  });
+
+  it('drops prestige ids the current content no longer knows', () => {
+    const save = {
+      ...serialise(createInitialState()),
+      prestige: {
+        schematics: '5e0',
+        schematicsEarned: '1e0',
+        perks: ['seed-cache', 'from-a-later-build'],
+        directives: ['cold-logic', 'nonexistent', 'cold-logic'],
+        relaunches: 2.9,
+      },
+    };
+    const restored = hydrate(save, REAL_INDEX);
+
+    expect(restored.prestige.perks).toEqual(['seed-cache']);
+    expect(restored.prestige.directives).toEqual(['cold-logic']);
+    expect(restored.prestige.relaunches).toBe(2);
+    // Earned can never be below what is still unspent, whatever the file says.
+    expect(restored.prestige.schematicsEarned.toNumber()).toBe(5);
   });
 
   /**
@@ -74,7 +144,7 @@ describe('defensive loading', () => {
     const save = {
       ...serialise(createInitialState()),
       buildings: { probe: NaN, drill: -4, sifter: 2.7 },
-      stats: { playedSeconds: -1, taps: Number.POSITIVE_INFINITY },
+      stats: { playedSeconds: -1, runSeconds: -1, taps: Number.POSITIVE_INFINITY },
     };
     const restored = hydrate(save, REAL_INDEX);
 

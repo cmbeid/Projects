@@ -181,11 +181,13 @@ function step(
     state.resources[resource] = next;
     if (credited.isPositive) {
       state.lifetime[resource] = state.lifetime[resource].add(credited);
+      state.totals[resource] = state.totals[resource].add(credited);
       report.produced.set(resource, (report.produced.get(resource) ?? Decimal.ZERO).add(credited));
     }
   }
 
   state.stats.playedSeconds += dt;
+  state.stats.runSeconds += dt;
 
   // --- Automation, then anything it just unlocked ---------------------------
   for (const id of runAutomation(state, index, cache)) {
@@ -210,6 +212,9 @@ export function tap(state: GameState, cache: RateCache): Decimal {
   const credited = next.sub(before);
   state.resources.ore = next;
   state.stats.taps += 1;
-  if (credited.isPositive) state.lifetime.ore = state.lifetime.ore.add(credited);
+  if (credited.isPositive) {
+    state.lifetime.ore = state.lifetime.ore.add(credited);
+    state.totals.ore = state.totals.ore.add(credited);
+  }
   return credited;
 }

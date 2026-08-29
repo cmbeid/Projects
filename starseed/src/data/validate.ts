@@ -1,5 +1,6 @@
-import type { Content, Unlock } from './types';
+import type { Content, PrestigeEffect, Unlock } from './types';
 import { RESOURCE_IDS } from './types';
+import { reachabilityErrors } from './reachability';
 
 export interface ValidationReport {
   errors: string[];
@@ -10,6 +11,9 @@ export interface ValidationReport {
     upgrades: number;
     automation: number;
     milestones: number;
+    perks: number;
+    directives: number;
+    families: number;
     byEra: Map<number, number>;
   };
 }
@@ -29,6 +33,7 @@ export function validateContent(content: Content): ValidationReport {
   const buildingIds = new Set(content.buildings.map((b) => b.id));
   const upgradeIds = new Set(content.upgrades.map((u) => u.id));
   const automationIds = new Set(content.automation.map((a) => a.id));
+  const perkIds = new Set(content.perks.map((p) => p.id));
 
   duplicates(content.resources.map((r) => r.id)).forEach((id) =>
     errors.push(`duplicate resource id "${id}"`),
@@ -41,6 +46,12 @@ export function validateContent(content: Content): ValidationReport {
   );
   duplicates(content.automation.map((a) => a.id)).forEach((id) =>
     errors.push(`duplicate automation id "${id}"`),
+  );
+  duplicates(content.perks.map((p) => p.id)).forEach((id) =>
+    errors.push(`duplicate perk id "${id}"`),
+  );
+  duplicates(content.directives.map((d) => d.id)).forEach((id) =>
+    errors.push(`duplicate directive id "${id}"`),
   );
 
   for (const id of RESOURCE_IDS) {
@@ -72,6 +83,17 @@ export function validateContent(content: Content): ValidationReport {
           errors.push(`${where}: unlock names unknown automation "${unlock.automation}"`);
         }
         return;
+      case 'relaunches':
+        if (unlock.count < 0) errors.push(`${where}: negative relaunch count`);
+        if (unlock.count === 0) {
+          warnings.push(`${where}: a relaunch gate of 0 is always true; say "always"`);
+        }
+        return;
+      case 'perk':
+        if (!perkIds.has(unlock.perk)) {
+          errors.push(`${where}: unlock names unknown perk "${unlock.perk}"`);
+        }
+        return;
       case 'all':
         unlock.of.forEach((inner) => checkUnlock(where, inner));
         return;
@@ -81,6 +103,11 @@ export function validateContent(content: Content): ValidationReport {
   for (const resource of content.resources) {
     checkUnlock(`resource "${resource.id}"`, resource.unlock);
     if (resource.baseCap <= 0) errors.push(`resource "${resource.id}" has a non-positive base cap`);
+    // A zero-weight resource is invisible to the Relaunch payout, which makes
+    // every directive that produces it strictly bad.
+    if (resource.prestigeWeight <= 0) {
+      errors.push(`resource "${resource.id}" has a non-positive prestige weight`);
+    }
   }
 
   for (const building of content.buildings) {
@@ -177,7 +204,79 @@ export function validateContent(content: Content): ValidationReport {
     checkUnlock(`milestone "${milestone.id}"`, milestone.condition);
   }
 
-  errors.push(...unreachable(content));
+  const checkEffects = (where: string, effects: readonly PrestigeEffect[]): void => {
+    if (effects.length === 0) errors.push(`${where}: has no effects`);
+    for (const effect of effects) {
+      switch (effect.kind) {
+        case 'global':
+        case 'capacity':
+        case 'start':
+        case 'carry':
+          if (!resourceIds.has(effect.resource)) {
+            errors.push(`${where}: effect names unknown resource "${effect.resource}"`);
+          }
+          break;
+        case 'building':
+          if (!buildingIds.has(effect.building)) {
+            errors.push(`${where}: effect names unknown building "${effect.building}"`);
+          }
+          break;
+        default:
+          break;
+      }
+      switch (effect.kind) {
+        // A zero or negative multiplier would stop production dead rather than
+        // trade it away, which is not a cost any pick should be allowed to have.
+        case 'global':
+        case 'building':
+        case 'capacity':
+        case 'tap':
+        case 'payout':
+          if (effect.factor <= 0) errors.push(`${where}: factor must be above zero`);
+          if (effect.factor === 1) warnings.push(`${where}: a factor of 1 does nothing`);
+          break;
+        case 'heat':
+          // Zero is legal here and only here: Cold Logic removes thermal load
+          // outright, and the soft cap handles that without a special case.
+          if (effect.factor < 0 || !Number.isFinite(effect.factor)) {
+            errors.push(`${where}: heat factor must be zero or above`);
+          }
+          if (effect.factor === 1) warnings.push(`${where}: a heat factor of 1 does nothing`);
+          break;
+        case 'start':
+          if (effect.amount <= 0) errors.push(`${where}: start amount must be positive`);
+          break;
+        case 'carry':
+          if (effect.fraction <= 0 || effect.fraction > 1) {
+            errors.push(`${where}: carry fraction must be within (0, 1]`);
+          }
+          break;
+      }
+    }
+  };
+
+  for (const perk of content.perks) {
+    const where = `perk "${perk.id}"`;
+    checkEffects(where, perk.effects);
+    if (perk.cost <= 0 || !Number.isInteger(perk.cost)) {
+      errors.push(`${where}: cost must be a positive whole number of Schematics`);
+    }
+    for (const id of perk.requires) {
+      if (!perkIds.has(id)) errors.push(`${where}: requires unknown perk "${id}"`);
+      if (id === perk.id) errors.push(`${where}: requires itself`);
+    }
+  }
+
+  for (const directive of content.directives) {
+    const where = `directive "${directive.id}"`;
+    checkUnlock(where, directive.unlock);
+    checkEffects(where, directive.effects);
+    if (directive.family.trim() === '') errors.push(`${where}: has no family`);
+  }
+
+
+
+  errors.push(...reachabilityErrors(content));
 
   const byEra = new Map<number, number>();
   for (const building of content.buildings) {
@@ -193,85 +292,12 @@ export function validateContent(content: Content): ValidationReport {
       upgrades: content.upgrades.length,
       automation: content.automation.length,
       milestones: content.milestones.length,
+      perks: content.perks.length,
+      directives: content.directives.length,
+      families: new Set(content.directives.map((d) => d.family)).size,
       byEra,
     },
   };
-}
-
-/**
- * Walks the unlock graph forward from a new game and reports anything it can
- * never reach.
- *
- * Content is only reachable if the things its gate names are themselves
- * reachable, so this repeatedly sweeps until nothing new opens up. Anything
- * still closed after that is either gated on itself or on a cycle.
- */
-function unreachable(content: Content): string[] {
-  const reachableBuildings = new Set<string>();
-  const reachableUpgrades = new Set<string>();
-  const reachableAutomation = new Set<string>();
-  const producible = new Set<string>();
-
-  const satisfiable = (unlock: Unlock): boolean => {
-    switch (unlock.kind) {
-      case 'always':
-        return true;
-      case 'lifetime':
-        return producible.has(unlock.resource);
-      case 'buildings':
-        return reachableBuildings.has(unlock.building);
-      case 'upgrade':
-        return reachableUpgrades.has(unlock.upgrade);
-      case 'automation':
-        return reachableAutomation.has(unlock.automation);
-      case 'all':
-        return unlock.of.every(satisfiable);
-    }
-  };
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const building of content.buildings) {
-      if (reachableBuildings.has(building.id) || !satisfiable(building.unlock)) continue;
-      reachableBuildings.add(building.id);
-      if (building.output.rate > 0) producible.add(building.output.resource);
-      changed = true;
-    }
-    for (const upgrade of content.upgrades) {
-      if (reachableUpgrades.has(upgrade.id) || !satisfiable(upgrade.unlock)) continue;
-      reachableUpgrades.add(upgrade.id);
-      changed = true;
-    }
-    for (const automation of content.automation) {
-      if (reachableAutomation.has(automation.id) || !satisfiable(automation.unlock)) continue;
-      reachableAutomation.add(automation.id);
-      changed = true;
-    }
-  }
-
-  const errors: string[] = [];
-  for (const building of content.buildings) {
-    if (!reachableBuildings.has(building.id)) {
-      errors.push(`building "${building.id}" can never be unlocked`);
-    }
-  }
-  for (const upgrade of content.upgrades) {
-    if (!reachableUpgrades.has(upgrade.id)) {
-      errors.push(`upgrade "${upgrade.id}" can never be unlocked`);
-    }
-  }
-  for (const automation of content.automation) {
-    if (!reachableAutomation.has(automation.id)) {
-      errors.push(`automation "${automation.id}" can never be unlocked`);
-    }
-  }
-  for (const milestone of content.milestones) {
-    if (!satisfiable(milestone.condition)) {
-      errors.push(`milestone "${milestone.id}" can never be reached`);
-    }
-  }
-  return errors;
 }
 
 function duplicates(ids: readonly string[]): string[] {

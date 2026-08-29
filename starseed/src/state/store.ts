@@ -6,9 +6,26 @@ import type { ResourceId } from '../data/types';
 import { advance, tap } from '../game/engine';
 import type { TickReport } from '../game/engine';
 import { RateCache } from '../game/rates';
-import type { Rates } from '../game/rates';
+import type { Marginal, Rates } from '../game/rates';
 import { costOf, countForMode, sumCost } from '../game/purchase';
-import { availableAutomation, availableUpgrades, isSatisfied } from '../game/unlocks';
+import {
+  availableAutomation,
+  availableDirectives,
+  availablePerks,
+  availableUpgrades,
+  isSatisfied,
+} from '../game/unlocks';
+import {
+  buyPerk,
+  canRelaunch,
+  valueForSchematics,
+  relaunch,
+  runValue,
+  schematicsFor,
+  validateLoadout,
+} from '../game/prestige';
+import type { RelaunchReport } from '../game/prestige';
+import { RELAUNCH_MINIMUM } from '../data/index';
 import { clearSave, createInitialState, loadState, saveState } from './persistence';
 import type { BuyMode, GameState } from './types';
 
@@ -81,6 +98,23 @@ export class Store {
     return { count, cost: count > 0 ? sumCost(building, owned, count) : costOf(building, owned) };
   }
 
+  /**
+   * What the current buy mode would add, per second, if it were pressed.
+   *
+   * Priced at what the mode *means* rather than what is affordable right now:
+   * ×10 always quotes ten, even with the money for three. A card that silently
+   * re-quotes itself as you earn is unreadable, and "what would this get me"
+   * is a question worth answering before you can pay it.
+   */
+  marginal(buildingId: string): Marginal | null {
+    if (!this.index.buildingById.has(buildingId)) return null;
+    const mode = this.state.settings.buyMode;
+    const affordable = this.quote(buildingId)?.count ?? 0;
+    // Max with nothing affordable still quotes one, so the card says something.
+    const count = mode === 'max' ? Math.max(1, affordable) : mode;
+    return this.cache.marginal(this.state, buildingId, count);
+  }
+
   buyBuilding(buildingId: string): boolean {
     const building = this.index.buildingById.get(buildingId);
     if (!building || !isSatisfied(building.unlock, this.state)) return false;
@@ -135,6 +169,62 @@ export class Store {
     this.state.automationOn[automationId] = this.state.automationOn[automationId] === false;
     this.cache.invalidate();
     this.changed();
+  }
+
+  // --- Prestige ------------------------------------------------------------
+
+  /** Schematics a Relaunch would pay right now. */
+  pendingSchematics(): Decimal {
+    return schematicsFor(this.state, this.index);
+  }
+
+  canRelaunch(): boolean {
+    return canRelaunch(this.state, this.index);
+  }
+
+  /** What this run has produced, in ore-equivalent — the payout's input. */
+  runValue(): Decimal {
+    return runValue(this.state, this.index);
+  }
+
+  /** Run value still needed before the Relaunch button unlocks. */
+  valueForFirstSchematics(): Decimal {
+    return valueForSchematics(this.state, this.index, RELAUNCH_MINIMUM);
+  }
+
+  availableDirectives() {
+    return availableDirectives(this.state, this.index);
+  }
+
+  availablePerks() {
+    return availablePerks(this.state, this.index);
+  }
+
+  /** Trims a proposed loadout to a legal one, for the picker to reflect back. */
+  legalLoadout(chosen: readonly string[]): string[] {
+    return validateLoadout(this.state, this.index, chosen);
+  }
+
+  buyPerk(perkId: string): boolean {
+    if (!buyPerk(this.state, this.index, perkId)) return false;
+    this.cache.invalidate();
+    this.changed();
+    return true;
+  }
+
+  /**
+   * Fires the seed probe. Refuses below the Schematic floor, so a mis-click in
+   * the confirmation cannot cost a run for nothing.
+   */
+  relaunch(chosen: readonly string[]): RelaunchReport | null {
+    if (!this.canRelaunch()) return null;
+    const report = relaunch(this.state, this.index, chosen);
+    this.cache.invalidate();
+    this.changed();
+    // A reset is the one moment worth writing through the debounce: losing it
+    // to a closed tab would hand back a run the player has already spent.
+    this.flush();
+    return report;
   }
 
   // --- Views ---------------------------------------------------------------

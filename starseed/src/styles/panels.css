@@ -62,6 +62,10 @@
 .building.is-affordable .building-price { color: var(--good); }
 .building-blurb { font-size: 12px; color: var(--dim); margin-top: 5px; }
 .building-effect { font-size: 12px; color: var(--accent); margin-top: 3px; font-variant-numeric: tabular-nums; }
+/* What the stack already does, under what buying more would add — context, so
+   it reads quieter than the decision above it. */
+.building-owned { font-size: 12px; color: var(--dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.building-owned:empty { display: none; }
 
 /* --- Upgrades ------------------------------------------------------------ */
 .upgrade-head {

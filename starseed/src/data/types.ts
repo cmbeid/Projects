@@ -18,6 +18,9 @@ export type Unlock =
   | { kind: 'buildings'; building: string; count: number }
   | { kind: 'upgrade'; upgrade: string }
   | { kind: 'automation'; automation: string }
+  /** Relaunches completed. Survives a reset, so it gates content permanently. */
+  | { kind: 'relaunches'; count: number }
+  | { kind: 'perk'; perk: string }
   | { kind: 'all'; of: Unlock[] };
 
 export interface Resource {
@@ -27,6 +30,15 @@ export interface Resource {
   blurb: string;
   /** Storage ceiling before any multiplier. Overflow is discarded. */
   baseCap: number;
+  /**
+   * What one unit of this is worth in ore, following the conversion ladder.
+   *
+   * The Relaunch payout is measured through these, so a run that made less ore
+   * but turned it into something is worth what it actually achieved. Weighting
+   * only ore — the obvious first move — quietly makes two thirds of the economy
+   * invisible to prestige, and with it every directive that trades ore away.
+   */
+  prestigeWeight: number;
   unlock: Unlock;
 }
 
@@ -109,10 +121,76 @@ export interface Milestone {
   condition: Unlock;
 }
 
+/**
+ * What a Relaunch cannot take away.
+ *
+ * Perks and directives share one vocabulary deliberately: they are composed by
+ * the same function and applied at the same point in the pipeline, so a
+ * directive can never do something a perk could not, and neither can reach
+ * around the order of operations in `rates.ts`.
+ *
+ * `start` and `carry` are the exceptions — they are read once, by the reset
+ * itself, rather than every time rates are computed.
+ */
+export type PrestigeEffect =
+  /** Multiplies everything that produces a resource. */
+  | { kind: 'global'; resource: ResourceId; factor: number }
+  | { kind: 'building'; building: string; factor: number }
+  /** Scales total thermal load. Below 1 is cooling; above 1 is a real cost. */
+  | { kind: 'heat'; factor: number }
+  | { kind: 'tap'; factor: number }
+  | { kind: 'capacity'; resource: ResourceId; factor: number }
+  /** Ore in the hold the moment the new run begins. */
+  | { kind: 'start'; resource: ResourceId; amount: number }
+  /** A fraction of what the *previous* run was holding, kept through the reset. */
+  | { kind: 'carry'; resource: ResourceId; fraction: number }
+  /** Multiplies the Schematics a Relaunch pays out. */
+  | { kind: 'payout'; factor: number };
+
+/**
+ * A node in the Schematics tree: bought once, kept forever.
+ *
+ * `requires` is what makes it a tree rather than a shopping list — an early
+ * cheap node has to be worth buying on its own *and* as the gate to the
+ * expensive one behind it.
+ */
+export interface Perk {
+  id: string;
+  name: string;
+  emoji: string;
+  blurb: string;
+  /** Schematics. */
+  cost: number;
+  effects: PrestigeEffect[];
+  requires: string[];
+}
+
+/**
+ * One pick in a Relaunch loadout.
+ *
+ * Directives are strong and mutually exclusive **by family**, so a loadout is a
+ * commitment rather than a checklist: taking Rapid Fission means not taking the
+ * other Expansion directive, this run. That is where "each prestige plays
+ * differently" actually lives — the trees are the ratchet, these are the
+ * variety.
+ */
+export interface Directive {
+  id: string;
+  name: string;
+  emoji: string;
+  blurb: string;
+  /** Only one directive per family may be in a loadout. */
+  family: string;
+  effects: PrestigeEffect[];
+  unlock: Unlock;
+}
+
 export interface Content {
   resources: readonly Resource[];
   buildings: readonly Building[];
   upgrades: readonly Upgrade[];
   automation: readonly Automation[];
   milestones: readonly Milestone[];
+  perks: readonly Perk[];
+  directives: readonly Directive[];
 }

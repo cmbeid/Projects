@@ -44,10 +44,22 @@ export function renderLog(store: Store, ticker: Ticker, mount: HTMLElement): voi
     stats.append(value);
   };
 
+  // Split run from all-time the moment prestige exists: after a Relaunch,
+  // `lifetime` is what *this* run has made, and labelling it "all time" would
+  // read as progress being lost.
   line('Time played', () => formatDuration(store.get().stats.playedSeconds));
+  line('This run', () => formatDuration(store.get().stats.runSeconds));
   line('Taps', () => formatCount(store.get().stats.taps));
-  line('Ore, all time', () => formatDecimal(store.get().lifetime.ore));
-  line('Alloy, all time', () => formatDecimal(store.get().lifetime.alloy));
-  line('Compute, all time', () => formatDecimal(store.get().lifetime.compute));
+  line('Ore, this run', () => formatDecimal(store.get().lifetime.ore));
+  line('Alloy, this run', () => formatDecimal(store.get().lifetime.alloy));
+  line('Compute, this run', () => formatDecimal(store.get().lifetime.compute));
+
+  if (store.get().prestige.relaunches > 0) {
+    line('Ore, all time', () => formatDecimal(store.get().totals.ore));
+    line('Alloy, all time', () => formatDecimal(store.get().totals.alloy));
+    line('Compute, all time', () => formatDecimal(store.get().totals.compute));
+    line('Relaunches', () => formatCount(store.get().prestige.relaunches));
+    line('Schematics earned', () => formatDecimal(store.get().prestige.schematicsEarned));
+  }
   mount.append(stats);
 }

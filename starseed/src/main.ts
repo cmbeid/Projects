@@ -1,6 +1,7 @@
 import './styles/base.css';
 import './styles/rail.css';
 import './styles/panels.css';
+import './styles/prestige.css';
 
 import { createStore } from './state/store';
 import { Layout } from './ui/layout';

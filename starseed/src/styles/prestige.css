@@ -1,0 +1,168 @@
+/* --- The Relaunch summary ------------------------------------------------- */
+.relaunch {
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #16233c, var(--panel));
+}
+.relaunch-payout {
+  font-size: 20px;
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+}
+.relaunch-detail { font-size: 12px; color: var(--dim); margin-top: 4px; }
+
+.relaunch-button {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  text-align: center;
+  font-weight: 650;
+  /* Inert until it is worth pressing — the button is never a dead end that
+     looks live, and never a live one that looks dead. */
+  opacity: 0.5;
+}
+.relaunch-button.is-affordable {
+  opacity: 1;
+  border-color: var(--accent);
+  background: linear-gradient(180deg, #1d3f56, #16273e);
+  color: var(--accent);
+}
+.relaunch-button.is-affordable:active { transform: translateY(1px); }
+
+.relaunch-held {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 8px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Directives ----------------------------------------------------------- */
+.directive-list { display: grid; gap: 8px; }
+
+.directive {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+  transition: opacity 0.12s ease, border-color 0.12s ease;
+}
+.directive.is-picked {
+  border-color: var(--accent);
+  background: #14283c;
+}
+/* Blocked by a family already taken, or by a full loadout. Dimmed rather than
+   removed, so the rule that blocked it stays visible. */
+.directive.is-blocked { opacity: 0.4; }
+
+.directive-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+}
+.directive-icon { font-size: 17px; }
+.directive-name { font-weight: 640; }
+.directive-family {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--dim);
+}
+.directive.is-picked .directive-family { color: var(--accent); }
+.directive-blurb { font-size: 12px; color: var(--dim); margin-top: 5px; }
+
+/* --- The Schematics tree -------------------------------------------------- */
+.perk-list { display: grid; gap: 8px; margin-bottom: 10px; }
+
+.perk {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  opacity: 0.55;
+  transition: opacity 0.12s ease, border-color 0.12s ease;
+}
+.perk.is-affordable {
+  opacity: 1;
+  border-color: #35507d;
+  background: var(--panel-2);
+}
+.perk.is-affordable:active { transform: translateY(1px); }
+.perk.is-owned { opacity: 1; border-color: #2f6f52; background: #10241c; }
+
+.perk-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+}
+.perk-icon { font-size: 17px; }
+.perk-name { font-weight: 640; }
+.perk-price { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.perk.is-affordable .perk-price { color: var(--good); }
+.perk.is-owned .perk-price { color: var(--good); font-size: 12px; }
+.perk-blurb { font-size: 12px; color: var(--dim); margin-top: 5px; }
+
+/* --- The modal ------------------------------------------------------------ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(3, 6, 12, 0.72);
+  display: grid;
+  align-items: end;
+  justify-items: center;
+}
+.modal-sheet {
+  width: min(100%, 34rem);
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 14px 14px max(18px, env(safe-area-inset-bottom));
+  border-radius: var(--radius) var(--radius) 0 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.modal-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.modal-title { font-size: 17px; margin: 0; }
+.modal-close { color: var(--dim); font-size: 17px; padding: 2px 6px; }
+
+.relaunch-summary { font-size: 13px; color: var(--dim); margin: 0 0 10px; }
+.relaunch-slots {
+  font-size: 12px;
+  color: var(--accent);
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.relaunch-confirm {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: linear-gradient(180deg, #1d3f56, #16273e);
+  color: var(--accent);
+  text-align: center;
+  font-weight: 650;
+}
+.relaunch-confirm:active { transform: translateY(1px); }
+
+/* Centre the sheet once there is room for it to be a dialog rather than a
+   phone sheet. */
+@media (min-width: 700px) {
+  .modal-backdrop { align-items: center; }
+  .modal-sheet { border-radius: var(--radius); }
+}

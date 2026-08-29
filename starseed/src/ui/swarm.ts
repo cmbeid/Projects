@@ -1,5 +1,6 @@
 import { Decimal } from '../num/decimal';
 import { formatCount, formatDecimal } from '../num/format';
+import { RESOURCE_IDS } from '../data/types';
 import type { BuyMode } from '../state/types';
 import type { Store } from '../state/store';
 import { visibleBuildings } from '../game/unlocks';
@@ -43,8 +44,13 @@ export function renderSwarm(store: Store, ticker: Ticker, mount: HTMLElement): v
 
     card.append(el('div', 'building-blurb', building.blurb));
 
+    // Two lines, in the order the decision is made: what pressing this button
+    // would add, then what the stack is already doing.
     const effect = el('div', 'building-effect');
     card.append(effect);
+
+    const owns = el('div', 'building-owned');
+    card.append(owns);
 
     ticker.text(count, () => {
       const owned = store.get().buildings[building.id] ?? 0;
@@ -60,17 +66,52 @@ export function renderSwarm(store: Store, ticker: Ticker, mount: HTMLElement): v
     });
 
     ticker.text(effect, () => {
-      const owned = store.get().buildings[building.id] ?? 0;
-      if (building.capacity) {
-        return `+${formatDecimal(Decimal.from(building.capacity.amount))} storage each`;
+      const marginal = store.marginal(building.id);
+      if (!marginal) return '';
+
+      // Net rates, so a converter's feedstock draw and any thermal drag it puts
+      // on the rest of the swarm arrive as one honest number per resource.
+      //
+      // The building's own resource leads, then the rest of the ladder. Sorting
+      // gains first instead reads well until it doesn't: a converter bought into
+      // an overheated swarm can *lower* the resource it exists to make while
+      // raising another, and burying that under a "+" is the one thing this line
+      // must not do.
+      const own = building.capacity?.resource ?? building.output.resource;
+      const order = [own, ...RESOURCE_IDS.filter((id) => id !== own)];
+
+      const parts: string[] = [];
+      for (const id of order) {
+        const change = marginal.net.get(id) ?? Decimal.ZERO;
+        if (change.isPositive) parts.push(`+${formatDecimal(change)} ${id}/s`);
+        else if (!change.isZero) parts.push(`−${formatDecimal(change.neg())} ${id}/s`);
+
+        const stored = marginal.caps.get(id) ?? Decimal.ZERO;
+        if (stored.isPositive) parts.push(`+${formatDecimal(stored)} ${id} storage`);
       }
+
+      const buying = marginal.count > 1 ? `×${marginal.count} adds ` : 'adds ';
+      // Net rates can land on exactly zero — a purchase whose thermal drag
+      // cancels its own output. Rare, but "adds" followed by nothing is worse.
+      return parts.length > 0 ? buying + parts.join(' · ') : 'adds nothing measurable';
+    });
+
+    ticker.text(owns, () => {
+      const owned = store.get().buildings[building.id] ?? 0;
+      if (owned === 0) return '';
+
       const entry = store.rates().perBuilding.find((r) => r.building.id === building.id);
-      const produced = entry && owned > 0 ? entry.output : Decimal.ZERO;
-      const inputs = building.inputs
-        .map((flow) => `−${formatDecimal(Decimal.from(flow.rate))} ${flow.resource}/s each`)
-        .join(', ');
-      const making = owned > 0 ? `making ${formatDecimal(produced)}/s` : `${building.output.rate}/s each`;
-      return inputs ? `${making} · ${inputs}` : making;
+      if (building.capacity) {
+        const held = Decimal.from(building.capacity.amount * owned);
+        return `${formatCount(owned)} holding ${formatDecimal(held)} ${building.capacity.resource}`;
+      }
+      if (!entry) return '';
+
+      const drawn = entry.inputs
+        .map((flow) => `−${formatDecimal(flow.rate)} ${flow.resource}/s`)
+        .join(' · ');
+      const making = `now ${formatDecimal(entry.output)} ${building.output.resource}/s`;
+      return drawn ? `${making} · ${drawn}` : making;
     });
 
     // Affordability is the only thing here that changes fast enough to matter,

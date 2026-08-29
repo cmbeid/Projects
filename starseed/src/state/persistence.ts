@@ -2,38 +2,76 @@ import { Decimal } from '../num/decimal';
 import type { ResourceId } from '../data/types';
 import { RESOURCE_IDS } from '../data/types';
 import type { ContentIndex } from '../data/indexes';
-import type { BuyMode, GameState } from './types';
+import type { BuyMode, GameState, PrestigeState } from './types';
 
 const STORAGE_KEY = 'starseed:save';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
+
+/**
+ * Versions this loader can still read.
+ *
+ * v1 predates prestige. It is migrated rather than discarded: every field it is
+ * missing has a correct default (no Schematics, no perks, no Relaunches), and
+ * throwing away a player's first three hours because the save shape grew a
+ * field would be indefensible.
+ */
+const READABLE_VERSIONS = [1, 2];
 
 interface SaveFile {
   version: number;
   seed: number;
   resources: Record<string, string>;
   lifetime: Record<string, string>;
+  totals: Record<string, string>;
   buildings: Record<string, number>;
   upgrades: string[];
   automation: string[];
   automationOn: Record<string, boolean>;
   milestones: string[];
+  prestige: {
+    schematics: string;
+    schematicsEarned: string;
+    perks: string[];
+    directives: string[];
+    relaunches: number;
+  };
   settings: { buyMode: BuyMode };
-  stats: { playedSeconds: number; taps: number };
+  stats: { playedSeconds: number; runSeconds: number; taps: number };
   lastSeen: number;
 }
+
+/**
+ * What `hydrate` accepts: any shape a previous release may have written.
+ *
+ * Looser than `Partial<SaveFile>` on purpose — an older save is not a subset of
+ * the current one, it is a different shape whose nested objects are missing
+ * fields too. Every field is checked individually below regardless.
+ */
+export type SaveInput = Partial<Omit<SaveFile, 'stats' | 'prestige'>> & {
+  stats?: Partial<SaveFile['stats']>;
+  prestige?: Partial<SaveFile['prestige']>;
+};
 
 export function createInitialState(now = Date.now()): GameState {
   return {
     seed: (Math.random() * 0xffffffff) >>> 0,
     resources: zeroed(),
     lifetime: zeroed(),
+    totals: zeroed(),
     buildings: {},
     upgrades: [],
     automation: [],
     automationOn: {},
     milestones: [],
+    prestige: {
+      schematics: Decimal.ZERO,
+      schematicsEarned: Decimal.ZERO,
+      perks: [],
+      directives: [],
+      relaunches: 0,
+    },
     settings: { buyMode: 1 },
-    stats: { playedSeconds: 0, taps: 0 },
+    stats: { playedSeconds: 0, runSeconds: 0, taps: 0 },
     accumulator: 0,
     lastSeen: now,
   };
@@ -58,9 +96,9 @@ export function loadState(index: ContentIndex, now = Date.now()): GameState {
   }
   if (!raw) return initial;
 
-  let parsed: Partial<SaveFile>;
+  let parsed: SaveInput;
   try {
-    parsed = JSON.parse(raw) as Partial<SaveFile>;
+    parsed = JSON.parse(raw) as SaveInput;
   } catch {
     return initial;
   }
@@ -70,11 +108,13 @@ export function loadState(index: ContentIndex, now = Date.now()): GameState {
 
 /** Split out from `loadState` so tests can exercise it without a DOM. */
 export function hydrate(
-  parsed: Partial<SaveFile>,
+  parsed: SaveInput,
   index: ContentIndex,
   initial: GameState = createInitialState(),
 ): GameState {
-  if (parsed.version !== SAVE_VERSION) return initial;
+  if (typeof parsed.version !== 'number' || !READABLE_VERSIONS.includes(parsed.version)) {
+    return initial;
+  }
 
   const state = initial;
 
@@ -90,6 +130,9 @@ export function hydrate(
     if (state.resources[id].gt(state.lifetime[id])) {
       state.lifetime[id] = state.resources[id];
     }
+    // v1 had no all-time total. The run's own lifetime is the honest floor for
+    // it: everything that run produced really was produced.
+    state.totals[id] = readDecimal(parsed.totals?.[id]).max(state.lifetime[id]);
   }
 
   if (parsed.buildings && typeof parsed.buildings === 'object') {
@@ -112,10 +155,15 @@ export function hydrate(
     }
   }
 
+  state.prestige = readPrestige(parsed.prestige, index);
+
   const mode = parsed.settings?.buyMode;
   if (mode === 1 || mode === 10 || mode === 'max') state.settings.buyMode = mode;
 
   state.stats.playedSeconds = finiteOr(parsed.stats?.playedSeconds, 0);
+  // v1 saves have no per-run clock, and every v1 save is mid-first-run by
+  // definition, so the all-time figure is exactly right.
+  state.stats.runSeconds = finiteOr(parsed.stats?.runSeconds, state.stats.playedSeconds);
   state.stats.taps = finiteOr(parsed.stats?.taps, 0);
   state.lastSeen = finiteOr(parsed.lastSeen, initial.lastSeen);
 
@@ -128,11 +176,19 @@ export function serialise(state: GameState): SaveFile {
     seed: state.seed,
     resources: stringify(state.resources),
     lifetime: stringify(state.lifetime),
+    totals: stringify(state.totals),
     buildings: { ...state.buildings },
     upgrades: [...state.upgrades],
     automation: [...state.automation],
     automationOn: { ...state.automationOn },
     milestones: [...state.milestones],
+    prestige: {
+      schematics: state.prestige.schematics.toString(),
+      schematicsEarned: state.prestige.schematicsEarned.toString(),
+      perks: [...state.prestige.perks],
+      directives: [...state.prestige.directives],
+      relaunches: state.prestige.relaunches,
+    },
     settings: { ...state.settings },
     stats: { ...state.stats },
     lastSeen: state.lastSeen,
@@ -154,6 +210,33 @@ export function clearSave(): void {
   } catch {
     /* nothing to clean up if storage was never readable */
   }
+}
+
+/**
+ * Prestige is the one part of a save that is never reset, so a corrupt or
+ * outdated field here would follow the player forever. Every id is filtered
+ * against the current tables and every number is re-derived where it can be:
+ * `schematicsEarned` can never be below what is still unspent.
+ */
+function readPrestige(parsed: unknown, index: ContentIndex): PrestigeState {
+  const empty: PrestigeState = {
+    schematics: Decimal.ZERO,
+    schematicsEarned: Decimal.ZERO,
+    perks: [],
+    directives: [],
+    relaunches: 0,
+  };
+  if (!parsed || typeof parsed !== 'object') return empty;
+  const raw = parsed as Partial<SaveFile['prestige']>;
+
+  const schematics = readDecimal(raw.schematics);
+  return {
+    schematics,
+    schematicsEarned: readDecimal(raw.schematicsEarned).max(schematics),
+    perks: uniqueKnown(raw.perks, (id) => index.perkById.has(id)),
+    directives: uniqueKnown(raw.directives, (id) => index.directiveById.has(id)),
+    relaunches: Math.floor(finiteOr(raw.relaunches, 0)),
+  };
 }
 
 function zeroed(): Record<ResourceId, Decimal> {

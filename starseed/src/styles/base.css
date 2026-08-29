@@ -91,6 +91,9 @@ button {
   padding: 9px 0 max(9px, env(safe-area-inset-bottom));
   color: var(--dim);
 }
+/* The Relaunch tab appears mid-game, so the bar has to widen for it rather
+   than reserve a gap for something the player has not been shown yet. */
+.app.has-prestige .tabs { grid-template-columns: repeat(4, 1fr); }
 .tab-icon { font-size: 17px; }
 .tab-label { font-size: 11px; }
 .tab.is-active { color: var(--accent); }
@@ -124,7 +127,8 @@ button {
 .app:not(.is-wide) .panel { display: none; }
 .app:not(.is-wide)[data-active='swarm'] .panel[data-panel='swarm'],
 .app:not(.is-wide)[data-active='tech'] .panel[data-panel='tech'],
-.app:not(.is-wide)[data-active='log'] .panel[data-panel='log'] { display: block; }
+.app:not(.is-wide)[data-active='log'] .panel[data-panel='log'],
+.app:not(.is-wide)[data-active='prestige'] .panel[data-panel='prestige'] { display: block; }
 
 .app.is-wide { grid-template-rows: auto minmax(0, 1fr) auto; }
 .app.is-wide .tabs { display: none; }
@@ -134,5 +138,9 @@ button {
   gap: 14px;
   overflow: hidden;
 }
+.app.is-wide.has-prestige .panels { grid-template-columns: 1.15fr 1fr 1fr 1fr; }
 .app.is-wide .panel { display: block; overflow-y: auto; }
+/* Locked, the fourth column does not exist at all — the wide layout must not
+   hold a gap open for content the player has not been shown. */
+.app.is-wide:not(.has-prestige) .panel[data-panel='prestige'] { display: none; }
 .app.is-wide .mine { max-width: 26rem; }

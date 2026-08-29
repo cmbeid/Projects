@@ -5,17 +5,7 @@ import { RESOURCE_IDS } from '../data/types';
 import type { ContentIndex } from '../data/indexes';
 import type { GameState } from '../state/types';
 import { AUTO_TAPS_PER_SECOND } from './automation';
-
-/**
- * Multipliers from prestige layers. Phases 1-3 have no prestige, so this is
- * always the identity — it exists as a typed seam so layers 4 and 7 plug in
- * without `rates.ts` growing an import it cannot have yet.
- */
-export interface PrestigeMultipliers {
-  byResource: ReadonlyMap<ResourceId, number>;
-}
-
-export const NO_PRESTIGE: PrestigeMultipliers = { byResource: new Map() };
+import { prestigeMultipliers } from './prestige';
 
 /** One building's throughput, before input starvation is accounted for. */
 export interface BuildingRate {
@@ -57,11 +47,11 @@ export interface Rates {
  *               * baseRate
  *               * (1 + Σ additive[building])     // upgrade tiers, flat %
  *               * Π multiplicative[building]     // per-building multipliers
+ *               * Π prestigeBuilding[building]   // directives naming a building
  *
  *   rate(res)   = Σ perBuilding over producers of res
  *               * Π globalMultipliers[res]       // tech, milestone rewards
- *               * prestigeMult(layer1)           // Schematics tree
- *               * prestigeMult(layer2)           // Insight tree
+ *               * prestigeMult(layer1)           // Schematics tree + directives
  *               * softCapPenalty(state)          // thermal load
  *
  * The order is load-bearing. Additive bonuses pool *within* a building before
@@ -69,12 +59,18 @@ export interface Rates {
  * each other and multiplicatively with everything else. Reversing this makes
  * late-game additive upgrades worthless, and is the classic way an idle game's
  * balance quietly dies.
+ *
+ * Prestige enters as plain multipliers at two of those points and nowhere else,
+ * which is what keeps a directive from being able to reach around the order and
+ * do something no upgrade could. Layer 2 (phase 7) folds into the same bundle.
  */
-export function computeRates(
-  state: GameState,
-  index: ContentIndex,
-  prestige: PrestigeMultipliers = NO_PRESTIGE,
-): Rates {
+export function computeRates(state: GameState, index: ContentIndex): Rates {
+  // Derived here rather than passed in. An earlier shape took the bundle as a
+  // parameter and had the cache hold onto it, which invites exactly one bug:
+  // a purchase updates the tree and forgets to tell the cache. There is nothing
+  // to forget if there is nothing to hold.
+  const prestige = prestigeMultipliers(state, index);
+
   const additive = new Map<string, number>();
   const multiplier = new Map<string, number>();
   const global = new Map<ResourceId, number>();
@@ -109,13 +105,15 @@ export function computeRates(
     }
   }
 
+  tap *= prestige.tap;
+
   // --- Thermal load, which scales everything that runs ----------------------
   let heat = 0;
   for (const building of index.content.buildings) {
     const count = state.buildings[building.id] ?? 0;
     if (count > 0) heat += count * building.heat;
   }
-  heat *= cooling;
+  heat *= cooling * prestige.heat;
   const heatPenalty = softCapPenalty(heat);
 
   // --- Per-building throughput ---------------------------------------------
@@ -143,6 +141,7 @@ export function computeRates(
       count *
       (1 + (additive.get(building.id) ?? 0)) *
       (multiplier.get(building.id) ?? 1) *
+      (prestige.byBuilding.get(building.id) ?? 1) *
       (global.get(resource) ?? 1) *
       (prestige.byResource.get(resource) ?? 1) *
       heatPenalty;
@@ -169,7 +168,10 @@ export function computeRates(
       const count = state.buildings[depot.id] ?? 0;
       if (count > 0 && depot.capacity) cap += count * depot.capacity.amount;
     }
-    caps.set(resource.id, Decimal.from(cap * (capacity.get(resource.id) ?? 1)));
+    caps.set(
+      resource.id,
+      Decimal.from(cap * (capacity.get(resource.id) ?? 1) * (prestige.capacity.get(resource.id) ?? 1)),
+    );
   }
 
   return {
@@ -182,6 +184,81 @@ export function computeRates(
     heatPenalty,
     tapYield: Decimal.from(tap),
   };
+}
+
+/** What one more purchase of a building would actually add, per second. */
+export interface Marginal {
+  /**
+   * The change in each resource's **net** rate — extra production minus extra
+   * consumption, after the purchase's thermal load is charged to the whole
+   * swarm. This is the number worth showing: a converter bought into a hot
+   * swarm can lower the net rate of a resource it never touches, and reporting
+   * only its own output would hide that.
+   */
+  net: Map<ResourceId, Decimal>;
+  /** Extra potential output. Not what lands — the engine still throttles converters. */
+  output: Map<ResourceId, Decimal>;
+  input: Map<ResourceId, Decimal>;
+  caps: Map<ResourceId, Decimal>;
+  heat: number;
+  /** Units this covers, so the UI can say what it priced. */
+  count: number;
+}
+
+/**
+ * What buying `count` more of a building is worth, as a difference in the
+ * world's total rates.
+ *
+ * Deliberately *not* "the building's own rate times count". A purchase is not
+ * local: every building adds thermal load, and past the threshold that load
+ * taxes the entire swarm, so the honest answer to "what does one more give me"
+ * is smaller than what the new unit itself produces. Making the player do that
+ * subtraction in their head is exactly how a soft cap turns into a feel-bad
+ * surprise rather than a decision.
+ *
+ * Running the whole pipeline twice also means this cannot drift from §4's order
+ * of operations — there is no second formula here to keep in agreement.
+ */
+export function marginalRates(
+  state: GameState,
+  index: ContentIndex,
+  buildingId: string,
+  count: number,
+  before: Rates = computeRates(state, index),
+): Marginal {
+  const owned = state.buildings[buildingId] ?? 0;
+  // A shallow clone is enough: `computeRates` reads state and never writes it.
+  const after = computeRates(
+    { ...state, buildings: { ...state.buildings, [buildingId]: owned + count } },
+    index,
+  );
+
+  const output = difference(after.output, before.output);
+  const input = difference(after.input, before.input);
+  const net = new Map<ResourceId, Decimal>();
+  for (const id of RESOURCE_IDS) {
+    net.set(id, (output.get(id) ?? Decimal.ZERO).sub(input.get(id) ?? Decimal.ZERO));
+  }
+
+  return {
+    net,
+    output,
+    input,
+    caps: difference(after.caps, before.caps),
+    heat: after.heat - before.heat,
+    count,
+  };
+}
+
+function difference(
+  after: Map<ResourceId, Decimal>,
+  before: Map<ResourceId, Decimal>,
+): Map<ResourceId, Decimal> {
+  const out = new Map<ResourceId, Decimal>();
+  for (const id of RESOURCE_IDS) {
+    out.set(id, (after.get(id) ?? Decimal.ZERO).sub(before.get(id) ?? Decimal.ZERO));
+  }
+  return out;
 }
 
 /**
@@ -208,23 +285,33 @@ function emptyTotals(): Map<ResourceId, Decimal> {
  */
 export class RateCache {
   private cached: Rates | null = null;
+  private marginals = new Map<string, Marginal>();
 
-  constructor(
-    private readonly index: ContentIndex,
-    private prestige: PrestigeMultipliers = NO_PRESTIGE,
-  ) {}
+  constructor(private readonly index: ContentIndex) {}
 
   get(state: GameState): Rates {
-    if (this.cached === null) this.cached = computeRates(state, this.index, this.prestige);
+    if (this.cached === null) this.cached = computeRates(state, this.index);
     return this.cached;
+  }
+
+  /**
+   * Memoised per building and quantity, because the Swarm panel asks for one of
+   * these per card on every frame while the answer changes only when something
+   * is bought or the buy mode moves. Without the cache this would run the whole
+   * pipeline thirteen times a frame to render text that almost never changes.
+   */
+  marginal(state: GameState, buildingId: string, count: number): Marginal {
+    const key = `${buildingId}:${count}`;
+    let found = this.marginals.get(key);
+    if (found === undefined) {
+      found = marginalRates(state, this.index, buildingId, count, this.get(state));
+      this.marginals.set(key, found);
+    }
+    return found;
   }
 
   invalidate(): void {
     this.cached = null;
-  }
-
-  setPrestige(prestige: PrestigeMultipliers): void {
-    this.prestige = prestige;
-    this.invalidate();
+    this.marginals.clear();
   }
 }

@@ -16,6 +16,7 @@ export const RESOURCES: readonly Resource[] = [
     emoji: '⛏️',
     blurb: 'Crushed regolith. Everything the swarm builds starts here.',
     baseCap: 5_000,
+    prestigeWeight: 1,
     unlock: { kind: 'always' },
   },
   {
@@ -24,6 +25,7 @@ export const RESOURCES: readonly Resource[] = [
     emoji: '🔩',
     blurb: 'Ore cooked into something a probe can be built out of.',
     baseCap: 1_000,
+    prestigeWeight: 150,
     unlock: { kind: 'lifetime', resource: 'ore', amount: 8_000 },
   },
   {
@@ -32,9 +34,24 @@ export const RESOURCES: readonly Resource[] = [
     emoji: '🧠',
     blurb: 'Thinking, measured. The swarm buys its own autonomy with this.',
     baseCap: 300,
+    prestigeWeight: 6_000,
     unlock: { kind: 'lifetime', resource: 'alloy', amount: 800 },
   },
 ];
+
+/**
+ * What a unit of each resource is worth to a Relaunch, measured in ore.
+ *
+ * These are deliberately **above** the conversion cost — refining runs at about
+ * 30 ore per alloy and 700 per compute, and these pay roughly five times that.
+ *
+ * Pricing them *at* the conversion cost is the intuitive choice and it is
+ * wrong: it makes refining exactly value-neutral, so every directive that
+ * trades ore for something further up the ladder becomes strictly bad and an
+ * entire family of choices dies. The premium is what makes depth pay — which is
+ * the right thing for the game to reward anyway, because a swarm that thinks is
+ * a further achievement than a swarm that digs.
+ */
 
 /** Ore per manual tap, before any `tap` upgrade multiplies it. */
 export const BASE_TAP_YIELD = 1;

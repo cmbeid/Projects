@@ -266,11 +266,16 @@ Phase budget — the target the balance sim in §9 asserts against:
 
 **Layer 1 — Relaunch.** You fire a seed probe at a fresh system.
 
-- *Resets:* resources, buildings, run upgrades, automators.
+- *Resets:* resources, buildings, run upgrades, automators, and the run's own
+  lifetime totals — so the new system re-gates its content honestly.
 - *Persists:* Schematics and its tree, log entries, statistics, settings.
-- *Currency:* `schematics = floor( (lifetimeOre / 1e12) ^ 0.5 )`. The square root
-  stops a 10× longer run being 10× more rewarding, which is what makes short
-  deliberate runs a viable strategy instead of a mistake.
+- *Currency:* `schematics = floor( (runValue / 1e7) ^ 0.5 )`, where `runValue`
+  is everything the run produced weighted by `Resource.prestigeWeight`. The
+  square root stops a 10× longer run being 10× more rewarding, which is what
+  makes short deliberate runs a viable strategy instead of a mistake.
+
+  Two things here differ from what this section originally said, both from
+  measurement rather than taste — see the status note at the end.
 
 **Layer 2 — Convergence.** The swarm reaches consensus and merges.
 
@@ -435,11 +440,13 @@ the S3 one, the same split alchemy-forge already documents.
 
 ## Status
 
-Phases 1-3 are built: the `Decimal`, the engine, the full three-era content
-ladder, upgrades, unlock gating, the responsive UI and render loop, and the
-automation ladder. The deploy wiring of §10 is done too, ahead of its place in
-the order, so the game is reachable while the rest is built. Both prestige
-layers, the narrative log, offline catch-up and the balance pass are not.
+Phases 1-4 are built: the `Decimal`, the engine, the full three-era content
+ladder, upgrades, unlock gating, the responsive UI and render loop, the
+automation ladder, and prestige layer 1 — Relaunch, the 15-node Schematics
+tree, and the directive loadout picker. The deploy wiring of §10 is done too,
+ahead of its place in the order, so the game is reachable while the rest is
+built. Prestige layer 2, the narrative log, offline catch-up and the balance
+pass are not.
 
 The deploy differs from §10 in one way worth knowing: this project has no PWA
 yet, so `deploy-starseed.yml` has no icons or webmanifest phase. `aws s3
@@ -463,3 +470,58 @@ threshold must stay high enough that total output never falls while the player i
 still building.** The penalty is global, so a low threshold means adding
 converters taxes the miners feeding them, and the swarm visibly shrinks as it
 grows. That reads as a bug, not as difficulty.
+
+The pack files land as `05-prestige.ts` then `06-directives.ts`, the reverse of
+§1's order. The numeric prefixes in `packs/` track dependency order, and a
+directive's unlock gate can name a perk (`Exponential Mandate` needs
+`Superconductors`), so the tree has to come first.
+
+### What phase 4 changed about §6, and why
+
+The Relaunch payout in §6 was originally `floor((lifetimeOre / 1e12) ^ 0.5)`.
+Building it that way exposed a design bug worth recording, because the same
+trap is waiting in phase 7 for layer 2.
+
+**Paying on ore alone kills the directive system.** Ore is ~88% of what a run
+produces by volume, so a payout that reads only ore makes alloy and compute
+invisible to prestige — and every directive that trades ore for something
+further up the ladder becomes *strictly bad*. Measured against a greedy
+simulated player, the nine directives spanned 0.31× to 2.01× of the
+no-directive baseline: three were dominant, four were worse than taking
+nothing at all. A loadout with a single correct answer is not a choice, and
+the "meaningful choices" pillar is load-bearing.
+
+The fix is `Resource.prestigeWeight` and a `runValue` that sums the whole
+ladder through it. Two details matter:
+
+- **The weights must exceed the conversion cost, not match it.** Refining runs
+  at ~30 ore per alloy and ~700 per compute. Weighting at exactly those makes
+  refining precisely value-neutral, which leaves up-ladder directives no better
+  than before. The shipped weights (1 / 150 / 6000) pay roughly five times the
+  conversion cost, so depth pays — which is the right thing to reward anyway: a
+  swarm that thinks is a further achievement than a swarm that digs.
+- **The divisor moves with them.** 1e7 puts the first Relaunch at ~2h45m, the
+  middle of §5's 2h-5h window, with 6 Schematics at 4h and 8 at 5h for
+  waiting. `RELAUNCH_MINIMUM = 3` keeps the button from being offered while
+  pressing it would still be a trap. `prestige.test.ts` pins the window, and it
+  fails if the divisor, the exponent or any weight is edited without re-checking.
+
+After both changes the directive spread is 0.43×-1.17× — a 2.7× span rather
+than 6.5×. That is good enough to play and not yet good enough to stop. Three
+things are known to be left, all of them phase 7's:
+
+- **The Tempo and Logistics families are still slightly negative** (1.05×-1.17×)
+  against taking nothing. Because a loadout may hold *fewer* than three
+  directives, "worse than nothing" is a real flaw rather than a rounding error.
+- **Thermal effects are close to inert.** Heat peaks around 200 against a
+  threshold of 2000, so `heat` multipliers — the entire stated cost of Rapid
+  Fission and the entire benefit of Cold Logic — currently buy nothing. Lowering
+  the threshold is the obvious fix and is exactly what the paragraph above warns
+  against, so it belongs in a balance pass with `simulate.ts` to check it, not
+  in a content edit.
+- **Storage directives cannot be measured yet.** `Wide Holds` pays off only
+  while the player is away, so it reads as neutral in any continuous
+  simulation. It cannot be judged until offline progress lands in phase 6.
+
+All of these were measured with a greedy cheapest-first agent, which is a crude
+stand-in for a player. `scripts/simulate.ts` (§9) is where a better one belongs.
