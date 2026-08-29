@@ -364,7 +364,11 @@ silent blank.
 "Trust: {trust}"                       → "Trust: 3"
 ```
 
-**Emphasis**, applied after interpolation:
+**Emphasis** is scanned in the same left-to-right pass as interpolation, not
+as a second pass over the result — so a variable's own value is always
+inserted as plain text and never rescanned for markup. A `pocket` entry that
+happens to contain a literal `*` can't accidentally turn the rest of the
+sentence bold.
 
 | Syntax | Renders as |
 | --- | --- |

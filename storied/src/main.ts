@@ -1,9 +1,14 @@
-/**
- * Placeholder boot. The shelf and reader land in later phases (see PLAN.md
- * §9); for now this just proves the manifest and demo story parse and
- * validate cleanly end to end, in the browser as well as under vitest.
- */
+import './styles/base.css';
+import './styles/reader.css';
 import { parseManifest, parseStory } from './content/parse';
+import { mountReader } from './ui/reader';
+import type { AssetResolver } from './ui/theme';
+
+/** The folder a manifest entry's `path` lives in, e.g. "lighthouse". */
+function storyFolder(entryPath: string): string {
+  const slash = entryPath.lastIndexOf('/');
+  return slash === -1 ? '' : entryPath.slice(0, slash);
+}
 
 async function main(): Promise<void> {
   const root = document.getElementById('app');
@@ -12,15 +17,22 @@ async function main(): Promise<void> {
   const manifestRes = await fetch('./content/index.json');
   const manifest = parseManifest(await manifestRes.json());
 
-  const list = document.createElement('ul');
-  for (const entry of manifest.stories) {
-    const storyRes = await fetch(`./content/${entry.path}`);
-    const story = parseStory(await storyRes.json());
-    const item = document.createElement('li');
-    item.textContent = `${story.title} — ${Object.keys(story.nodes).length} nodes`;
-    list.append(item);
+  // No shelf yet (phase 4) — this boots straight into the first story in
+  // the manifest, per PLAN.md §9's phase-3 scope.
+  const entry = manifest.stories[0];
+  if (!entry) {
+    root.textContent = 'No stories in the manifest yet.';
+    return;
   }
-  root.append(list);
+
+  const folder = storyFolder(entry.path);
+  const resolveAsset: AssetResolver = (relativeSrc) =>
+    folder ? `./content/${folder}/${relativeSrc}` : `./content/${relativeSrc}`;
+
+  const storyRes = await fetch(`./content/${entry.path}`);
+  const story = parseStory(await storyRes.json());
+
+  mountReader(root, story, resolveAsset);
 }
 
 void main();

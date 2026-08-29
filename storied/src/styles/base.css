@@ -1,0 +1,42 @@
+/* Reset and page-level defaults. Colors and fonts beyond this live entirely
+   in --sy-* custom properties, set by ui/theme.ts — nothing here hardcodes a
+   story's palette. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #05080f;
+  font-family: -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+.is-hidden {
+  visibility: hidden;
+}

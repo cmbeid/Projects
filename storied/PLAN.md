@@ -479,5 +479,62 @@ a one-line pure predicate for `story.allowBack`; the stack itself is phase
 `tests/session.test.ts`), including a test that `choose` never mutates the
 state it was handed. Typecheck, validate, and build are all still clean.
 
-Phase 3 (`ui/`: blocks, choice deck, the responsive shell and its three
-modes, theme tokens — a story becomes readable on a phone) is next.
+**Phase 3 is done — a story is now actually readable on a phone.** Built:
+
+- `src/content/inline.ts` — interpolation and emphasis in one left-to-right
+  scan (never `innerHTML`; `<script>` in content renders as literal text).
+  This is a small, deliberate correction to format.md §9, whose wording
+  originally read as if emphasis was a *second* pass over the interpolated
+  result — that would let a variable's own value (e.g. an inventory item
+  with a stray `*` in it) accidentally open or close markup. §9 now says the
+  scan is combined, and a substituted value is always opaque text.
+- `src/ui/layout.ts` — `modeForWidth` (`compact` / `medium` / `wide`) and
+  `watchLayout`, following `alchemy-forge/src/ui/layout.ts`'s pure-function
+  pattern for the mode and `starseed/src/ui/layout.ts`'s live `matchMedia`
+  approach for the watcher, since the mode here depends only on viewport
+  width, not a measured element.
+- `src/ui/theme.ts` — `applyTheme` and `mergeTheme`, writing every format.md
+  §8 token to `--sy-*` custom properties with the clamps §8 promises
+  (`parse.ts` only checks the values are finite — range-checking belongs at
+  the point a theme is applied, not in the parser). The cross-fade PLAN.md
+  §4 calls for is a CSS `transition` on the properties that *consume* the
+  variables, not on the variables themselves — transitioning color-typed
+  custom properties has inconsistent browser support.
+- `src/ui/reader.ts` — the one stateful module. Owns the back stack (an
+  array of prior `PlayState`s, exactly as `engine/session.ts`'s
+  `allowsBack` doc comment describes — the engine still computes nothing
+  about "back"), renders blocks through `inline.ts` and applies each node's
+  merged theme before painting, renders the choice deck from `available()`
+  and calls `choose()` on click, and shows an ending card with no further
+  action when `currentNode(...).ending` is set (no restart — still phase 5).
+- `src/styles/{base,reader}.css` — every color/font/radius comes from a
+  `--sy-*` property; nothing here hardcodes a story's palette.
+- `src/main.ts` rewritten to boot straight into the manifest's first story
+  and mount the reader — still no shelf (phase 4).
+
+**Wide mode's "two panes" needed a real design decision the phase-3 plan
+left open.** A node's blocks are one ordered array that can interleave text
+and images in a specific narrative sequence, and splitting them into a
+permanent "media pane" / "prose pane" would have broken that order for any
+node with more than one image. What's built instead: in `wide` layout only,
+the node's *first* image (if any) is pulled into a left-hand `.sy-scene`
+panel and excluded from the prose column; everything else renders inline,
+in its original order, exactly as it does in `compact`/`medium`. This means
+`reader.ts`'s `render()` has to know the current layout mode and re-run
+when it changes — `watchLayout`'s callback now triggers a full re-render,
+not just a class swap.
+
+Verified by hand with a throwaway Playwright script (not committed) driving
+the built app at 390px, 840px, and 1280px: the `hasLantern`-gated choice
+shows correctly disabled before the tide-pool detour and enabled after; the
+`door` node's accent-color override applies; the back button restores the
+tide-pool node's own choice list, not just the previous screen; the layout
+mode attribute is correct at all three widths. `npm run typecheck`, `npm
+test` (94 tests, 27 new — `inline.test.ts` and `layout.test.ts`), `npm run
+validate`, and `npm run build` are all clean. One new dev dependency:
+`jsdom`, needed for `inline.test.ts` to construct real DOM nodes outside a
+browser (per-file `@vitest-environment jsdom` pragma; every other test file
+stays in the faster default node environment).
+
+Phase 4 (shelf, per-story saves and resume, graceful handling of a missing
+or broken story) is next.
