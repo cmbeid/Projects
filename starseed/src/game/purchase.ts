@@ -57,6 +57,30 @@ export function maxAffordable(building: Building, owned: number, budget: Decimal
   return count;
 }
 
+/**
+ * Total storage a depot stack contributes: `capacity(n) = amount * (growth^n
+ * - 1) / (growth - 1)` — the same closed form as `sumCost`, with the depot's
+ * own `capacity.amount` standing in for `cost.base` and no `growth^owned`
+ * prefix, since a stack's total contribution is always counted from zero.
+ *
+ * Deliberately geometric rather than `count * amount`. A depot that stores the
+ * resource it is priced in has to keep pace with its own cost curve, or the
+ * two diverge — cost climbing exponentially against a cap growing only
+ * linearly — and every run eventually reaches a depot whose price exceeds the
+ * most ore the player can ever hold at once, permanently unaffordable no
+ * matter how long they wait. Charging the same growth rate against capacity
+ * that the cost curve already charges against price keeps the ratio between
+ * them constant instead of unbounded, which is what makes "buy more storage"
+ * stay reachable forever rather than becoming a trap at some large but
+ * reachable stack size.
+ */
+export function capacityContribution(building: Building, count: number): Decimal {
+  if (!building.capacity || count <= 0) return Decimal.ZERO;
+  const growth = building.cost.growth;
+  const numerator = Decimal.from(growth).pow(count).sub(Decimal.ONE);
+  return Decimal.from(building.capacity.amount).mul(numerator).div(Decimal.from(growth - 1));
+}
+
 /** How many units a buy mode would purchase, given what the player can pay. */
 export function countForMode(
   building: Building,

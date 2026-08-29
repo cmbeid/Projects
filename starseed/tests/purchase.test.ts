@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Decimal, dec } from '../src/num/decimal';
-import { costOf, countForMode, maxAffordable, sumCost } from '../src/game/purchase';
+import { capacityContribution, costOf, countForMode, maxAffordable, sumCost } from '../src/game/purchase';
 import type { Building } from '../src/data/types';
+import { CONTENT } from '../src/data/index';
 
 function priced(base: number, growth: number): Building {
   return {
@@ -11,6 +12,15 @@ function priced(base: number, growth: number): Building {
     cost: { resource: 'ore', base, growth },
     heat: 0,
     unlock: { kind: 'always' },
+  };
+}
+
+/** A depot: stores what it costs, same as every shipped storage building. */
+function depot(base: number, growth: number, amount: number): Building {
+  return {
+    ...priced(base, growth),
+    output: { resource: 'ore', rate: 0 },
+    capacity: { resource: 'ore', amount },
   };
 }
 
@@ -97,6 +107,78 @@ describe('max affordable', () => {
     const b = priced(10, 1.1);
     expect(maxAffordable(b, 0, Decimal.ZERO)).toBe(0);
     expect(maxAffordable(b, 0, dec(-50))).toBe(0);
+  });
+});
+
+describe('storage contribution', () => {
+  it('matches summing each unit’s contribution one at a time', () => {
+    const sumByLoop = (building: Building, count: number): Decimal => {
+      let total = Decimal.ZERO;
+      const amount = building.capacity!.amount;
+      const growth = building.cost.growth;
+      for (let i = 0; i < count; i += 1) total = total.add(dec(amount).mul(dec(growth).pow(i)));
+      return total;
+    };
+
+    for (const growth of [1.07, 1.1, 1.15]) {
+      const d = depot(600, growth, 50_000);
+      // Zero is covered separately below — log10 of a zero Decimal throws,
+      // same as it does everywhere else in this codebase.
+      for (const count of [1, 5, 40, 200]) {
+        expect(capacityContribution(d, count).log10()).toBeCloseTo(sumByLoop(d, count).log10(), 6);
+      }
+    }
+  });
+
+  it('is zero for a non-positive count, or a building with no capacity', () => {
+    const d = depot(600, 1.1, 50_000);
+    expect(capacityContribution(d, 0).isZero).toBe(true);
+    expect(capacityContribution(d, -3).isZero).toBe(true);
+    expect(capacityContribution(priced(600, 1.1), 5).isZero).toBe(true);
+  });
+
+  it('grows faster than a flat count*amount, which is the whole point', () => {
+    const d = depot(600, 1.1, 50_000);
+    // Equal at the first unit, then the geometric curve pulls ahead — the gap
+    // is what keeps the building's own cost from ever catching up to it.
+    expect(capacityContribution(d, 1).toNumber()).toBeCloseTo(50_000, 6);
+    expect(capacityContribution(d, 10).toNumber()).toBeGreaterThan(10 * 50_000);
+  });
+
+  /**
+   * The regression this fix exists for. A depot priced in the resource it
+   * stores has to keep pace with its own cost curve or every run eventually
+   * reaches a unit that costs more than the player could ever hold — reported
+   * directly against the deployed game, at exactly 103 Ore Depots (cost
+   * 11.0M against a cap that could only ever reach 10.3M).
+   *
+   * Checked against the real shipped content, not a synthetic fixture, and
+   * without the capacity-multiplier upgrade — the worse of the two cases —
+   * across far more units than a single run plausibly reaches. If a future
+   * balance pass ever retunes one of these numbers back into a trap, this is
+   * what catches it.
+   */
+  it('keeps every shipped depot affordable no matter how many are owned', () => {
+    const depots = CONTENT.buildings.filter((b) => b.capacity && b.capacity.resource === b.cost.resource);
+    expect(depots.length).toBeGreaterThan(0); // fails loudly if the shape of the data ever changes
+
+    for (const d of depots) {
+      const resource = CONTENT.resources.find((r) => r.id === d.capacity!.resource)!;
+      for (const owned of [0, 1, 10, 50, 100, 500, 2_000, 10_000]) {
+        const cost = costOf(d, owned);
+        const cap = dec(resource.baseCap).add(capacityContribution(d, owned));
+        expect(cost.lte(cap)).toBe(true);
+      }
+    }
+  });
+
+  it('specifically fixes the reported case: 103 Ore Depots is affordable again', () => {
+    const oredepot = CONTENT.buildings.find((b) => b.id === 'oredepot')!;
+    const ore = CONTENT.resources.find((r) => r.id === 'ore')!;
+    const cost = costOf(oredepot, 103);
+    const cap = dec(ore.baseCap).add(capacityContribution(oredepot, 103));
+    expect(cost.toNumber()).toBeCloseTo(11_005_197, -2);
+    expect(cap.gte(cost)).toBe(true);
   });
 });
 

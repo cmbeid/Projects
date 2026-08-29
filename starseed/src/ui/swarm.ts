@@ -4,6 +4,7 @@ import { RESOURCE_IDS } from '../data/types';
 import type { BuyMode } from '../state/types';
 import type { Store } from '../state/store';
 import { visibleBuildings } from '../game/unlocks';
+import { capacityContribution } from '../game/purchase';
 import type { Ticker } from './ticker';
 import { el } from './ticker';
 
@@ -111,7 +112,10 @@ export function renderSwarm(store: Store, ticker: Ticker, mount: HTMLElement): v
       if (owned === 0) return '';
 
       if (building.capacity) {
-        const held = Decimal.from(building.capacity.amount * owned);
+        // Matches the geometric series `caps` is built from — a flat
+        // `amount * owned` here would understate a stack that has any real
+        // size, and disagree with the cap shown on the rail above it.
+        const held = capacityContribution(building, owned);
         return `${formatCount(owned)} holding ${formatDecimal(held)} ${building.capacity.resource}`;
       }
       // Paused: every rate reads as zero, and "now 0 ore/s · −0 alloy/s" is

@@ -5,6 +5,7 @@ import { RESOURCE_IDS } from '../data/types';
 import type { ContentIndex } from '../data/indexes';
 import type { GameState } from '../state/types';
 import { AUTO_TAPS_PER_SECOND } from './automation';
+import { capacityContribution } from './purchase';
 import { prestigeMultipliers } from './prestige';
 
 /** One building's throughput, before input starvation is accounted for. */
@@ -170,14 +171,16 @@ export function computeRates(state: GameState, index: ContentIndex): Rates {
   // --- Storage --------------------------------------------------------------
   const caps = emptyTotals();
   for (const resource of index.content.resources) {
-    let cap = resource.baseCap;
+    let cap = Decimal.from(resource.baseCap);
     for (const depot of index.depotsOf.get(resource.id) ?? []) {
       const count = state.buildings[depot.id] ?? 0;
-      if (count > 0 && depot.capacity) cap += count * depot.capacity.amount;
+      if (count > 0) cap = cap.add(capacityContribution(depot, count));
     }
     caps.set(
       resource.id,
-      Decimal.from(cap * (capacity.get(resource.id) ?? 1) * (prestige.capacity.get(resource.id) ?? 1)),
+      cap
+        .mulNumber(capacity.get(resource.id) ?? 1)
+        .mulNumber(prestige.capacity.get(resource.id) ?? 1),
     );
   }
 
