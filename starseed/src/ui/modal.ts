@@ -1,3 +1,6 @@
+import { formatDecimal, formatDuration } from '../num/format';
+import type { OfflineSummary } from '../game/offline';
+import type { ContentIndex } from '../data/indexes';
 import { el } from './ticker';
 
 /**
@@ -58,4 +61,60 @@ export function closeModal(): void {
 
 export function isModalOpen(): boolean {
   return host !== null && !host.classList.contains('is-hidden');
+}
+
+/**
+ * The welcome-back sheet.
+ *
+ * Says plainly when the cap bit: silently crediting less than the player was
+ * away would read as a bug, and silently crediting more would read as a
+ * different one.
+ */
+export function showWelcomeBack(summary: OfflineSummary, index: ContentIndex): void {
+  const body = el('div', 'welcome-back');
+
+  body.append(
+    el(
+      'p',
+      undefined,
+      summary.capped
+        ? `Away ${formatDuration(summary.awaySeconds)} — credited the ${formatDuration(summary.creditedSeconds)} cap.`
+        : `Away ${formatDuration(summary.awaySeconds)}. All of it credited.`,
+    ),
+  );
+
+  const gains = [...summary.produced].filter(([, amount]) => amount.isPositive);
+  if (gains.length > 0) {
+    const stats = el('dl', 'stats');
+    for (const [id, amount] of gains) {
+      const resource = index.content.resources.find((r) => r.id === id);
+      stats.append(el('dt', undefined, resource?.name ?? id));
+      stats.append(el('dd', undefined, formatDecimal(amount)));
+    }
+    body.append(stats);
+  }
+
+  if (summary.hitStorage.length > 0) {
+    const names = summary.hitStorage
+      .map((id) => index.content.resources.find((r) => r.id === id)?.name ?? id)
+      .join(', ');
+    body.append(el('p', 'log-remaining', `${names} filled up while you were away. More storage helps.`));
+  }
+
+  const fragments = summary.logUnlocked
+    .map((id) => index.content.log.find((entry) => entry.id === id))
+    .filter((entry) => entry !== undefined);
+  for (const fragment of fragments) {
+    const entry = el('div', 'log-entry');
+    entry.append(el('div', 'log-name', fragment.title));
+    entry.append(el('div', 'log-blurb', fragment.text));
+    body.append(entry);
+  }
+
+  const ok = el('button', 'relaunch-confirm', 'Back to it');
+  ok.type = 'button';
+  ok.addEventListener('click', () => closeModal());
+  body.append(ok);
+
+  openModal({ title: 'Welcome back', body });
 }
