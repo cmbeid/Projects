@@ -1,5 +1,7 @@
 import { formatDecimal } from '../num/format';
 import { Decimal } from '../num/decimal';
+import type { ContentIndex } from '../data/indexes';
+import type { Effect } from '../data/types';
 import type { Store } from '../state/store';
 import type { Ticker } from './ticker';
 import { el } from './ticker';
@@ -39,6 +41,9 @@ export function renderTech(store: Store, ticker: Ticker, mount: HTMLElement): vo
       );
       card.append(head);
       card.append(el('div', 'upgrade-blurb', upgrade.blurb));
+      for (const effect of upgrade.effects) {
+        card.append(el('div', 'upgrade-effect', describeEffect(effect, store.index)));
+      }
 
       ticker.flag(card, 'is-affordable', () =>
         store.get().resources[upgrade.cost.resource].gte(Decimal.from(upgrade.cost.amount)),
@@ -100,4 +105,36 @@ export function renderTech(store: Store, ticker: Ticker, mount: HTMLElement): vo
     );
     mount.append(card);
   }
+}
+
+/** What an upgrade actually does, in the same terms `rates.ts` computes it in. */
+function describeEffect(effect: Effect, index: ContentIndex): string {
+  switch (effect.kind) {
+    case 'additive': {
+      const building = index.buildingById.get(effect.building);
+      return `+${Math.round(effect.amount * 100)}% ${building?.name ?? effect.building} output`;
+    }
+    case 'multiplier': {
+      const building = index.buildingById.get(effect.building);
+      return `${formatPercent(effect.factor)} ${building?.name ?? effect.building} output`;
+    }
+    case 'global': {
+      const resource = index.content.resources.find((r) => r.id === effect.resource);
+      return `${formatPercent(effect.factor)} ${resource?.name ?? effect.resource} production`;
+    }
+    case 'capacity': {
+      const resource = index.content.resources.find((r) => r.id === effect.resource);
+      return `${formatPercent(effect.factor)} ${resource?.name ?? effect.resource} storage`;
+    }
+    case 'cooling':
+      return `${formatPercent(effect.factor)} heat generated`;
+    case 'tap':
+      return `${formatPercent(effect.factor)} tap yield`;
+  }
+}
+
+/** A factor as the percent change it represents: 2 → "+100%", 0.8 → "-20%". */
+function formatPercent(factor: number): string {
+  const pct = Math.round((factor - 1) * 100);
+  return pct >= 0 ? `+${pct}%` : `${pct}%`;
 }
