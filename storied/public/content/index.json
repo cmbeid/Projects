@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "stories": [
+    {
+      "id": "lighthouse",
+      "title": "The Lighthouse at Vail",
+      "author": "A. Writer",
+      "blurb": "A dock, a locked door, and a light that shouldn't be on.",
+      "path": "lighthouse/story.json",
+      "cover": "lighthouse/images/cover.png",
+      "tags": ["mystery", "short"],
+      "estimatedMinutes": 8
+    }
+  ]
+}

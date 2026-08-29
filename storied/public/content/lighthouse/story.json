@@ -1,0 +1,87 @@
+{
+  "formatVersion": 1,
+  "id": "lighthouse",
+  "title": "The Lighthouse at Vail",
+  "author": "A. Writer",
+  "start": "arrival",
+  "allowBack": true,
+  "variables": { "hasLantern": false, "trust": 0, "pocket": [] },
+  "theme": {
+    "mode": "dark",
+    "palette": { "accent": "#5fb3d9" },
+    "font": { "body": "serif", "display": "serif" }
+  },
+  "nodes": {
+    "arrival": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "The light was not supposed to be on." },
+        { "type": "image", "src": "images/dock.png", "alt": "A rotting jetty vanishing into fog, a lit window beyond it." },
+        { "type": "text", "text": "The dock is empty. Fog hides the base of the lighthouse, but its lamp is lit — and it hasn't worked in eleven years." }
+      ],
+      "choices": [
+        { "text": "Walk the dock toward the light", "to": "door" },
+        { "text": "Check the tide pools for the old lantern", "to": "tidepools" }
+      ]
+    },
+    "tidepools": {
+      "blocks": [
+        { "type": "text", "text": "Under a shelf of rock, wedged in the weed: a lantern, glass intact." }
+      ],
+      "onEnter": [ { "var": "hasLantern", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Take it and head for the door", "to": "door", "set": [ { "var": "pocket", "op": "push", "value": "lantern" } ] }
+      ]
+    },
+    "door": {
+      "blocks": [
+        { "type": "text", "text": "The door is shut. You have *{trust}* reasons to knock instead of trying the latch." },
+        { "type": "text", "style": "whisper", "text": "Someone is already inside." }
+      ],
+      "onEnter": [ { "var": "trust", "op": "add", "value": 1 } ],
+      "theme": { "palette": { "accent": "#8b2f2f" } },
+      "choices": [
+        { "text": "Knock", "to": "knocked" },
+        {
+          "text": "Force the latch with the lantern's edge",
+          "to": "forced",
+          "if": { "var": "hasLantern", "eq": true },
+          "whenLocked": "disable",
+          "lockedText": "You have nothing stiff enough to force it.",
+          "set": [ { "var": "trust", "op": "sub", "value": 2 } ]
+        }
+      ]
+    },
+    "knocked": {
+      "blocks": [
+        { "type": "text", "text": "Footsteps. The door opens on its own weight before anyone answers." }
+      ],
+      "choices": [
+        { "text": "Go up to the lamp room", "to": "ending-good" }
+      ]
+    },
+    "forced": {
+      "blocks": [
+        { "type": "text", "text": "The latch gives with a crack that echoes off the water. Whatever was inside heard that too." }
+      ],
+      "choices": [
+        {
+          "text": "Go up to the lamp room anyway",
+          "to": "ending-bad",
+          "if": { "any": [ { "visited": "tidepools" }, { "var": "trust", "lte": -1 } ] }
+        }
+      ]
+    },
+    "ending-good": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The lamp is burning on its own, no keeper in sight — and for the first time in eleven years, it isn't alone." }
+      ],
+      "ending": { "kind": "good", "title": "The Light Keeps Itself" }
+    },
+    "ending-bad": {
+      "blocks": [
+        { "type": "text", "style": "terminal", "text": "The lamp goes dark the moment you reach the top of the stairs." }
+      ],
+      "ending": { "kind": "bad", "title": "Eleven Years, and Then You" }
+    }
+  }
+}

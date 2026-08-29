@@ -403,9 +403,48 @@ Specifically worth checking by hand, because no test covers the feel:
 
 ## Status
 
-**Nothing is built.** This document is the plan only — no scaffold, no code, no
-content. The directory holds this file and nothing else.
+**Phase 1 of §9 is done.** Built: the scaffold (`package.json`, `tsconfig.json`
+copied from `starseed`, `vite.config.ts`, `index.html`), `format.md` in full
+(13 sections), `src/content/types.ts`, `src/content/parse.ts`
+(`unknown` -> `Story`/`Manifest`, every failure path-tagged, no `as` outside
+the one unavoidable object-narrowing cast in `asRecord`), and
+`src/content/validate.ts` — integrity checks plus two graph passes:
+reachability (errors) and an unsatisfiable-condition check (warnings). The
+`lighthouse` demo story under `public/content/` exercises every block style,
+every condition/mutation shape, both endings, and a node-level theme
+override; `npm run validate` passes on it cleanly. 46 tests across
+`tests/parse.test.ts` and `tests/content.test.ts` pass, `npm run typecheck` is
+clean under the strict tsconfig, and `npm run build` produces a working
+`dist/` with `public/content/` copied through to `dist/content/` untouched —
+confirming the §1 rationale for using `public/` rather than a top-level
+`content/` holds in practice.
 
-Phase 1 of §9 is the next step, and it starts with `format.md` rather than with
-the scaffold: the format is the contract everything else implements, and writing
-it first is what stops the code from quietly becoming the spec.
+A minimal `src/main.ts` was added ahead of its place in the build order
+(phase 3+): without it `index.html`'s module script 404s, which is a worse
+starting state than a 10-line placeholder that fetches the manifest, parses
+every story, and lists titles into the page. It has no styling and is not the
+reader — that's still phases 3-5's work.
+
+Two things worth knowing about `validate.ts`'s reachability check, since the
+plan's own wording (§6) undersold the actual tradeoff:
+
+- **Reachability (errors) deliberately ignores `if` conditions entirely** —
+  a node behind a conditional choice is always counted reachable. This is a
+  one-directional simplification, not the "walk the unlock graph, checking
+  satisfiability" approach `starseed/src/data/reachability.ts` uses: it can
+  never produce a false "unreachable" error (the thing that would wrongly
+  block a deploy), but it also can't catch a choice that's technically
+  reachable and practically never satisfiable — that's the separate,
+  softer warning below.
+- **The "can this condition ever be true" warning** uses a bounded,
+  per-variable possible-value model (every literal a `set`/`push` ever
+  assigns anywhere in the story, unioned; a relative op — `add`/`sub`/
+  `toggle`/`remove`/a list `set` — marks that variable untrackable rather
+  than guessed at) that only ever under-reports, never flags a condition
+  that could actually be true on some real playthrough. `not` and `visited`
+  aren't modeled and are always treated as satisfiable for the same reason.
+  Good enough to catch the stated goal — a typo in a variable name or a
+  comparison value — without the complexity of true path-sensitive analysis.
+
+Phase 2 (`src/engine/`: conditions, mutations, session, back stack — still no
+DOM) is next.
