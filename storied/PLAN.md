@@ -446,5 +446,38 @@ plan's own wording (§6) undersold the actual tradeoff:
   Good enough to catch the stated goal — a typo in a variable name or a
   comparison value — without the complexity of true path-sensitive analysis.
 
-Phase 2 (`src/engine/`: conditions, mutations, session, back stack — still no
-DOM) is next.
+**Phase 2 is done.** Built `src/engine/`:
+
+- `types.ts` — `PlayState`: `storyId`, `nodeId`, `vars`, `visited` (each node
+  id at most once, first-visit order), `taken` (`"nodeId:choiceIndex"` for
+  every `once` choice spent). Immutable — every engine function returns a new
+  one.
+- `conditions.ts` — `evaluateCondition`, the runtime counterpart to
+  `validate.ts`'s static "could this ever be true" analysis: this one asks
+  "is it true right now" against a live `vars`/`visited`. A missing variable
+  or an operator applied to the wrong type evaluates `false` rather than
+  throwing — validated content shouldn't hit this, but a live playthrough
+  failing closed beats a crash.
+- `mutate.ts` — `applyMutations`, immutable, same defensive-typing stance.
+- `session.ts` — `startSession`, `available`, `choose`, plus `currentNode`,
+  `isEnding`, and `allowsBack`. `choose` follows format.md §7's mutation
+  order exactly (a choice's own `set` before the destination's `onEnter`) —
+  pinned by a test that uses two different ops specifically so the order is
+  observable, not just plausible. A `whenLocked: "hide"` choice (the
+  default) that's currently locked is omitted from `available()` entirely,
+  never returned locked, so the UI never has to re-derive that rule itself.
+
+**The back stack isn't in `session.ts`.** The plan's own file-tree comment
+listed "back" as part of this module, but `PlayState` has nothing to invert a
+`set` mutation with, and building a general inverse was never the design —
+PLAN.md §3 already says the back stack is snapshots the *reader* keeps, not
+something the engine computes. What actually landed here is `allowsBack(story)`,
+a one-line pure predicate for `story.allowBack`; the stack itself is phase
+3's `ui/reader.ts`, once there's a caller to hold it.
+
+73 tests pass (27 new, in `tests/conditions.test.ts` and
+`tests/session.test.ts`), including a test that `choose` never mutates the
+state it was handed. Typecheck, validate, and build are all still clean.
+
+Phase 3 (`ui/`: blocks, choice deck, the responsive shell and its three
+modes, theme tokens — a story becomes readable on a phone) is next.
