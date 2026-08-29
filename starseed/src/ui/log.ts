@@ -4,33 +4,48 @@ import type { Ticker } from './ticker';
 import { el } from './ticker';
 
 /**
- * Milestones reached, newest first, plus a few run statistics.
+ * The narrative feed, the milestone checklist, and a few run statistics.
  *
- * Phase 5 hangs the narrative log off the same milestone conditions, which is
- * why this panel is already shaped as a feed rather than a checklist.
+ * Two different things read the same unlock machinery: a milestone is "you
+ * got here", shown as a short pip, while a log entry is "here is what that
+ * meant" — the fragment worth reading, not just checking off. Log entries
+ * never toast; they are found by opening this panel, not interrupted for.
  */
 export function renderLog(store: Store, ticker: Ticker, mount: HTMLElement): void {
   mount.replaceChildren();
 
   mount.append(el('h2', 'panel-title', 'Log'));
 
-  const reached = new Set(store.get().milestones);
-  const entries = store.index.content.milestones.filter((m) => reached.has(m.id)).reverse();
+  const unlocked = new Set(store.get().log);
+  const fragments = store.index.content.log.filter((entry) => unlocked.has(entry.id)).reverse();
 
-  if (entries.length === 0) {
+  if (fragments.length === 0) {
     mount.append(el('p', 'empty', 'Nothing has happened yet. Mine something.'));
   } else {
     const feed = el('div', 'log-feed');
-    for (const milestone of entries) {
+    for (const fragment of fragments) {
       const entry = el('div', 'log-entry');
-      entry.append(el('div', 'log-name', milestone.name));
-      entry.append(el('div', 'log-blurb', milestone.blurb));
+      entry.append(el('div', 'log-name', fragment.title));
+      entry.append(el('div', 'log-blurb', fragment.text));
       feed.append(entry);
     }
     mount.append(feed);
   }
 
-  const remaining = store.index.content.milestones.length - entries.length;
+  mount.append(el('h2', 'panel-title', 'Milestones'));
+
+  const reached = new Set(store.get().milestones);
+  const milestones = store.index.content.milestones.filter((m) => reached.has(m.id)).reverse();
+
+  if (milestones.length > 0) {
+    const list = el('ul', 'milestone-list');
+    for (const milestone of milestones) {
+      list.append(el('li', 'milestone-item', `${milestone.name} — ${milestone.blurb}`));
+    }
+    mount.append(list);
+  }
+
+  const remaining = store.index.content.milestones.length - milestones.length;
   mount.append(
     el('p', 'log-remaining', remaining > 0 ? `${remaining} still ahead of you.` : 'All reached.'),
   );

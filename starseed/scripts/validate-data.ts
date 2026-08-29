@@ -19,6 +19,7 @@ console.log(`Automation  ${stats.automation}`);
 console.log(`Milestones  ${stats.milestones}`);
 console.log(`Perks       ${stats.perks}`);
 console.log(`Directives  ${stats.directives} in ${stats.families} families`);
+console.log(`Log         ${stats.log}`);
 console.log('');
 console.log('Buildings by era:');
 for (const [era, count] of [...stats.byEra].sort((a, b) => a[0] - b[0])) {

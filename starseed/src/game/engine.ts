@@ -5,7 +5,7 @@ import type { ContentIndex } from '../data/indexes';
 import type { GameState } from '../state/types';
 import type { RateCache } from './rates';
 import { runAutomation } from './automation';
-import { newMilestones } from './unlocks';
+import { newLogEntries, newMilestones } from './unlocks';
 
 /**
  * The simulation runs on a fixed 10 Hz timestep with an accumulator, rather
@@ -34,6 +34,8 @@ export interface TickReport {
   /** Resources that hit their storage ceiling and lost some of the tick. */
   capped: ResourceId[];
   milestonesCrossed: string[];
+  /** Narrative log entry ids unlocked this call. */
+  logUnlocked: string[];
   /** Automation ids that bought something. */
   automationActed: string[];
   stepsRun: number;
@@ -59,6 +61,7 @@ export function advance(
     produced: new Map(RESOURCE_IDS.map((id) => [id, Decimal.ZERO] as const)),
     capped: [],
     milestonesCrossed: [],
+    logUnlocked: [],
     automationActed: [],
     stepsRun: 0,
     secondsSimulated: 0,
@@ -197,6 +200,11 @@ function step(
   for (const id of newMilestones(state, index)) {
     state.milestones.push(id);
     report.milestonesCrossed.push(id);
+  }
+
+  for (const id of newLogEntries(state, index)) {
+    state.log.push(id);
+    report.logUnlocked.push(id);
   }
 }
 

@@ -17,6 +17,7 @@ describe('round trip', () => {
     state.automation = ['auto-miner'];
     state.automationOn = { 'auto-miner': false };
     state.milestones = ['first-probe'];
+    state.log = ['awakening', 'first-probe'];
     state.settings.buyMode = 'max';
     state.stats = { playedSeconds: 4_321, runSeconds: 900, taps: 88 };
     state.totals.ore = dec('4e42');
@@ -37,6 +38,7 @@ describe('round trip', () => {
     expect(restored.automation).toEqual(['auto-miner']);
     expect(restored.automationOn['auto-miner']).toBe(false);
     expect(restored.milestones).toEqual(['first-probe']);
+    expect(restored.log).toEqual(['awakening', 'first-probe']);
     expect(restored.settings.buyMode).toBe('max');
     expect(restored.stats).toEqual({ playedSeconds: 4_321, runSeconds: 900, taps: 88 });
     expect(restored.totals.ore.toString()).toBe(state.totals.ore.toString());
@@ -90,6 +92,21 @@ describe('migration', () => {
     // floor for a total that was never recorded.
     expect(restored.stats.runSeconds).toBe(3_600);
     expect(restored.totals.ore.toString()).toBe(restored.lifetime.ore.toString());
+    // v1 has no concept of a log at all; an empty one is not a loss.
+    expect(restored.log).toEqual([]);
+  });
+
+  /**
+   * v2 predates the narrative log. A swarm saved under v2 genuinely has not
+   * seen any fragments yet — they did not exist — so defaulting to none is
+   * the honest answer, not a bug to work around.
+   */
+  it('reads a version 2 save and defaults the log to empty', () => {
+    const full = serialise(createInitialState());
+    const { log: _log, ...v2 } = { ...full, version: 2, milestones: ['first-probe'] };
+    const restored = hydrate(v2, REAL_INDEX);
+    expect(restored.milestones).toEqual(['first-probe']);
+    expect(restored.log).toEqual([]);
   });
 });
 
@@ -131,6 +148,7 @@ describe('defensive loading', () => {
       upgrades: ['kinetic-hammer', 'from-a-later-build'],
       automation: ['auto-miner', 'nonexistent'],
       milestones: ['first-probe', 'unknown-milestone'],
+      log: ['awakening', 'unknown-fragment'],
     };
     const restored = hydrate(save, REAL_INDEX);
 
@@ -138,6 +156,7 @@ describe('defensive loading', () => {
     expect(restored.upgrades).toEqual(['kinetic-hammer']);
     expect(restored.automation).toEqual(['auto-miner']);
     expect(restored.milestones).toEqual(['first-probe']);
+    expect(restored.log).toEqual(['awakening']);
   });
 
   it('rejects malformed numbers rather than storing NaN', () => {

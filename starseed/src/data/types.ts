@@ -122,6 +122,24 @@ export interface Milestone {
 }
 
 /**
+ * A narrative fragment, unlocked the same way everything else gates: through
+ * `Unlock`. Kept as its own array rather than folded into `Milestone` because
+ * the two answer different questions — a milestone is "you reached this",
+ * shown once as a short pip, while a log entry is "here is what that meant",
+ * read at leisure in the Log panel and never re-shown as a toast.
+ *
+ * Triggers deliberately reuse milestone conditions where a beat already has
+ * one, and reach past them to cover the Relaunch arc, which the milestone
+ * list stops short of.
+ */
+export interface LogEntry {
+  id: string;
+  title: string;
+  text: string;
+  unlock: Unlock;
+}
+
+/**
  * What a Relaunch cannot take away.
  *
  * Perks and directives share one vocabulary deliberately: they are composed by
@@ -193,4 +211,5 @@ export interface Content {
   milestones: readonly Milestone[];
   perks: readonly Perk[];
   directives: readonly Directive[];
+  log: readonly LogEntry[];
 }

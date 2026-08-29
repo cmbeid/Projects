@@ -6,6 +6,7 @@ import { AUTOMATION } from './packs/03-automation';
 import { MILESTONES } from './packs/04-milestones';
 import { PERKS } from './packs/05-prestige';
 import { DIRECTIVES } from './packs/06-directives';
+import { LOG_ENTRIES } from './packs/07-log';
 
 export { BASE_TAP_YIELD, HEAT_EXPONENT, HEAT_THRESHOLD } from './packs/00-resources';
 export {
@@ -24,6 +25,7 @@ export const CONTENT: Content = Object.freeze({
   milestones: MILESTONES,
   perks: PERKS,
   directives: DIRECTIVES,
+  log: LOG_ENTRIES,
 });
 
-export { RESOURCES, BUILDINGS, UPGRADES, AUTOMATION, MILESTONES, PERKS, DIRECTIVES };
+export { RESOURCES, BUILDINGS, UPGRADES, AUTOMATION, MILESTONES, PERKS, DIRECTIVES, LOG_ENTRIES };

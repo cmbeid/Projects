@@ -47,6 +47,14 @@ describe('shipped content', () => {
       expect(upgrade.effects.length).toBeGreaterThan(0);
     }
   });
+
+  it('gives every log entry text, and reaches past the milestone list into the Relaunch arc', () => {
+    expect(CONTENT.log.length).toBeGreaterThan(0);
+    for (const entry of CONTENT.log) {
+      expect(entry.text.trim()).not.toBe('');
+    }
+    expect(CONTENT.log.some((entry) => entry.unlock.kind === 'relaunches')).toBe(true);
+  });
 });
 
 describe('the index', () => {
@@ -159,6 +167,16 @@ describe('the validator itself', () => {
       directives: CONTENT.directives.filter((d) => d.family === 'Expansion'),
     };
     expect(validateContent(thin).errors.some((e) => e.includes('cannot fill'))).toBe(true);
+  });
+
+  it('catches a log entry naming an unknown perk', () => {
+    const broken = {
+      ...CONTENT,
+      log: [
+        { id: 'bad', title: 'Bad', text: 'x', unlock: { kind: 'perk' as const, perk: 'nope' } },
+      ],
+    };
+    expect(validateContent(broken).errors.some((e) => e.includes('nope'))).toBe(true);
   });
 
   it('catches content gated on itself', () => {

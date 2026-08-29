@@ -72,7 +72,11 @@ export class Store {
 
   advance(seconds: number): TickReport {
     const report = advance(this.state, this.index, this.cache, seconds);
-    if (report.milestonesCrossed.length > 0 || report.automationActed.length > 0) {
+    if (
+      report.milestonesCrossed.length > 0 ||
+      report.logUnlocked.length > 0 ||
+      report.automationActed.length > 0
+    ) {
       this.changed();
     } else if (report.stepsRun > 0) {
       this.scheduleSave();

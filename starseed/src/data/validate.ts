@@ -13,6 +13,7 @@ export interface ValidationReport {
     milestones: number;
     perks: number;
     directives: number;
+    log: number;
     families: number;
     byEra: Map<number, number>;
   };
@@ -204,6 +205,14 @@ export function validateContent(content: Content): ValidationReport {
     checkUnlock(`milestone "${milestone.id}"`, milestone.condition);
   }
 
+  duplicates(content.log.map((l) => l.id)).forEach((id) =>
+    errors.push(`duplicate log entry id "${id}"`),
+  );
+  for (const entry of content.log) {
+    checkUnlock(`log entry "${entry.id}"`, entry.unlock);
+    if (entry.text.trim() === '') errors.push(`log entry "${entry.id}" has no text`);
+  }
+
   const checkEffects = (where: string, effects: readonly PrestigeEffect[]): void => {
     if (effects.length === 0) errors.push(`${where}: has no effects`);
     for (const effect of effects) {
@@ -294,6 +303,7 @@ export function validateContent(content: Content): ValidationReport {
       milestones: content.milestones.length,
       perks: content.perks.length,
       directives: content.directives.length,
+      log: content.log.length,
       families: new Set(content.directives.map((d) => d.family)).size,
       byEra,
     },
