@@ -1,4 +1,4 @@
-# Branchline — a choose-your-own-adventure framework
+# Storied — a choose-your-own-adventure framework
 
 ## Context
 
@@ -23,7 +23,12 @@ Decided up front, with you:
   per-story, so several can be in progress at once.
 - **Theme tokens plus a whitelisted block-style vocabulary** — see §5.
 
-Name: `branchline`. Trivial to change before implementation starts.
+**Name: `storied`** — it has stories, it means legendary, and a many-storeyed
+thing is floors stacked up, which is what the shelf is. Three readings, one
+word.
+
+(The plan first landed on this branch under a placeholder name, `branchline`,
+and was renamed before any code existed. Nothing else carries the old name.)
 
 ## 1. Stack and layout
 
@@ -39,7 +44,7 @@ can use — so the parser and validator (§6) have to earn back what the compile
 stops providing.
 
 ```
-branchline/
+storied/
 ├── format.md             ← THE deliverable: the content spec (§7)
 ├── README.md  PLAN.md
 ├── package.json          dev/build/preview/test/typecheck/validate/verify
@@ -350,26 +355,26 @@ Phases 1–3 are the framework; a story is readable at the end of phase 3.
 
 Follows the recipe the root `README.md` already documents:
 
-1. **`.github/workflows/deploy-branchline.yml`** — copy `deploy-starseed.yml` and
+1. **`.github/workflows/deploy-storied.yml`** — copy `deploy-starseed.yml` and
    change the `paths:` filter, `S3_PREFIX`, `defaults.run.working-directory`,
    `concurrency.group`, `environment.url`, `cache-dependency-path`, and the
    summary text. Its existing second sync pass (`--exclude 'assets/*'`,
    `--cache-control 'no-cache'`) already covers `dist/content/**` correctly:
    content is exactly the thing that should not be cached, since it changes
    without a rebuild.
-2. **`.github/workflows/pages.yml`** — add `branchline` to the `paths:` filter,
-   its install/validate/test/build steps, `cp -r branchline/dist/.
-   _site/branchline/`, and a third `<a class="card">` in the hand-maintained
+2. **`.github/workflows/pages.yml`** — add `storied` to the `paths:` filter,
+   its install/validate/test/build steps, `cp -r storied/dist/.
+   _site/storied/`, and a third `<a class="card">` in the hand-maintained
    landing-page heredoc.
 3. **Root `README.md`** — a row in the projects table and one in the deploying
-   table for `http://s3.cmbeid.com/branchline/index.html`.
+   table for `http://s3.cmbeid.com/storied/index.html`.
 
 No `.gitignore` changes; the root one covers `node_modules/` and `dist/` at any
 depth.
 
 ## Verification
 
-Every phase, from `branchline/`:
+Every phase, from `storied/`:
 
 ```bash
 npm run typecheck     # the strict tsconfig is this repo's only static gate
