@@ -162,6 +162,7 @@ describe('the reset', () => {
       s.lifetime.alloy = dec(9_000);
       s.totals.ore = dec(SCHEMATIC_DIVISOR * 400);
       s.buildings = { miner: 40, mill: 6 };
+      s.buildingActive = { mill: false };
       s.upgrades = ['add', 'mult'];
       s.automation = ['auto-miner'];
       s.automationOn = { 'auto-miner': true };
@@ -179,6 +180,7 @@ describe('the reset', () => {
 
     expect(report.schematics.toNumber()).toBe(10);
     expect(state.buildings).toEqual({});
+    expect(state.buildingActive).toEqual({});
     expect(state.upgrades).toEqual([]);
     expect(state.automation).toEqual([]);
     expect(state.automationOn).toEqual({});

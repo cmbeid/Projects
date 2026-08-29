@@ -16,6 +16,7 @@ describe('round trip', () => {
     state.upgrades = ['kinetic-hammer'];
     state.automation = ['auto-miner'];
     state.automationOn = { 'auto-miner': false };
+    state.buildingActive = { probe: false };
     state.milestones = ['first-probe'];
     state.log = ['awakening', 'first-probe'];
     state.settings.buyMode = 'max';
@@ -37,6 +38,7 @@ describe('round trip', () => {
     expect(restored.upgrades).toEqual(['kinetic-hammer']);
     expect(restored.automation).toEqual(['auto-miner']);
     expect(restored.automationOn['auto-miner']).toBe(false);
+    expect(restored.buildingActive['probe']).toBe(false);
     expect(restored.milestones).toEqual(['first-probe']);
     expect(restored.log).toEqual(['awakening', 'first-probe']);
     expect(restored.settings.buyMode).toBe('max');
@@ -107,6 +109,22 @@ describe('migration', () => {
     const restored = hydrate(v2, REAL_INDEX);
     expect(restored.milestones).toEqual(['first-probe']);
     expect(restored.log).toEqual([]);
+  });
+
+  /**
+   * v3 predates per-building pausing. A save from it cannot have paused
+   * anything — the button did not exist — so every building it owns should
+   * come back running, which is what an absent flag already means.
+   */
+  it('reads a version 3 save and every owned building comes back running', () => {
+    const state = createInitialState();
+    state.buildings['probe'] = 12;
+    const full = serialise(state);
+    const { buildingActive: _buildingActive, ...v3 } = { ...full, version: 3 };
+    const restored = hydrate(v3, REAL_INDEX);
+
+    expect(restored.buildings).toEqual({ probe: 12 });
+    expect(restored.buildingActive).toEqual({});
   });
 });
 
@@ -211,6 +229,16 @@ describe('defensive loading', () => {
       automationOn: { 'auto-miner': true },
     };
     expect(hydrate(save, REAL_INDEX).automationOn).toEqual({});
+  });
+
+  it('ignores a pause flag for a building that is not owned', () => {
+    const save = {
+      ...serialise(createInitialState()),
+      buildings: { probe: 3 },
+      // "drill" never made it into `buildings` — a hand-edited or corrupt save.
+      buildingActive: { probe: false, drill: false },
+    };
+    expect(hydrate(save, REAL_INDEX).buildingActive).toEqual({ probe: false });
   });
 
   it('falls back to a valid buy mode', () => {

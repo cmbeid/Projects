@@ -235,6 +235,7 @@ export function relaunch(
   state.upgrades = [];
   state.automation = [];
   state.automationOn = {};
+  state.buildingActive = {};
   state.accumulator = 0;
   state.stats.runSeconds = 0;
 

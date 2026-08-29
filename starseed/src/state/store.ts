@@ -204,6 +204,19 @@ export class Store {
     this.changed();
   }
 
+  /**
+   * Pauses or resumes a producer or converter without selling it — the
+   * escape hatch for a swarm whose converters have outrun what feeds them.
+   * Refuses on anything not actually owned, so a stale toggle in an old save
+   * cannot silently apply to a building bought back later.
+   */
+  toggleBuilding(buildingId: string): void {
+    if ((this.state.buildings[buildingId] ?? 0) <= 0) return;
+    this.state.buildingActive[buildingId] = this.state.buildingActive[buildingId] === false;
+    this.cache.invalidate();
+    this.changed();
+  }
+
   // --- Prestige ------------------------------------------------------------
 
   /** Schematics a Relaunch would pay right now. */

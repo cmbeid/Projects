@@ -63,6 +63,11 @@ export interface Rates {
  * Prestige enters as plain multipliers at two of those points and nowhere else,
  * which is what keeps a directive from being able to reach around the order and
  * do something no upgrade could. Layer 2 (phase 7) folds into the same bundle.
+ *
+ * A paused building (`buildingActive[id] === false`) is excluded before any of
+ * this runs: it contributes zero to `scale`, so its output, its input draw and
+ * its heat all read as zero everywhere downstream, without a second code path
+ * that could disagree with the one above.
  */
 export function computeRates(state: GameState, index: ContentIndex): Rates {
   // Derived here rather than passed in. An earlier shape took the bundle as a
@@ -111,7 +116,7 @@ export function computeRates(state: GameState, index: ContentIndex): Rates {
   let heat = 0;
   for (const building of index.content.buildings) {
     const count = state.buildings[building.id] ?? 0;
-    if (count > 0) heat += count * building.heat;
+    if (count > 0 && state.buildingActive[building.id] !== false) heat += count * building.heat;
   }
   heat *= cooling * prestige.heat;
   const heatPenalty = softCapPenalty(heat);
@@ -137,8 +142,10 @@ export function computeRates(state: GameState, index: ContentIndex): Rates {
     if (building.output.rate === 0 && building.inputs.length === 0) continue; // pure storage
 
     const resource = building.output.resource;
+    const active = state.buildingActive[building.id] !== false ? 1 : 0;
     const scale =
       count *
+      active *
       (1 + (additive.get(building.id) ?? 0)) *
       (multiplier.get(building.id) ?? 1) *
       (prestige.byBuilding.get(building.id) ?? 1) *

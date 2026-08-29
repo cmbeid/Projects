@@ -5,19 +5,21 @@ import type { ContentIndex } from '../data/indexes';
 import type { BuyMode, GameState, PrestigeState } from './types';
 
 const STORAGE_KEY = 'starseed:save';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 /**
  * Versions this loader can still read.
  *
- * v1 predates prestige. v2 predates the narrative log. Both are migrated
- * rather than discarded: every field a version is missing has a correct
- * default (no Schematics, no perks, no Relaunches; no log entries), and
- * throwing away a player's first few hours because the save shape grew a
- * field would be indefensible. A v2 swarm genuinely has not seen fragments
- * that did not exist yet, so an empty log is not a loss — it is the truth.
+ * v1 predates prestige. v2 predates the narrative log. v3 predates per-building
+ * pausing. All are migrated rather than discarded: every field a version is
+ * missing has a correct default (no Schematics, no perks, no Relaunches; no log
+ * entries; every owned building running, which is the honest default since
+ * pausing did not exist yet to have turned one off), and throwing away a
+ * player's first few hours because the save shape grew a field would be
+ * indefensible. A v2 swarm genuinely has not seen fragments that did not exist
+ * yet, so an empty log is not a loss — it is the truth.
  */
-const READABLE_VERSIONS = [1, 2, 3];
+const READABLE_VERSIONS = [1, 2, 3, 4];
 
 interface SaveFile {
   version: number;
@@ -29,6 +31,7 @@ interface SaveFile {
   upgrades: string[];
   automation: string[];
   automationOn: Record<string, boolean>;
+  buildingActive: Record<string, boolean>;
   milestones: string[];
   log: string[];
   prestige: {
@@ -65,6 +68,7 @@ export function createInitialState(now = Date.now()): GameState {
     upgrades: [],
     automation: [],
     automationOn: {},
+    buildingActive: {},
     milestones: [],
     log: [],
     prestige: {
@@ -160,6 +164,12 @@ export function hydrate(
     }
   }
 
+  if (parsed.buildingActive && typeof parsed.buildingActive === 'object') {
+    for (const [id, on] of Object.entries(parsed.buildingActive)) {
+      if ((state.buildings[id] ?? 0) > 0 && typeof on === 'boolean') state.buildingActive[id] = on;
+    }
+  }
+
   state.prestige = readPrestige(parsed.prestige, index);
 
   const mode = parsed.settings?.buyMode;
@@ -186,6 +196,7 @@ export function serialise(state: GameState): SaveFile {
     upgrades: [...state.upgrades],
     automation: [...state.automation],
     automationOn: { ...state.automationOn },
+    buildingActive: { ...state.buildingActive },
     milestones: [...state.milestones],
     log: [...state.log],
     prestige: {

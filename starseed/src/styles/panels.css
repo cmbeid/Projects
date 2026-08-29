@@ -25,6 +25,10 @@
 /* --- Buildings ----------------------------------------------------------- */
 .building-list, .upgrade-list { display: grid; gap: 8px; }
 
+/* Positions the pause toggle over the corner of its card without nesting it
+   inside the card's own button — the pair are siblings, not parent and child. */
+.building-wrap { position: relative; }
+
 .building, .upgrade, .automation {
   display: block;
   width: 100%;
@@ -43,6 +47,12 @@
   background: var(--panel-2);
 }
 .building.is-affordable:active, .upgrade.is-affordable:active { transform: translateY(1px); }
+
+/* A left stripe rather than dimming: dim already means "cannot afford", and a
+   paused building is very often exactly the one you *can* afford — it is why
+   you paused something else to let it recover. The two states must not read
+   the same way. */
+.building.is-paused { border-left: 3px solid var(--warn); }
 
 .building-head {
   display: grid;
@@ -66,6 +76,31 @@
    it reads quieter than the decision above it. */
 .building-owned { font-size: 12px; color: var(--dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .building-owned:empty { display: none; }
+
+/* A sibling of the card, not a child of it — see the note on .building-wrap.
+   Bottom-right stays clear of the price pill, which already claims the top
+   corner inside the card's own head. */
+.building-pause {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--dim);
+  font-size: 12px;
+  line-height: 1;
+}
+.building-pause.is-paused {
+  color: var(--warn);
+  border-color: var(--warn);
+  background: #2a2410;
+}
 
 /* --- Upgrades ------------------------------------------------------------ */
 .upgrade-head {
