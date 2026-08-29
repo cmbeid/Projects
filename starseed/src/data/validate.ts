@@ -1,6 +1,16 @@
 import type { Content, PrestigeEffect, Unlock } from './types';
 import { RESOURCE_IDS } from './types';
 import { reachabilityErrors } from './reachability';
+import { Decimal } from '../num/decimal';
+import { capacityContribution, costOf } from '../game/purchase';
+
+/**
+ * Owned counts sampled when checking a depot against its own cost curve.
+ * Automation can buy hundreds of these completely unattended, so "a player
+ * would never own that many" is not a safe assumption — the counts run well
+ * past anything a single run plausibly reaches.
+ */
+const DEPOT_SAMPLE_COUNTS = [0, 1, 10, 50, 100, 500, 2_000, 10_000];
 
 export interface ValidationReport {
   errors: string[];
@@ -147,6 +157,29 @@ export function validateContent(content: Content): ValidationReport {
     for (const input of building.inputs) {
       if (input.resource === building.output.resource && input.rate >= building.output.rate) {
         errors.push(`${where}: consumes at least as much "${input.resource}" as it produces`);
+      }
+    }
+
+    // A depot priced in the resource it stores has to keep pace with its own
+    // cost curve, or the two diverge — cost climbing exponentially against a
+    // cap that cannot grow faster than the depot itself provides — and every
+    // run eventually reaches a unit that costs more than the player could
+    // ever hold at once. Storage's own contribution has to grow on at least
+    // as steep a curve as its price for that to be impossible by
+    // construction, which is what `capacityContribution` guarantees given
+    // real numbers; this catches a future balance pass that quietly breaks
+    // that relationship again.
+    if (building.capacity && building.capacity.resource === building.cost.resource) {
+      const stored = content.resources.find((r) => r.id === building.capacity!.resource);
+      const baseCap = Decimal.from(stored?.baseCap ?? 0);
+      const trapped = DEPOT_SAMPLE_COUNTS.find((owned) =>
+        costOf(building, owned).gt(baseCap.add(capacityContribution(building, owned))),
+      );
+      if (trapped !== undefined) {
+        errors.push(
+          `${where}: costs more than its own capacity could ever hold, at ${trapped} owned — ` +
+            'this storage building becomes permanently unaffordable',
+        );
       }
     }
   }

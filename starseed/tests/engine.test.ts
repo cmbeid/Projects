@@ -90,10 +90,18 @@ describe('the rate pipeline', () => {
     expect(b.input.get('ore')?.toNumber()).toBeCloseTo(a.input.get('ore')?.toNumber() ?? 0, 9);
   });
 
-  it('counts depot capacity into the cap', () => {
+  /**
+   * Geometric, not `count * amount`: capacity(n) = amount*(growth^n-1)/(growth-1),
+   * the same closed form as `sumCost`. Silo is priced in the resource it
+   * stores, so this is what keeps the building's own cost curve from ever
+   * outrunning what it can hold (see the soft-lock tests in purchase.test.ts):
+   * at growth 1.1, three silos contribute `500*(1.1^3-1)/0.1` = 1,655, not
+   * the flat 1,500 a linear count*amount would give.
+   */
+  it('counts depot capacity into the cap, on the same curve as its cost', () => {
     const w = world((s) => { s.buildings['silo'] = 3; });
     const rates = computeRates(w.state, w.index);
-    expect(rates.caps.get('ore')?.toNumber()).toBeCloseTo(1_000_000 + 3 * 500, 6);
+    expect(rates.caps.get('ore')?.toNumber()).toBeCloseTo(1_000_000 + 1_655, 6);
   });
 });
 
@@ -415,9 +423,14 @@ describe('marginal rates', () => {
     expect(one.heat).toBeGreaterThan(0);
   });
 
-  it('reports storage for a depot', () => {
+  it('reports storage for a depot, on the same geometric curve as its cost', () => {
     const { state, index } = world((s) => { s.buildings['silo'] = 3; });
-    expect(marginalRates(state, index, 'silo', 2).caps.get('ore')!.toNumber()).toBeCloseTo(1_000, 6);
+    // 3 silos hold 500*(1.1^3-1)/0.1 = 1,655; 5 hold 500*(1.1^5-1)/0.1 =
+    // 3,052.55. The marginal two units add the difference, not a flat 2*500.
+    expect(marginalRates(state, index, 'silo', 2).caps.get('ore')!.toNumber()).toBeCloseTo(
+      1_397.55,
+      2,
+    );
   });
 
   /**
