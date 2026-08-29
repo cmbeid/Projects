@@ -6,7 +6,7 @@ import type { ResourceId } from '../data/types';
 import { advance, tap } from '../game/engine';
 import type { TickReport } from '../game/engine';
 import { RateCache } from '../game/rates';
-import type { Rates } from '../game/rates';
+import type { Marginal, Rates } from '../game/rates';
 import { costOf, countForMode, sumCost } from '../game/purchase';
 import {
   availableAutomation,
@@ -96,6 +96,23 @@ export class Store {
     const budget = this.state.resources[building.cost.resource];
     const count = countForMode(building, owned, budget, this.state.settings.buyMode);
     return { count, cost: count > 0 ? sumCost(building, owned, count) : costOf(building, owned) };
+  }
+
+  /**
+   * What the current buy mode would add, per second, if it were pressed.
+   *
+   * Priced at what the mode *means* rather than what is affordable right now:
+   * ×10 always quotes ten, even with the money for three. A card that silently
+   * re-quotes itself as you earn is unreadable, and "what would this get me"
+   * is a question worth answering before you can pay it.
+   */
+  marginal(buildingId: string): Marginal | null {
+    if (!this.index.buildingById.has(buildingId)) return null;
+    const mode = this.state.settings.buyMode;
+    const affordable = this.quote(buildingId)?.count ?? 0;
+    // Max with nothing affordable still quotes one, so the card says something.
+    const count = mode === 'max' ? Math.max(1, affordable) : mode;
+    return this.cache.marginal(this.state, buildingId, count);
   }
 
   buyBuilding(buildingId: string): boolean {

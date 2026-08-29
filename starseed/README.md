@@ -38,6 +38,13 @@ Each era consumes the one before it, so ore never stops mattering.
 | **Log** | Milestones reached, and run statistics. |
 | **Relaunch** | Appears once prestige is in reach. The payout, the loadout, the tree. |
 
+Each building card shows **what the next purchase would add**, priced at
+whatever the buy mode is set to — not what the stack already produces, which is
+on the quieter line beneath it. The figure is a difference in the swarm's total
+rates, so it accounts for the feedstock a converter will draw and for the
+thermal load the purchase puts on everything else. When the swarm runs hot,
+that number can be smaller than the new unit's own output, or negative.
+
 The rail across the top shows what you have, what it holds, and how fast it is
 moving. A resource that goes amber is **full** — production above the cap is
 discarded, so buy a depot.

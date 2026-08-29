@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Decimal, dec } from '../src/num/decimal';
 import { advance, tap, TICK_SECONDS, MAX_STEPS_PER_CALL } from '../src/game/engine';
-import { computeRates } from '../src/game/rates';
+import { computeRates, marginalRates } from '../src/game/rates';
+import { HEAT_THRESHOLD } from '../src/data/packs/00-resources';
 import type { GameState } from '../src/state/types';
 import { FIXTURE_INDEX, snapshot, world } from './fixture';
 
@@ -221,5 +222,116 @@ describe('automation', () => {
 });
 
 it('uses the fixture, not the shipped content', () => {
-  expect(FIXTURE_INDEX.content.buildings.length).toBe(3);
+  // Identity rather than a count: the point is which world these tests run in,
+  // and asserting a length just breaks every time the fixture grows a building.
+  expect(FIXTURE_INDEX.buildingById.has('miner')).toBe(true);
+  expect(FIXTURE_INDEX.buildingById.has('probe')).toBe(false);
+});
+
+/**
+ * What the Swarm panel promises a purchase will give you. It has to be the
+ * difference the purchase makes to the *world*, not the new unit's own rate —
+ * those are different numbers the moment thermal load starts to bite.
+ */
+describe('marginal rates', () => {
+  it('is the per-unit rate while the swarm is running cool', () => {
+    const { state, index } = world((s) => { s.buildings['miner'] = 10; });
+    const one = marginalRates(state, index, 'miner', 1);
+    // The fixture miner makes 1 ore/s and has no heat, so one more is worth 1.
+    expect(one.output.get('ore')!.toNumber()).toBeCloseTo(1, 9);
+    expect(one.heat).toBe(0);
+  });
+
+  it('scales with the quantity being bought', () => {
+    const { state, index } = world((s) => { s.buildings['miner'] = 10; });
+    expect(marginalRates(state, index, 'miner', 10).output.get('ore')!.toNumber()).toBeCloseTo(10, 9);
+    expect(marginalRates(state, index, 'miner', 10).count).toBe(10);
+  });
+
+  it('carries every multiplier the pipeline applies', () => {
+    const { state, index } = world((s) => {
+      s.buildings['miner'] = 10;
+      s.upgrades = ['mult']; // miner ×3
+    });
+    expect(marginalRates(state, index, 'miner', 1).output.get('ore')!.toNumber()).toBeCloseTo(3, 9);
+  });
+
+  it('reports what a converter will draw, not just what it makes', () => {
+    const { state, index } = world((s) => { s.buildings['miner'] = 50; s.buildings['mill'] = 2; });
+    const one = marginalRates(state, index, 'mill', 1);
+    expect(one.output.get('alloy')!.toNumber()).toBeCloseTo(1, 9);
+    expect(one.input.get('ore')!.toNumber()).toBeCloseTo(4, 9);
+    // The net is what the card shows: one more mill is +1 alloy and −4 ore.
+    expect(one.net.get('alloy')!.toNumber()).toBeCloseTo(1, 9);
+    expect(one.net.get('ore')!.toNumber()).toBeCloseTo(-4, 9);
+  });
+
+  /**
+   * The case a per-unit figure cannot express at all: a purchase that lowers
+   * the net rate of a resource it neither makes nor consumes, purely by heating
+   * the swarm that does. Showing only the new unit's own output would report a
+   * gain while the player watches their ore rate fall.
+   */
+  it('reports a resource going *down* when the heat a purchase adds costs more than it makes', () => {
+    const { state, index } = world((s) => {
+      s.buildings['miner'] = 5_000; // a large ore economy to be taxed
+      s.buildings['reactor'] = 30; // already well past the threshold
+    });
+    expect(computeRates(state, index).heatPenalty).toBeLessThan(1);
+
+    const one = marginalRates(state, index, 'reactor', 1);
+    // The reactor makes ore itself, so its own 10/s is in here too; the swarm
+    // it slows is far larger, and the honest net is negative.
+    expect(one.net.get('ore')!.isPositive).toBe(false);
+    expect(one.heat).toBeGreaterThan(0);
+  });
+
+  it('reports storage for a depot', () => {
+    const { state, index } = world((s) => { s.buildings['silo'] = 3; });
+    expect(marginalRates(state, index, 'silo', 2).caps.get('ore')!.toNumber()).toBeCloseTo(1_000, 6);
+  });
+
+  /**
+   * The reason this is a difference of totals rather than a multiplication.
+   * Past the threshold a new building taxes every building already standing, so
+   * what it adds is strictly less than what it produces — and a player told the
+   * larger number would rightly call the smaller one a bug.
+   */
+  it('subtracts the thermal load a purchase imposes on everything else', () => {
+    const cool = world((s) => { s.buildings['reactor'] = 1; });
+    const hot = world((s) => { s.buildings['reactor'] = 20; });
+
+    expect(computeRates(cool.state, cool.index).heatPenalty).toBe(1);
+    expect(computeRates(hot.state, hot.index).heatPenalty).toBeLessThan(1);
+
+    const coolGain = marginalRates(cool.state, cool.index, 'reactor', 1).output.get('ore')!;
+    const hotGain = marginalRates(hot.state, hot.index, 'reactor', 1).output.get('ore')!;
+
+    expect(coolGain.toNumber()).toBeCloseTo(10, 9);
+    // Still worth buying, but visibly less than the 10/s the unit itself makes.
+    expect(hotGain.toNumber()).toBeLessThan(10);
+    expect(hotGain.isPositive).toBe(true);
+    expect(hot.state.buildings['reactor']! * 400).toBeGreaterThan(HEAT_THRESHOLD);
+  });
+
+  it('leaves the state it was asked about untouched', () => {
+    const { state, index } = world((s) => { s.buildings['miner'] = 4; });
+    const before = snapshot(state);
+    marginalRates(state, index, 'miner', 25);
+    expect(snapshot(state)).toBe(before);
+    expect(state.buildings['miner']).toBe(4);
+  });
+
+  it('is memoised per building and quantity, and cleared on invalidate', () => {
+    const { state, index, cache } = world((s) => { s.buildings['miner'] = 10; });
+    expect(cache.marginal(state, 'miner', 1)).toBe(cache.marginal(state, 'miner', 1));
+    expect(cache.marginal(state, 'miner', 5)).not.toBe(cache.marginal(state, 'miner', 1));
+
+    const stale = cache.marginal(state, 'miner', 1);
+    state.upgrades = ['mult'];
+    cache.invalidate();
+    expect(cache.marginal(state, 'miner', 1)).not.toBe(stale);
+    expect(cache.marginal(state, 'miner', 1).output.get('ore')!.toNumber()).toBeCloseTo(3, 9);
+    expect(index).toBe(FIXTURE_INDEX);
+  });
 });

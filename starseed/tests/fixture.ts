@@ -10,7 +10,8 @@ import { RateCache } from '../src/game/rates';
  * content. Balance numbers move constantly; these assertions must not.
  *
  * `miner` makes ore from nothing. `mill` converts ore into alloy, which is what
- * exercises starvation throttling. `silo` is pure storage.
+ * exercises starvation throttling. `silo` is pure storage, and `reactor` is the
+ * only building hot enough to reach the thermal soft cap.
  */
 export const FIXTURE: Content = {
   resources: [
@@ -66,6 +67,20 @@ export const FIXTURE: Content = {
       cost: { resource: 'ore', base: 100, growth: 1.2 },
       heat: 0,
       unlock: { kind: 'lifetime', resource: 'ore', amount: 10 },
+    },
+    {
+      // The only hot thing in the fixture, so a test can push the swarm past the
+      // thermal threshold deliberately without every other test feeling it.
+      id: 'reactor',
+      name: 'Reactor',
+      emoji: '☢️',
+      blurb: '',
+      era: 1,
+      output: { resource: 'ore', rate: 10 },
+      inputs: [],
+      cost: { resource: 'ore', base: 500, growth: 1.15 },
+      heat: 400,
+      unlock: { kind: 'always' },
     },
     {
       id: 'silo',
