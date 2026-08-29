@@ -440,13 +440,35 @@ the S3 one, the same split alchemy-forge already documents.
 
 ## Status
 
-Phases 1-5 are built: the `Decimal`, the engine, the full three-era content
+Phases 1-6 are built: the `Decimal`, the engine, the full three-era content
 ladder, upgrades, unlock gating, the responsive UI and render loop, the
 automation ladder, prestige layer 1 — Relaunch, the 15-node Schematics tree,
-and the directive loadout picker — and the narrative log. The deploy wiring of
-§10 is done too, ahead of its place in the order, so the game is reachable
-while the rest is built. Prestige layer 2, offline catch-up and the balance
-pass are not.
+and the directive loadout picker — the narrative log, and offline catch-up.
+The deploy wiring of §10 is done too, ahead of its place in the order, so the
+game is reachable while the rest is built. Prestige layer 2 and the balance
+pass are not. The PWA manifest and icons §6 also called for are not either —
+nothing about catch-up depends on them, and they are better done together
+with the deploy-wiring follow-up §10's status note already flags.
+
+### What phase 6 built
+
+`src/game/offline.ts` runs the gap since `state.lastSeen` through the same
+`advance` live play uses, in chunks no larger than `advance`'s own step
+ceiling — the ceiling exists to protect one rAF frame from a runaway
+computation, and handing it the whole gap in one call would just relocate
+that problem into the loop calling it, dropping most of an 8-hour catch-up
+rather than crediting it. `< 2s` skips silently (a reload must not raise a
+modal); a clock that moved backwards credits nothing and resyncs; a gap past
+the cap credits the cap and the welcome-back sheet says so plainly.
+
+**The bug this phase was actually asked to fix — a tab left open in the
+background stops counting — is not an offline-catch-up bug at all.**
+`requestAnimationFrame` simply never fires on a hidden tab, so the run was
+frozen, not miscounted. Catch-up at load only fixes a reload or a closed tab;
+a tab merely switched away from and back to needed its own hook. `store.ts`
+gained `resume()`, called from `visibilitychange` turning visible, which is
+the same `catchUp` doing the same job on the second trigger a real session
+actually hits.
 
 ### What phase 5 built
 

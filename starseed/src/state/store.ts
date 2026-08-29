@@ -5,6 +5,8 @@ import type { ContentIndex } from '../data/indexes';
 import type { ResourceId } from '../data/types';
 import { advance, tap } from '../game/engine';
 import type { TickReport } from '../game/engine';
+import { catchUp } from '../game/offline';
+import type { OfflineSummary } from '../game/offline';
 import { RateCache } from '../game/rates';
 import type { Marginal, Rates } from '../game/rates';
 import { costOf, countForMode, sumCost } from '../game/purchase';
@@ -47,11 +49,38 @@ export class Store {
   private state: GameState;
   private listeners = new Set<Listener>();
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private offlineSummary: OfflineSummary | null = null;
 
   constructor(state: GameState, index: ContentIndex = buildIndex(CONTENT)) {
     this.index = index;
     this.state = state;
     this.cache = new RateCache(index);
+    // Runs once, at construction, so a freshly loaded save is already caught up
+    // by the time anything reads it — the panels never see a stale run.
+    this.offlineSummary = catchUp(this.state, this.index, this.cache);
+  }
+
+  /** Pops the welcome-back summary computed at load, if there is one to show. */
+  takeOfflineSummary(): OfflineSummary | null {
+    const summary = this.offlineSummary;
+    this.offlineSummary = null;
+    return summary;
+  }
+
+  /**
+   * Catches up again for a tab that never reloaded, only went to the
+   * background: `requestAnimationFrame` stops firing entirely on a hidden
+   * tab, so a run left open behind another window would otherwise sit frozen
+   * until the page is refreshed. The caller — `visibilitychange` turning
+   * visible again — decides whether the result is worth a modal.
+   */
+  resume(now: number = Date.now()): OfflineSummary | null {
+    const summary = catchUp(this.state, this.index, this.cache, now);
+    if (summary) {
+      this.cache.invalidate();
+      this.changed();
+    }
+    return summary;
   }
 
   get(): Readonly<GameState> {
