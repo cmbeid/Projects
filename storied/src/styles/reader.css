@@ -11,7 +11,10 @@
   background: var(--sy-bg);
   color: var(--sy-text);
   font-family: var(--sy-font-body);
-  font-size: calc(1rem * var(--sy-font-scale, 1));
+  /* --sy-font-scale is the story's own authored scale (format.md §8);
+     --sy-user-scale is the reader's text-size preference (ui/settings.ts).
+     They compose rather than one overriding the other. */
+  font-size: calc(1rem * var(--sy-font-scale, 1) * var(--sy-user-scale, 1));
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
   transition: background-color 0.4s ease, color 0.4s ease;

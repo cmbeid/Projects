@@ -8,9 +8,10 @@ import type { Block, ImageBlock, Story, VariableTable } from '../content/types';
 import { renderInline } from '../content/inline';
 import { allowsBack, available, choose, currentNode, startSession } from '../engine/session';
 import type { PlayState } from '../engine/types';
-import { saveSession } from '../state/persistence';
+import { clearSession, saveSession } from '../state/persistence';
 import type { LayoutMode } from './layout';
 import { watchLayout } from './layout';
+import { mountSettings } from './settings';
 import { applyTheme, mergeTheme } from './theme';
 import type { AssetResolver } from './theme';
 
@@ -87,6 +88,19 @@ export function mountReader(
   titleEl.textContent = story.title;
   header.append(backButton, titleEl);
 
+  mountSettings(header, shell, {
+    onRestart: () => {
+      clearSession(story.id);
+      backStack.length = 0;
+      state = startSession(story);
+      // Not render()'s normal save: an explicit restart should leave no
+      // save behind until the player actually does something again, so the
+      // shelf reverts to "Start" rather than immediately reading "Continue"
+      // for a session that has zero real progress in it.
+      render({ skipSave: true });
+    },
+  });
+
   // Wide mode only: the current node's first image, shown as a scene panel
   // to the left of the prose rather than inline within it. Empty and
   // display:none everywhere else, where that same image renders inline in
@@ -109,11 +123,11 @@ export function mountReader(
   const backStack: PlayState[] = [];
   const canUndo = allowsBack(story);
 
-  function render(): void {
-    // Every state change — a choice, a step back, or the initial load —
-    // is worth persisting. Writes here are click-driven, not a 60fps tick
-    // loop the way starseed's are, so there's nothing worth debouncing.
-    saveSession(state);
+  function render(renderOptions: { skipSave?: boolean } = {}): void {
+    // Every other state change — a choice or a step back — is worth
+    // persisting immediately. Writes here are click-driven, not a 60fps
+    // tick loop the way starseed's are, so there's nothing worth debouncing.
+    if (!renderOptions.skipSave) saveSession(state);
 
     const node = currentNode(story, state);
     applyTheme(shell, mergeTheme(story.theme ?? {}, node.theme), resolveAsset);

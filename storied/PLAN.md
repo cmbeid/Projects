@@ -602,3 +602,51 @@ overrides, block styles, and the theme cross-fade, all originally slated
 for phase 5 in §9's table, actually landed back in phase 3, since a reader
 that renders blocks at all needed them to exist. That leaves phase 5's
 real remaining scope narrower than the table suggests: settings only.
+
+**Phase 5 is done.** Built:
+
+- `src/state/preferences.ts` — `loadTextSize`/`saveTextSize`/`applyTextSize`,
+  a global (not per-story) preference: `localStorage['storied:prefs:textSize']`
+  holding `'small' | 'normal' | 'large'`, defaulting and falling back the
+  same defensive way `persistence.ts` does. `applyTextSize` sets
+  `--sy-user-scale` on `document.documentElement`, and `main.ts` calls it
+  before mounting anything so there's no flash of the wrong size.
+- `src/ui/settings.ts` — the gear toggle and its sheet: three text-size
+  buttons and a restart button behind a native `window.confirm`. A custom
+  modal (`ui/modal.ts`, in §1's original tree) was considered and skipped —
+  storied has exactly one destructive action to confirm, and `starseed`
+  and `alchemy-forge` both build real modals because they have several;
+  one native `confirm()` is the honest amount of infrastructure for one
+  button, not a corner cut.
+- `styles/reader.css` and `styles/shelf.css` now compose two font-scale
+  variables rather than one: `--sy-font-scale` is the story's own authored
+  scale (format.md §8), `--sy-user-scale` is this preference, and they
+  multiply together — a user's text-size choice never gets overridden by a
+  story's own styling, and vice versa. The shelf reads `--sy-user-scale`
+  too, since it's meant to be one setting for the whole app.
+
+**A real bug turned up in manual verification, not in a test, and got
+fixed before this phase closed.** `render()`'s existing "every state change
+is worth persisting" policy from phase 4 meant that restarting — clear the
+save, reset to `startSession` — immediately re-saved that fresh state as
+part of the very next `render()` call, so `hasSave()` stayed `true` and the
+shelf kept reading "Continue" for a playthrough with zero real progress in
+it. Fixed with a `{ skipSave: true }` option on `render()`, used only by
+the restart path: the save stays genuinely cleared until the player
+actually does something in the new attempt. Worth naming because it's
+exactly the kind of thing 109 passing unit tests don't catch — nothing in
+`persistence.test.ts` exercises `reader.ts`'s call sites — which is why
+the throwaway-Playwright-script habit from every phase so far keeps
+earning its keep.
+
+Verified by hand: the settings sheet opens from the gear icon; picking
+"large" visibly scales `.sy-reader`'s computed font size (confirmed
+16px → 18.4px) and survives a reload; restarting from mid-story (after
+the tide-pool detour) returns to the epigraph node, and a reload afterward
+shows the shelf card correctly reading "Start" again, not "Continue."
+
+109 tests pass (4 new, in `tests/preferences.test.ts`). Typecheck,
+validate, and build are all still clean.
+
+Phase 6 (a full demo story exercising every format.md feature — the
+format's living test) is next.

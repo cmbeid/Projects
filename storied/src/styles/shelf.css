@@ -9,6 +9,9 @@
   background: #05080f;
   color: #e6ecfa;
   font-family: -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* The reader's text-size preference (ui/settings.ts) applies here too,
+     so it's one setting for the whole app, not just mid-story. */
+  font-size: calc(1rem * var(--sy-user-scale, 1));
 }
 
 .sy-shelf-title {

@@ -1,0 +1,65 @@
+/* The settings sheet: text size and restart. Lives inside .sy-reader, so it
+   inherits the story's own --sy-* theme like everything else in the shell. */
+
+.sy-settings-toggle {
+  margin-left: auto;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--sy-radius);
+}
+
+.sy-settings-sheet {
+  position: absolute;
+  z-index: 2;
+  top: calc(env(safe-area-inset-top) + 3rem);
+  right: 1rem;
+  width: min(15rem, calc(100% - 2rem));
+  padding: 1rem;
+  border-radius: var(--sy-radius);
+  background: var(--sy-surface);
+  border: 1px solid var(--sy-choice-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.sy-settings-sheet.is-hidden {
+  display: none;
+}
+
+.sy-settings-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--sy-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sy-settings-sizes {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.sy-settings-size {
+  flex: 1;
+  padding: 0.5rem 0;
+  border-radius: calc(var(--sy-radius) / 2);
+  background: var(--sy-choice-bg);
+  text-align: center;
+  line-height: 1;
+}
+.sy-settings-size.is-active {
+  outline: 2px solid var(--sy-accent);
+  outline-offset: -2px;
+}
+
+.sy-settings-restart {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: calc(var(--sy-radius) / 2);
+  background: var(--sy-choice-bg);
+  color: var(--sy-text);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.sy-settings-restart:hover {
+  background: color-mix(in srgb, var(--sy-choice-bg) 80%, var(--sy-accent) 20%);
+}

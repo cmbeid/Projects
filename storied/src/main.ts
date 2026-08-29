@@ -1,9 +1,11 @@
 import './styles/base.css';
 import './styles/reader.css';
 import './styles/shelf.css';
+import './styles/settings.css';
 import { parseManifest } from './content/parse';
 import type { Manifest, ManifestEntry, Story } from './content/types';
 import { loadSession } from './state/persistence';
+import { applyTextSize, loadTextSize } from './state/preferences';
 import { mountReader } from './ui/reader';
 import { mountShelf } from './ui/shelf';
 import type { AssetResolver } from './ui/theme';
@@ -43,6 +45,9 @@ function showStory(root: HTMLElement, manifest: Manifest, entry: ManifestEntry, 
 async function main(): Promise<void> {
   const root = document.getElementById('app');
   if (!root) return;
+
+  // Applied before anything mounts, so there's no flash of the default size.
+  applyTextSize(loadTextSize());
 
   let manifest: Manifest;
   try {
