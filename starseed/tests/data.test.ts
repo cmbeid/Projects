@@ -67,6 +67,28 @@ describe('the index', () => {
   });
 });
 
+describe('the prestige content', () => {
+  it('opens a Schematics tree whose every branch is rooted', () => {
+    expect(CONTENT.perks.length).toBeGreaterThan(0);
+    const ids = new Set(CONTENT.perks.map((p) => p.id));
+    for (const perk of CONTENT.perks) {
+      for (const required of perk.requires) expect(ids.has(required)).toBe(true);
+    }
+  });
+
+  it('gives every directive a family', () => {
+    for (const directive of CONTENT.directives) {
+      expect(directive.family.trim()).not.toBe('');
+    }
+  });
+
+  it('indexes directives by family, which is what makes a loadout exclusive', () => {
+    const index = buildIndex(CONTENT);
+    const total = [...index.directivesByFamily.values()].reduce((n, list) => n + list.length, 0);
+    expect(total).toBe(CONTENT.directives.length);
+  });
+});
+
 describe('the validator itself', () => {
   it('catches a dangling reference', () => {
     const broken = {
@@ -91,6 +113,52 @@ describe('the validator itself', () => {
       ),
     };
     expect(validateContent(flat).errors.some((e) => e.includes('not greater than 1'))).toBe(true);
+  });
+
+  it('catches a perk whose requirements cycle', () => {
+    const cyclic = {
+      ...CONTENT,
+      perks: [
+        {
+          id: 'a', name: 'A', emoji: '', blurb: '', cost: 1,
+          effects: [{ kind: 'tap' as const, factor: 2 }],
+          requires: ['b'],
+        },
+        {
+          id: 'b', name: 'B', emoji: '', blurb: '', cost: 1,
+          effects: [{ kind: 'tap' as const, factor: 2 }],
+          requires: ['a'],
+        },
+      ],
+    };
+    const errors = validateContent(cyclic).errors;
+    expect(errors.some((e) => e.includes('requirements cycle'))).toBe(true);
+  });
+
+  it('catches a directive naming a building that does not exist', () => {
+    const broken = {
+      ...CONTENT,
+      directives: [
+        {
+          id: 'bad', name: 'Bad', emoji: '', blurb: '', family: 'Expansion',
+          effects: [{ kind: 'building' as const, building: 'nope', factor: 2 }],
+          unlock: { kind: 'always' as const },
+        },
+      ],
+    };
+    expect(validateContent(broken).errors.some((e) => e.includes('nope'))).toBe(true);
+  });
+
+  /**
+   * The one content bug in this layer that would strand a player at the
+   * prestige screen with no legal way forward.
+   */
+  it('catches a directive pool that cannot fill a loadout', () => {
+    const thin = {
+      ...CONTENT,
+      directives: CONTENT.directives.filter((d) => d.family === 'Expansion'),
+    };
+    expect(validateContent(thin).errors.some((e) => e.includes('cannot fill'))).toBe(true);
   });
 
   it('catches content gated on itself', () => {

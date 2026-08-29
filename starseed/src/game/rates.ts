@@ -5,17 +5,7 @@ import { RESOURCE_IDS } from '../data/types';
 import type { ContentIndex } from '../data/indexes';
 import type { GameState } from '../state/types';
 import { AUTO_TAPS_PER_SECOND } from './automation';
-
-/**
- * Multipliers from prestige layers. Phases 1-3 have no prestige, so this is
- * always the identity — it exists as a typed seam so layers 4 and 7 plug in
- * without `rates.ts` growing an import it cannot have yet.
- */
-export interface PrestigeMultipliers {
-  byResource: ReadonlyMap<ResourceId, number>;
-}
-
-export const NO_PRESTIGE: PrestigeMultipliers = { byResource: new Map() };
+import { prestigeMultipliers } from './prestige';
 
 /** One building's throughput, before input starvation is accounted for. */
 export interface BuildingRate {
@@ -57,11 +47,11 @@ export interface Rates {
  *               * baseRate
  *               * (1 + Σ additive[building])     // upgrade tiers, flat %
  *               * Π multiplicative[building]     // per-building multipliers
+ *               * Π prestigeBuilding[building]   // directives naming a building
  *
  *   rate(res)   = Σ perBuilding over producers of res
  *               * Π globalMultipliers[res]       // tech, milestone rewards
- *               * prestigeMult(layer1)           // Schematics tree
- *               * prestigeMult(layer2)           // Insight tree
+ *               * prestigeMult(layer1)           // Schematics tree + directives
  *               * softCapPenalty(state)          // thermal load
  *
  * The order is load-bearing. Additive bonuses pool *within* a building before
@@ -69,12 +59,18 @@ export interface Rates {
  * each other and multiplicatively with everything else. Reversing this makes
  * late-game additive upgrades worthless, and is the classic way an idle game's
  * balance quietly dies.
+ *
+ * Prestige enters as plain multipliers at two of those points and nowhere else,
+ * which is what keeps a directive from being able to reach around the order and
+ * do something no upgrade could. Layer 2 (phase 7) folds into the same bundle.
  */
-export function computeRates(
-  state: GameState,
-  index: ContentIndex,
-  prestige: PrestigeMultipliers = NO_PRESTIGE,
-): Rates {
+export function computeRates(state: GameState, index: ContentIndex): Rates {
+  // Derived here rather than passed in. An earlier shape took the bundle as a
+  // parameter and had the cache hold onto it, which invites exactly one bug:
+  // a purchase updates the tree and forgets to tell the cache. There is nothing
+  // to forget if there is nothing to hold.
+  const prestige = prestigeMultipliers(state, index);
+
   const additive = new Map<string, number>();
   const multiplier = new Map<string, number>();
   const global = new Map<ResourceId, number>();
@@ -109,13 +105,15 @@ export function computeRates(
     }
   }
 
+  tap *= prestige.tap;
+
   // --- Thermal load, which scales everything that runs ----------------------
   let heat = 0;
   for (const building of index.content.buildings) {
     const count = state.buildings[building.id] ?? 0;
     if (count > 0) heat += count * building.heat;
   }
-  heat *= cooling;
+  heat *= cooling * prestige.heat;
   const heatPenalty = softCapPenalty(heat);
 
   // --- Per-building throughput ---------------------------------------------
@@ -143,6 +141,7 @@ export function computeRates(
       count *
       (1 + (additive.get(building.id) ?? 0)) *
       (multiplier.get(building.id) ?? 1) *
+      (prestige.byBuilding.get(building.id) ?? 1) *
       (global.get(resource) ?? 1) *
       (prestige.byResource.get(resource) ?? 1) *
       heatPenalty;
@@ -169,7 +168,10 @@ export function computeRates(
       const count = state.buildings[depot.id] ?? 0;
       if (count > 0 && depot.capacity) cap += count * depot.capacity.amount;
     }
-    caps.set(resource.id, Decimal.from(cap * (capacity.get(resource.id) ?? 1)));
+    caps.set(
+      resource.id,
+      Decimal.from(cap * (capacity.get(resource.id) ?? 1) * (prestige.capacity.get(resource.id) ?? 1)),
+    );
   }
 
   return {
@@ -209,22 +211,14 @@ function emptyTotals(): Map<ResourceId, Decimal> {
 export class RateCache {
   private cached: Rates | null = null;
 
-  constructor(
-    private readonly index: ContentIndex,
-    private prestige: PrestigeMultipliers = NO_PRESTIGE,
-  ) {}
+  constructor(private readonly index: ContentIndex) {}
 
   get(state: GameState): Rates {
-    if (this.cached === null) this.cached = computeRates(state, this.index, this.prestige);
+    if (this.cached === null) this.cached = computeRates(state, this.index);
     return this.cached;
   }
 
   invalidate(): void {
     this.cached = null;
-  }
-
-  setPrestige(prestige: PrestigeMultipliers): void {
-    this.prestige = prestige;
-    this.invalidate();
   }
 }

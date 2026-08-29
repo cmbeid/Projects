@@ -20,6 +20,7 @@ export const FIXTURE: Content = {
       emoji: '⛏️',
       blurb: '',
       baseCap: 1_000_000,
+      prestigeWeight: 1,
       unlock: { kind: 'always' },
     },
     {
@@ -28,6 +29,7 @@ export const FIXTURE: Content = {
       emoji: '🔩',
       blurb: '',
       baseCap: 1_000_000,
+      prestigeWeight: 10,
       unlock: { kind: 'lifetime', resource: 'ore', amount: 10 },
     },
     {
@@ -36,6 +38,7 @@ export const FIXTURE: Content = {
       emoji: '🧠',
       blurb: '',
       baseCap: 1_000_000,
+      prestigeWeight: 100,
       unlock: { kind: 'lifetime', resource: 'alloy', amount: 10 },
     },
   ],
@@ -138,6 +141,84 @@ export const FIXTURE: Content = {
       name: 'Ten Ore',
       blurb: '',
       condition: { kind: 'lifetime', resource: 'ore', amount: 10 },
+    },
+  ],
+  /**
+   * Just enough prestige content to exercise composition: one root perk, one
+   * behind it, and four directives spread over three families — the minimum
+   * that can fill a legal loadout and the minimum that can fail to.
+   */
+  perks: [
+    {
+      id: 'root',
+      name: 'Root',
+      emoji: '',
+      blurb: '',
+      cost: 1,
+      effects: [{ kind: 'global', resource: 'ore', factor: 2 }],
+      requires: [],
+    },
+    {
+      id: 'branch',
+      name: 'Branch',
+      emoji: '',
+      blurb: '',
+      cost: 4,
+      effects: [
+        { kind: 'start', resource: 'ore', amount: 100 },
+        { kind: 'capacity', resource: 'ore', factor: 2 },
+      ],
+      requires: ['root'],
+    },
+  ],
+  directives: [
+    {
+      id: 'fast',
+      name: 'Fast',
+      emoji: '',
+      blurb: '',
+      family: 'Expansion',
+      effects: [
+        { kind: 'building', building: 'miner', factor: 3 },
+        { kind: 'heat', factor: 2 },
+      ],
+      unlock: { kind: 'always' },
+    },
+    {
+      id: 'slow',
+      name: 'Slow',
+      emoji: '',
+      blurb: '',
+      family: 'Expansion',
+      effects: [{ kind: 'building', building: 'miner', factor: 0.5 }],
+      unlock: { kind: 'always' },
+    },
+    {
+      id: 'salvage',
+      name: 'Salvage',
+      emoji: '',
+      blurb: '',
+      family: 'Doctrine',
+      effects: [{ kind: 'carry', resource: 'ore', fraction: 0.5 }],
+      unlock: { kind: 'always' },
+    },
+    {
+      id: 'rich',
+      name: 'Rich',
+      emoji: '',
+      blurb: '',
+      family: 'Logistics',
+      effects: [{ kind: 'payout', factor: 2 }],
+      unlock: { kind: 'always' },
+    },
+    {
+      id: 'later',
+      name: 'Later',
+      emoji: '',
+      blurb: '',
+      family: 'Doctrine',
+      effects: [{ kind: 'tap', factor: 4 }],
+      unlock: { kind: 'relaunches', count: 2 },
     },
   ],
 };

@@ -173,3 +173,24 @@ describe('formatting', () => {
     expect(formatDuration(198_000)).toBe('2d 07h');
   });
 });
+
+describe('whole numbers', () => {
+  it('floors towards zero on the fractional part', () => {
+    expect(dec(4.9).floor().toNumber()).toBe(4);
+    expect(dec(4).floor().toNumber()).toBe(4);
+    expect(Decimal.ZERO.floor().isZero).toBe(true);
+  });
+
+  it('rounds to nearest, which is what clears float noise off a currency', () => {
+    expect(dec(100).sub(dec(1)).sub(dec(4)).round().toNumber()).toBe(95);
+    expect(dec(4.5).round().toNumber()).toBe(5);
+    expect(dec(4.4).round().toNumber()).toBe(4);
+  });
+
+  /** Above 1e15 a double has no fractional part left, so both are identities. */
+  it('leaves values too large to have a fraction untouched', () => {
+    const huge = dec('1.234e40');
+    expect(huge.floor().toString()).toBe(huge.toString());
+    expect(huge.round().toString()).toBe(huge.toString());
+  });
+});

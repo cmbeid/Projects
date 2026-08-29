@@ -141,6 +141,33 @@ export class Decimal {
     return Decimal.make(10 ** (log - whole), whole);
   }
 
+  /**
+   * Discards the fractional part.
+   *
+   * Above 1e15 a double has no fractional part left to discard, so the value is
+   * already whole and is returned untouched rather than round-tripped through
+   * `toNumber`, which would lose precision or overflow to Infinity.
+   */
+  floor(): Decimal {
+    if (this.m === 0 || this.e > 15) return this;
+    return Decimal.from(Math.floor(this.toNumber()));
+  }
+
+  /**
+   * Rounds to the nearest whole number.
+   *
+   * Counting currencies — Schematics, and Insight in phase 7 — are whole by
+   * construction, but a chain of adds and subtracts leaves float noise behind:
+   * 100 − 1 − 4 lands on 94.99999999999999. That reads correctly at three
+   * significant figures and then refuses to buy the 95-Schematic perk the
+   * player has clearly earned, so the noise is cleared where it is made rather
+   * than tolerated everywhere it could surface.
+   */
+  round(): Decimal {
+    if (this.m === 0 || this.e > 15) return this;
+    return Decimal.from(Math.round(this.toNumber()));
+  }
+
   /** Base-10 logarithm. Undefined for zero and negatives, as usual. */
   log10(): number {
     if (this.m <= 0) throw new RangeError('Decimal: log10 of a non-positive number');

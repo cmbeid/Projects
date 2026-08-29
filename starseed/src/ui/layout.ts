@@ -4,14 +4,17 @@ import { renderResources } from './resources';
 import { renderSwarm } from './swarm';
 import { renderTech } from './tech';
 import { renderLog } from './log';
+import { renderPrestige } from './prestige';
+import { mountModal } from './modal';
 import { mountToasts, toast } from './toast';
 
-export type PanelId = 'swarm' | 'tech' | 'log';
+export type PanelId = 'swarm' | 'tech' | 'log' | 'prestige';
 
 const PANELS: Array<{ id: PanelId; label: string; icon: string }> = [
   { id: 'swarm', label: 'Swarm', icon: '🛰️' },
   { id: 'tech', label: 'Tech', icon: '🔬' },
   { id: 'log', label: 'Log', icon: '📖' },
+  { id: 'prestige', label: 'Relaunch', icon: '📐' },
 ];
 
 /**
@@ -73,15 +76,33 @@ export class Layout {
       tab.append(el('span', 'tab-icon', panel.icon), el('span', 'tab-label', panel.label));
       tab.addEventListener('click', () => this.show(panel.id));
       this.ticker.flag(tab, 'is-active', () => this.active === panel.id);
+      if (panel.id === 'prestige') {
+        this.ticker.flag(tab, 'is-hidden', () => !this.prestigeRevealed());
+      }
       this.tabs.append(tab);
     }
     this.root.append(this.tabs);
 
+    mountModal(this.root);
     mountToasts(this.root);
     this.watchBreakpoint();
     this.rebuild();
     this.store.subscribe(() => this.rebuild());
     return this.ticker;
+  }
+
+  /**
+   * Prestige stays hidden until it is nearly in reach.
+   *
+   * Showing a Relaunch tab in the first ten minutes would spoil the shape of
+   * the game and offer a button that only says no; a tenth of the way to the
+   * threshold is late enough to be a promise rather than a tease, and it never
+   * hides again once a run has been ended.
+   */
+  private prestigeRevealed(): boolean {
+    const state = this.store.get();
+    if (state.prestige.relaunches > 0 || state.prestige.schematics.isPositive) return true;
+    return this.store.runValue().gte(this.store.valueForFirstSchematics().mulNumber(0.1));
   }
 
   show(panel: PanelId): void {
@@ -103,6 +124,7 @@ export class Layout {
     renderSwarm(this.store, this.ticker, this.panels.get('swarm')!);
     renderTech(this.store, this.ticker, this.panels.get('tech')!);
     renderLog(this.store, this.ticker, this.panels.get('log')!);
+    renderPrestige(this.store, this.ticker, this.panels.get('prestige')!);
 
     // Bindings registered before mount() finished are gone after a clear, so
     // the shell's own re-register here.
@@ -114,8 +136,13 @@ export class Layout {
     }
     for (const [index, tab] of [...this.tabs.children].entries()) {
       const panel = PANELS[index];
-      if (panel) this.ticker.flag(tab as HTMLElement, 'is-active', () => this.active === panel.id);
+      if (!panel) continue;
+      this.ticker.flag(tab as HTMLElement, 'is-active', () => this.active === panel.id);
+      if (panel.id === 'prestige') {
+        this.ticker.flag(tab as HTMLElement, 'is-hidden', () => !this.prestigeRevealed());
+      }
     }
+    this.root.classList.toggle('has-prestige', this.prestigeRevealed());
 
     this.ticker.render();
   }
