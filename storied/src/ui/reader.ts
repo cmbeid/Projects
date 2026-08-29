@@ -8,6 +8,7 @@ import type { Block, ImageBlock, Story, VariableTable } from '../content/types';
 import { renderInline } from '../content/inline';
 import { allowsBack, available, choose, currentNode, startSession } from '../engine/session';
 import type { PlayState } from '../engine/types';
+import { saveSession } from '../state/persistence';
 import type { LayoutMode } from './layout';
 import { watchLayout } from './layout';
 import { applyTheme, mergeTheme } from './theme';
@@ -46,12 +47,28 @@ function renderBlock(block: Block, vars: VariableTable, resolveAsset: AssetResol
   return figure;
 }
 
+export interface ReaderOptions {
+  /** Resumes a prior playthrough instead of starting a fresh one. */
+  initialState?: PlayState;
+  /**
+   * Lets the reader's back control double as "leave this story" once its
+   * own back stack is empty. Omit it (the demo boot in phase 3 did) and the
+   * button just disables at the start node instead.
+   */
+  onExitToShelf?: () => void;
+}
+
 /**
  * Mounts a playthrough of `story` into `root` and wires it up end to end.
  * Returns a cleanup function that stops the layout watcher — callers don't
  * need to know it exists otherwise.
  */
-export function mountReader(root: HTMLElement, story: Story, resolveAsset: AssetResolver): () => void {
+export function mountReader(
+  root: HTMLElement,
+  story: Story,
+  resolveAsset: AssetResolver,
+  options: ReaderOptions = {},
+): () => void {
   const shell = document.createElement('div');
   shell.className = 'sy-reader';
 
@@ -87,17 +104,24 @@ export function mountReader(root: HTMLElement, story: Story, resolveAsset: Asset
   shell.append(bgLayer, header, scene, main, choiceDeck);
   root.replaceChildren(shell);
 
-  let state: PlayState = startSession(story);
+  let state: PlayState = options.initialState ?? startSession(story);
   let layoutMode: LayoutMode = 'compact';
   const backStack: PlayState[] = [];
-  const canGoBack = allowsBack(story);
-  backButton.classList.toggle('is-hidden', !canGoBack);
+  const canUndo = allowsBack(story);
 
   function render(): void {
+    // Every state change — a choice, a step back, or the initial load —
+    // is worth persisting. Writes here are click-driven, not a 60fps tick
+    // loop the way starseed's are, so there's nothing worth debouncing.
+    saveSession(state);
+
     const node = currentNode(story, state);
     applyTheme(shell, mergeTheme(story.theme ?? {}, node.theme), resolveAsset);
 
-    backButton.disabled = backStack.length === 0;
+    const canGoBack = backStack.length > 0 ? canUndo : options.onExitToShelf !== undefined;
+    backButton.disabled = !canGoBack;
+    backButton.title = backStack.length > 0 ? 'Undo last choice' : 'Back to shelf';
+    backButton.classList.toggle('is-hidden', backStack.length > 0 && !canUndo);
 
     const sceneBlock = layoutMode === 'wide' ? node.blocks.find(isImageBlock) : undefined;
 
@@ -151,10 +175,13 @@ export function mountReader(root: HTMLElement, story: Story, resolveAsset: Asset
   }
 
   backButton.addEventListener('click', () => {
-    const previous = backStack.pop();
-    if (!previous) return;
-    state = previous;
-    render();
+    if (backStack.length > 0) {
+      if (!canUndo) return;
+      state = backStack.pop()!;
+      render();
+      return;
+    }
+    options.onExitToShelf?.();
   });
 
   const unwatchLayout = watchLayout((mode) => {

@@ -536,5 +536,69 @@ validate`, and `npm run build` are all clean. One new dev dependency:
 browser (per-file `@vitest-environment jsdom` pragma; every other test file
 stays in the faster default node environment).
 
-Phase 4 (shelf, per-story saves and resume, graceful handling of a missing
-or broken story) is next.
+**Phase 4 is done.** Built:
+
+- `src/state/persistence.ts` — `loadSession`/`saveSession`/`clearSession`/
+  `hasSave`, versioned localStorage keyed per story id
+  (`storied:save:<id>`), in the same defensive posture as
+  `starseed/src/state/persistence.ts`: a missing, corrupt, wrong-version, or
+  stale-`nodeId` save falls back to `startSession` silently rather than
+  throwing, and every saved variable is kept only if it's still the same
+  kind (boolean/number/string/list) the story currently declares —
+  otherwise it falls back to that variable's own starting value. `visited`
+  and `taken` entries naming a node or choice that no longer exists are
+  dropped rather than trusted.
+- `src/ui/shelf.ts` — the story picker. Prefetches every manifest entry's
+  `story.json` and runs the *real* `validateStory` on each (its
+  `AssetChecker` is optional, so this costs nothing extra without one) —
+  a broken story shows its actual first validator error in place of its
+  blurb, per format.md §13, rather than being silently dropped or only
+  discovered when tapped. A ready card shows "Continue" or "Start" from
+  `hasSave`.
+- `src/main.ts` rewritten around `showShelf`/`showStory`, replacing the
+  "boot straight into the first story" placeholder from phase 3.
+- `src/ui/reader.ts` gained an `options` parameter: `initialState` (from
+  `loadSession`) to resume instead of always calling `startSession`, and
+  `onExitToShelf` so the back button doubles as "leave this story" once
+  its own back stack is empty, rather than just disabling there.
+
+**Persistence writes synchronously, with no debounce.** `starseed`'s
+`store.ts` debounces hard because its state changes up to 60 times a
+second; a reader's state only changes on a discrete click, so there is
+nothing worth batching. This is also why `src/state/store.ts` from §1's
+original file tree was never built as its own module — a pub/sub `Store`
+class earns its keep in `starseed` because a dozen panels all need to
+react to the same tick; here `reader.ts` is still the only thing that ever
+reads `PlayState`, so persistence is just a function call at the one place
+state already changes (`render()`), not a class with subscribers nobody
+subscribes to yet.
+
+**The back button now serves two jobs**, decided during implementation
+since phase 4's shelf made a real gap in phase 3's design obvious: with
+`allowBack` true, it undoes a choice, exactly as before; once the back
+stack is empty at the story's start node, the *same* button — its `title`
+switches to "Back to shelf" — leaves to the shelf instead of just
+disabling. A story with `allowBack: false` still gets this at the start
+node (you haven't undone anything yet by leaving), and still loses the
+mid-story undo everywhere else.
+
+Verified with a throwaway Playwright script (not committed): the shelf
+shows one ready card labeled "Start"; entering the story and picking the
+tide-pool detour, then reloading the page from a cold `main()`, showed the
+shelf again with the card now labeled "Continue," and continuing resumed
+at the exact tide-pool node rather than restarting. The back button's
+title read "Back to shelf" at that resumed node (an empty in-memory back
+stack after a reload is correct — the stack itself was never meant to
+survive a reload, only the `PlayState` is) and clicking it returned to the
+shelf correctly.
+
+105 tests pass (11 new, in `tests/persistence.test.ts`, including the save
+round-trip, a corrupt/unversioned save, and a save whose `nodeId` no
+longer exists after a simulated content edit). Typecheck, validate, and
+build are all still clean.
+
+Phase 5 (settings, restart, text size) is next — but images, node theme
+overrides, block styles, and the theme cross-fade, all originally slated
+for phase 5 in §9's table, actually landed back in phase 3, since a reader
+that renders blocks at all needed them to exist. That leaves phase 5's
+real remaining scope narrower than the table suggests: settings only.

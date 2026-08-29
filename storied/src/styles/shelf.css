@@ -1,0 +1,113 @@
+/* The story picker. Uses the app's own dark chrome — not a story's --sy-*
+   theme, which only ever applies inside a mounted reader. */
+
+.sy-shelf {
+  min-height: 100dvh;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 1.5rem) 1.25rem calc(env(safe-area-inset-bottom) + 1.5rem);
+  background: #05080f;
+  color: #e6ecfa;
+  font-family: -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+.sy-shelf-title {
+  font-size: 1.4rem;
+  margin: 0 0 1.25rem;
+}
+
+.sy-shelf-empty {
+  color: #8798b8;
+}
+
+.sy-shelf-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.sy-card {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.9rem;
+  padding: 0.9rem;
+  border-radius: 14px;
+  background: #10182a;
+  border: 1px solid #22304d;
+  text-align: left;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+.sy-card.is-ready {
+  cursor: pointer;
+  opacity: 1;
+}
+.sy-card.is-ready:hover,
+.sy-card.is-ready:focus-visible {
+  border-color: #5fd0ff;
+  outline: none;
+}
+.sy-card.is-error {
+  opacity: 0.8;
+  border-color: #7a3030;
+}
+
+.sy-card-cover {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #1b2540;
+}
+
+.sy-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.sy-card-title {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.sy-card-author,
+.sy-card-meta {
+  font-size: 0.8rem;
+  color: #8798b8;
+  margin: 0;
+}
+
+.sy-card-blurb {
+  font-size: 0.85rem;
+  margin: 0.2rem 0 0;
+  color: #c3cbe0;
+}
+.sy-card.is-error .sy-card-blurb {
+  color: #ff9b9b;
+}
+
+.sy-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+.sy-card-tag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #1b2540;
+  color: #8798b8;
+}
+
+.sy-card-action {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: #1d3350;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
