@@ -648,5 +648,73 @@ shows the shelf card correctly reading "Start" again, not "Continue."
 109 tests pass (4 new, in `tests/preferences.test.ts`). Typecheck,
 validate, and build are all still clean.
 
-Phase 6 (a full demo story exercising every format.md feature — the
-format's living test) is next.
+**Phase 6 is done — reinterpreted slightly from §9's wording.** The plan
+called for "a full demo story"; what actually makes the stronger proof is
+the demo *content as a whole* covering every documented feature, split
+across two stories rather than crammed into one. `lighthouse` (phase 1)
+stays the small, format.md §11-matching intro example; a new second story,
+`public/content/aviary/` ("The Clockwork Aviary," 15 nodes), fills every
+gap `lighthouse` didn't already cover — and the two together also
+exercise the shelf's multi-story grid, which a single story never would.
+
+What `aviary` adds that `lighthouse` didn't reach: the `gt`, `gte`, `lt`,
+`ne`, `has`, `all`, and `not` condition operators; the `toggle` and
+`remove` mutations; a `once` choice (looped back to on purpose — an
+`aftermath` node returns to `reckoning`, so the choice's disappearance on
+the second visit is actually observable in play, not just structurally
+present); the default `whenLocked: "hide"` behavior (`lighthouse` only
+ever used `"disable"`); `allowBack: false`; an image `caption`; a node
+with two images (exercising wide mode's scene-pane-plus-inline split from
+phase 3 with real content for the first time); `**bold**` and `_underline_`
+inline syntax and an escaped `\*` literal; the `aside`, `letter`, and
+`plain` block styles; `mode: "light"`; and a full story-level `theme` —
+every `palette` key, `font.scale`, and `background.image`/`fit`/`overlay`
+together.
+
+**Every choice deck in `aviary` is provably non-empty at every reachable
+state.** The three-way ending split at `reckoning` (`birdFree` true+high
+trust → good, true+low trust → bad, false → neutral) is an exhaustive
+partition over every value `birdFree`/`trust` can actually hold there, not
+just three conditions that happened to seem plausible — the alternative,
+discovered mid-design, was a real soft-lock: an earlier draft gated the
+good ending on `mood`, and a direct path existed where reckoning was
+reached with `mood` still `"calm"`, leaving zero choices visible and no
+`ending` block to fall back on (the parser only treats a node as an ending
+when its JSON has no `choices` at all — an empty *runtime* deck after
+condition filtering isn't the same thing, and would have rendered as a
+dead screen). Every node that isn't a hard dead end either has an
+always-visible choice or uses `whenLocked: "disable"` instead of the
+`"hide"` default specifically so the deck can't empty out.
+
+Verified by hand, three separate browser contexts (one per ending) driving
+the built app through `hedges → found-key → door → …`: the good path
+additionally exercises the `once` loop (confirms "Whisper why you came" is
+visible after `backdoor` sets `mood`, then confirms it's gone on the
+second visit to `reckoning`), the bad path confirms that same choice stays
+hidden on a route that never touches `backdoor`, and all three reach their
+correct `ending.kind` with no console errors and no soft-lock at any
+intermediate node. `allowBack: false` was checked separately: the back
+button is disabled and hidden mid-story, but — per phase 4's dual-purpose
+design — still reads "Back to shelf" and works at the start node, since
+leaving before making a choice isn't undoing anything.
+
+One incidental fix, found while re-checking engine coverage before
+shipping content that leans on every mutation op: `mutate.ts` had no
+dedicated unit test — `push`/`toggle`/`remove` were only ever exercised
+indirectly through `session.test.ts`'s `set`/`add` cases. Added
+`tests/mutate.test.ts` (13 tests: every op, ordering, immutability, and
+defensive behavior against a variable of the wrong type).
+
+**On "proves the spec is writable" (§9):** `aviary`'s JSON was authored
+directly from `format.md` — every block/choice/condition/mutation/theme
+shape came from the document, not from reading `content/types.ts`. The one
+place a `.ts` file mattered was checking `validate.ts`'s specific
+possible-value heuristics before finalizing the `reckoning` branch, which
+is a content-*quality* question (will this trip a warning), not a
+format-*comprehension* gap — and it's exactly the kind of check §13
+promises `npm run validate` exists to catch instead of requiring by hand.
+
+122 tests pass (13 new, `tests/mutate.test.ts`). Typecheck, validate
+(zero errors, zero warnings on both stories), and build are all clean.
+
+Phase 7 (deploy wiring, README, `verify-ui.ts` screenshots) is next.

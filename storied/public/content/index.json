@@ -10,6 +10,16 @@
       "cover": "lighthouse/images/cover.png",
       "tags": ["mystery", "short"],
       "estimatedMinutes": 8
+    },
+    {
+      "id": "aviary",
+      "title": "The Clockwork Aviary",
+      "author": "A. Writer",
+      "blurb": "A locked garden, a caged bird, and a debt only one of you can pay.",
+      "path": "aviary/story.json",
+      "cover": "aviary/images/cover.png",
+      "tags": ["mystery", "fable"],
+      "estimatedMinutes": 12
     }
   ]
 }
