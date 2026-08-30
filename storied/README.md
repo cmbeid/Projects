@@ -7,7 +7,7 @@ manifest line, no rebuild required.
 
 **Playable, and unfinished.** The content pipeline, the engine, the reader
 (shelf, blocks, choices, three responsive layouts, theming), saves,
-resume, and settings are all built, with six demo stories on the shelf.
+resume, and settings are all built, with seven demo stories on the shelf.
 See [`PLAN.md`](PLAN.md) for the design and what's left — deploy wiring is
 what this covers; everything else is done.
 
@@ -63,6 +63,13 @@ the player gathers clues as variables, and the climactic accusation is
 only as strong as the evidence actually found, verified across nine
 real-browser playthrough paths including an exact `danger` boundary and
 a direct enabled/disabled assertion on the accusation hub's buttons.
+`public/content/hogwarts/` (70 nodes) is back down in `drevash`'s size
+class: a close branching retelling of Book 1 that leans on the Mirror of
+Erised's own test of desire as its climax mechanic rather than a bolted-on
+alignment meter — hand-tracing a `peril` threshold by hand before writing
+any test caught a genuinely unreachable ending (a ceiling of 8 against a
+gate of 9) that `npm run validate` did not flag, fixed before the
+seven-path Playwright script was ever written.
 
 ## Playing
 
@@ -120,7 +127,7 @@ scripts/            validate-content.ts / validate-portable.ts (content
 tests/              parse / conditions / mutate / session / inline /
                     persistence / preferences / content / layout /
                     localStories / folderImport / exportPortable
-public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/, drevash/, fornost/, frostmere/
+public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/, drevash/, fornost/, frostmere/, hogwarts/
 ```
 
 Three decisions explain most of the code:

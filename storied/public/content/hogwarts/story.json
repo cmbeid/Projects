@@ -1,0 +1,1540 @@
+{
+  "formatVersion": 1,
+  "id": "hogwarts",
+  "title": "Harry Potter and the Path Not Taken",
+  "author": "A. Writer",
+  "start": "start",
+  "allowBack": true,
+  "variables": {
+    "housePoints": 0,
+    "darkPull": 0,
+    "trustRon": 0,
+    "trustHermione": 0,
+    "peril": 0,
+    "knowsFlamel": false,
+    "suspectsSnape": false,
+    "hasCloak": false,
+    "companions": []
+  },
+  "theme": {
+    "mode": "dark",
+    "palette": {
+      "bg": "#120c08",
+      "surface": "#1e140d",
+      "text": "#f0e6d2",
+      "dim": "#a89578",
+      "accent": "#c9a24b",
+      "choiceBg": "#241a10"
+    },
+    "font": {
+      "body": "serif",
+      "display": "serif",
+      "scale": 1.0
+    },
+    "radius": 12
+  },
+  "nodes": {
+    "start": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The cupboard under the stairs never once felt like where you belonged.",
+          "style": "epigraph"
+        },
+        {
+          "type": "image",
+          "src": "images/cover.png",
+          "alt": "A crooked, narrow alley of shops under a darkening sky, a boy silhouetted at its entrance."
+        },
+        {
+          "type": "text",
+          "text": "Hagrid's letter is still folded in your pocket when the brick wall behind the Leaky Cauldron opens onto Diagon Alley — a crooked street of shops that shouldn't exist, selling things that shouldn't exist, for people who've apparently known about you your whole life without you knowing about them."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Follow Hagrid inside",
+          "to": "diagon_alley_arrival"
+        }
+      ]
+    },
+    "diagon_alley_arrival": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cauldrons, owls, robes that adjust themselves to fit, a window display of a broomstick that costs more than anything you've ever owned. Hagrid steers you first toward a squat white building that looms over every other shop on the street."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go to Gringotts",
+          "to": "gringotts_vault"
+        }
+      ]
+    },
+    "gringotts_vault": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A goblin teller barely looks up as Hagrid produces a small brass key. The cart ride down into the vaults is the fastest, most terrifying thing that has ever happened to you, and at the bottom of it is a heap of gold that is, apparently, yours — your parents left you more than you ever imagined a dead accountant could leave anyone."
+        },
+        {
+          "type": "text",
+          "text": "Hagrid empties a second, smaller vault into a grubby paper bag without a word of explanation, and won't meet your eye when you ask what it was.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Head to Ollivander's for a wand",
+          "to": "ollivanders"
+        }
+      ]
+    },
+    "ollivanders": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Wandmaking, it turns out, isn't a purchase so much as an audition — box after box handed over and snatched back before Mr. Ollivander finally finds the one that answers. Holly, phoenix feather, eleven inches."
+        },
+        {
+          "type": "text",
+          "text": "\"Curious,\" he says, in the tone of a man who has just noticed something he'd rather not have. \"The phoenix whose tail feather is in your wand gave one other feather — just one other. It's curious that you should be destined for this wand when its brother gave you that scar.\"",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask what he means",
+          "to": "ollivanders_warning"
+        }
+      ]
+    },
+    "ollivanders_warning": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He won't say more than he already has, only that the wand chooses the wizard, and that great things are expected of whoever holds that particular holly wand — \"great, terrible things, but great.\" It's not the sort of thing you especially want to hear from an old man who sells sticks for a living."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Get fitted for robes at Madam Malkin's",
+          "to": "madam_malkins"
+        }
+      ]
+    },
+    "madam_malkins": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A boy about your age is already up on a stool being fitted, pale and pointed and entirely sure of himself. He talks at you rather than to you — Quidditch, his family's opinions about which sorts of people shouldn't really be let into Hogwarts at all, an offer of friendship that sounds more like a job interview."
+        },
+        {
+          "type": "image",
+          "src": "images/malfoy.png",
+          "alt": "A pale, sharp-featured boy in unfinished school robes, appraising you openly."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Size him up and consider what he's offering",
+          "to": "malfoy_consider",
+          "set": [
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "You already know you don't like him",
+          "to": "malfoy_dismiss"
+        }
+      ]
+    },
+    "malfoy_consider": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "There's something almost persuasive in the certainty of him — the easy assumption that the two of you are simply better than everyone else in this shop, that it costs nothing to agree. You don't say so out loud. You don't entirely dismiss it either."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Finish getting fitted and move on",
+          "to": "diagon_alley_close"
+        }
+      ]
+    },
+    "malfoy_dismiss": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whatever he's offering, you want no part of it — something about the careless way he talks about \"the wrong sort\" settles wrong in your stomach, in a way you don't have to think twice about."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Finish getting fitted and move on",
+          "to": "diagon_alley_close"
+        }
+      ]
+    },
+    "diagon_alley_close": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Books, a cauldron, a set of brass scales, and — bought without quite deciding to, because Hagrid insists a boy needs a birthday present — a snowy owl you decide to call Hedwig. By the time you're back on the ordinary side of the wall, none of it feels quite real yet."
+        }
+      ],
+      "choices": [
+        {
+          "text": "A month later — King's Cross Station",
+          "to": "platform_nine_three_quarters"
+        }
+      ]
+    },
+    "platform_nine_three_quarters": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Platform nine and three-quarters does not, as far as you can tell, exist — until a plump, harried woman explains, kindly enough, that the trick is to walk straight at the barrier between platforms nine and ten and not lose your nerve."
+        },
+        {
+          "type": "text",
+          "text": "On the other side is a scarlet steam engine and more owls than you've ever seen in one place.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Board the Hogwarts Express",
+          "to": "train_compartment"
+        }
+      ]
+    },
+    "train_compartment": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A red-haired boy asks, apologetically, if every other seat on the train is taken — his name is Ron Weasley, youngest of six brothers, and he's brought a rat named Scabbers and absolutely no money for the trolley."
+        },
+        {
+          "type": "text",
+          "text": "He goes a little pale, then delighted, then embarrassed all at once when he works out who you actually are.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustRon",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Buy enough sweets off the trolley for both of you",
+          "to": "train_hermione_visit"
+        }
+      ]
+    },
+    "train_hermione_visit": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A girl with a great deal of bushy hair and an even greater amount of opinions lets herself into the compartment looking for someone's lost toad, and stays just long enough to correct Ron's spell pronunciation, recite three facts about your own scar that you didn't know yourself, and inform you both that she's read every book on the school list twice."
+        },
+        {
+          "type": "text",
+          "text": "Neither of you is quite sure what to make of her yet.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "The compartment door slides open again",
+          "to": "train_malfoy_encounter"
+        }
+      ]
+    },
+    "train_malfoy_encounter": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Malfoy again, flanked by two boys built like furniture, wanting to know if the rumors are true — that Harry Potter is on this train. He looks at Ron's hand-me-down robes with open contempt and repeats, more pointedly this time, that you'd do well to choose your friends more carefully."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Tell him you can judge that for yourself, thanks",
+          "to": "malfoy_train_stand"
+        },
+        {
+          "text": "Let the comment sit, and wonder if he isn't a little right about being careful",
+          "to": "malfoy_train_wonder",
+          "set": [
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    "malfoy_train_stand": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He leaves in a huff, and Ron looks faintly delighted that anyone would talk to Malfoy like that. Whatever this friendship is going to be, it's off to a fairly clear start."
+        }
+      ],
+      "choices": [
+        {
+          "text": "The castle comes into view",
+          "to": "hogwarts_arrival"
+        }
+      ]
+    },
+    "malfoy_train_wonder": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You don't say anything, but the thought lodges somewhere and doesn't quite leave — that there might be something to sorting people into who matters and who doesn't, and that it might be safer to be on the deciding side of that line rather than the decided-about one."
+        }
+      ],
+      "choices": [
+        {
+          "text": "The castle comes into view",
+          "to": "hogwarts_arrival"
+        }
+      ]
+    },
+    "hogwarts_arrival": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Hogwarts appears the way nothing in your life has ever appeared before — all at once, across a black lake, towers lit gold against the dark, and for a moment even Malfoy's voice behind you goes quiet."
+        },
+        {
+          "type": "image",
+          "src": "images/hogwarts.png",
+          "alt": "A castle of countless towers, lit gold, across a still black lake at night."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Cross the lake and enter the Great Hall",
+          "to": "great_hall_wait"
+        }
+      ]
+    },
+    "great_hall_wait": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The Great Hall's ceiling shows the night sky exactly, candles floating below it, four long tables of students watching the new arrivals with open curiosity. At the front, on a stool, sits a hat so old and patched it looks more like a compost heap than anything with the authority to decide the rest of your life."
+        },
+        {
+          "type": "text",
+          "text": "It sings. Then it starts calling names.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Your name is called",
+          "to": "sorting_hat_choice"
+        }
+      ]
+    },
+    "sorting_hat_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The hat drops over your eyes and a small voice speaks directly into your head. \"Plenty of courage, I see. Not a bad mind, either. There's talent, oh yes — and a nice thirst to prove yourself, too. Slytherin could help you on the way to greatness, no doubt about that.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let it decide — it clearly knows what it's talking about",
+          "to": "sorting_slytherin_moment",
+          "set": [
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "text": "Not Slytherin. Anything but Slytherin",
+          "to": "sorting_gryffindor_insist"
+        }
+      ]
+    },
+    "sorting_slytherin_moment": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Are you sure?\" the voice says, almost amused. \"You could be great, you know, it's all here in your head, and Slytherin will help you on the way to greatness, no doubt about that...\" For one long moment you let yourself actually consider it — the shape of a life spent on the deciding side of that line Malfoy talked about."
+        },
+        {
+          "type": "text",
+          "text": "Then, quietly, you find you'd rather not.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "GRYFFINDOR!",
+          "to": "gryffindor_welcome"
+        }
+      ]
+    },
+    "sorting_gryffindor_insist": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Not Slytherin, eh? Are you sure? You could be great, you know...\" You are, as it happens, entirely sure."
+        }
+      ],
+      "choices": [
+        {
+          "text": "GRYFFINDOR!",
+          "to": "gryffindor_welcome"
+        }
+      ]
+    },
+    "gryffindor_welcome": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The Gryffindor table erupts, Ron's brothers among the loudest of them, and somewhere down the row you catch Malfoy's expression curdle slightly. Ron gets sorted moments later, red-faced and relieved, into the same house. Hermione, not long after, into the same as well."
+        },
+        {
+          "type": "text",
+          "text": "Whatever this year turns out to be, at least you won't be doing it entirely alone.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Term begins",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "term_hub": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Term at Hogwarts settles into something like a rhythm — classes, homework, a castle that changes its own staircases apparently for the fun of it. There's a great deal to fill the time before anything resembling a plot finds you."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go to Potions",
+          "to": "potions_class",
+          "once": true
+        },
+        {
+          "text": "Go to your first flying lesson",
+          "to": "flying_lesson",
+          "once": true
+        },
+        {
+          "text": "It's Halloween — something's wrong in the great hall",
+          "to": "troll_incident",
+          "once": true
+        },
+        {
+          "text": "Spend an evening in the library",
+          "to": "library_research",
+          "once": true
+        },
+        {
+          "text": "Serve a detention in the Forbidden Forest",
+          "to": "forest_detention",
+          "once": true
+        },
+        {
+          "text": "It's Christmas morning",
+          "to": "christmas_gift",
+          "once": true
+        },
+        {
+          "text": "Spend some free time with Ron",
+          "to": "spend_time_with_ron",
+          "once": true
+        },
+        {
+          "text": "Help Hermione with something in the library",
+          "to": "help_hermione_library",
+          "once": true
+        },
+        {
+          "text": "Something's happening tonight — you can feel it",
+          "to": "night_alarm"
+        }
+      ]
+    },
+    "potions_class": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Professor Snape's dungeon classroom is cold in every sense, and he seems to have decided, for reasons you can't work out, that he dislikes you specifically more than any other first-year alive — enough that by the end of the lesson you're fairly sure, whatever else happens this year, that Severus Snape is not on your side. Halfway through a potion that's going nowhere well, Neville's cauldron starts hissing dangerously beside you."
+        },
+        {
+          "type": "text",
+          "text": "A shortcut occurs to you — swap your own failing ingredients for his correctly-measured ones while Snape's back is turned, and let Neville take the blame for the mess that follows.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "suspectsSnape",
+          "op": "set",
+          "value": true
+        }
+      ],
+      "choices": [
+        {
+          "text": "Do it — it's not like anyone will know",
+          "to": "potions_shortcut",
+          "set": [
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Just help him fix it properly instead",
+          "to": "potions_honest"
+        }
+      ]
+    },
+    "potions_shortcut": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It works. Neville's potion goes wrong, yours turns out fine, and nobody's any the wiser — except you, quietly, of every time since that you've let someone smaller take the weight of something that was yours to carry."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the common room",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "potions_honest": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It takes the rest of the lesson and neither of your potions turns out especially well, but Neville stops looking like he's about to be sick, and Snape's contempt, for once, doesn't feel entirely earned."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the common room",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "flying_lesson": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Brooms that come when called, a nasty fall by Neville that breaks his wrist, and — the moment Madam Hooch's back is turned — Malfoy snatching Neville's Remembrall and taking to the air with it, daring anyone to follow."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go after him — flying rules or no flying rules",
+          "to": "quidditch_match"
+        }
+      ]
+    },
+    "quidditch_match": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You catch the Remembrall out of the air in a dive that shouldn't have been possible for someone who's never flown before, and somehow, instead of expulsion, it earns you a place as Seeker on the Gryffindor Quidditch team — the youngest in a century."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "housePoints",
+          "op": "add",
+          "value": 10
+        }
+      ],
+      "choices": [
+        {
+          "text": "Your first real match",
+          "to": "quidditch_peril_choice"
+        }
+      ]
+    },
+    "quidditch_peril_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Halfway through the match your broom bucks under you, hard, throwing you nearly off entirely — as if something, or someone, is trying to buck you off on purpose."
+        },
+        {
+          "type": "image",
+          "src": "images/quidditch.png",
+          "alt": "A boy clinging to a jerking, bucking broomstick high above a stadium."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Grip on with everything you have and ride it out",
+          "to": "quidditch_survive",
+          "set": [
+            {
+              "var": "peril",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Let the broom's momentum carry you into a controlled dismount",
+          "to": "quidditch_control"
+        }
+      ]
+    },
+    "quidditch_survive": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It's a rough, bruising few seconds before the jinx breaks and the broom settles, but you catch the Snitch almost by accident on your way back down, mouth first, in front of the entire stadium. Gryffindor roars."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "housePoints",
+          "op": "add",
+          "value": 10
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the common room",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "quidditch_control": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You manage to bleed off the worst of it before it throws you, and still come away with the Snitch by the end of the match — bruised pride more than anything else, and a win for Gryffindor either way."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "housePoints",
+          "op": "add",
+          "value": 10
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the common room",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "troll_incident": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A troll, of all things, loose in the dungeons on Halloween night — and Hermione, you and Ron both realize at the same moment, doesn't know, because she's been crying in the girls' bathroom all evening and has no idea the whole school's been sent back to its dormitories."
+        },
+        {
+          "type": "image",
+          "src": "images/troll.png",
+          "alt": "A towering, club-wielding troll looming in a narrow stone corridor."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go together and get her out",
+          "to": "troll_together"
+        },
+        {
+          "text": "Handle it yourself — tell Ron to get her out alone",
+          "to": "troll_alone",
+          "set": [
+            {
+              "var": "peril",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "It's not your problem — let a teacher handle it",
+          "to": "ending_expelled"
+        }
+      ]
+    },
+    "troll_together": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It's clumsy and terrifying and almost goes badly wrong — Ron's Wingardium Leviosa dropping the troll's own club on its head at exactly the right moment, the three of you shaking in a heap on the bathroom floor afterward. Professor McGonagall is furious and, grudgingly, impressed in equal measure."
+        },
+        {
+          "type": "text",
+          "text": "Whatever Hermione thought of either of you before tonight, it isn't what she thinks now.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustHermione",
+          "op": "add",
+          "value": 2
+        },
+        {
+          "var": "trustRon",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "housePoints",
+          "op": "add",
+          "value": 5
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the common room",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "troll_alone": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You draw the troll off by yourself long enough for Ron to reach Hermione and get her clear — reckless, and it works, though not without the troll's club coming close enough to feel the wind of it before Professor McGonagall arrives and puts an end to the whole business."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "housePoints",
+          "op": "add",
+          "value": 5
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the common room",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "library_research": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A name keeps surfacing everywhere you look for it and nowhere you're supposed to find it — Nicolas Flamel, cross-referenced out of half the books that might explain who he is. It takes a chocolate frog card, of all things, to finally give you the answer."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Read what the card says",
+          "to": "flamel_discovery"
+        }
+      ]
+    },
+    "flamel_discovery": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Nicolas Flamel: the only known maker of the Philosopher's Stone, six hundred and sixty-five years old, and — you'd bet everything in your Gringotts vault — the reason a three-headed dog is guarding a trapdoor on the third floor."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "knowsFlamel",
+          "op": "set",
+          "value": true
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the common room",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "forest_detention": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Detention with Hagrid, deep in the Forbidden Forest, tracking something that's been killing unicorns — and then, in a clearing ahead, exactly that: a cloaked figure bent over a fallen unicorn, drinking something silver straight from the wound."
+        },
+        {
+          "type": "image",
+          "src": "images/forest.png",
+          "alt": "A hooded, cloaked figure crouched over a fallen unicorn in a dark forest clearing."
+        },
+        {
+          "type": "text",
+          "text": "Your scar burns white-hot the instant it looks up.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Get closer — you need to know what that is",
+          "to": "forest_temptation_close",
+          "set": [
+            {
+              "var": "peril",
+              "op": "add",
+              "value": 1
+            },
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Get back — whatever it is, it isn't worth the risk",
+          "to": "forest_temptation_safe"
+        }
+      ]
+    },
+    "forest_temptation_close": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Close enough now to feel the cold coming off it like a draft, and for one unhurried moment something in your head suggests, quite reasonably, that there are worse things than power like that, that fear is only what small people call the beginning of ambition."
+        },
+        {
+          "type": "text",
+          "text": "A centaur's hooves break the clearing before you have to decide whether to answer it.",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the castle, badly shaken",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "forest_temptation_safe": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You back away into the trees, heart going hard, and whatever the figure is, it's gone by the time Hagrid and the others catch up — nothing left but a dead unicorn and a scar that's still throbbing."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the castle",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "christmas_gift": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Nearly everyone's gone home for the holidays, which makes the castle feel enormous and half-asleep, and among your small pile of presents is one with no name attached — a length of shimmering, near-weightless cloth, and a note in careful handwriting: *Your father left this in my possession before he died. It is time it was returned to you.*",
+          "style": "letter"
+        },
+        {
+          "type": "text",
+          "text": "Invisible. Genuinely, completely invisible. It's the best birthday-that-isn't-your-birthday present you've ever had.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "hasCloak",
+          "op": "set",
+          "value": true
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to term",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "spend_time_with_ron": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Wizard's chess, mostly, which Ron plays with a real, unshowy brilliance that has nothing to do with the offhand way he talks about everything else. It's an easy, uncomplicated kind of friendship, the sort you never had much practice at before this year."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustRon",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to term",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "help_hermione_library": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Hermione's convinced there's a pattern to the school's defenses around the third floor, and she's not wrong — devil's snare, flying keys, a chessboard, logic, and something at the very end none of you have worked out yet. She talks faster when she's excited, and stops correcting your grammar entirely when she forgets to."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustHermione",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to term",
+          "to": "term_hub"
+        }
+      ]
+    },
+    "night_alarm": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Hagrid lets slip, without quite meaning to, that Fluffy the three-headed dog will fall properly asleep for anyone who plays it music — and that someone's already asked him what the dog is guarding. The Stone isn't safe. Whatever's coming is coming tonight."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go down after it yourself",
+          "to": "companions_choice"
+        },
+        {
+          "text": "Go straight to a teacher instead",
+          "to": "tell_teacher"
+        }
+      ]
+    },
+    "tell_teacher": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You find Professor McGonagall and tell her everything — the trapdoor, Flamel, the figure in the forest. She goes pale and promises to look into it immediately, which is the responsible thing, the correct thing, exactly what you're supposed to do."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Wait to hear what happens",
+          "to": "ending_flee"
+        }
+      ]
+    },
+    "companions_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "There's no time to argue about it properly. Whoever's coming down that trapdoor with you needs deciding right now."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Bring them both — you'll need Ron and Hermione",
+          "to": "gauntlet_fluffy",
+          "if": {
+            "var": "trustRon",
+            "gte": 2
+          },
+          "whenLocked": "disable",
+          "lockedText": "You're not sure Ron trusts you enough yet to follow you into this.",
+          "set": [
+            {
+              "var": "companions",
+              "op": "push",
+              "value": "Ron"
+            },
+            {
+              "var": "companions",
+              "op": "push",
+              "value": "Hermione"
+            }
+          ]
+        },
+        {
+          "text": "Just Ron",
+          "to": "gauntlet_fluffy",
+          "if": {
+            "var": "trustRon",
+            "gte": 2
+          },
+          "whenLocked": "disable",
+          "lockedText": "You're not sure Ron trusts you enough yet to follow you into this.",
+          "set": [
+            {
+              "var": "companions",
+              "op": "push",
+              "value": "Ron"
+            }
+          ]
+        },
+        {
+          "text": "Just Hermione",
+          "to": "gauntlet_fluffy",
+          "if": {
+            "var": "trustHermione",
+            "gte": 2
+          },
+          "whenLocked": "disable",
+          "lockedText": "You're not sure Hermione trusts you enough yet to follow you into this.",
+          "set": [
+            {
+              "var": "companions",
+              "op": "push",
+              "value": "Hermione"
+            }
+          ]
+        },
+        {
+          "text": "Go down alone — you won't risk anyone else",
+          "to": "gauntlet_fluffy"
+        }
+      ]
+    },
+    "gauntlet_fluffy": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Fluffy is exactly as advertised — three heads, each with its own opinion about visitors — and exactly as asleep as Hagrid promised, the moment a thin, eerie music starts playing from somewhere in your own pocket. Beneath his enormous paws, a trapdoor."
+        },
+        {
+          "type": "image",
+          "src": "images/trapdoor.png",
+          "alt": "A three-headed dog slumped asleep over a trapdoor set into stone flooring."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Down you go",
+          "to": "gauntlet_devils_snare"
+        }
+      ]
+    },
+    "gauntlet_devils_snare": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The fall is cushioned by something that turns out to be very much alive — a tangle of dark, snaking plant that tightens the instant you struggle against it."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Fight it with everything you have",
+          "to": "gauntlet_snare_wrong",
+          "set": [
+            {
+              "var": "peril",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Force yourself to relax — Devil's Snare hates sunlight, hates calm",
+          "to": "gauntlet_snare_right"
+        }
+      ]
+    },
+    "gauntlet_snare_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Fighting only draws it tighter, and it costs real effort and a fair bit of skin to finally tear free into the room beyond."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on",
+          "to": "gauntlet_keys"
+        }
+      ]
+    },
+    "gauntlet_snare_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The moment you stop fighting, it loosens its grip almost lazily and lets you drop straight through into the room below, entirely unhurt."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on",
+          "to": "gauntlet_keys"
+        }
+      ]
+    },
+    "gauntlet_keys": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Hundreds of winged keys fill a high-ceilinged room, one broomstick propped against the door they're clearly meant to unlock. Only one key, surely, actually fits."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Grab for whichever key flies closest",
+          "to": "gauntlet_keys_wrong",
+          "set": [
+            {
+              "var": "peril",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Watch for the one flying oddly, like it's already been caught once before",
+          "to": "gauntlet_keys_right"
+        }
+      ]
+    },
+    "gauntlet_keys_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Wrong key after wrong key slips through your fingers while the whole flock scatters and re-forms around you, and it takes far too many exhausting passes on the broomstick before the door finally, grudgingly, unlocks."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on",
+          "to": "gauntlet_chess"
+        }
+      ]
+    },
+    "gauntlet_keys_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "One key flies with a limp, its wing bent from an earlier capture — you go straight for it, catch it clean on the first pass, and the door unlocks smoothly."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on",
+          "to": "gauntlet_chess"
+        }
+      ]
+    },
+    "gauntlet_chess": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A chessboard the size of the entire room, black pieces already arranged and waiting, three empty white squares clearly meant for the three of you — or for whoever actually made it this far."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let Ron take the board — this is his game",
+          "to": "gauntlet_chess_ron",
+          "if": {
+            "var": "companions",
+            "has": "Ron"
+          }
+        },
+        {
+          "text": "Work out the moves yourself, carefully, piece by piece",
+          "to": "gauntlet_chess_alone"
+        }
+      ]
+    },
+    "gauntlet_chess_ron": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Ron reads the board like it's the only language he's ever needed — and finds, near the end, the one move that wins outright only if he lets himself be taken. He does it without hesitating, and the king's blow that follows leaves him ashen and still on the stone floor."
+        },
+        {
+          "type": "text",
+          "text": "You have to leave him there. There isn't time not to.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on",
+          "to": "gauntlet_potions"
+        }
+      ]
+    },
+    "gauntlet_chess_alone": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It takes agonizingly long, working out which pieces can be sacrificed and which can't, and the white king's own castle takes a hit that leaves you limping by the time checkmate finally, narrowly, comes."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "peril",
+          "op": "add",
+          "value": 2
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on",
+          "to": "gauntlet_potions"
+        }
+      ]
+    },
+    "gauntlet_potions": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Seven bottles on a table, a riddle in verse, and a wall of purple flame behind you and black flame ahead — one bottle lets you go forward, one lets you go back, most are poison, and there's exactly enough in the right one for a single swallow."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let Hermione work the logic out — this is exactly her kind of puzzle",
+          "to": "gauntlet_potions_hermione",
+          "if": {
+            "var": "companions",
+            "has": "Hermione"
+          }
+        },
+        {
+          "text": "Work through the riddle yourself, slowly",
+          "to": "gauntlet_potions_alone"
+        }
+      ]
+    },
+    "gauntlet_potions_hermione": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Hermione has it solved before you've finished reading the riddle twice, and hands over the correct bottle without a flicker of doubt. \"You'll have to go on alone from here,\" she says. \"There's only enough for one of us to go forward.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Walk through the black flames alone",
+          "to": "mirror_of_erised"
+        }
+      ]
+    },
+    "gauntlet_potions_alone": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working the riddle out by yourself takes several wrong turns and a fair bit of guessing before the right bottle finally reveals itself, with less certainty than you'd like walking into whatever's on the other side of the flames."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "peril",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Walk through the black flames alone",
+          "to": "mirror_of_erised"
+        }
+      ]
+    },
+    "mirror_of_erised": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Beyond the flames: not a monster, not even Snape, but Professor Quirrell — stammer gone entirely, voice gone cold and certain — standing in front of an enormous, gold-framed mirror that wasn't in any of Hermione's research."
+        },
+        {
+          "type": "text",
+          "text": "\"The Mirror of Erised,\" he says, \"shows us nothing more or less than the deepest, most desperate desire of our hearts. Look into it, Potter, and tell me what you see.\""
+        }
+      ],
+      "theme": {
+        "palette": {
+          "accent": "#c9a24b",
+          "bg": "#12100a"
+        }
+      },
+      "choices": [
+        {
+          "text": "Look into the mirror",
+          "to": "mirror_dark_reflection",
+          "if": {
+            "var": "darkPull",
+            "gte": 5
+          }
+        },
+        {
+          "text": "Look into the mirror",
+          "to": "mirror_true_reflection",
+          "if": {
+            "var": "darkPull",
+            "lt": 5
+          }
+        }
+      ]
+    },
+    "mirror_true_reflection": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Your reflection reaches into its own pocket and pulls out a small, blood-red stone — winks — and a moment later you feel real weight drop into your own pocket. You want to find the Stone, not use it, and the mirror, simply, gives it to you."
+        },
+        {
+          "type": "text",
+          "text": "Quirrell's face contorts. \"What do you see?\" he demands. You lie, badly, about a family you never got to have.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Get through this however you can",
+          "to": "final_confrontation"
+        }
+      ]
+    },
+    "mirror_dark_reflection": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Your reflection turns the Stone over in its hand, considering — not finding it, but *keeping* it, using it, becoming someone this whole castle would finally have to take seriously — and a cold, quiet voice that isn't Quirrell's speaks from somewhere behind his turban."
+        },
+        {
+          "type": "text",
+          "text": "\"I know what you want, Harry Potter,\" it says. \"I can give it to you. Power you've never imagined. All you have to do is stand aside — or better yet, stand *with* me.\"",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Take his offer",
+          "to": "ending_dark_lord"
+        },
+        {
+          "text": "Refuse him — whatever it costs",
+          "to": "final_confrontation"
+        }
+      ]
+    },
+    "final_confrontation": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Quirrell lunges, and where his hands close on your skin, they burn — his, not yours, blistering and smoking before he can even finish the thought — but he keeps coming anyway, driven by something behind him far past caring about his own hands."
+        },
+        {
+          "type": "image",
+          "src": "images/duel.png",
+          "alt": "A cloaked figure recoiling in pain, a boy staggering backward, firelight and shadow."
+        }
+      ],
+      "choices": [
+        {
+          "text": "It's too much — the world goes white and distant",
+          "to": "ending_voldemort_wins",
+          "if": {
+            "var": "peril",
+            "gte": 9
+          }
+        },
+        {
+          "text": "Keep holding on, however badly hurt",
+          "to": "confrontation_survive_check",
+          "if": {
+            "var": "peril",
+            "lt": 9
+          }
+        }
+      ]
+    },
+    "confrontation_survive_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Quirrell finally collapses, and for one terrible, exposed moment something rises off the back of his head that has no business being a face at all — and then it's gone, shrieking, straight through you, and everything goes dark."
+        }
+      ],
+      "choices": [
+        {
+          "text": "It's more than you can carry",
+          "to": "ending_sacrifice",
+          "if": {
+            "var": "peril",
+            "gte": 6
+          }
+        },
+        {
+          "text": "You're battered, but you're still standing",
+          "to": "after_confrontation_check",
+          "if": {
+            "var": "peril",
+            "lt": 6
+          }
+        }
+      ]
+    },
+    "after_confrontation_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The Stone is safe. Quirrell is finished. However this year was going to end, it wasn't going to be like this."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Someone's waiting for you when you wake up",
+          "to": "ending_good",
+          "if": {
+            "any": [
+              {
+                "var": "companions",
+                "has": "Ron"
+              },
+              {
+                "var": "companions",
+                "has": "Hermione"
+              }
+            ]
+          }
+        },
+        {
+          "text": "You did it entirely on your own",
+          "to": "ending_alone"
+        }
+      ]
+    },
+    "ending_good": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You wake in the hospital wing to a small mountain of sweets and Dumbledore at your bedside, entirely willing, for once, to actually answer your questions — about Flamel, about the Stone now destroyed, about the mother's love that burned Quirrell's hands and saved your life without your ever choosing it."
+        },
+        {
+          "type": "text",
+          "text": "At the end-of-year feast, last-minute points for you, Ron, Hermione, and even Neville tip the house cup to Gryffindor by a hair, and the whole hall changes color around you. {companions} finds you in the crowd before the carriages leave for the station, and for once, going home for the summer doesn't feel like losing anything.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "good",
+        "title": "The Boy Who Won"
+      }
+    },
+    "ending_sacrifice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dumbledore arrives in time, and only just — his own duel with whatever was left of Quirrell lasting seconds, not minutes, before it's over. You spend the rest of the term in the hospital wing rather than the common room, and the house cup, the exams, the whole ordinary shape of a school year happens somewhere just out of reach while you heal."
+        },
+        {
+          "type": "text",
+          "text": "You won. You're fairly sure, some nights, that you shouldn't have."
+        }
+      ],
+      "ending": {
+        "kind": "neutral",
+        "title": "What It Cost to Win"
+      }
+    },
+    "ending_alone": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You did it — the Stone safe, Quirrell finished, Voldemort's spirit driven shrieking back into whatever's left of him. Nobody else was there to see it, which means nobody else quite believes how close it actually was, and for a long time afterward the victory feels less like something you won and more like something you simply survived, by yourself, the way you've survived most things."
+        }
+      ],
+      "ending": {
+        "kind": "neutral",
+        "title": "The Boy Who Managed Alone"
+      }
+    },
+    "ending_dark_lord": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You don't remember deciding, exactly — only the Stone's weight settling into your hand feeling less like theft and more like arrival, and the voice behind Quirrell's turban going warm with something that might, in another life, have been called pride."
+        },
+        {
+          "type": "text",
+          "text": "Hogwarts never does find out what became of Harry Potter that spring. What it finds, years later, is a name it has learned to say only in a whisper.",
+          "style": "whisper"
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "The Boy Who Chose"
+      }
+    },
+    "ending_voldemort_wins": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The last thing you're aware of is losing your grip entirely — and when Dumbledore finally reaches the chamber beneath the trapdoor, there is no Stone, no Quirrell, and no full explanation, only a boy on the cold stone floor and a silence that will take the wizarding world several very bad years to understand the size of."
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "What the Trapdoor Cost"
+      }
+    },
+    "ending_expelled": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You leave Hermione to whatever's coming down that corridor and get yourself and Ron clear — and though nobody ever quite says the word cowardice to your face, Professor McGonagall's own face says it plainly enough. The term that follows is smaller and lonelier than it should have been, and by the time the letter arrives asking you not to return, it feels less like a punishment than a verdict you'd already passed on yourself."
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "The Boy Who Ran"
+      }
+    },
+    "ending_flee": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Professor McGonagall does exactly what she promises — goes to find Dumbledore, who is, it turns out, already away from the castle on business that feels, in hindsight, entirely too convenient. By the time anyone with real authority reaches the third floor, the trapdoor stands open and empty, and whatever was guarding the Philosopher's Stone guards nothing at all anymore."
+        },
+        {
+          "type": "text",
+          "text": "You did the responsible thing. You will spend a long time afterward wondering if responsible was ever going to be enough.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "neutral",
+        "title": "The Responsible Thing"
+      }
+    }
+  }
+}

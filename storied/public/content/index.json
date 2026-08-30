@@ -60,6 +60,16 @@
       "cover": "frostmere/images/cover.png",
       "tags": ["mystery", "whodunit", "epic"],
       "estimatedMinutes": 70
+    },
+    {
+      "id": "hogwarts",
+      "title": "Harry Potter and the Path Not Taken",
+      "author": "A. Writer",
+      "blurb": "A trapdoor, a three-headed dog, and a mirror that shows you exactly what you want.",
+      "path": "hogwarts/story.json",
+      "cover": "hogwarts/images/cover.png",
+      "tags": ["harry potter", "fantasy", "coming of age"],
+      "estimatedMinutes": 25
     }
   ]
 }
