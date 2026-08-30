@@ -1,137 +1,114 @@
-# Offline and local-import — what's shipped, what isn't
+# Offline and local import
 
-`format.md` §14 documents a real, working feature: the shelf can import a
-single self-contained `story.json` file from disk into this browser, with no
-server involved. This document is the other half — what that feature
-deliberately leaves out, and what changing each of those would actually take
-in this codebase. Nothing below is scheduled or promised; it's written down
-so the shape of the next piece of work doesn't have to be re-derived from
-scratch.
+`format.md` §14 documents the content side: a story can be a single
+self-contained file, or a real folder, imported straight from disk with no
+server involved. This document is the implementation side — what's built,
+where, and the limitations that survived building it. Everything the
+original draft of this document proposed is now shipped; what's left below
+is what turned out to still be imperfect once it was real, not a schedule.
 
 ## What's shipped
 
-- `src/state/localStories.ts` — `importLocalStory`, `listLocalStories`,
-  `removeLocalStory`. Synchronous, `localStorage`-backed, one story per key
-  under `storied:local:story:<id>` plus an ordered index at
-  `storied:local:index`.
-- `src/ui/shelf.ts` — an "Import a story…" button and hidden file input;
-  imported stories render in their own "Imported on this device" section,
-  each with a "Remove" button.
-- `src/main.ts` — wires the shelf's `onImportFile`/`onRemove` to
-  `state/localStories.ts` and re-mounts the shelf on either.
-- `format.md` §14 — the format side: `data:`-URI images (required, since a
-  picked file has no folder to resolve a relative path against) and four
-  optional top-level story fields (`blurb`, `cover`, `tags`,
-  `estimatedMinutes`) that stand in for a manifest entry.
+**Local storage — IndexedDB.** `src/state/localStories.ts`: `importLocalStory`
+(a portable file), `importLocalFolder` (a real folder), `listLocalStories`,
+`removeLocalStory`, `loadLocalStoryAssets`. Two object stores — `stories`
+(the raw JSON text, keyed by id) and `assets` (image Blobs for a folder
+import, keyed by story id + relative path) — replacing the original
+`localStorage` version now that real image Blobs need somewhere to live
+that isn't a base64 detour. `persistence.ts` (saves) and `preferences.ts`
+(text size) are untouched and still `localStorage` — small, no embedded
+images, no reason to move.
 
-Everything here runs entirely client-side. A locally-imported story is never
-sent anywhere — it lives in this browser's `localStorage`, on this device,
-in this profile, same as a save.
+**Real folder import.** `src/ui/folderImport.ts` groups a directory
+`<input>`'s selection (`webkitdirectory`) into a `story.json` plus a
+`relativePath -> File` map; `importLocalFolder` validates it with a real
+`AssetChecker` built from that map (mirrors `scripts/validate-content.ts`'s
+on-disk check) rather than requiring `data:` URIs. Chose the directory
+picker over a `.zip` bundle specifically to avoid a runtime dependency —
+this repo's one hard constraint is zero of those. The real cost: no
+Firefox support (`webkitdirectory` isn't implemented there), so
+`ui/shelf.ts` feature-detects it and simply doesn't show the folder-import
+button when it's unavailable — the single-file portable path still works
+everywhere.
 
-## What it doesn't do, and why that's a real boundary
+**Export.** `src/ui/exportPortable.ts`'s `buildPortableStory` re-encodes
+every image (`fetch` + `Blob.arrayBuffer()` + manual base64, not
+`FileReader` — see the comment there for why) into a `data:` URI and folds
+in the display fields a manifest entry would otherwise own, so a shipped
+*or* local story can be turned back into one portable file. Wired into the
+reader's settings sheet as "Download this story"
+(`src/ui/settings.ts` + `src/ui/download.ts`'s `<a download>` trigger).
 
-**Size.** `localStorage` is synchronous and small — browsers commonly cap an
-origin around 5–10MB. Base64 costs roughly a third more than the original
-image bytes on top of that. A portable story with more than a few modest
-images can hit the ceiling; today that surfaces as `importLocalStory`
-throwing `ImportError('Could not save this story — the browser storage is
-full or unavailable.')` — caught, shown to the user, nothing corrupted, but
-also nothing recoverable in place. There's no compaction, no per-story size
-shown before import, no warning as the ceiling approaches.
+**A CLI check for a portable file.** `npm run validate:portable -- <path>`
+(`scripts/validate-portable.ts`) runs the same `parseStory`/`validateStory`
+pair and the same "every image must be a `data:` URI" rule the browser
+importer enforces, against an arbitrary file outside `public/content/` —
+reusing `findNonEmbeddedAsset`, exported from `localStories.ts` for exactly
+this, rather than a second copy of the rule.
 
-**Producing a portable file is manual.** §14 is explicit that there's no
-tool in this repo for base64-encoding a folder of images into a `story.json`
-— an author does it by hand or with an external encoder. That's a real
-authoring-ergonomics gap, not an oversight; building the tool was out of
-scope for making the *reader* accept the format.
+**Quota visibility.** `ui/shelf.ts`'s import control shows a rough
+`navigator.storage.estimate()`-based free-space figure, and a storage
+failure during import (`QuotaExceededError` specifically) gets a clearer
+message than the old generic one — see `storageFailureMessage` in
+`localStories.ts`.
 
-**No way back out.** A story can be imported; nothing exports one. A shipped
-story can't be turned into a portable file to hand to someone without the
-site, and an imported story can't be pulled back out to move to another
-browser or device — only the original file the user picked can do that, and
-only if they kept it.
+**True offline-first.** `public/sw.js` (hand-rolled — no build step
+processes `public/`, so it's plain browser JS, not the app's own
+TypeScript) precaches the app shell into a versioned
+`storied-shell-<hash>` cache; `scripts/generate-sw-manifest.ts` runs after
+`vite build` (chained into `npm run build`) and writes
+`dist/sw-manifest.json` by reading the *built* `index.html` for its actual
+`<script src>`/`<link href>` values, so it adapts if Vite's output layout
+ever changes, and hashes those files' own bytes for the version — a
+rebuild with no real change doesn't force a new cache. `content/` is
+deliberately **not** precached — a separate, unversioned
+`storied-content` cache fills in as a visit actually fetches
+`content/index.json` and any `story.json`/image, network-first so a
+redeploy shows up immediately when online and the last-fetched copy serves
+when it can't. Registered from `main.ts` via
+`src/offline/registerServiceWorker.ts`, best-effort and silent on failure.
+No workflow changes were needed to ship it: `sw.js` and
+`sw-manifest.json` land outside `dist/assets/`, which `deploy-storied.yml`
+was already syncing as `no-cache` — exactly right for a file a browser
+needs to re-check on every visit to notice an update at all.
 
-**No CLI check for a portable file.** `npm run validate` walks
-`public/content/` only. An author iterating on a portable story has no fast,
-scriptable feedback loop — just the in-browser import's error message, one
-attempt at a time.
+## What's still not perfect
 
-**Import is one file, not a folder.** The file input takes exactly one
-`.json`. That matches what §14 actually requires (every asset embedded, so
-there's nothing else to select) — but it also means a multi-file or
-drag-a-folder flow would need a format change first, not just a UI change;
-see below.
+Real limitations found while building the above, not aspirational gaps —
+worth knowing about, not necessarily worth chasing.
 
-**Not offline in the network sense.** Nothing here makes the app itself work
-with no connection. A first visit still needs to fetch the built JS/CSS,
-and — for a *shipped* story — `content/index.json` and that story's own
-`story.json` and images. Only an already-imported local story's own data
-needs zero network to read, because it's already sitting in `localStorage`.
-A returning visit with the network down still fails today; there's no
-service worker.
+**No zip, no Firefox folder import.** The directory-picker choice above is
+a real tradeoff, not a stopgap: a `.zip` bundle would work everywhere but
+needs a parsing library, which this repo has never taken on. A Firefox
+author is limited to the portable (embedded-image) path.
 
-## What each of those would take
+**Export can fail offline.** `buildPortableStory` re-fetches a shipped
+story's images to embed them — normally instant, since the reader already
+rendered them, but if a story's shelf card was never opened (so its cover
+was never fetched) and the device is offline, that one fetch fails.
+Surfaces as a friendly error in the settings sheet, not a crash — but it's
+a real edge, not a hypothetical one.
 
-None of this is ordered by priority — they're independent, and which one
-matters depends entirely on which limitation above actually gets hit first.
+**IndexedDB still has a ceiling.** Real image Blobs raise the practical
+limit far past the old `localStorage` one, but it's not infinite, and nothing
+here does compaction, shows a per-story size, or warns as a folder
+selection approaches the limit — only after a write actually fails.
+`navigator.storage.estimate()` is the whole mitigation, and it's a rough
+figure browsers round differently.
 
-**IndexedDB instead of `localStorage`.** Only worth doing once the size
-ceiling above is a real, hit-in-practice problem rather than a theoretical
-one. `state/localStories.ts`'s three exports would all become `Promise`s;
-every caller changes shape with them — `main.ts`'s `showShelf` currently
-mounts the shelf synchronously with `entries: listLocalStories()` already in
-hand, so it would need to await the list first (or `mountShelf` would need
-to accept a promise/loading state, the way `loadEntry` already handles a
-manifest story's fetch-then-render). `state/persistence.ts` (saves) and
-`state/preferences.ts` (text size) stay exactly as they are — they're small
-and don't carry embedded images, so `localStorage` remains the right choice
-for both regardless of what local-story storage does.
+**Shell updates aren't instant.** The service worker's cache-first shell
+relies on the browser's own periodic byte-diff of `sw.js` to notice a
+redeploy — standard behavior for this pattern, not a bug, but it means an
+open tab can go a while before it notices a new build exists.
 
-**Real multi-file import.** Needs a format decision first, not just a code
-one: either (a) a `.zip` bundle — `story.json` plus an `images/` folder,
-unpacked client-side with a small zip library, so `src: "images/dock.webp"`
-keeps meaning exactly what it already means in a shipped story, and the
-reader resolves it against files held in memory instead of `fetch()`; or (b)
-`showDirectoryPicker()` / `<input webkitdirectory>` reading a folder
-structure directly, which is close to (a) without the zip step but has
-weaker cross-browser support (no Firefox/Safari support for the directory
-picker as of this writing). Either way, `src` stops being "always a relative
-path or always a `data:` URI" and becomes "resolve against whatever asset
-source this story came from" — `resolveStoryAsset` in `main.ts` would need a
-third branch alongside the manifest-relative and `data:`/`blob:` cases it
-already has.
+**Offline only covers what was fetched online at least once.** Content
+caching is network-first, not a proactive prefetch — a device offline on
+its very first visit to a story it's never opened can't read it. This is
+deliberate (see `PLAN.md` §1: no rebuild to add a story means no baked-in
+catalog to precache either), but it's worth being explicit that "offline"
+here means "offline after," not "offline from the start."
 
-**Export.** A "Share" or "Download" action on any story (shipped or
-imported) that reassembles it as a portable file: fetch each image `src` the
-story references, re-encode as `data:` URIs, merge in the manifest entry's
-display fields as the story's own top-level ones, then trigger a save via a
-`Blob` + `URL.createObjectURL` + a synthetic `<a download>` click (the
-artifact sandbox this was drafted alongside blocks that pattern for a
-*published page*, but it's ordinary and unblocked in the built app itself,
-served from S3/Pages like everything else here). The re-encoding step is the
-real work — an async image-to-data-URI helper that doesn't yet exist
-anywhere in this codebase.
-
-**A CLI check for a portable file.** `scripts/validate-content.ts` is
-structurally "walk `public/content/`, validate what's found." A sibling
-script (or a flag on the existing one) that takes an arbitrary file path,
-runs it through the same `parseStory`/`validateStory` pair, and reports the
-same way, would close the authoring-feedback gap — this is the smallest,
-most self-contained item here, since it reuses the existing parse/validate
-functions untouched and just changes where the file comes from.
-
-**True offline-first.** A materially bigger, separate feature from anything
-above: a service worker (hand-rolled `sw.js`, or `vite-plugin-pwa` to
-generate one) precaching the app shell and, deliberately, only the content a
-visit has actually already fetched — not the whole `public/content/` catalog
-sight unseen, which would defeat the "no rebuild to add a story" design in
-`PLAN.md` §1 by baking a story list into a cache manifest. Real complexity
-here is cache invalidation across three different deploy targets (S3,
-GitHub Pages) each redeploying independently, and making sure a stale
-service worker never serves a story a validate-content gate would have
-rejected.
-
-**Quota visibility.** `navigator.storage.estimate()` shown before an import
-starts, and a clearer message than today's generic "storage full" when a
-`setItem` actually throws mid-import — small, but blocked on nothing above;
-could land any time it's worth the UI real estate on the import control.
+**Not an installable PWA.** The service worker makes a normal browser tab
+work offline; there's no `manifest.webmanifest`, no home-screen icon, no
+standalone display mode. A smaller, separate addition from anything above,
+and out of scope here.

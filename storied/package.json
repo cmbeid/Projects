@@ -6,17 +6,19 @@
   "description": "A phone-first reader for branching-narrative stories, driven entirely by JSON content.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && tsx scripts/generate-sw-manifest.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "validate": "tsx scripts/validate-content.ts",
+    "validate:portable": "tsx scripts/validate-portable.ts",
     "typecheck": "tsc --noEmit",
     "verify": "tsx scripts/verify-ui.ts"
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.2.0",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "playwright": "^1.62.1",
     "tsx": "^4.20.6",

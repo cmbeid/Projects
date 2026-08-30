@@ -18,11 +18,13 @@ export interface ShelfSelection {
   story: Story;
 }
 
-/** What the shelf needs to render and manage locally-imported stories — see format.md §14. */
+/** What the shelf needs to render and manage locally-imported stories — see format.md §14 and offline.md. */
 export interface LocalShelfOptions {
   entries: LocalStory[];
-  /** Reads, validates, and stores the file; rejects with a message fit to show the user. Re-mounts the shelf on success. */
+  /** Reads, validates, and stores a single portable file; rejects with a message fit to show the user. Re-mounts the shelf on success. */
   onImportFile: (file: File) => Promise<void>;
+  /** Same, for a real folder (story.json plus its own images/) picked via a directory input — offline.md's "real multi-file import." */
+  onImportFolder: (fileList: FileList) => Promise<void>;
   /** Deletes a locally-imported story and re-mounts the shelf. */
   onRemove: (id: string) => void;
 }
@@ -181,46 +183,142 @@ function buildLocalCard(
   return card;
 }
 
-/** The "Import a story…" control — a button plus a hidden file input, per format.md §14. */
+/** `1_536_000` -> `"1.5 MB"`. Whole numbers under 1KB show as bytes; everything else gets one decimal place. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+/**
+ * `navigator.storage.estimate()` is a rough figure, not a hard promise — it
+ * covers everything this origin has stored, not just imported stories, and
+ * some browsers round it heavily. Shown so a large import's odds are legible
+ * before it's attempted, not as a precise budget.
+ */
+async function quotaSummary(): Promise<string | null> {
+  if (!('storage' in navigator) || typeof navigator.storage.estimate !== 'function') return null;
+  try {
+    const { usage, quota } = await navigator.storage.estimate();
+    if (quota === undefined) return null;
+    const free = usage !== undefined ? quota - usage : quota;
+    return `~${formatBytes(Math.max(free, 0))} free in this browser`;
+  } catch {
+    return null;
+  }
+}
+
+/** True if this browser's file input supports picking a whole directory (offline.md: no Firefox support as of this writing). */
+function supportsDirectoryPicker(): boolean {
+  return 'webkitdirectory' in document.createElement('input');
+}
+
+/**
+ * One button wired to a hidden file input, sharing the same busy/error
+ * presentation — the two forms `buildImportControl` offers (a single
+ * portable file, or a whole folder) differ only in the input's own
+ * attributes and which `local` callback its `change` event calls.
+ */
+function buildImportButton(
+  label: string,
+  configureInput: (input: HTMLInputElement) => void,
+  runImport: (input: HTMLInputElement) => Promise<void>,
+  error: HTMLElement,
+): HTMLElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'sy-import-button';
+  button.textContent = label;
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.hidden = true;
+  configureInput(input);
+
+  button.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => {
+    error.hidden = true;
+    button.disabled = true;
+    const originalLabel = button.textContent;
+    button.textContent = 'Importing…';
+
+    runImport(input)
+      .catch((reason: unknown) => {
+        error.textContent = reason instanceof Error ? reason.message : 'Could not import this.';
+        error.hidden = false;
+        button.disabled = false;
+        button.textContent = originalLabel;
+      })
+      .finally(() => {
+        input.value = ''; // lets the same file/folder be picked again after fixing an error
+      });
+    // On success, the caller's import function re-mounts the shelf itself —
+    // this instance's DOM (including these very listeners) is about to be
+    // replaced, so there's nothing else to reset here.
+  });
+
+  const holder = document.createElement('span');
+  holder.append(button, input);
+  return holder;
+}
+
+/** The "Import a story…" controls — a file button, and (where supported) a folder one — per format.md §14 and offline.md. */
 function buildImportControl(local: LocalShelfOptions): HTMLElement {
   const section = document.createElement('div');
   section.className = 'sy-import';
 
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'sy-import-button';
-  button.textContent = 'Import a story…';
+  const buttons = document.createElement('div');
+  buttons.className = 'sy-import-buttons';
 
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'application/json,.json';
-  input.hidden = true;
+  const quota = document.createElement('p');
+  quota.className = 'sy-import-quota';
+  void quotaSummary().then((summary) => {
+    if (summary) quota.textContent = summary;
+  });
 
   const error = document.createElement('p');
   error.className = 'sy-import-error';
   error.hidden = true;
 
-  button.addEventListener('click', () => input.click());
-  input.addEventListener('change', () => {
-    const file = input.files?.[0];
-    input.value = ''; // lets the same file be picked again after fixing an error
-    if (!file) return;
+  buttons.append(
+    buildImportButton(
+      'Import a story…',
+      (input) => {
+        input.accept = 'application/json,.json';
+      },
+      async (input) => {
+        const file = input.files?.[0];
+        if (!file) return;
+        await local.onImportFile(file);
+      },
+      error,
+    ),
+  );
 
-    error.hidden = true;
-    button.disabled = true;
-    button.textContent = 'Importing…';
+  if (supportsDirectoryPicker()) {
+    buttons.append(
+      buildImportButton(
+        'Import a story folder…',
+        (input) => {
+          input.webkitdirectory = true;
+          input.multiple = true;
+        },
+        async (input) => {
+          if (!input.files || input.files.length === 0) return;
+          await local.onImportFolder(input.files);
+        },
+        error,
+      ),
+    );
+  }
 
-    local.onImportFile(file).catch((reason: unknown) => {
-      error.textContent = reason instanceof Error ? reason.message : 'Could not import this file.';
-      error.hidden = false;
-      button.disabled = false;
-      button.textContent = 'Import a story…';
-    });
-    // On success, onImportFile re-mounts the shelf itself — this instance's
-    // DOM (including these very listeners) is about to be replaced.
-  });
-
-  section.append(button, input, error);
+  section.append(buttons, quota, error);
   return section;
 }
 

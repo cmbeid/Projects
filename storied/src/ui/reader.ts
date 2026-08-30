@@ -57,6 +57,8 @@ export interface ReaderOptions {
    * button just disables at the start node instead.
    */
   onExitToShelf?: () => void;
+  /** Wired straight through to the settings sheet's export action — see `ui/settings.ts`. */
+  onExport?: () => Promise<void>;
 }
 
 /**
@@ -99,6 +101,7 @@ export function mountReader(
       // for a session that has zero real progress in it.
       render({ skipSave: true });
     },
+    ...(options.onExport ? { onExport: options.onExport } : {}),
   });
 
   // Wide mode only: the current node's first image, shown as a scene panel

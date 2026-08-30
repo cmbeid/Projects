@@ -635,14 +635,29 @@ miss. See the callout in §5.
 
 ---
 
-## 14. Portable stories — for local import
+## 14. Local import — portable and folder
 
 Everything above assumes a story ships under `public/content/`, with a
-manifest entry pointing at it and an `images/` folder beside it. The reader's
-shelf also accepts a single `story.json` file dropped in from disk, picked
-with the browser's own file chooser — entirely client-side, nothing
-uploaded anywhere. That mode needs the file to describe *itself* completely,
-since there's no manifest entry and no folder of images sitting next to it.
+manifest entry pointing at it and an `images/` folder beside it. The
+reader's shelf also imports a story straight from disk, entirely
+client-side, nothing uploaded anywhere — two ways:
+
+- **A single portable file**, picked with the browser's ordinary file
+  chooser. This is what the rest of this section describes: the file has
+  to describe *itself* completely, since there's no manifest entry and no
+  folder of images sitting next to it.
+- **A real folder**, picked with a directory chooser (where the browser
+  supports one — not Firefox, as of this writing; the shelf simply doesn't
+  offer this option there). A folder import is just an ordinary story —
+  `story.json` plus a real `images/` folder, exactly like a shipped one —
+  so none of the rest of this section applies to it: relative image paths
+  work normally, checked against the files actually selected.
+
+Which one to use is a tradeoff, not a preference: a portable file is one
+self-contained artifact, easy to hand to someone, at the cost of every
+image being ~33% larger (base64) and embedded whether or not that's
+convenient; a folder keeps images as real files but only works in a
+browser with directory-picker support.
 
 **A portable story is a normal story file with two differences:**
 
@@ -694,18 +709,26 @@ this browser's storage, not a CDN.
   errors and warnings both apply) — a broken portable story is rejected with
   the same specific messages, not silently.
 - Its `id` (§3) must not collide with a story already on the shelf from the
-  manifest — that field is also the localStorage save key (see the note on
-  saves, below), and two different stories sharing one would mean sharing a
-  save. Re-importing the *same* portable story again (say, after editing it)
-  is expected and just replaces the earlier copy.
+  manifest — that field is also the save key (see the note on saves,
+  below), and two different stories sharing one would mean sharing a
+  save. Re-importing the *same* story again (portable or folder, say after
+  editing it) is expected and just replaces the earlier copy.
 - On success it appears on the shelf under "Imported on this device,"
   playable exactly like any other story, with its own "Remove" button.
 
+**Exporting back out.** Any story open in the reader — shipped or
+local — can be turned back into a portable file from the settings sheet
+("Download this story"): every image it uses gets embedded the same way
+§14 describes, and the shelf's display fields (for a shipped story) get
+folded onto the download's own top level. Round-tripping a story you
+imported gets back close to what you put in, since its images are already
+embedded.
+
 **Where it lives, and what it doesn't do.** A locally-imported story is
-stored in this browser's `localStorage`, on this device, in this browser
+stored in this browser's IndexedDB, on this device, in this browser
 profile — not synced, not backed up, not shared with anyone unless the
-`story.json` file itself is. Clearing site data for this origin removes it
-the same as it would a save. This is deliberately the simple end of what's
-possible here; `offline.md` outlines what a more complete version — larger
-stories, drag-and-drop, exporting a story back out, working with zero
-network at all — would need.
+file (or, for a folder import, the folder) itself is. Clearing site data
+for this origin removes it the same as it would a save. `offline.md`
+documents the real limitations that came out of building this — where the
+size ceiling actually sits, what still can't be done offline, and why
+Firefox has no folder import — rather than treating any of it as solved.

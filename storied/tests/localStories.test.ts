@@ -1,8 +1,16 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ImportError, importLocalStory, listLocalStories, removeLocalStory } from '../src/state/localStories';
+import 'fake-indexeddb/auto';
+import {
+  ImportError,
+  importLocalFolder,
+  importLocalStory,
+  listLocalStories,
+  loadLocalStoryAssets,
+  removeLocalStory,
+} from '../src/state/localStories';
 
-const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAbitOmMAAAAASUVORK5CYII=';
 
 function storyJson(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
@@ -22,29 +30,51 @@ function storyJson(overrides: Record<string, unknown> = {}): string {
   });
 }
 
-beforeEach(() => {
-  localStorage.clear();
+function file(name: string, content: string, type = 'application/json'): File {
+  return new File([content], name, { type });
+}
+
+// jsdom doesn't implement Blob URLs at all (real browsers do) — a minimal
+// stand-in so loadLocalStoryAssets has something to call.
+let blobUrlCounter = 0;
+if (typeof URL.createObjectURL !== 'function') {
+  URL.createObjectURL = () => `blob:test-url/${blobUrlCounter++}`;
+}
+if (typeof URL.revokeObjectURL !== 'function') {
+  URL.revokeObjectURL = () => {};
+}
+
+beforeEach(async () => {
+  // fake-indexeddb has no bulk reset; deleting and letting the next open()
+  // recreate the schema is the same reset persistence.test.ts gets for free
+  // from localStorage.clear().
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase('storied-local');
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    req.onblocked = () => resolve();
+  });
 });
 
 describe('importLocalStory', () => {
-  it('rejects text that is not JSON', () => {
-    expect(() => importLocalStory('not json at all', new Set())).toThrow(ImportError);
+  it('rejects text that is not JSON', async () => {
+    await expect(importLocalStory('not json at all', new Set())).rejects.toThrow(ImportError);
   });
 
-  it('rejects a story that fails parsing', () => {
-    expect(() => importLocalStory('{"formatVersion": 1}', new Set())).toThrow(ImportError);
+  it('rejects a story that fails parsing', async () => {
+    await expect(importLocalStory('{"formatVersion": 1}', new Set())).rejects.toThrow(ImportError);
   });
 
-  it('rejects a story that fails content validation', () => {
+  it('rejects a story that fails content validation', async () => {
     const broken = storyJson({ start: 'nowhere' });
-    expect(() => importLocalStory(broken, new Set())).toThrow(/nowhere/);
+    await expect(importLocalStory(broken, new Set())).rejects.toThrow(/nowhere/);
   });
 
-  it('rejects an id that collides with a shipped story', () => {
-    expect(() => importLocalStory(storyJson(), new Set(['porch-light']))).toThrow(/already the id/);
+  it('rejects an id that collides with a shipped story', async () => {
+    await expect(importLocalStory(storyJson(), new Set(['porch-light']))).rejects.toThrow(/already the id/);
   });
 
-  it('rejects an image with a relative (non-embedded) src', () => {
+  it('rejects an image with a relative (non-embedded) src', async () => {
     const withImage = storyJson({
       nodes: {
         a: {
@@ -56,10 +86,10 @@ describe('importLocalStory', () => {
         },
       },
     });
-    expect(() => importLocalStory(withImage, new Set())).toThrow(/data: URI/);
+    await expect(importLocalStory(withImage, new Set())).rejects.toThrow(/data: URI/);
   });
 
-  it('accepts a story whose only image is embedded as a data: URI', () => {
+  it('accepts a story whose only image is embedded as a data: URI', async () => {
     const withImage = storyJson({
       nodes: {
         a: {
@@ -71,49 +101,133 @@ describe('importLocalStory', () => {
         },
       },
     });
-    const result = importLocalStory(withImage, new Set());
+    const result = await importLocalStory(withImage, new Set());
     expect(result.id).toBe('porch-light');
+    expect(result.kind).toBe('portable');
   });
 
-  it('stores a valid story so it shows up in listLocalStories', () => {
-    importLocalStory(storyJson(), new Set());
-    const listed = listLocalStories();
+  it('stores a valid story so it shows up in listLocalStories', async () => {
+    await importLocalStory(storyJson(), new Set());
+    const listed = await listLocalStories();
     expect(listed).toHaveLength(1);
     expect(listed[0]?.story.title).toBe('The Porch Light');
   });
 
-  it('re-importing the same id overwrites rather than duplicates', () => {
-    importLocalStory(storyJson(), new Set());
-    importLocalStory(storyJson({ title: 'The Porch Light, Revised' }), new Set());
-    const listed = listLocalStories();
+  it('re-importing the same id overwrites rather than duplicates', async () => {
+    await importLocalStory(storyJson(), new Set());
+    await importLocalStory(storyJson({ title: 'The Porch Light, Revised' }), new Set());
+    const listed = await listLocalStories();
     expect(listed).toHaveLength(1);
     expect(listed[0]?.story.title).toBe('The Porch Light, Revised');
   });
 });
 
-describe('removeLocalStory', () => {
-  it('removes a story so it no longer lists', () => {
-    importLocalStory(storyJson(), new Set());
-    expect(listLocalStories()).toHaveLength(1);
-    removeLocalStory('porch-light');
-    expect(listLocalStories()).toHaveLength(0);
+describe('importLocalFolder', () => {
+  const storyFile = file(
+    'story.json',
+    JSON.stringify({
+      formatVersion: 1,
+      id: 'porch-light',
+      title: 'The Porch Light',
+      start: 'a',
+      variables: {},
+      nodes: {
+        a: {
+          blocks: [
+            { type: 'text', text: 'hi' },
+            { type: 'image', src: 'images/porch.png', alt: 'A porch.' },
+          ],
+          ending: { kind: 'neutral', title: 'End' },
+        },
+      },
+    }),
+  );
+
+  it('accepts a story whose images are all present among the selected files', async () => {
+    const assets = new Map([['images/porch.png', file('porch.png', 'fake-bytes', 'image/png')]]);
+    const result = await importLocalFolder(storyFile, assets, new Set());
+    expect(result.id).toBe('porch-light');
+    expect(result.kind).toBe('folder');
   });
 
-  it('is a no-op for an id that was never imported', () => {
-    expect(() => removeLocalStory('never-existed')).not.toThrow();
+  it('rejects a story referencing an image that was not selected', async () => {
+    await expect(importLocalFolder(storyFile, new Map(), new Set())).rejects.toThrow(/not found/);
+  });
+
+  it('rejects an id that collides with a shipped story', async () => {
+    const assets = new Map([['images/porch.png', file('porch.png', 'fake-bytes', 'image/png')]]);
+    await expect(importLocalFolder(storyFile, assets, new Set(['porch-light']))).rejects.toThrow(/already the id/);
+  });
+
+  it('stores every asset so loadLocalStoryAssets can resolve them', async () => {
+    const assets = new Map([['images/porch.png', file('porch.png', 'fake-bytes', 'image/png')]]);
+    await importLocalFolder(storyFile, assets, new Set());
+    const loaded = await loadLocalStoryAssets('porch-light');
+    expect(loaded.has('images/porch.png')).toBe(true);
+    expect(loaded.get('images/porch.png')).toMatch(/^blob:/);
+  });
+
+  it('a re-import as portable clears stale assets from an earlier folder import', async () => {
+    const assets = new Map([['images/porch.png', file('porch.png', 'fake-bytes', 'image/png')]]);
+    await importLocalFolder(storyFile, assets, new Set());
+    expect((await loadLocalStoryAssets('porch-light')).size).toBe(1);
+
+    await importLocalStory(storyJson(), new Set());
+    expect((await loadLocalStoryAssets('porch-light')).size).toBe(0);
+  });
+});
+
+describe('removeLocalStory', () => {
+  it('removes a story so it no longer lists', async () => {
+    await importLocalStory(storyJson(), new Set());
+    expect(await listLocalStories()).toHaveLength(1);
+    await removeLocalStory('porch-light');
+    expect(await listLocalStories()).toHaveLength(0);
+  });
+
+  it('is a no-op for an id that was never imported', async () => {
+    await expect(removeLocalStory('never-existed')).resolves.not.toThrow();
+  });
+
+  it('also removes a folder import\'s stored assets', async () => {
+    const storyFile = file(
+      'story.json',
+      JSON.stringify({
+        formatVersion: 1,
+        id: 'porch-light',
+        title: 'The Porch Light',
+        start: 'a',
+        variables: {},
+        nodes: { a: { blocks: [{ type: 'text', text: 'hi' }], ending: { kind: 'neutral', title: 'End' } } },
+      }),
+    );
+    const assets = new Map([['images/porch.png', file('porch.png', 'fake-bytes', 'image/png')]]);
+    await importLocalFolder(storyFile, assets, new Set());
+    await removeLocalStory('porch-light');
+    expect((await loadLocalStoryAssets('porch-light')).size).toBe(0);
   });
 });
 
 describe('listLocalStories', () => {
-  it('is empty with nothing imported', () => {
-    expect(listLocalStories()).toEqual([]);
+  it('is empty with nothing imported', async () => {
+    expect(await listLocalStories()).toEqual([]);
   });
 
-  it('skips a corrupt entry rather than throwing', () => {
-    importLocalStory(storyJson(), new Set());
-    localStorage.setItem('storied:local:index', JSON.stringify(['porch-light', 'ghost']));
-    localStorage.setItem('storied:local:story:ghost', '{not json');
-    expect(() => listLocalStories()).not.toThrow();
-    expect(listLocalStories().map((s) => s.id)).toEqual(['porch-light']);
+  it('orders oldest-imported first', async () => {
+    await importLocalStory(storyJson({ id: 'first', title: 'First' }), new Set());
+    await importLocalStory(storyJson({ id: 'second', title: 'Second' }), new Set());
+    const listed = await listLocalStories();
+    expect(listed.map((s) => s.id)).toEqual(['first', 'second']);
+  });
+});
+
+describe('loadLocalStoryAssets', () => {
+  it('is empty for a portable story, which has no asset records', async () => {
+    await importLocalStory(storyJson(), new Set());
+    expect((await loadLocalStoryAssets('porch-light')).size).toBe(0);
+  });
+
+  it('is empty for an id nothing was ever imported under', async () => {
+    expect((await loadLocalStoryAssets('never-existed')).size).toBe(0);
   });
 });
