@@ -55,6 +55,15 @@ Pick one to start reading. Progress saves per story and resumes where you
 left off; the gear icon in the reader holds text size and restarting the
 current story.
 
+**Import a story from a file.** The shelf's "Import a story…" button reads a
+`.json` file straight off disk — entirely in this browser, nothing
+uploaded — for a story that isn't hosted anywhere. It needs to be a
+*portable* story: every image embedded as a `data:` URI rather than a
+relative path, since there's no folder to resolve one against. See
+`format.md` §14 for the format, and [`offline.md`](offline.md) for what a
+more complete version of this (bigger stories, drag-and-drop, exporting a
+story back out) would still need.
+
 | Layout mode | Width | Shape |
 | --- | --- | --- |
 | `compact` | < 700px | Phone portrait — the Pixel Fold's cover screen lands here. |
@@ -68,13 +77,16 @@ folding or unfolding changes the viewport without a reload.
 
 ```
 format.md         the content spec — read this first
+offline.md        what local import (§14) doesn't do yet, and what would
+                    change to fix each gap — a plan, not a changelog
 src/content/       types.ts, parse.ts, validate.ts — unknown JSON -> Story,
                     with a JSON path on every failure; inline.ts, the
                     {var} interpolation + emphasis renderer (no innerHTML)
 src/engine/         conditions.ts, mutate.ts, session.ts — the playthrough
                     state machine, pure and DOM-free
 src/state/          persistence.ts (per-story saves), preferences.ts
-                    (the global text-size setting)
+                    (the global text-size setting), localStories.ts
+                    (stories imported from a file — format.md §14)
 src/ui/             shelf.ts, reader.ts, theme.ts, settings.ts, layout.ts
 scripts/            validate-content.ts (content gate), verify-ui.ts (Playwright)
 tests/              parse / conditions / mutate / session / inline /

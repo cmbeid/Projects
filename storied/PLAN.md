@@ -831,3 +831,60 @@ choice `text` rather than a block).
 Content report: `npm run typecheck`/`npm test` (122, unchanged — no code
 changed for this story) and `npm run validate` all clean; four full
 playthroughs in a real browser, one per ending path, all correct.
+
+## Local import — a real feature, plus a plan for the rest of it
+
+Added a working "Import a story…" control to the shelf: pick a `.json`
+file from disk, and — entirely client-side, nothing uploaded — it's
+parsed and validated through the exact same `parseStory`/`validateStory`
+pair every other story goes through, then stored in this browser and
+playable immediately, alongside the shipped stories under its own
+"Imported on this device" heading.
+
+**The format change this needed, and why it's small.** A file picked from
+disk has no folder next to it, so a relative image `src` has nothing to
+resolve against. Rather than invent a new content mechanism, `format.md`
+§14 leans on something the reader already does almost for free: an
+`<img>` doesn't care whether its `src` is a path or a `data:` URI, so a
+"portable" story is just a normal story with every image embedded that
+way, plus four optional top-level fields (`blurb`, `cover`, `tags`,
+`estimatedMinutes`) that mirror the manifest entry it doesn't have. Both
+are additive — nothing under `public/content/` changed, and a
+manifest-listed story ignores the new top-level fields entirely (the
+manifest stays authoritative there).
+
+**Guardrails that turned out to matter in practice, not just in theory:**
+an id collision with a *shipped* story is rejected outright, because
+`persistence.ts` keys a save by story id alone — letting two different
+stories share one would mean silently sharing a save. Re-importing the
+same local story again (after editing it) is allowed and expected — it
+just overwrites its old copy, same id or not. And a relative (non-`data:`)
+image `src` is rejected **at import time**, scanning every block, both
+background-image slots, and the new `cover` field, with the exact JSON
+path in the message — this is deliberately proactive rather than letting
+it fail silently the first time the story actually renders, in the same
+spirit as phase 7's `aviary` fix: catch the dead end before it ships, not
+after.
+
+**What's real and shipped vs. what's written down for later.** Storage is
+synchronous `localStorage`, same posture as `persistence.ts` and
+`preferences.ts` — deliberately not IndexedDB, since nothing about this
+feature needed async storage to work, only to scale past a size ceiling
+that hasn't actually been hit yet. `offline.md` is the new document for
+that boundary: it names every real limitation this implementation has on
+purpose (the size ceiling, no export path, no CLI check for a portable
+file sitting outside `public/content/`, single-file-only import, and that
+none of this makes the app work with the network fully off), and outlines
+what changing each one would actually touch in this codebase — without
+scheduling any of it. It's written the same way this document is: so the
+next session doesn't have to re-derive the shape of the problem.
+
+Verification: `npm run typecheck`/`npm test` (134, +12 new for
+`state/localStories.ts`) / `npm run validate` all clean; a real browser
+run against `npm run build && npm run preview` importing a small portable
+story with an embedded image, confirming — in this order — a relative-path
+image is rejected with the right message, an id collision with a shipped
+story is rejected with the right message, a valid import appears under
+"Imported on this device" and reads correctly (image included, zero
+network requests for its content), the action label reads "Continue"
+after reaching an ending, and "Remove" actually removes it.

@@ -133,6 +133,17 @@ export interface Story {
   id: string;
   title: string;
   author?: string;
+  /**
+   * Display metadata that normally lives on the manifest entry instead (see
+   * `ManifestEntry` below). A manifest-listed story ignores these — the
+   * manifest is the source of truth there. They exist so a single
+   * `story.json`, with no manifest around it at all, can still describe
+   * itself for the shelf — see format.md §14.
+   */
+  blurb?: string;
+  cover?: string;
+  tags?: string[];
+  estimatedMinutes?: number;
   start: string;
   allowBack?: boolean;
   variables: VariableTable;

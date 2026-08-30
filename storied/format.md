@@ -174,7 +174,7 @@ class or inline style — see §8 for why.
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `src` | yes | Relative to this story's folder. |
+| `src` | yes | Relative to this story's folder, or a `data:` URI — see §14. |
 | `alt` | yes, non-empty | Not optional. The validator rejects an image with no `alt`. |
 | `caption` | no | Shown beneath the image in small type. |
 
@@ -339,7 +339,7 @@ reachable from content.
 | `palette.bg` `surface` `text` `dim` `accent` `choiceBg` | hex color | app default per `mode` | Must parse as `#rgb`, `#rrggbb`, or `rgb(...)`. Any omitted key falls back to the default for the active `mode`. |
 | `font.body` `font.display` | `"serif"` \| `"sans"` \| `"mono"` \| `"display"` | `"sans"` | Maps to a system font stack. **No remote font URLs** — a story cannot make the reader fetch anything from a font host. |
 | `font.scale` | number | `1` | Clamped to `0.85`–`1.3`. |
-| `background.image` | string | none | Relative to the story folder, like a block image. |
+| `background.image` | string | none | Relative to the story folder, like a block image — or a `data:` URI, §14. |
 | `background.fit` | `"cover"` \| `"contain"` | `"cover"` | |
 | `background.overlay` | number | `0.5` | Clamped `0`–`0.9`. Darkens/lightens the background image so text stays readable regardless of what's under it. |
 | `radius` | number (px) | `14` | Clamped `0`–`32`. |
@@ -415,6 +415,12 @@ Covered field-by-field in §4; this section is the practical checklist.
 - A `background.image` (§8) follows the same path and `alt`-less rules,
   except it has no `alt` field — it's decorative, always paired with an
   `overlay` for text contrast.
+- **A `src` may instead be a `data:` URI** — the image embedded directly in
+  the JSON rather than a separate file. Nothing under `public/content/`
+  needs this; it exists for the single-file "portable" stories in §14. A
+  shipped story *can* use one too (the validator accepts it, skipping the
+  on-disk check), but a separate file is almost always better here: it's
+  cacheable, and doesn't bloat `story.json` by the ~33% base64 overhead.
 
 ---
 
@@ -543,6 +549,7 @@ Paired manifest entry:
 | `id` | string | yes | — |
 | `title` | string | yes | — |
 | `author` | string | no | — |
+| `blurb` `cover` `tags` `estimatedMinutes` | see §2 | no | used only when there's no manifest entry — §14 |
 | `start` | string (node id) | yes | — |
 | `allowBack` | boolean | no | `true` |
 | `variables` | object | yes | `{}` |
@@ -599,7 +606,8 @@ problem:
 - a node with neither `choices` nor `ending` (§4)
 - a node **reachable from `start`** that no path can ever reach (§3) —
   walked through every choice, including ones behind a condition
-- an image whose `src` doesn't exist on disk, or has empty `alt` (§10)
+- an image whose `src` doesn't exist on disk, or has empty `alt` (§10) — a
+  `data:` URI is exempt from the disk check (§14), never from the `alt` one
 - a theme color that doesn't parse, or an enum value not in this document
   (§8)
 - a manifest entry whose `path` or `cover` doesn't exist, or a duplicate
@@ -624,3 +632,80 @@ typo in one story never hides it from the person trying to fix it.
 every one of those conditions could end up false at the same time — a real
 dead end that a clean `npm run validate` run and a lucky playtest can both
 miss. See the callout in §5.
+
+---
+
+## 14. Portable stories — for local import
+
+Everything above assumes a story ships under `public/content/`, with a
+manifest entry pointing at it and an `images/` folder beside it. The reader's
+shelf also accepts a single `story.json` file dropped in from disk, picked
+with the browser's own file chooser — entirely client-side, nothing
+uploaded anywhere. That mode needs the file to describe *itself* completely,
+since there's no manifest entry and no folder of images sitting next to it.
+
+**A portable story is a normal story file with two differences:**
+
+1. **Every image is a `data:` URI**, not a relative path. A relative `src`
+   like `images/dock.webp` has nothing to resolve against once the file is
+   on its own — import rejects a story with one immediately, naming the
+   exact field, rather than shipping a broken image discovered later.
+2. **It carries its own shelf-card fields**, normally the manifest's job:
+   `blurb`, `cover`, `tags`, `estimatedMinutes`, directly at the story's top
+   level, alongside `title` and `author` (§3 — `author` already lived here).
+   These are **ignored for a manifest-listed story** — the manifest stays
+   the source of truth there — and used only for a story with no manifest
+   entry, which is exactly the local-import case.
+
+```json
+{
+  "formatVersion": 1,
+  "id": "porch-light",
+  "title": "The Porch Light",
+  "author": "A. Writer",
+  "blurb": "A short one, for the walk between the car and the door.",
+  "cover": "data:image/webp;base64,UklGRi…",
+  "tags": ["short"],
+  "estimatedMinutes": 3,
+  "start": "…",
+  "variables": { "…": "…" },
+  "nodes": {
+    "…": {
+      "blocks": [
+        { "type": "image", "src": "data:image/webp;base64,UklGRi…", "alt": "…" }
+      ]
+    }
+  }
+}
+```
+
+**Producing one.** Write the story exactly as §1–§13 describe, then replace
+every image `src` (and `theme.background.image`, and the new top-level
+`cover`) with a `data:` URI — `data:<mime-type>;base64,<the file's own
+bytes, base64-encoded>`. Any base64 encoder does this; there's no tool in
+this repo for it, since it's a one-time step outside the normal
+`public/content/` workflow. Keep images small — base64 costs about a third
+more space than the original file, and the whole story now has to fit in
+this browser's storage, not a CDN.
+
+**What happens on import:**
+
+- The file is parsed and validated exactly like any other story (§13's
+  errors and warnings both apply) — a broken portable story is rejected with
+  the same specific messages, not silently.
+- Its `id` (§3) must not collide with a story already on the shelf from the
+  manifest — that field is also the localStorage save key (see the note on
+  saves, below), and two different stories sharing one would mean sharing a
+  save. Re-importing the *same* portable story again (say, after editing it)
+  is expected and just replaces the earlier copy.
+- On success it appears on the shelf under "Imported on this device,"
+  playable exactly like any other story, with its own "Remove" button.
+
+**Where it lives, and what it doesn't do.** A locally-imported story is
+stored in this browser's `localStorage`, on this device, in this browser
+profile — not synced, not backed up, not shared with anyone unless the
+`story.json` file itself is. Clearing site data for this origin removes it
+the same as it would a save. This is deliberately the simple end of what's
+possible here; `offline.md` outlines what a more complete version — larger
+stories, drag-and-drop, exporting a story back out, working with zero
+network at all — would need.
