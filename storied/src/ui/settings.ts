@@ -13,6 +13,12 @@ const TEXT_SIZES: readonly TextSize[] = ['small', 'normal', 'large'];
 export interface SettingsCallbacks {
   /** Called after the player confirms — clearing the save is the caller's job. */
   onRestart: () => void;
+  /**
+   * Prepares and triggers the download of this story as a portable file
+   * (offline.md's "export") — omit to leave the button out entirely rather
+   * than wire a no-op.
+   */
+  onExport?: () => Promise<void>;
 }
 
 /** Mounts the gear toggle into `header` and the sheet itself into `shell`. */
@@ -60,6 +66,35 @@ export function mountSettings(header: HTMLElement, shell: HTMLElement, callbacks
     sizeRow.append(button);
   }
   refreshActive();
+
+  if (callbacks.onExport) {
+    const onExport = callbacks.onExport;
+    const exportButton = document.createElement('button');
+    exportButton.type = 'button';
+    exportButton.className = 'sy-settings-export';
+    exportButton.textContent = 'Download this story';
+
+    const exportError = document.createElement('p');
+    exportError.className = 'sy-settings-export-error';
+    exportError.hidden = true;
+
+    exportButton.addEventListener('click', () => {
+      exportError.hidden = true;
+      exportButton.disabled = true;
+      exportButton.textContent = 'Preparing…';
+      onExport()
+        .catch((error: unknown) => {
+          exportError.textContent = error instanceof Error ? error.message : 'Could not prepare this download.';
+          exportError.hidden = false;
+        })
+        .finally(() => {
+          exportButton.disabled = false;
+          exportButton.textContent = 'Download this story';
+        });
+    });
+
+    sheet.append(exportButton, exportError);
+  }
 
   const restart = document.createElement('button');
   restart.type = 'button';

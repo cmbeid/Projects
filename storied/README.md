@@ -55,6 +55,20 @@ Pick one to start reading. Progress saves per story and resumes where you
 left off; the gear icon in the reader holds text size and restarting the
 current story.
 
+**Import a story from disk.** The shelf offers two buttons — "Import a
+story…" for a single portable file (every image embedded as a `data:`
+URI, format.md §14) and, where the browser supports a directory picker,
+"Import a story folder…" for a real `story.json` plus its `images/`, no
+embedding needed. Both run entirely in this browser, nothing uploaded.
+Any story open in the reader can also be turned back into a portable file
+from the settings sheet ("Download this story"). And once you've opened a
+story while online, it stays readable with the network off entirely — see
+[`offline.md`](offline.md) for exactly what that does and doesn't cover.
+
+```bash
+npm run validate:portable -- path/to/story.json   # check a portable file before sharing it
+```
+
 | Layout mode | Width | Shape |
 | --- | --- | --- |
 | `compact` | < 700px | Phone portrait — the Pixel Fold's cover screen lands here. |
@@ -68,17 +82,27 @@ folding or unfolding changes the viewport without a reload.
 
 ```
 format.md         the content spec — read this first
+offline.md        the local-import/offline implementation — what's shipped,
+                    and the real limitations that came out of building it
 src/content/       types.ts, parse.ts, validate.ts — unknown JSON -> Story,
                     with a JSON path on every failure; inline.ts, the
                     {var} interpolation + emphasis renderer (no innerHTML)
 src/engine/         conditions.ts, mutate.ts, session.ts — the playthrough
                     state machine, pure and DOM-free
 src/state/          persistence.ts (per-story saves), preferences.ts
-                    (the global text-size setting)
-src/ui/             shelf.ts, reader.ts, theme.ts, settings.ts, layout.ts
-scripts/            validate-content.ts (content gate), verify-ui.ts (Playwright)
+                    (text size), localStories.ts (IndexedDB-backed local
+                    imports — format.md §14, offline.md)
+src/ui/             shelf.ts, reader.ts, theme.ts, settings.ts, layout.ts,
+                    folderImport.ts (grouping a directory selection),
+                    exportPortable.ts + download.ts (the export path)
+src/offline/        registerServiceWorker.ts
+public/sw.js        the service worker itself — plain JS, not built
+scripts/            validate-content.ts / validate-portable.ts (content
+                    gates), generate-sw-manifest.ts (post-build, chained
+                    into `npm run build`), verify-ui.ts (Playwright)
 tests/              parse / conditions / mutate / session / inline /
-                    persistence / preferences / content / layout
+                    persistence / preferences / content / layout /
+                    localStories / folderImport / exportPortable
 public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/
 ```
 
@@ -99,6 +123,13 @@ characters as text, not as markup.
 choice visible-but-unclickable; it doesn't guarantee a node has a way
 forward. `format.md` §5 has the full story — it's a real trap the shipped
 `aviary` story hit during development, not a hypothetical.
+
+**The service worker never precaches the story catalog.** Only the app
+shell is precached at install time; `content/` is cached as a visit
+actually fetches it. Baking every shipped story into the precache list
+would mean a new story needs a service-worker update to ever be seen,
+which defeats the one-line "drop a folder, add a manifest entry, no
+rebuild" promise this whole project is built around.
 
 ## Checks
 

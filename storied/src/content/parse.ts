@@ -382,6 +382,10 @@ export function parseStory(data: unknown, path = '$'): Story {
   const id = asString(reqField(obj, 'id', `${path}.id`), `${path}.id`);
   const title = asString(reqField(obj, 'title', `${path}.title`), `${path}.title`);
   const authorRaw = optField(obj, 'author');
+  const blurbRaw = optField(obj, 'blurb');
+  const coverRaw = optField(obj, 'cover');
+  const tagsRaw = optField(obj, 'tags');
+  const estimatedMinutesRaw = optField(obj, 'estimatedMinutes');
   const start = asString(reqField(obj, 'start', `${path}.start`), `${path}.start`);
   const allowBackRaw = optField(obj, 'allowBack');
   const variables = parseVariables(reqField(obj, 'variables', `${path}.variables`), `${path}.variables`);
@@ -398,6 +402,14 @@ export function parseStory(data: unknown, path = '$'): Story {
     id,
     title,
     ...(authorRaw !== undefined ? { author: asString(authorRaw, `${path}.author`) } : {}),
+    ...(blurbRaw !== undefined ? { blurb: asString(blurbRaw, `${path}.blurb`) } : {}),
+    ...(coverRaw !== undefined ? { cover: asString(coverRaw, `${path}.cover`) } : {}),
+    ...(tagsRaw !== undefined
+      ? { tags: asArray(tagsRaw, `${path}.tags`).map((t, i) => asString(t, `${path}.tags[${i}]`)) }
+      : {}),
+    ...(estimatedMinutesRaw !== undefined
+      ? { estimatedMinutes: asNumber(estimatedMinutesRaw, `${path}.estimatedMinutes`) }
+      : {}),
     start,
     ...(allowBackRaw !== undefined ? { allowBack: asBoolean(allowBackRaw, `${path}.allowBack`) } : {}),
     variables,

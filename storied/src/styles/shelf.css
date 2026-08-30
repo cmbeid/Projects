@@ -114,3 +114,88 @@
   font-size: 0.8rem;
   font-weight: 600;
 }
+
+/* --- Import (format.md §14) -------------------------------------------- */
+
+.sy-import {
+  margin-bottom: 1.25rem;
+}
+
+.sy-import-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.sy-import-button {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #2c3c5e;
+  background: transparent;
+  color: #c3cbe0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.sy-import-button:hover,
+.sy-import-button:focus-visible {
+  border-color: #5fd0ff;
+  outline: none;
+}
+.sy-import-button:disabled {
+  opacity: 0.6;
+}
+
+.sy-import-quota {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: #556279;
+}
+.sy-import-quota:empty {
+  display: none;
+}
+
+.sy-import-error {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: #ff9b9b;
+}
+
+.sy-shelf-subheading {
+  font-size: 0.95rem;
+  color: #8798b8;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.sy-card.is-local {
+  border-color: #2c3c5e;
+}
+
+.sy-card-local-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #5fd0ff;
+}
+
+.sy-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sy-card-remove {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid #4a2c2c;
+  color: #ff9b9b;
+  font-size: 0.8rem;
+}
+.sy-card-remove:hover,
+.sy-card-remove:focus-visible {
+  border-color: #ff9b9b;
+  outline: none;
+}

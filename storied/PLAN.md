@@ -831,3 +831,167 @@ choice `text` rather than a block).
 Content report: `npm run typecheck`/`npm test` (122, unchanged — no code
 changed for this story) and `npm run validate` all clean; four full
 playthroughs in a real browser, one per ending path, all correct.
+
+## Local import — a real feature, plus a plan for the rest of it
+
+Added a working "Import a story…" control to the shelf: pick a `.json`
+file from disk, and — entirely client-side, nothing uploaded — it's
+parsed and validated through the exact same `parseStory`/`validateStory`
+pair every other story goes through, then stored in this browser and
+playable immediately, alongside the shipped stories under its own
+"Imported on this device" heading.
+
+**The format change this needed, and why it's small.** A file picked from
+disk has no folder next to it, so a relative image `src` has nothing to
+resolve against. Rather than invent a new content mechanism, `format.md`
+§14 leans on something the reader already does almost for free: an
+`<img>` doesn't care whether its `src` is a path or a `data:` URI, so a
+"portable" story is just a normal story with every image embedded that
+way, plus four optional top-level fields (`blurb`, `cover`, `tags`,
+`estimatedMinutes`) that mirror the manifest entry it doesn't have. Both
+are additive — nothing under `public/content/` changed, and a
+manifest-listed story ignores the new top-level fields entirely (the
+manifest stays authoritative there).
+
+**Guardrails that turned out to matter in practice, not just in theory:**
+an id collision with a *shipped* story is rejected outright, because
+`persistence.ts` keys a save by story id alone — letting two different
+stories share one would mean silently sharing a save. Re-importing the
+same local story again (after editing it) is allowed and expected — it
+just overwrites its old copy, same id or not. And a relative (non-`data:`)
+image `src` is rejected **at import time**, scanning every block, both
+background-image slots, and the new `cover` field, with the exact JSON
+path in the message — this is deliberately proactive rather than letting
+it fail silently the first time the story actually renders, in the same
+spirit as phase 7's `aviary` fix: catch the dead end before it ships, not
+after.
+
+**What's real and shipped vs. what's written down for later.** Storage is
+synchronous `localStorage`, same posture as `persistence.ts` and
+`preferences.ts` — deliberately not IndexedDB, since nothing about this
+feature needed async storage to work, only to scale past a size ceiling
+that hasn't actually been hit yet. `offline.md` is the new document for
+that boundary: it names every real limitation this implementation has on
+purpose (the size ceiling, no export path, no CLI check for a portable
+file sitting outside `public/content/`, single-file-only import, and that
+none of this makes the app work with the network fully off), and outlines
+what changing each one would actually touch in this codebase — without
+scheduling any of it. It's written the same way this document is: so the
+next session doesn't have to re-derive the shape of the problem.
+
+Verification: `npm run typecheck`/`npm test` (134, +12 new for
+`state/localStories.ts`) / `npm run validate` all clean; a real browser
+run against `npm run build && npm run preview` importing a small portable
+story with an embedded image, confirming — in this order — a relative-path
+image is rejected with the right message, an id collision with a shipped
+story is rejected with the right message, a valid import appears under
+"Imported on this device" and reads correctly (image included, zero
+network requests for its content), the action label reads "Continue"
+after reaching an ending, and "Remove" actually removes it.
+
+## Building out offline.md
+
+Every item `offline.md` had named as "not built yet" is now built:
+IndexedDB storage, real folder import, export, a CLI checker for a
+portable file, storage-quota visibility, and a service worker for true
+offline reading. `offline.md` itself is rewritten around what's actually
+shipped, plus a new "What's still not perfect" section for the honest
+limitations that only showed up while building it — see that file rather
+than duplicating it here.
+
+**IndexedDB, and why the ripple was worth it.** `state/localStories.ts`'s
+three exports became async, which meant `main.ts`'s `showShelf` and
+`showStory` becoming async too, and `ui/shelf.ts`'s `mountShelf` gaining
+`onImportFolder` alongside `onImportFile`. This was the one genuinely
+disruptive change in the whole build — everything else was additive. It
+had to happen before folder import: `localStorage` can't hold a real image
+`Blob` without a base64 detour, which is exactly the cost embedding was
+already paying and folder import exists to avoid.
+
+**The bug that mattered most here wasn't in this project's own logic — it
+was a real IndexedDB pitfall.** Awaiting a wrapped Promise (a cursor-walk
+helper, `clearAssetsForStory`) *inside* an already-open transaction let
+that transaction auto-commit before the `put()` calls issued right after
+it landed — silently dropping every asset. Two vitest+jsdom-specific dead
+ends came first and are worth naming precisely so they're not confused
+with the real bug: (1) jsdom's own `File`/`Blob` briefly looked like the
+cause and weren't (switching to Node's native ones changed nothing —
+reverted); (2) jsdom implements no Blob-URL API at all
+(`URL.createObjectURL is not a function`), which is a real, permanent
+jsdom gap, not something to work around in the app — the test file
+polyfills it locally, since real browsers all have it. The actual fix was
+architectural: never `await` a nested async helper mid-transaction: issue
+every request in one synchronous burst, and await only the final
+`txDone`. `clearAssetsForStory` became its own separate transaction rather
+than sharing the caller's, and every one of `importLocalStory`,
+`importLocalFolder`, and `removeLocalStory` now does "clear old assets"
+and "write new state" as two transactions in sequence, not one.
+
+**Folder import chose the directory picker over a `.zip` bundle** —
+offline.md's other documented option — specifically to keep the zero-
+runtime-dependency rule intact; a zip parser would have been the first
+runtime dependency this project ever took on. The real cost of that choice
+is no Firefox support (`webkitdirectory` isn't implemented there);
+`ui/shelf.ts` feature-detects it and just doesn't offer the button when
+it's missing, so a Firefox author still has the portable path.
+`importLocalFolder` validates a folder selection with a *real*
+`AssetChecker` (mirroring `scripts/validate-content.ts`'s on-disk check)
+rather than requiring `data:` URIs — the one place local import gets to
+use the same reachability guarantees a shipped story does.
+
+**Export reuses nothing from the reader's rendering path on purpose** — it
+walks the `Story` object and its resolver directly
+(`ui/exportPortable.ts`), rather than trying to reverse-engineer already-
+rendered DOM. Embedding an image turned out to matter for *how*, not just
+*whether*: the first version used `FileReader.readAsDataURL`, which hit
+the same category of environment mismatch as the IndexedDB tests below
+(Node's `fetch`-produced `Blob` isn't a jsdom `Blob`, so jsdom's
+`FileReader` rejected it) — switched to `Blob.arrayBuffer()` + manual
+base64 via `btoa`, which sidesteps the whole `instanceof` question and
+reads as the more modern choice regardless of the test issue that
+surfaced it.
+
+**The service worker's one real bug was almost identical in shape to the
+IndexedDB one** — a live network call sitting where only local state
+belonged. `cacheFirst` needs to know the *current* shell cache's name; the
+first version got that by calling `fetchManifest()` — a live
+`fetch('./sw-manifest.json')` — on **every single cached request**,
+including, obviously, the offline ones the whole feature exists for.
+`npm run preview` plus a real browser with the network cut caught it
+immediately (a unit test never would have — there's no service worker in
+vitest's jsdom environment at all): the reload itself failed with
+`net::ERR_FAILED`. Fixed by reading the cache name from `caches.keys()`
+instead, which needs no network — `activate` already guarantees at most
+one `storied-shell-*` cache exists at a time, so there's nothing to fetch
+for. The live manifest fetch remains, but only as a fallback for the
+narrow race of a request arriving before `install` has created the shell
+cache yet.
+
+`content/` is deliberately excluded from the precache manifest
+(`scripts/generate-sw-manifest.ts` only ever looks at what the built
+`index.html` references) and cached separately, network-first, only as a
+visit actually fetches it — baking the whole catalog into the shell would
+mean a new story needs a service-worker update to ever be seen, which is
+exactly the "no rebuild to add a story" promise from §1 broken by the
+offline feature meant to make the app *more* resilient, not less
+flexible. No deploy-workflow changes were needed: `sw.js` and
+`sw-manifest.json` land outside `dist/assets/`, which
+`deploy-storied.yml` was already syncing as `no-cache` — exactly the
+caching behavior a file that needs re-checking on every visit requires.
+
+Verification: `npm run typecheck` / `npm test` (151, +17 new — 20 for
+`state/localStories.ts` counting both import paths, 4 for
+`ui/folderImport.ts`, 5 for `ui/exportPortable.ts`) / `npm run validate`
+all clean; `npm run build` (now chaining
+`scripts/generate-sw-manifest.ts`) confirmed to actually produce
+`dist/sw-manifest.json` with the right file list and a stable version
+hash. Full real-browser run against `npm run build && npm run preview`,
+in one Playwright script: the service worker reaches `activated`; a
+portable file imports; a real folder (`story.json` + `images/`) imports
+and its image renders from a Blob-backed `blob:` URL; export triggers an
+actual browser download whose content is valid JSON with the image
+embedded as a `data:` URI; then, the test that actually matters —
+`context.setOffline(true)`, a full page **reload** (not just further
+navigation within an already-loaded page), and both the shelf and a
+previously-opened shipped story render correctly with the network
+completely severed.

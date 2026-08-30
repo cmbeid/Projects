@@ -308,15 +308,18 @@ export function validateStory(story: Story, assets?: AssetChecker): ValidationRe
 
     if (assets) {
       node.blocks.forEach((block, i) => {
-        if (block.type === 'image' && !assets.imageExists(block.src)) {
+        // A data: URI is self-contained — see format.md §14 — so there is no
+        // folder to check it against; it's valid by construction.
+        if (block.type === 'image' && !block.src.startsWith('data:') && !assets.imageExists(block.src)) {
           errors.push(`${nodePath}.blocks[${i}].src: image "${block.src}" not found`);
         }
       });
     }
   }
 
-  if (assets && story.theme?.background?.image && !assets.imageExists(story.theme.background.image)) {
-    errors.push(`theme.background.image: image "${story.theme.background.image}" not found`);
+  const bgImage = story.theme?.background?.image;
+  if (assets && bgImage && !bgImage.startsWith('data:') && !assets.imageExists(bgImage)) {
+    errors.push(`theme.background.image: image "${bgImage}" not found`);
   }
 
   const reachable = reachableNodes(story);
