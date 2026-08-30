@@ -7,7 +7,7 @@ manifest line, no rebuild required.
 
 **Playable, and unfinished.** The content pipeline, the engine, the reader
 (shelf, blocks, choices, three responsive layouts, theming), saves,
-resume, and settings are all built, with three demo stories on the shelf.
+resume, and settings are all built, with four demo stories on the shelf.
 See [`PLAN.md`](PLAN.md) for the design and what's left — deploy wiring is
 what this covers; everything else is done.
 
@@ -45,7 +45,13 @@ not just the small worked example. `public/content/moth-king/` is a
 different kind of evidence: it was authored from `format.md` alone, with
 neither the other stories' JSON nor any `.ts` file open, and validated
 clean on the first try — the actual test of whether the spec stands on
-its own.
+its own. `public/content/drevash/` is the largest of the four (41 nodes)
+and pushes on scale and consequence rather than spec coverage: real
+combat with a genuine death ending, two mutually-exclusive romance paths,
+and a light/dark alignment track that changes which of six distinct
+endings are even reachable — validated clean on the first run, and every
+one of its seven playthrough paths, including two exact numeric boundary
+cases, confirmed in a real browser before it shipped.
 
 ## Playing
 
@@ -103,7 +109,7 @@ scripts/            validate-content.ts / validate-portable.ts (content
 tests/              parse / conditions / mutate / session / inline /
                     persistence / preferences / content / layout /
                     localStories / folderImport / exportPortable
-public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/
+public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/, drevash/
 ```
 
 Three decisions explain most of the code:
