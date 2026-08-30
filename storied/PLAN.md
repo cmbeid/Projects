@@ -781,3 +781,53 @@ still written by the same person who wrote the spec), and enabling GitHub
 Pages once, by hand, in the repository's own settings, which is the one
 step in `.github/workflows/pages.yml`'s own comment that no commit can do
 for it.
+
+## A third story — and a real answer to the writability question
+
+**`public/content/moth-king/`** ("The Moth King's Debt," 15 nodes) closes
+the gap the note above left open. It was written with `format.md` open
+and nothing else — no other story's JSON, no `.ts` file — the actual
+version of the "someone who has never opened the TypeScript" test, not a
+proxy for it. It validated with **zero errors and zero warnings on the
+first run.** That's the strongest evidence this project has that the spec
+stands on its own: not "the author didn't need to check the source" (true
+of `aviary` too, and less convincing, since the same session had just
+finished writing both `format.md` and `validate.ts`), but "the author
+deliberately didn't."
+
+It's also a genuinely different piece of content, not a coverage
+exercise — a fae-bargain folk tale, tonally distinct from `lighthouse`'s
+noir and `aviary`'s fable register, using a moderate, natural subset of
+the format (a handful of styles, `eq`/`gte`, `add`/`sub`/`set`, a node
+theme override, choice-text interpolation) rather than straining to hit
+every operator. The `king-tree` node applies §5's rule directly and
+visibly: two of its four choices carry no `if` at all (offering labor,
+fleeing), so the node has a real way forward regardless of what the
+player has or hasn't done — the exact property `aviary`'s `door` node
+was missing before phase 7's fix.
+
+**Verification found two things — one in the content, one in the test
+harness driving it, and it's worth being precise about which was which.**
+`npm run validate` was clean from the first run; every issue that turned
+up afterward came from playtesting, not the gate. A four-path Playwright
+run (honest+lantern, dishonest+labor, flee, honest+beg) initially reported
+one path with a choice locked when it shouldn't have been, and a second
+path that hung waiting for a choice that never appeared. Isolating each
+one: the "locked when it shouldn't" report was the *test's* mistake, not
+the story's — the `beg` choice is authored with `whenLocked: "disable"`
+on purpose (so its `lockedText` is visible), and the assertion had wrongly
+expected the *default* `"hide"` behavior instead. The hang was also the
+test's mistake: `backway` is its own node with a single `"Go on"` choice
+into `orchard`, and two different versions of the script skipped that
+click, so the failure appeared to move between paths across runs (whichever
+`run()` call happened to contain the missing step) — nothing about the
+story or the engine changed between those runs. Once both were fixed, all
+four paths reached their correct `ending.kind` cleanly, including the
+`{promise}` interpolation showing correctly in the ending text and in a
+choice label (`lantern-pay`'s "Walk back through the orchard, {promise}
+behind you" — the first content in this project to interpolate inside
+choice `text` rather than a block).
+
+Content report: `npm run typecheck`/`npm test` (122, unchanged — no code
+changed for this story) and `npm run validate` all clean; four full
+playthroughs in a real browser, one per ending path, all correct.

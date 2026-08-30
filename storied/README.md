@@ -7,7 +7,7 @@ manifest line, no rebuild required.
 
 **Playable, and unfinished.** The content pipeline, the engine, the reader
 (shelf, blocks, choices, three responsive layouts, theming), saves,
-resume, and settings are all built, with two demo stories on the shelf.
+resume, and settings are all built, with three demo stories on the shelf.
 See [`PLAN.md`](PLAN.md) for the design and what's left — deploy wiring is
 what this covers; everything else is done.
 
@@ -41,7 +41,11 @@ npm run validate
 
 `public/content/aviary/` is worth a look alongside `format.md` — it's the
 story built specifically to exercise every feature the format documents,
-not just the small worked example.
+not just the small worked example. `public/content/moth-king/` is a
+different kind of evidence: it was authored from `format.md` alone, with
+neither the other stories' JSON nor any `.ts` file open, and validated
+clean on the first try — the actual test of whether the spec stands on
+its own.
 
 ## Playing
 
@@ -75,7 +79,7 @@ src/ui/             shelf.ts, reader.ts, theme.ts, settings.ts, layout.ts
 scripts/            validate-content.ts (content gate), verify-ui.ts (Playwright)
 tests/              parse / conditions / mutate / session / inline /
                     persistence / preferences / content / layout
-public/content/     the shipped demo stories — lighthouse/ and aviary/
+public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/
 ```
 
 Three decisions explain most of the code:

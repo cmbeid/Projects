@@ -20,6 +20,16 @@
       "cover": "aviary/images/cover.png",
       "tags": ["mystery", "fable"],
       "estimatedMinutes": 12
+    },
+    {
+      "id": "moth-king",
+      "title": "The Moth King's Debt",
+      "author": "A. Writer",
+      "blurb": "You owe him three nights of light, and the season is nearly out.",
+      "path": "moth-king/story.json",
+      "cover": "moth-king/images/cover.png",
+      "tags": ["folk tale", "short"],
+      "estimatedMinutes": 6
     }
   ]
 }

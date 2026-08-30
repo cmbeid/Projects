@@ -1,0 +1,218 @@
+{
+  "formatVersion": 1,
+  "id": "moth-king",
+  "title": "The Moth King's Debt",
+  "author": "A. Writer",
+  "start": "orchard-gate",
+  "allowBack": true,
+  "variables": {
+    "honesty": 0,
+    "hasLantern": false,
+    "debt": 3,
+    "promise": ""
+  },
+  "theme": {
+    "mode": "dark",
+    "palette": { "accent": "#c9a86a" },
+    "font": { "body": "serif", "display": "serif" },
+    "radius": 12
+  },
+  "nodes": {
+    "orchard-gate": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "Every debt comes due in its own season." },
+        {
+          "type": "image",
+          "src": "images/gate.png",
+          "alt": "A sagging wooden gate at the edge of an unpruned orchard, moths circling in the last light."
+        },
+        {
+          "type": "text",
+          "text": "The gate hangs on one hinge, half-swallowed by an orchard nobody prunes anymore. Somewhere past the trees, something is keeping *count*."
+        }
+      ],
+      "choices": [
+        { "text": "Knock at the keeper's door", "to": "door" },
+        { "text": "Slip around the back, into the orchard", "to": "backway" }
+      ]
+    },
+    "door": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "An old woman answers before you've finished knocking, lamp already lit, like she'd been standing there since dusk."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Tell her the truth — you owe the Moth King",
+          "to": "truth",
+          "set": [ { "var": "honesty", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Lie and say you're only passing through",
+          "to": "lie",
+          "set": [ { "var": "honesty", "op": "sub", "value": 1 } ]
+        }
+      ]
+    },
+    "truth": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She doesn't smile, exactly, but something in her shoulders eases. \"Go on, then,\" she says, and steps aside. \"He prefers the honest ones. Doesn't make it easier on them.\""
+        }
+      ],
+      "choices": [ { "text": "Go through", "to": "orchard" } ]
+    },
+    "lie": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She looks at you the way you look at a debt you already know you owe. \"Passing through,\" she repeats, flat. But she steps aside anyway."
+        }
+      ],
+      "choices": [ { "text": "Go through", "to": "orchard" } ]
+    },
+    "backway": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The fence gives easily where the wood has rotted. No one sees you go in, which feels, somehow, like the wrong kind of luck."
+        }
+      ],
+      "choices": [ { "text": "Go on", "to": "orchard" } ]
+    },
+    "orchard": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Moths lift off every branch you pass, thick as smoke. Somewhere under all that wingbeat, you can feel him counting. You owe the Moth King *{debt}* nights of light, and the season is nearly out."
+        },
+        {
+          "type": "image",
+          "src": "images/orchard.png",
+          "alt": "Rows of gnarled orchard trees thick with pale moths, dusk light through the branches.",
+          "caption": "The orchard keeps its own kind of ledger."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Pick up the lantern lying in the grass",
+          "to": "lantern",
+          "set": [ { "var": "hasLantern", "op": "set", "value": true } ]
+        },
+        { "text": "Go straight to the King's tree", "to": "king-tree" }
+      ]
+    },
+    "lantern": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It's cold to the touch, and lighter than it looks — like whatever used to burn in it left in a hurry."
+        }
+      ],
+      "choices": [ { "text": "Go to the King's tree", "to": "king-tree" } ]
+    },
+    "king-tree": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "THE MOTH KING UNFOLDS FROM THE BARK." },
+        {
+          "type": "text",
+          "text": "*{debt}* nights, he says, in a voice like paper tearing. He does not ask what you've brought. He waits to see if you understand that he already knows."
+        }
+      ],
+      "theme": { "palette": { "accent": "#cddc8f" } },
+      "choices": [
+        {
+          "text": "Offer to spend a season trimming the orchard",
+          "to": "labor",
+          "set": [ { "var": "promise", "op": "set", "value": "a season spent trimming the orchard" } ]
+        },
+        {
+          "text": "Offer the lantern to relight his ledger",
+          "to": "lantern-pay",
+          "if": { "var": "hasLantern", "eq": true },
+          "set": [
+            { "var": "promise", "op": "set", "value": "the lantern" },
+            { "var": "debt", "op": "set", "value": 0 }
+          ]
+        },
+        {
+          "text": "Beg him to forgive the debt outright",
+          "to": "beg",
+          "if": { "var": "honesty", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "He only listens to those who came here honestly.",
+          "set": [ { "var": "promise", "op": "set", "value": "nothing but the truth" } ]
+        },
+        { "text": "Try to slip away without paying", "to": "flee" }
+      ]
+    },
+    "labor": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He accepts with a single dry nod, and just like that the counting in the air goes quiet."
+        }
+      ],
+      "onEnter": [ { "var": "debt", "op": "set", "value": 0 } ],
+      "choices": [ { "text": "Walk back through the orchard at dawn", "to": "ending-neutral" } ]
+    },
+    "lantern-pay": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The lantern catches the instant it touches his ledger, and for a moment the whole orchard is lit from underneath, every moth at once."
+        }
+      ],
+      "choices": [ { "text": "Walk back through the orchard, {promise} behind you", "to": "ending-good" } ]
+    },
+    "beg": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He studies you a long moment — long enough that you start counting your own heartbeats — then exhales something that might be a laugh."
+        }
+      ],
+      "choices": [ { "text": "Walk back through the orchard, forgiven", "to": "ending-good" } ]
+    },
+    "flee": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You get exactly as far as the gate before the first moth lands on your wrist. Then the second. Then you stop counting."
+        }
+      ],
+      "choices": [ { "text": "Turn and face him", "to": "ending-bad" } ]
+    },
+    "ending-good": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "THE DEBT IS PAID." },
+        {
+          "type": "text",
+          "text": "You gave him {promise}, and the moths lift off the branches all at once, like a held breath finally let go."
+        }
+      ],
+      "ending": { "kind": "good", "title": "What the Orchard Remembers" }
+    },
+    "ending-neutral": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You gave him {promise}, and he took it the way anyone takes a fair trade — without ceremony, and without forgiveness either. The debt is paid. Nothing is forgiven. That was never on offer."
+        }
+      ],
+      "ending": { "kind": "neutral", "title": "A Season, Spent" }
+    },
+    "ending-bad": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The Moth King does not raise his voice. He doesn't need to. By the time you understand what you've lost, the orchard has already stopped counting — because there's nothing left of the debt to count."
+        }
+      ],
+      "ending": { "kind": "bad", "title": "What the Moths Carried Off" }
+    }
+  }
+}
