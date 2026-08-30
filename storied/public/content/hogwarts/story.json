@@ -67,7 +67,25 @@
       ],
       "choices": [
         {
-          "text": "Go to Gringotts",
+          "text": "Go straight to Gringotts",
+          "to": "gringotts_vault"
+        },
+        {
+          "text": "Linger by the shop windows first",
+          "to": "diagon_windows"
+        }
+      ]
+    },
+    "diagon_windows": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A witch outside the apothecary is telling anyone who'll listen that Gringotts itself was broken into back in the summer — the vault emptied that same day, she swears, though nobody official will confirm a word of it. Hagrid goes oddly quiet when you ask him about it."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Head in to Gringotts anyway",
           "to": "gringotts_vault"
         }
       ]
@@ -86,7 +104,18 @@
       ],
       "choices": [
         {
-          "text": "Head to Ollivander's for a wand",
+          "text": "It's dizzying, how much of it there is",
+          "to": "ollivanders",
+          "set": [
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "It still doesn't feel like yours, not really",
           "to": "ollivanders"
         }
       ]
@@ -115,6 +144,24 @@
         {
           "type": "text",
           "text": "He won't say more than he already has, only that the wand chooses the wizard, and that great things are expected of whoever holds that particular holly wand — \"great, terrible things, but great.\" It's not the sort of thing you especially want to hear from an old man who sells sticks for a living."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Press him for what he actually means",
+          "to": "ollivanders_press"
+        },
+        {
+          "text": "Let it go — you have shopping to do",
+          "to": "madam_malkins"
+        }
+      ]
+    },
+    "ollivanders_press": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He only repeats himself, more slowly, as if that will make it kinder — the wand chooses the wizard, great things are expected of this one, terrible or otherwise — and busies himself with the till rather than say anything further."
         }
       ],
       "choices": [
@@ -191,6 +238,29 @@
       ],
       "choices": [
         {
+          "text": "Head back to the Dursleys for your last ordinary afternoon",
+          "to": "platform_nine_three_quarters"
+        },
+        {
+          "text": "Talk Hagrid into one more hour in the Alley first",
+          "to": "diagon_extra_hour"
+        }
+      ]
+    },
+    "diagon_extra_hour": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He caves almost instantly, and the extra hour turns into an ice cream at Florean Fortescue's and Hagrid, badly, trying to explain what your parents were actually like before he decides that's a conversation for another day entirely."
+        },
+        {
+          "type": "text",
+          "text": "It's the first time all summer that going home again feels like the smaller part of your life, rather than the whole of it.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
           "text": "A month later — King's Cross Station",
           "to": "platform_nine_three_quarters"
         }
@@ -236,8 +306,26 @@
       ],
       "choices": [
         {
-          "text": "Buy enough sweets off the trolley for both of you",
-          "to": "train_hermione_visit"
+          "text": "Ask about his family instead of your scar",
+          "to": "train_hermione_visit",
+          "set": [
+            {
+              "var": "trustRon",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Let him ask about the scar, like everyone else does",
+          "to": "train_hermione_visit",
+          "set": [
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 1
+            }
+          ]
         }
       ]
     },
@@ -255,7 +343,18 @@
       ],
       "choices": [
         {
-          "text": "The compartment door slides open again",
+          "text": "Be patient with her — she's clearly nervous too",
+          "to": "train_malfoy_encounter",
+          "set": [
+            {
+              "var": "trustHermione",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Find her a bit much, honestly",
           "to": "train_malfoy_encounter"
         }
       ]
@@ -327,6 +426,24 @@
       ],
       "choices": [
         {
+          "text": "Steady a frightened first-year's boat",
+          "to": "boats_kindness"
+        },
+        {
+          "text": "Just take in the castle, quiet",
+          "to": "great_hall_wait"
+        }
+      ]
+    },
+    "boats_kindness": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A small, terrified-looking girl a few boats over has gone rigid with the certainty she's about to fall in — you reach across and steady her boat until it settles, and she manages a wobbly, grateful sort of smile for the rest of the crossing."
+        }
+      ],
+      "choices": [
+        {
           "text": "Cross the lake and enter the Great Hall",
           "to": "great_hall_wait"
         }
@@ -340,13 +457,24 @@
         },
         {
           "type": "text",
-          "text": "It sings. Then it starts calling names.",
+          "text": "It sings. Then it starts calling names, alphabetically, which means Malfoy goes up long before you do — barely touches the brim before the hat shouts SLYTHERIN, and his own table erupts like he's already won something.",
           "style": "aside"
         }
       ],
       "choices": [
         {
-          "text": "Your name is called",
+          "text": "Feel a flicker of envy at how sure of himself he looks up there",
+          "to": "sorting_hat_choice",
+          "set": [
+            {
+              "var": "darkPull",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Feel glad, mostly, that it isn't you up there yet",
           "to": "sorting_hat_choice"
         }
       ]

@@ -1265,3 +1265,25 @@ in the interpolated good ending. All seven scripted paths passed on the
 first run — the only story so far where the pre-test hand-tracing catch
 was the fix, rather than something a failing Playwright path had to
 surface afterward.
+
+**Follow-up: the opening act was too linear.** The user read it and felt
+the lack of choices specifically at the start — checking the actual node
+data confirmed it: of the original 70 nodes, Act 1 (Diagon Alley) had
+exactly one real branch (Madam Malkin's) before the Sorting, with
+Gringotts, Ollivander's, and everything else a single unconditional
+choice straight to the next scene. Fixed by converting eight of those
+linear nodes into real two-way branches — four gaining a small new
+flavor node before reconverging (`diagon_windows`, `ollivanders_press`,
+`diagon_extra_hour`, `boats_kindness`), four just differing in their
+`set` effects on the same existing destination — reusing the existing
+`darkPull`/`trustRon`/`trustHermione` variables rather than adding new
+ones, so the added choices actually feed the climax rather than being
+decorative. Act 1–2's real branch points went from 3 to 11; total nodes
+70 → 74. `npm run validate` stayed clean on the first pass. Since every
+new choice is unconditional on both sides (the same safe-by-construction
+pattern already verified throughout this story) and only adds new
+*sources* toward existing thresholds rather than touching them, a full
+re-verification of all seven endings wasn't necessary — a Playwright
+smoke pass through all eight new branch points plus one full
+end-to-end playthrough (confirming the good ending was still reachable
+and correct) was enough, and both passed on the first run.
