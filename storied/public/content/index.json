@@ -40,6 +40,16 @@
       "cover": "drevash/images/cover.png",
       "tags": ["star wars", "action", "epic"],
       "estimatedMinutes": 30
+    },
+    {
+      "id": "fornost",
+      "title": "The Lord of the Rings: The Shadow of Fornost",
+      "author": "A. Writer",
+      "blurb": "A ranger, a black stone, and a King who never learned how to stay dead.",
+      "path": "fornost/story.json",
+      "cover": "fornost/images/cover.png",
+      "tags": ["lord of the rings", "epic", "fantasy"],
+      "estimatedMinutes": 75
     }
   ]
 }

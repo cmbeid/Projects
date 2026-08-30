@@ -1,0 +1,2410 @@
+{
+  "formatVersion": 1,
+  "id": "fornost",
+  "title": "The Lord of the Rings: The Shadow of Fornost",
+  "author": "A. Writer",
+  "start": "start",
+  "allowBack": true,
+  "variables": {
+    "resolve": 0,
+    "combatSkill": 0,
+    "wounds": 0,
+    "trustEldarion": 0,
+    "trustHilda": 0,
+    "romance": "no one waiting on the road",
+    "approach": "",
+    "knowsFellstoneLore": false,
+    "knowsRunes": false,
+    "hasWardstone": false,
+    "corruptedByStone": false,
+    "companionsLost": [],
+    "allies": []
+  },
+  "theme": {
+    "mode": "dark",
+    "palette": {
+      "bg": "#0a0d08",
+      "surface": "#141a10",
+      "text": "#e6e8dc",
+      "dim": "#8a9078",
+      "accent": "#c9a24b",
+      "choiceBg": "#1c2416"
+    },
+    "font": { "body": "serif", "display": "display", "scale": 1.02 },
+    "radius": 8
+  },
+  "nodes": {
+    "start": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "The North has been quiet a long while. Quiet is not the same as safe, and Rangers are the ones who remember the difference." },
+        { "type": "image", "src": "images/bree.png", "alt": "The Prancing Pony's lamplit windows against a wet Bree evening." },
+        { "type": "text", "text": "Rain drums on the shingles of the Prancing Pony. You've come south out of the wild for supplies, a warm meal, and a night that doesn't require watching the dark in shifts." }
+      ],
+      "choices": [
+        { "text": "Head down to the common room", "to": "pony_common" },
+        { "text": "Go straight up to rest — the road can wait until morning", "to": "pony_room" }
+      ]
+    },
+
+    "pony_common": {
+      "blocks": [
+        { "type": "text", "text": "The common room is loud with local talk. At a corner table, a woman in a travel-worn ranger's cloak nurses a bowl of stew alone — not Bree-born, by the set of her boots." },
+        { "type": "text", "style": "whisper", "text": "\"Hilda,\" she says, when you sit, not bothering to make it a question of whether you'd ask. \"Out of the Angle, these days. You've the look of someone who sleeps with one eye open too.\"" }
+      ],
+      "onEnter": [ { "var": "trustHilda", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Ask her what's brought her this far south", "to": "bree_lore" },
+        { "text": "Buy a round and listen to the wider room's gossip first", "to": "bree_gossip" },
+        { "text": "Trade road-stories and let the night wind down", "to": "bree_rumor" }
+      ]
+    },
+
+    "bree_gossip": {
+      "blocks": [
+        { "type": "text", "text": "Half of it's nonsense — a two-headed goat, a ghost in the miller's chimney — but under the nonsense runs a thread of something real: more travelers than usual passing through headed south, all of them from villages further north, all of them oddly unwilling to say exactly why." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Head back to Hilda's table", "to": "bree_rumor" }
+      ]
+    },
+
+    "pony_room": {
+      "blocks": [
+        { "type": "text", "text": "Sleep comes hard. You dream of a black, glassy stone half-buried in old snow, and a voice under the voice of the wind that knows your name before you've spoken it." },
+        { "type": "text", "style": "whisper", "text": "You wake before dawn with your hand already on your knife." }
+      ],
+      "choices": [
+        { "text": "Go down and see if the common room is stirring yet", "to": "bree_rumor" }
+      ]
+    },
+
+    "bree_lore": {
+      "blocks": [
+        { "type": "text", "text": "\"Barrow-wights,\" Hilda says, low. \"Waking further out than they've any right to. And something worse behind them — a light in the old North Downs that hasn't burned there since the Kings fell.\"" },
+        { "type": "text", "style": "whisper", "text": "\"Fornost,\" she says, and the room seems to lean in around the word, though no one else could have heard it over the noise.\"" }
+      ],
+      "onEnter": [ { "var": "trustHilda", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Head to bed — you'll want your wits for whatever tomorrow brings", "to": "bree_rumor" }
+      ]
+    },
+
+    "bree_rumor": {
+      "blocks": [
+        { "type": "text", "text": "Before you've finished your breakfast, a farmer bursts in from the Downs road, mud to the knee and white as a sheet. Half his flock is gone, the fence torn like paper, and something in the field left frost on the grass in high summer." },
+        { "type": "text", "style": "shout", "text": "\"Wights,\" he keeps saying. \"Wights, out past where the wights ever go. Someone's stirred them up on purpose.\"" }
+      ],
+      "choices": [
+        { "text": "This is Ranger's work — see it done properly", "to": "bree_decision" }
+      ]
+    },
+
+    "bree_decision": {
+      "blocks": [
+        { "type": "text", "text": "Hilda's already checking the straps on her pack when you find her. \"I've been waiting for a reason to go looking at Fornost properly,\" she says. \"Company would improve the odds. So would refusing me, if you're the type to be stubborn about it.\"" }
+      ],
+      "choices": [
+        { "text": "Accept — two are safer than one on this road", "to": "bree_depart", "set": [ { "var": "allies", "op": "push", "value": "hilda" }, { "var": "trustHilda", "op": "add", "value": 1 } ] },
+        { "text": "Better to travel alone and keep her out of danger", "to": "bree_depart_alone" }
+      ]
+    },
+
+    "bree_depart": {
+      "blocks": [
+        { "type": "text", "text": "You shoulder your pack together and step out into a morning that's trying very hard to look ordinary." }
+      ],
+      "choices": [
+        { "text": "Stop for supplies before the road proper", "to": "bree_supplies" },
+        { "text": "No time — the trail is already cold", "to": "trollshaws_road" }
+      ]
+    },
+
+    "bree_depart_alone": {
+      "blocks": [
+        { "type": "text", "text": "You leave her at the Pony's door, half-certain you've made a mistake, and strike out north alone into a morning that's trying very hard to look ordinary." }
+      ],
+      "choices": [
+        { "text": "Stop for supplies before the road proper", "to": "bree_supplies" },
+        { "text": "No time — the trail is already cold", "to": "trollshaws_road" }
+      ]
+    },
+
+    "bree_supplies": {
+      "blocks": [
+        { "type": "text", "text": "Rope, oil for the lamps, dry tinder, a whetstone for your blade — the unglamorous truth of a long road is that it's won or lost in a pack list." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Set out north", "to": "trollshaws_road" }
+      ]
+    },
+
+    "trollshaws_road": {
+      "blocks": [
+        { "type": "image", "src": "images/trollshaws.png", "alt": "Mist-wrapped pines climbing a stony ravine, an old stone bridge half-collapsed below." },
+        { "type": "text", "text": "The Trollshaws close in around the road, all leaning stone and moss-eaten pine. Two days in, you find a merchant's cart overturned in the bracken, one wheel still spinning." }
+      ],
+      "choices": [
+        { "text": "Search the wreckage", "to": "trollshaws_cart" },
+        { "text": "Keep moving — whoever did this may still be near", "to": "trollshaws_bridge" }
+      ]
+    },
+
+    "trollshaws_cart": {
+      "blocks": [
+        { "type": "text", "text": "No bodies — small mercy — but the cargo's been stripped and a torn cloak left behind bears a sigil you don't recognize: a broken crown over a black stone." },
+        { "type": "text", "style": "aside", "text": "Whoever wears that mark, they're already ahead of you on this road." }
+      ],
+      "choices": [
+        { "text": "Push on toward the ravine crossing", "to": "trollshaws_bridge" }
+      ]
+    },
+
+    "trollshaws_bridge": {
+      "blocks": [
+        { "type": "text", "text": "The old stone bridge over the ravine has half given way, planks rotted through in patches, the drop beneath it long enough to make the choice matter." }
+      ],
+      "choices": [
+        {
+          "text": "Sprint across before it can decide to finish collapsing",
+          "to": "trollshaws_bridge_after",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "Your legs aren't steady enough yet to trust a dead sprint over open air."
+        },
+        { "text": "Cross carefully, testing every board", "to": "trollshaws_bridge_after" },
+        { "text": "Rig a guide-rope first, and go slow", "to": "trollshaws_bridge_after" }
+      ]
+    },
+
+    "trollshaws_bridge_after": {
+      "blocks": [
+        { "type": "text", "text": "You make it across with nothing worse than a racing heart — and the howl that rises from the tree line a moment later tells you exactly why the crossing mattered." }
+      ],
+      "choices": [
+        { "text": "Ready yourself", "to": "trollshaws_pass" }
+      ]
+    },
+
+    "trollshaws_pass": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "Wolves — a whole running pack of them, lean and wrong-eyed, break from the pines with the coordinated hunger of something that's been sent rather than simply hungry." }
+      ],
+      "choices": [
+        {
+          "text": "Meet them with steel",
+          "to": "trollshaws_aftermath",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "A pack this size needs more than a stubborn sword-arm.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Use the broken ground — lead them into the ravine's edge", "to": "trollshaws_aftermath" },
+        {
+          "text": "Fight back to back with Hilda",
+          "to": "trollshaws_aftermath",
+          "if": { "var": "allies", "has": "hilda" }
+        }
+      ]
+    },
+
+    "trollshaws_aftermath": {
+      "blocks": [
+        { "type": "text", "text": "The pack breaks off as suddenly as it came, loping back into the mist like something recalled rather than beaten. You make camp early, and no one argues about it." }
+      ],
+      "choices": [
+        { "text": "Settle in for the night", "to": "trollshaws_camp" }
+      ]
+    },
+
+    "trollshaws_camp": {
+      "blocks": [
+        { "type": "text", "text": "A dry hollow beneath an old rock overhang, a small fire, and — somewhere above the tree line — an even older cave the locals swear a troll once kept house in." }
+      ],
+      "choices": [
+        { "text": "Tend your wounds before they stiffen", "to": "trollshaws_rest", "once": true, "if": { "var": "wounds", "gt": 0 } },
+        { "text": "Go looking for that troll-cave", "to": "troll_cave_entrance", "once": true },
+        { "text": "Sit with Hilda by the fire a while", "to": "hilda_bond1", "once": true, "if": { "var": "allies", "has": "hilda" } },
+        { "text": "Scout the high ground before first light", "to": "trollshaws_scout", "once": true },
+        { "text": "Mend your gear before the road gets harder", "to": "trollshaws_mend_gear", "once": true },
+        { "text": "Push on toward Weathertop at first light", "to": "weathertop_approach" }
+      ]
+    },
+
+    "trollshaws_mend_gear": {
+      "blocks": [
+        { "type": "text", "text": "A torn strap, a loose buckle, a blade edge gone duller than you'd noticed — small things, all of them, and all of them the kind of small thing that gets people killed if left too long." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to camp", "to": "trollshaws_camp" }
+      ]
+    },
+
+    "trollshaws_rest": {
+      "blocks": [
+        { "type": "text", "text": "You clean and bind what needs binding. It isn't much, against everything ahead of you, but it's something." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "sub", "value": 1 } ],
+      "choices": [
+        { "text": "Back to camp", "to": "trollshaws_camp" }
+      ]
+    },
+
+    "troll_cave_entrance": {
+      "blocks": [
+        { "type": "text", "text": "Three troll-carved warning-stones flank the cave mouth, each scored with a different old rite: one asks for silence, one for fire, one for blood. The stone beneath your boots, you notice, is scorched black — not stained, not worn smooth by waiting hands." }
+      ],
+      "choices": [
+        { "text": "Answer with silence", "to": "troll_cave_wrong1" },
+        { "text": "Answer with fire", "to": "troll_cave_right" },
+        { "text": "Answer with blood, the old way", "to": "troll_cave_wrong2" }
+      ]
+    },
+
+    "troll_cave_right": {
+      "blocks": [
+        { "type": "text", "text": "You strike a spark against the scorched stone, and the cave mouth exhales rather than resists — whatever ward this was, fire was always the key. The passage opens clean." }
+      ],
+      "choices": [
+        { "text": "Go in and see what a troll left behind", "to": "troll_cave_treasure" }
+      ]
+    },
+
+    "troll_cave_wrong1": {
+      "blocks": [
+        { "type": "text", "text": "You wait, silent, for longer than is comfortable, and the stone gives you nothing back but the growing certainty that something is watching from just past the light. You force the passage the hard way." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Go in and see what a troll left behind", "to": "troll_cave_treasure" }
+      ]
+    },
+
+    "troll_cave_wrong2": {
+      "blocks": [
+        { "type": "text", "text": "You prick your palm on the old rite, half-remembered — and the loose scree above the entrance answers with a short, ugly rockslide that you barely dodge clear of." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Go in and see what a troll left behind", "to": "troll_cave_treasure" }
+      ]
+    },
+
+    "troll_cave_treasure": {
+      "blocks": [
+        { "type": "text", "text": "Bones, mostly — and, wedged under a fallen slab, a Dúnedain long-blade, old but true, its balance better than anything you own. Whoever it belonged to isn't coming back for it." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Take it and head back to camp", "to": "trollshaws_camp" }
+      ]
+    },
+
+    "hilda_bond1": {
+      "blocks": [
+        { "type": "image", "src": "images/hilda.png", "alt": "Hilda by the campfire, cleaning a hunting knife with slow, practiced care." },
+        { "type": "text", "text": "She doesn't talk much about the Angle, or why she left it, but she talks easily about everything else — the road, the stars, the particular stupidity of trolls who build their houses out of caves that echo." },
+        { "type": "text", "style": "whisper", "text": "It's the first time in days you've laughed without meaning to." }
+      ],
+      "onEnter": [ { "var": "trustHilda", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to camp", "to": "trollshaws_camp" }
+      ]
+    },
+
+    "trollshaws_scout": {
+      "blocks": [
+        { "type": "text", "text": "From the high ground you can see the whole shape of the road ahead — and, further off than is comforting, a line of torches moving in a pattern too disciplined to be anything but organized." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to camp, forewarned", "to": "trollshaws_camp" }
+      ]
+    },
+
+    "weathertop_approach": {
+      "blocks": [
+        { "type": "image", "src": "images/weathertop.png", "alt": "Weathertop's broken watch-ring silhouetted against a bruised evening sky." },
+        { "type": "text", "text": "Weathertop rises ahead by dusk, its broken watch-ring stark against a sky already going the color of a bruise. Even travelers who've never heard its old name feel the urge to hurry past." }
+      ],
+      "choices": [
+        { "text": "Make camp in the ruin's lee, out of the wind", "to": "weathertop_camp" }
+      ]
+    },
+
+    "weathertop_camp": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "The fire won't sit still tonight, guttering at nothing, and somewhere far off — or not far enough — something that isn't wind shrieks once and goes silent." },
+        { "type": "text", "text": "Whatever passed over, it didn't find what it was looking for. Not tonight." }
+      ],
+      "choices": [
+        { "text": "Keep watch while you can still see your own hands shake", "to": "weathertop_skirmish" }
+      ]
+    },
+
+    "weathertop_skirmish": {
+      "blocks": [
+        { "type": "text", "text": "Orc scouts, three of them, picking their way through the ruin below with the particular carelessness of hunters who don't expect prey to hunt back." }
+      ],
+      "choices": [
+        {
+          "text": "Take them before they take you",
+          "to": "weathertop_night_choice",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "Three at once, in the dark, is a fight you're not ready to start.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Stay in shadow and let them pass", "to": "weathertop_night_choice" },
+        {
+          "text": "Drive them off together",
+          "to": "weathertop_night_choice",
+          "if": { "var": "allies", "has": "hilda" }
+        }
+      ]
+    },
+
+    "weathertop_night_choice": {
+      "blocks": [
+        { "type": "text", "text": "The rest of the night still has to be gotten through, one way or another." }
+      ],
+      "choices": [
+        { "text": "Keep watch until dawn", "to": "weathertop_watch" },
+        { "text": "Let yourself sleep, and trust the dark to hold a little longer", "to": "weathertop_sleep" }
+      ]
+    },
+
+    "weathertop_watch": {
+      "blocks": [
+        { "type": "text", "text": "You watch the sky pale by degrees, jaw aching from a night spent clenched, and count it a fair trade for still being able to count anything at all." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Move on with the light", "to": "weathertop_dawn" }
+      ]
+    },
+
+    "weathertop_sleep": {
+      "blocks": [
+        { "type": "text", "text": "You sleep, badly but honestly, and wake with something steadier in your chest than you had the night before — the plain, stubborn fact of having trusted the road to hold." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Move on with the light", "to": "weathertop_dawn" }
+      ]
+    },
+
+    "weathertop_dawn": {
+      "blocks": [
+        { "type": "text", "text": "The road east opens out ahead, and somewhere beyond the next line of hills, the valley that hides Rivendell waits, unhurried, the way it has for an age of the world." }
+      ],
+      "choices": [
+        { "text": "Take one look back at Weathertop before you go", "to": "weathertop_omen" },
+        { "text": "Follow the road down without looking back", "to": "rivendell_arrival" }
+      ]
+    },
+
+    "weathertop_omen": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "From this distance, in this light, the broken watch-ring looks almost peaceful. You know better. You'll remember, later, that you knew better even then." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Follow the road down", "to": "rivendell_arrival" }
+      ]
+    },
+
+    "rivendell_arrival": {
+      "blocks": [
+        { "type": "image", "src": "images/rivendell.png", "alt": "A hidden valley of waterfalls and white terraces, lit gold in late afternoon." },
+        { "type": "text", "style": "epigraph", "text": "\"The Last Homely House east of the Sea,\" they call it — though nowhere in it feels like an ending." },
+        { "type": "text", "text": "Elrond receives you himself, unhurried, and listens to the whole of it — the wights, the sigil, the black stone in your dreams — before he speaks." },
+        { "type": "text", "style": "letter", "text": "\"The Fellstone was thought broken with the Witch-king's line at Fornost. If it wakes, it wakes something that remembers being a King, and remembers losing. Rest first. There will be a council, and you will need to have decided a great deal by the time it's held.\"" }
+      ],
+      "choices": [
+        { "text": "Rest, and see what Rivendell has to offer before that council", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_hub": {
+      "blocks": [
+        { "type": "text", "text": "There's more here than time to use it — archives, an armory, an elf who knows the northern roads better than the maps do, a dwarf envoy from Erebor, and, eventually, a council that won't wait forever." }
+      ],
+      "choices": [
+        { "text": "Search the archives for anything on the Fellstone", "to": "library_puzzle1", "once": true },
+        { "text": "Train in the armory", "to": "rivendell_armory", "once": true },
+        { "text": "Have your blade looked at by the smiths", "to": "rivendell_smithy", "once": true },
+        { "text": "Seek out Eldarion, who is said to know the northern paths", "to": "eldarion_bond1", "once": true },
+        { "text": "Spend more time with Eldarion", "to": "eldarion_bond2", "once": true, "if": { "visited": "eldarion_bond1" } },
+        { "text": "Seek him out once more, for reasons less about the road", "to": "eldarion_bond3", "once": true, "if": { "visited": "eldarion_bond2" } },
+        {
+          "text": "Tell Eldarion how you feel",
+          "to": "eldarion_romance",
+          "once": true,
+          "if": { "all": [ { "var": "trustEldarion", "gte": 3 }, { "var": "romance", "eq": "no one waiting on the road" } ] }
+        },
+        { "text": "Spend time with Hilda in the gardens", "to": "hilda_bond2", "once": true, "if": { "all": [ { "var": "allies", "has": "hilda" }, { "visited": "hilda_bond1" } ] } },
+        { "text": "Find her again, for reasons less about the road", "to": "hilda_bond3", "once": true, "if": { "visited": "hilda_bond2" } },
+        {
+          "text": "Tell Hilda how you feel",
+          "to": "hilda_romance",
+          "once": true,
+          "if": { "all": [ { "var": "trustHilda", "gte": 3 }, { "var": "romance", "eq": "no one waiting on the road" } ] }
+        },
+        { "text": "Meet the dwarf envoy from Erebor", "to": "thrain_intro", "once": true },
+        { "text": "Meet the scout who keeps declining every posting Rivendell offers him", "to": "cormac_intro", "once": true },
+        { "text": "Find the company of Rangers said to be lodging here", "to": "rangers_camp", "once": true },
+        { "text": "Speak with the healers about the old wars", "to": "rivendell_healer", "once": true },
+        { "text": "Ask Elrond about your own family's past", "to": "elrond_private", "once": true },
+        { "text": "Walk the Hall of Fire and listen to the songs", "to": "hall_of_fire", "once": true },
+        { "text": "Spar with Eldarion, if he'll have you", "to": "eldarion_spar", "once": true, "if": { "var": "allies", "has": "eldarion" } },
+        { "text": "Speak with Bree merchants who fled north with news of their own", "to": "bree_merchants", "once": true },
+        { "text": "Practice at the archery butts", "to": "rivendell_archery", "once": true },
+        { "text": "Walk the gardens alone, and let yourself think", "to": "rivendell_gardens", "once": true },
+        { "text": "Speak with the loremaster about the old Kings of Arnor", "to": "rivendell_loremaster", "once": true },
+        { "text": "Check on your horse in the stables", "to": "rivendell_stables", "once": true },
+        { "text": "Write letters home, in case there's no one left to write them later", "to": "rivendell_letters", "once": true },
+        { "text": "Ask Cormac about his family, if he joined you", "to": "cormac_bond", "once": true, "if": { "var": "allies", "has": "cormac" } },
+        { "text": "Ask Hilda about Eldarion, or Eldarion about Hilda, and see what you learn", "to": "companions_talk", "once": true, "if": { "all": [ { "var": "allies", "has": "hilda" }, { "var": "allies", "has": "eldarion" } ] } },
+        { "text": "Sharpen every blade you own, one more time", "to": "rivendell_final_prep", "once": true },
+        { "text": "Attend the council when you are ready", "to": "council_of_elrond" }
+      ]
+    },
+
+    "library_puzzle1": {
+      "blocks": [
+        { "type": "text", "style": "terminal", "text": "ARCHIVE: FELLSTONE — CROSS-REF. WITCH-KINGDOM OF ANGMAR — LAST CATALOGUED: T.A. 1975, BATTLE OF FORNOST" },
+        { "type": "text", "text": "Three sources disagree with each other in the specifics and agree on one thing: the stone does not create anything new in whoever holds it. It only answers what's already there, louder." }
+      ],
+      "choices": [
+        { "text": "Cross-reference the runes against the royal archives directly", "to": "library_right" },
+        { "text": "Trust the oldest scroll at face value", "to": "library_partial" },
+        { "text": "Ask the archivist for the short version", "to": "library_partial2" }
+      ]
+    },
+
+    "library_right": {
+      "blocks": [
+        { "type": "text", "text": "It takes half the night, but the royal archive's own account is unambiguous where the others hedge: the Fellstone answers to ward-sigils cut in the old royal pattern, the same pattern that once guarded Fornost's own gates." }
+      ],
+      "onEnter": [ { "var": "knowsFellstoneLore", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "library_partial": {
+      "blocks": [
+        { "type": "text", "text": "The oldest scroll is beautiful and almost entirely metaphor. You come away with a much better sense of how frightened the scribe was, and no better sense of the wardings themselves." }
+      ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "library_partial2": {
+      "blocks": [
+        { "type": "text", "text": "The archivist gives you the short version, which is mostly a warning not to touch anything and a strong suggestion you speak to someone more senior than her." }
+      ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_armory": {
+      "blocks": [
+        { "type": "text", "text": "An old Rivendell arms-master puts you through forms until your shoulders burn, correcting a decade of self-taught bad habits with the patience of someone who has genuinely seen worse." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_smithy": {
+      "blocks": [
+        { "type": "text", "text": "The smiths true your blade's edge and re-set its balance properly — small work, by their standards, and the difference in your hand is not small at all." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "eldarion_bond1": {
+      "blocks": [
+        { "type": "image", "src": "images/eldarion.png", "alt": "Eldarion at the edge of a terrace, watching the northern hills with a scout's stillness." },
+        { "type": "text", "text": "Eldarion has walked the northern roads more than any elf his age has much reason to, and talks about the Barrow-downs the way most people talk about a difficult relative — with real affection buried under real caution." },
+        { "type": "text", "style": "whisper", "text": "\"You have the look of someone the road already owns a little,\" he says. \"I know that look. I used to see it in the mirror.\"" }
+      ],
+      "onEnter": [ { "var": "trustEldarion", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "eldarion_bond2": {
+      "blocks": [
+        { "type": "text", "text": "He shows you the northern approaches on a map worn soft at every fold, and somewhere in the middle of it stops explaining terrain and starts just talking — about his kin, about why he stayed east instead of sailing." },
+        { "type": "text", "style": "whisper", "text": "\"I keep finding reasons,\" he admits. \"I used to think that was a failure of nerve. I'm less sure now.\"" }
+      ],
+      "onEnter": [
+        { "var": "trustEldarion", "op": "add", "value": 1 },
+        { "var": "allies", "op": "push", "value": "eldarion" }
+      ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "eldarion_bond3": {
+      "blocks": [
+        { "type": "text", "text": "You find him in the Hall of Fire's quieter hours, and this time neither of you brings up the road at all. It's a strange, unhurried kind of conversation to have with the North waking up hungry a few days' ride away." },
+        { "type": "text", "style": "whisper", "text": "\"I don't think I mind the danger as much as I mind not knowing how this ends,\" he says. \"Which is either very wise of me, or the least wise thing an Elf has said in an age.\"" }
+      ],
+      "onEnter": [ { "var": "trustEldarion", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "eldarion_romance": {
+      "blocks": [
+        { "type": "text", "text": "You find him where you always find him, at the edge of the terrace, and this time you don't let him fill the silence with talk of roads." },
+        { "type": "text", "style": "whisper", "text": "He looks at you for a long moment — an Elf's long moment, which is longer than it sounds — and then, very simply, closes the distance between you. \"I wondered when you'd catch up,\" he says." }
+      ],
+      "onEnter": [ { "var": "romance", "op": "set", "value": "Eldarion" } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "hilda_bond2": {
+      "blocks": [
+        { "type": "text", "text": "Rivendell's gardens seem to embarrass her a little, all that unhurried beauty, but she softens into it anyway, telling you — finally — why she really left the Angle: a wight-attack, years back, that she was the only one to walk away from." },
+        { "type": "text", "style": "whisper", "text": "\"So this isn't really new ground for me,\" she says. \"Doesn't make it easier. Makes it matter more, maybe.\"" }
+      ],
+      "onEnter": [ { "var": "trustHilda", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "hilda_bond3": {
+      "blocks": [
+        { "type": "text", "text": "You find her sharpening the same knife she was sharpening the night you met, and this time the silence between you isn't waiting to be filled with anything in particular." },
+        { "type": "text", "style": "whisper", "text": "\"I keep waiting for the part where I regret saying yes to this road,\" she says. \"It hasn't come yet. I'm starting to suspect it isn't going to.\"" }
+      ],
+      "onEnter": [ { "var": "trustHilda", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "hilda_romance": {
+      "blocks": [
+        { "type": "text", "text": "You find her at the edge of the gardens, and for once neither of you reaches for a joke to cover the moment." },
+        { "type": "text", "style": "whisper", "text": "\"Took you long enough,\" she says, and there's no real complaint in it — just relief, worn thin and glad to be set down. \"Come here, then.\"" }
+      ],
+      "onEnter": [ { "var": "romance", "op": "set", "value": "Hilda" } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "thrain_intro": {
+      "blocks": [
+        { "type": "text", "text": "Thrain Ironfist, envoy of Erebor, has opinions about everything and volume to match. He also, it turns out, knows the old dwarven ward-runes better than anyone else within a hundred leagues." },
+        { "type": "text", "style": "whisper", "text": "\"Help me settle a dispute with the smiths here about proper tempering,\" he says, \"and I'll teach you to read a warding-stone without losing a hand to it. Fair trade.\"" }
+      ],
+      "choices": [
+        { "text": "Help him settle it", "to": "thrain_task" }
+      ]
+    },
+
+    "thrain_task": {
+      "blocks": [
+        { "type": "text", "text": "The dispute turns out to be less about tempering and more about Thrain wanting an audience while he wins an argument he was always going to win. You provide the audience. He, true to his word, teaches you the runes." }
+      ],
+      "onEnter": [
+        { "var": "knowsRunes", "op": "set", "value": true },
+        { "var": "allies", "op": "push", "value": "thrain" }
+      ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "cormac_intro": {
+      "blocks": [
+        { "type": "text", "text": "Cormac has turned down three postings this season alone, according to the quartermaster, on the grounds that none of them were interesting enough. He looks you over with the frank assessment of someone deciding whether you might finally qualify." },
+        { "type": "text", "style": "whisper", "text": "\"Fornost,\" he says, once you've explained. \"That's interesting enough. I'm in, if you'll have me — I've been bored out of my mind here for a month.\"" }
+      ],
+      "choices": [
+        { "text": "Take him along and be glad of it", "to": "cormac_task" }
+      ]
+    },
+
+    "cormac_task": {
+      "blocks": [
+        { "type": "text", "text": "He proves his worth before you've even left Rivendell's borders — tracking a message-runner's trail through country you'd have missed entirely, and doing it without once seeming to try particularly hard." }
+      ],
+      "onEnter": [
+        { "var": "allies", "op": "push", "value": "cormac" },
+        { "var": "combatSkill", "op": "add", "value": 1 }
+      ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rangers_camp": {
+      "blocks": [
+        { "type": "text", "text": "A dozen Rangers of the North are camped at Rivendell's edge, waiting on the same news everyone else is. They know your face, or your kind, if not your name — the North is smaller than it looks, among those who keep it." },
+        { "type": "text", "style": "whisper", "text": "Their captain grips your arm once, hard, and says only: \"Send word, when you know something. We'll come.\"" }
+      ],
+      "onEnter": [
+        { "var": "allies", "op": "push", "value": "rangers" },
+        { "var": "resolve", "op": "add", "value": 1 }
+      ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_healer": {
+      "blocks": [
+        { "type": "text", "text": "The healers here have tended wounds from wars most of the world has forgotten happened. One of them, unprompted, tells you about the last time a stone like this surfaced — the cost of stopping it, and the cost, worse, of the one time it wasn't stopped in time." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "elrond_private": {
+      "blocks": [
+        { "type": "text", "style": "letter", "text": "\"Your line held this ground once, before it fell into ruin,\" Elrond says, unprompted. \"I did not say so before the others, because it is not a burden I have any right to hand you unasked. I say it now because I think you would rather carry it knowingly.\"" }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "hall_of_fire": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "They sing of kings a very long time dead, and somehow it does not feel like mourning so much as a promise kept — that someone, still, remembers." },
+        { "type": "text", "text": "You sit a long while, saying nothing, and leave steadier than you arrived." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "eldarion_spar": {
+      "blocks": [
+        { "type": "text", "text": "Eldarion fights the way he does everything else — unhurried, precise, and entirely willing to correct your footwork mid-exchange without breaking his own rhythm at all." },
+        { "type": "text", "style": "whisper", "text": "\"You fight like someone expecting to lose eventually,\" he says afterward. \"That's not nothing, as instincts go. It's also not going to keep you alive on its own.\"" }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "bree_merchants": {
+      "blocks": [
+        { "type": "text", "text": "A knot of Bree merchants sheltering here have their own grim news — trade routes going quiet, waystations abandoned, whole villages further north simply not answering their letters anymore." },
+        { "type": "text", "style": "whisper", "text": "\"Didn't used to be Rivendell we ran to,\" one of them says. \"Didn't used to need to run at all.\"" }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_final_prep": {
+      "blocks": [
+        { "type": "text", "text": "There's a particular calm in the mindless repetition of it — stone against steel, over and over, until the edge is true and your hands have stopped shaking for reasons that have nothing to do with the blade." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "companions_talk": {
+      "blocks": [
+        { "type": "text", "text": "You catch the two of them mid-argument about the fastest route north, which turns out to be less a disagreement than an elaborate, ongoing form of mutual respect neither one of them will call by its right name." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "cormac_bond": {
+      "blocks": [
+        { "type": "text", "text": "Cormac deflects the question twice before finally answering it — a family scattered by the same kind of trouble you're walking toward now, which turns out to be most of why he's here at all." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_letters": {
+      "blocks": [
+        { "type": "text", "style": "letter", "text": "You write more than you meant to, and say less of the important parts than you meant to say, and in the end simply trust that the ones who matter will read between the lines the way they always have." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_stables": {
+      "blocks": [
+        { "type": "text", "text": "Your horse has been better fed and better groomed here in two days than in the two months before it, and greets you with the particular indignant affection of an animal that has gotten used to being spoiled." }
+      ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_loremaster": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "\"Three brother-kingdoms split from one crown, and all three fell in the end,\" the loremaster says. \"The North remembers being the last to go dark. It has never quite forgiven itself.\"" }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_archery": {
+      "blocks": [
+        { "type": "text", "text": "You put arrow after arrow into a straw target until your shoulders ache and your aim finally stops apologizing for itself." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "rivendell_gardens": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "You sit by the water a long while and let yourself, just once, be afraid out loud where no one can hear it — and find, afterward, that it's easier to carry once it's been said." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the hub", "to": "rivendell_hub" }
+      ]
+    },
+
+    "council_of_elrond": {
+      "blocks": [
+        { "type": "text", "text": "The council is smaller than legend would have it, and no less serious for that. Elrond lays out what's known, and the room is left to decide how the North answers a King who never learned how to stay dead." }
+      ],
+      "choices": [
+        { "text": "Argue for a small party, moving unseen", "to": "barrow_downs_start", "set": [ { "var": "approach", "op": "set", "value": "stealth" } ] },
+        { "text": "Argue for gathering strength and meeting this openly", "to": "barrow_downs_start", "set": [ { "var": "approach", "op": "set", "value": "battle" } ] },
+        { "text": "Argue for seeking allies the North has let go cold", "to": "barrow_downs_start", "set": [ { "var": "approach", "op": "set", "value": "diplomacy" } ] }
+      ]
+    },
+
+    "barrow_downs_start": {
+      "blocks": [
+        { "type": "image", "src": "images/barrowdowns.png", "alt": "Grass-grown burial mounds under a low mist, standing stones leaning at odd angles." },
+        { "type": "text", "text": "You leave by a northern road none of you came in by, and within a day the hills have gone strange — grass-grown mounds in unnatural rows, standing stones that seem to lean toward you as you pass, mist that doesn't lift with the sun." }
+      ],
+      "choices": [
+        { "text": "Make camp at the downs' edge", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "barrow_downs_camp": {
+      "blocks": [
+        { "type": "text", "text": "Five mounds rise within sight of camp, each older and stranger than the last, and somewhere beyond them — closer with every day you linger — is whatever has been waking them." }
+      ],
+      "choices": [
+        { "text": "Search for a ward-stone, the way the archive taught you", "to": "wardstone_puzzle", "once": true, "if": { "var": "knowsFellstoneLore", "eq": true } },
+        { "text": "Search for a ward-stone, trusting instinct alone", "to": "wardstone_puzzle_hard", "once": true, "if": { "not": { "var": "knowsFellstoneLore", "eq": true } } },
+        { "text": "Have Thrain read the old wardings properly", "to": "dwarf_rune_puzzle", "once": true, "if": { "var": "allies", "has": "thrain" } },
+        { "text": "Explore the Sunken Mound", "to": "mound1_entrance", "once": true },
+        { "text": "Explore the Barrow of Whispers", "to": "mound2_entrance", "once": true },
+        { "text": "Explore the King's Barrow, oldest of the three", "to": "mound3_entrance", "once": true },
+        { "text": "Explore the Weeping Barrow, said to still grieve its dead", "to": "mound4_entrance", "once": true },
+        { "text": "Explore the Forgotten Barrow, unmarked on any map", "to": "mound5_entrance", "once": true },
+        { "text": "Read the weather and the wind before deciding anything else", "to": "barrow_downs_omen", "once": true },
+        { "text": "Ask Berengar what he saw while captive, if he's with you", "to": "berengar_report", "once": true, "if": { "var": "allies", "has": "berengar" } },
+        { "text": "Tend your wounds before going on", "to": "barrow_rest", "once": true, "if": { "var": "wounds", "gt": 0 } },
+        { "text": "Press on toward whatever is waking these mounds", "to": "barrow_wight_encounter" }
+      ]
+    },
+
+    "barrow_downs_omen": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "The wind here never quite settles, shifting direction without ever seeming to actually blow anywhere — the downs holding their breath, the way a room does right before someone says something no one wants to hear." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "berengar_report": {
+      "blocks": [
+        { "type": "text", "text": "Berengar tells you what little he learned in three weeks chained in Fornost's cellars — guard rotations, a second prisoner he never saw but often heard, and a captor who talked to the stone in his gauntlet like it talked back." }
+      ],
+      "onEnter": [ { "var": "knowsFellstoneLore", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "wardstone_puzzle": {
+      "blocks": [
+        { "type": "text", "text": "The royal pattern from the archive is unmistakable once you know to look for it — a sun-sigil among a dozen weathered carvings, exactly where the old text said it would be." }
+      ],
+      "choices": [
+        { "text": "Press it firmly and step back", "to": "wardstone_success" },
+        { "text": "Take your time, and double-check against your notes first", "to": "wardstone_success_careful" }
+      ]
+    },
+
+    "wardstone_success": {
+      "blocks": [
+        { "type": "text", "text": "The stone answers with a low, satisfied groan, and a smaller ward-stone works loose into your palm, still warm from the working." }
+      ],
+      "onEnter": [ { "var": "hasWardstone", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "wardstone_success_careful": {
+      "blocks": [
+        { "type": "text", "text": "You take the extra hour to be certain, and it costs you nothing but daylight — the ward-stone comes free clean, and the certainty of having done it properly settles something in your chest besides." }
+      ],
+      "onEnter": [
+        { "var": "hasWardstone", "op": "set", "value": true },
+        { "var": "resolve", "op": "add", "value": 1 }
+      ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "wardstone_puzzle_hard": {
+      "blocks": [
+        { "type": "text", "text": "Without the archive's guidance, it's a dozen weathered carvings that all look equally plausible and equally ancient. You'll have to guess, and hope the mound is patient with you." }
+      ],
+      "choices": [
+        { "text": "Guess by the carving's style — it looks the oldest, and oldest often means most important", "to": "wardstone_hard_right" },
+        { "text": "Guess by which stone looks least weathered", "to": "wardstone_hard_wrong" },
+        { "text": "Give up guessing and simply force one loose", "to": "wardstone_hard_force" }
+      ]
+    },
+
+    "wardstone_hard_right": {
+      "blocks": [
+        { "type": "text", "text": "Instinct, for once, serves you well — the oldest-looking stone is the oldest for a reason, and it comes free without complaint." }
+      ],
+      "onEnter": [ { "var": "hasWardstone", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "wardstone_hard_wrong": {
+      "blocks": [
+        { "type": "text", "text": "Wrong guess — the stone you chose was recently disturbed for an entirely different, much worse reason, and something below it doesn't appreciate being woken twice. You get the ward-stone free, but not cheaply." }
+      ],
+      "onEnter": [
+        { "var": "hasWardstone", "op": "set", "value": true },
+        { "var": "wounds", "op": "add", "value": 1 }
+      ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "wardstone_hard_force": {
+      "blocks": [
+        { "type": "text", "text": "You give up on subtlety and simply break one loose with main strength. It works, eventually, in the way that battering down a door works — the ward-stone comes away, and so does most of the skin on your knuckles." }
+      ],
+      "onEnter": [
+        { "var": "hasWardstone", "op": "set", "value": true },
+        { "var": "wounds", "op": "add", "value": 2 }
+      ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "dwarf_rune_puzzle": {
+      "blocks": [
+        { "type": "text", "text": "Thrain reads the wardings the way you'd read a familiar letter — no guessing at all, just a short, satisfied grunt and a ward-stone worked free in a few practiced motions." },
+        { "type": "text", "style": "whisper", "text": "\"Dwarves built half of what your people call ruins,\" he says. \"We tend to remember how the doors work.\"" }
+      ],
+      "onEnter": [ { "var": "hasWardstone", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "mound1_entrance": {
+      "blocks": [
+        { "type": "text", "text": "The Sunken Mound's roof gave way long ago, and something metallic still catches the light at the bottom of the hollow — along with, very likely, whatever old trap was left to guard it." }
+      ],
+      "choices": [
+        { "text": "Climb down carefully", "to": "mound1_trap_check" }
+      ]
+    },
+
+    "mound1_trap_check": {
+      "blocks": [
+        { "type": "text", "text": "A pressure-worn seam runs across the floor, too deliberate to be natural — the kind of thing a King's tomb-builders would leave for anyone who came looking without an invitation." }
+      ],
+      "choices": [
+        { "text": "Test each stone with your staff before trusting your weight to it", "to": "mound1_treasure" },
+        { "text": "Trust your footing and walk straight across", "to": "mound1_trap_sprung" },
+        { "text": "Let Eldarion's sharp eyes find the safe path", "to": "mound1_treasure", "if": { "var": "allies", "has": "eldarion" } }
+      ]
+    },
+
+    "mound1_trap_sprung": {
+      "blocks": [
+        { "type": "text", "text": "The floor drops a hand's width beneath your boot and a spread of old spikes hisses free of the wall — you throw yourself clear, mostly, and land badly." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Get up and see what was worth guarding", "to": "mound1_treasure" }
+      ]
+    },
+
+    "mound1_treasure": {
+      "blocks": [
+        { "type": "text", "text": "Old gold arm-rings, tarnished black, and beneath them a scrap of preserved cloth bearing the same broken-crown sigil from the trollshaws — proof, if you needed it, that this was never random." }
+      ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "mound2_entrance": {
+      "blocks": [
+        { "type": "text", "text": "The Barrow of Whispers earns its name honestly — the wind through its cracked entrance sounds, if you don't think about it too hard, almost like words." }
+      ],
+      "choices": [
+        { "text": "Push in regardless", "to": "mound2_wight" }
+      ]
+    },
+
+    "mound2_wight": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "A lesser wight rises from the barrow-floor before you're three steps in, cold radiating off it like heat off summer stone, and considerably more awake than you were hoping." }
+      ],
+      "choices": [
+        {
+          "text": "Strike before it's fully risen",
+          "to": "mound2_aftermath",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "You're not fast enough yet to beat a wight to the first strike.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Retreat and seal the entrance behind you", "to": "mound2_aftermath" },
+        {
+          "text": "Ward it back to sleep with what Thrain taught you",
+          "to": "mound2_aftermath",
+          "if": { "var": "knowsRunes", "eq": true },
+          "set": [ { "var": "resolve", "op": "add", "value": 1 } ]
+        }
+      ]
+    },
+
+    "mound2_aftermath": {
+      "blocks": [
+        { "type": "text", "text": "Whatever's left of the wight settles, and on its finger — or what's left of one — sits a plain iron ring, humming faintly with the same cold." }
+      ],
+      "choices": [
+        { "text": "Take the ring — it might be useful", "to": "barrow_downs_camp", "set": [ { "var": "resolve", "op": "sub", "value": 1 } ] },
+        { "text": "Leave it be — some things aren't worth carrying", "to": "barrow_downs_camp", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "mound3_entrance": {
+      "blocks": [
+        { "type": "image", "src": "images/duel.png", "alt": "A preserved royal tomb, undisturbed for centuries, carved stone hands folded over a stone chest." },
+        { "type": "text", "style": "epigraph", "text": "Here lies a King who kept his oath to the end and lost everything for it — and no one left to remember which end that was." },
+        { "type": "text", "text": "The King's Barrow is untouched, undisturbed, its occupant's stone hands folded in a peace nothing else in these hills seems to have kept." }
+      ],
+      "choices": [
+        { "text": "Pay your respects and leave the dead in peace", "to": "barrow_downs_camp", "set": [ { "var": "resolve", "op": "add", "value": 2 } ] },
+        { "text": "Search anyway — the North needs whatever help it can get", "to": "barrow_downs_camp", "set": [ { "var": "hasWardstone", "op": "set", "value": true }, { "var": "resolve", "op": "sub", "value": 1 } ] }
+      ]
+    },
+
+    "mound4_entrance": {
+      "blocks": [
+        { "type": "text", "text": "The Weeping Barrow earns its name from a spring that trickles endlessly down its inner wall, cold as grief and just as unwilling to stop." }
+      ],
+      "choices": [
+        { "text": "Follow the water down into the dark", "to": "mound4_depths" }
+      ]
+    },
+
+    "mound4_depths": {
+      "blocks": [
+        { "type": "text", "text": "At the bottom, a chamber of small graves — children, by their size, laid here long before the wights ever came, in an age when this was still simply a place to bury the dead and grieve them properly." }
+      ],
+      "choices": [
+        { "text": "Leave an offering and go", "to": "barrow_downs_camp", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] },
+        { "text": "There's nothing useful here — move on quickly", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "mound5_entrance": {
+      "blocks": [
+        { "type": "text", "text": "The Forgotten Barrow isn't on any map you carry, and the reason becomes clear fast: something has been digging *into* it from below, not out of it — which is a considerably worse sign than the alternative." }
+      ],
+      "choices": [
+        {
+          "text": "Investigate the tunnel despite the danger",
+          "to": "mound5_orcs",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "Whatever dug that tunnel, you're not ready to meet it in the dark alone."
+        },
+        { "text": "Seal the tunnel from this side and leave it be", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "mound5_orcs": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "A small orc digging-party, tunneling toward the deeper barrows on the Barrow-lord's own orders — and considerably more startled to see you than you are to see them." }
+      ],
+      "choices": [
+        { "text": "Drive them off", "to": "barrow_downs_camp", "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ] },
+        { "text": "Let them flee and collapse the tunnel behind them", "to": "barrow_downs_camp", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "barrow_rest": {
+      "blocks": [
+        { "type": "text", "text": "You take the time properly this time — clean water, clean bandages, and the particular stillness of a camp that knows it's about to need everyone at their best." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "sub", "value": 1 } ],
+      "choices": [
+        { "text": "Back to camp", "to": "barrow_downs_camp" }
+      ]
+    },
+
+    "barrow_wight_encounter": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The ground itself seems to exhale as a greater wight rises at the heart of the downs — old, patient, and very clearly the one the lesser mounds have been answering to." }
+      ],
+      "choices": [
+        {
+          "text": "Strike true with everything the road has taught you",
+          "to": "barrow_wight_aftermath",
+          "if": { "var": "combatSkill", "gte": 2 },
+          "whenLocked": "disable",
+          "lockedText": "This one doesn't fall to anything less than real skill, and you're not there yet.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "resolve", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Use what the archive taught you — its own old curse can unravel it",
+          "to": "barrow_wight_aftermath",
+          "if": { "var": "knowsFellstoneLore", "eq": true },
+          "set": [ { "var": "resolve", "op": "add", "value": 2 } ]
+        },
+        {
+          "text": "Let your companions shield you and strike together",
+          "to": "barrow_wight_aftermath",
+          "if": { "any": [ { "var": "allies", "has": "hilda" }, { "var": "allies", "has": "eldarion" }, { "var": "allies", "has": "thrain" } ] }
+        },
+        {
+          "text": "Take everything it is and put it down for good, whatever that costs it",
+          "to": "barrow_wight_aftermath",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "resolve", "op": "sub", "value": 2 } ]
+        },
+        {
+          "text": "Fall back into the fog, and lose it if you can",
+          "to": "barrow_wight_aftermath",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 } ]
+        }
+      ]
+    },
+
+    "barrow_wight_aftermath": {
+      "blocks": [
+        { "type": "text", "text": "Whatever's left of the greater wight settles back into the earth it rose from, and for the first time since Bree, the downs go genuinely quiet." }
+      ],
+      "choices": [
+        { "text": "You're too hurt to go any further — the downs are going to keep you", "to": "ending_fallen_ranger", "if": { "var": "wounds", "gte": 5 } },
+        { "text": "Press on, wounded but standing", "to": "companion_peril_choice", "if": { "var": "wounds", "lt": 5 } }
+      ]
+    },
+
+    "companion_peril_choice": {
+      "blocks": [
+        { "type": "text", "text": "A scouting party of orcs falls on the camp's edge before you've gone a mile further, and in the scramble, one of your companions is cut off from the rest of you." }
+      ],
+      "choices": [
+        {
+          "text": "Go back for them, whatever it costs",
+          "to": "companion_save_check",
+          "if": { "any": [ { "var": "allies", "has": "hilda" }, { "var": "allies", "has": "eldarion" }, { "var": "allies", "has": "thrain" } ] },
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "resolve", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Leave them — the mission has to matter more than one life",
+          "to": "north_downs_road",
+          "if": { "any": [ { "var": "allies", "has": "hilda" }, { "var": "allies", "has": "eldarion" }, { "var": "allies", "has": "thrain" } ] },
+          "set": [ { "var": "companionsLost", "op": "push", "value": "someone" }, { "var": "resolve", "op": "sub", "value": 2 } ]
+        },
+        {
+          "text": "There is no one to risk — you go on alone",
+          "to": "north_downs_road",
+          "if": { "not": { "any": [ { "var": "allies", "has": "hilda" }, { "var": "allies", "has": "eldarion" }, { "var": "allies", "has": "thrain" } ] } }
+        }
+      ]
+    },
+
+    "companion_save_check": {
+      "blocks": [
+        { "type": "text", "text": "You go back through the chaos and find them, cornered but alive — barely, and you're both bleeding for it by the time you break clear together." }
+      ],
+      "choices": [
+        { "text": "It cost too much — you won't be walking away from this one", "to": "ending_sacrifice_noble", "if": { "var": "wounds", "gte": 5 } },
+        { "text": "You made it — both of you", "to": "north_downs_road", "if": { "var": "wounds", "lt": 5 } }
+      ]
+    },
+
+    "north_downs_road": {
+      "blocks": [
+        { "type": "text", "text": "The road north from here is one none of you have walked before — older than the East Road, and leading somewhere the maps mostly just mark as *here be the old Kingdom*." }
+      ],
+      "choices": [
+        { "text": "Send word to Erebor first, and see what Thrain's people can offer", "to": "erebor_invite", "if": { "var": "allies", "has": "thrain" } },
+        { "text": "Follow the road straight toward whatever's left of Fornost", "to": "fornost_approach_start" }
+      ]
+    },
+
+    "erebor_invite": {
+      "blocks": [
+        { "type": "text", "text": "Thrain sends a raven east before you've finished arguing about it, and by the second day an answer comes back in a hand too neat to be anyone but a royal scribe's: Erebor will hear you, if you're willing to spend the days it costs to get there." }
+      ],
+      "choices": [
+        { "text": "The detour is worth it — travel to Erebor", "to": "erebor_road" },
+        { "text": "There's no time to spare — press on toward Fornost", "to": "fornost_approach_start" }
+      ]
+    },
+
+    "erebor_road": {
+      "blocks": [
+        { "type": "text", "text": "The road east is long, but Thrain fills most of it with opinions about proper stonework, which is, in its own way, restful — a problem with an actual, arguable answer." }
+      ],
+      "choices": [
+        { "text": "Arrive at the Lonely Mountain", "to": "erebor_arrival" }
+      ]
+    },
+
+    "erebor_arrival": {
+      "blocks": [
+        { "type": "text", "text": "Erebor rises out of the plain the way nothing built by anyone else quite manages — vast, deliberate, and entirely unbothered by how small it makes everything around it feel." }
+      ],
+      "choices": [
+        { "text": "Go in", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_hub": {
+      "blocks": [
+        { "type": "text", "text": "Thrain has business to settle before the King under the Mountain will grant you an audience, which leaves time to see what else Erebor has to offer a traveler in a hurry." }
+      ],
+      "choices": [
+        { "text": "Present yourself to the King's council", "to": "erebor_council", "once": true },
+        { "text": "Visit the forges for better gear", "to": "erebor_forges", "once": true },
+        { "text": "Search the old records for anything on the Fellstone", "to": "erebor_records", "once": true },
+        { "text": "Spar with Thrain in the training halls", "to": "erebor_spar", "once": true },
+        { "text": "Answer a challenge from Erebor's own champion", "to": "erebor_champion_test", "once": true },
+        { "text": "Try the sealed vault said to hold an old ward-stone", "to": "erebor_vault_puzzle", "once": true },
+        { "text": "Walk the halls and listen to what the dwarves are saying among themselves", "to": "erebor_halls", "once": true },
+        { "text": "Share a feast with Thrain's kin before you go", "to": "erebor_feast", "once": true },
+        { "text": "Ask to see Erebor's own treasury, out of curiosity", "to": "erebor_treasury", "once": true },
+        { "text": "Ask Thrain what he's not telling you", "to": "erebor_thrain_secret", "once": true },
+        { "text": "Visit Erebor's own healers before the road ahead", "to": "erebor_healers", "once": true },
+        { "text": "Ask about the road ahead from those who've walked it", "to": "erebor_road_lore", "once": true },
+        { "text": "You've spent enough time here — return to the road", "to": "erebor_departure" }
+      ]
+    },
+
+    "erebor_council": {
+      "blocks": [
+        { "type": "text", "text": "The King under the Mountain is exactly as blunt as his reputation, and exactly as willing to listen once Thrain vouches for you personally — which, apparently, he doesn't do often." },
+        { "type": "text", "style": "letter", "text": "\"Erebor doesn't forget who stood with us and who didn't,\" the King says. \"Bring a real reason, and you'll have real dwarves at your back.\"" }
+      ],
+      "onEnter": [ { "var": "allies", "op": "push", "value": "erebor_dwarves" }, { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_forges": {
+      "blocks": [
+        { "type": "text", "text": "Erebor's smiths look at your blade the way a physician looks at a patient who's been self-treating for years, then quietly fix everything wrong with it without further comment." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_records": {
+      "blocks": [
+        { "type": "text", "style": "terminal", "text": "ARCHIVE, EREBOR: FELLSTONE — CROSS-REFERENCED AGAINST DWARVEN TRADE LOGS, T.A. 1974-1975 — ORIGIN: UNKNOWN, LIKELY PRE-DATES ANGMAR ITSELF" },
+        { "type": "text", "text": "The dwarven records agree with Rivendell's on the essentials and add one detail the elves' archive lacked entirely: the stone has done this before, more than once, long before the Witch-king ever touched it." }
+      ],
+      "onEnter": [ { "var": "knowsFellstoneLore", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_spar": {
+      "blocks": [
+        { "type": "text", "text": "Thrain fights the way he argues — loudly, honestly, and considerably better than you'd expect from someone who telegraphs every strike a full second before it lands." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_champion_test": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "Erebor's champion doesn't so much challenge you as simply attack without preamble — apparently the custom here, and apparently a compliment." }
+      ],
+      "choices": [
+        {
+          "text": "Meet her head-on",
+          "to": "erebor_hub",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "She reads your stance in half a second and you're not ready to survive what comes after.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Concede early and gracefully", "to": "erebor_hub", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "erebor_vault_puzzle": {
+      "blocks": [
+        { "type": "text", "text": "A sealed vault, dwarven rune-work all around its edge, three separate rune-sequences etched into the mechanism — one for stone, one for fire, one for a King's own name." }
+      ],
+      "choices": [
+        { "text": "Try the sequence for stone", "to": "erebor_vault_right", "if": { "var": "knowsRunes", "eq": true } },
+        { "text": "Try the sequence for fire", "to": "erebor_vault_wrong" },
+        { "text": "Try the sequence for a King's name", "to": "erebor_vault_wrong" }
+      ]
+    },
+
+    "erebor_vault_right": {
+      "blocks": [
+        { "type": "text", "text": "Reading dwarven runes properly makes this almost insultingly simple — the vault opens on the first try, and a ward-stone sits waiting exactly where the sequence promised it would." }
+      ],
+      "onEnter": [ { "var": "hasWardstone", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_vault_wrong": {
+      "blocks": [
+        { "type": "text", "text": "Wrong sequence — the vault's own defenses aren't lethal, dwarves being practical about these things, but the small explosion of stone-dust still knocks you flat before the true mechanism yields." }
+      ],
+      "onEnter": [ { "var": "hasWardstone", "op": "set", "value": true }, { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_halls": {
+      "blocks": [
+        { "type": "text", "text": "The dwarves speak among themselves of the old debt owed to the line that once held Fornost, and of a King's line thought lost that might, if the rumors are true, have just walked into their halls asking for help." },
+        { "type": "text", "style": "whisper", "text": "No one says it to your face. Everyone, clearly, is thinking it." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_road_lore": {
+      "blocks": [
+        { "type": "text", "text": "A dwarven trader who's actually crossed the North Downs in living memory sketches the safest approach to Fornost on the back of a receipt, muttering the whole time about how no sane person should need this information twice in one lifetime." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_healers": {
+      "blocks": [
+        { "type": "text", "text": "Dwarven medicine is blunt, effective, and entirely unconcerned with your dignity — you leave better mended than you arrived, and considerably more careful about what you tell them hurts next time." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "sub", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_thrain_secret": {
+      "blocks": [
+        { "type": "text", "text": "Thrain admits, finally, that he pressed for this alliance harder than his King strictly wanted — a debt of his own, from a Ranger patrol that once pulled his kin out of a collapsed mine, decades before you were born." },
+        { "type": "text", "style": "whisper", "text": "\"Wasn't going to say it made me sentimental,\" he mutters. \"Say it anyway and I'll deny it.\"" }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_treasury": {
+      "blocks": [
+        { "type": "text", "text": "Erebor's own treasury makes the Fornost hoards you'll find later look modest by comparison — mountains of gold, genuinely, stacked with the casual confidence of a people who stopped being impressed by it generations ago." }
+      ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_feast": {
+      "blocks": [
+        { "type": "text", "text": "Dwarven hospitality turns out to mean enormous quantities of food, louder singing than the acoustics can really handle, and a toast — several toasts, actually — to absent friends and future ones alike." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the halls", "to": "erebor_hub" }
+      ]
+    },
+
+    "erebor_departure": {
+      "blocks": [
+        { "type": "text", "text": "Whatever Erebor could offer, you've taken it — and whoever's coming with you, dwarves included, falls in behind you for the long road back north." }
+      ],
+      "choices": [
+        { "text": "Return to the North Downs road", "to": "fornost_approach_start" }
+      ]
+    },
+
+    "fornost_approach_start": {
+      "blocks": [
+        { "type": "text", "text": "The old North Kingdom's watchtowers rise ahead, broken-toothed against the sky, and the plan settled on at Rivendell is the only plan you've got left to trust." }
+      ],
+      "choices": [
+        { "text": "Move in secret, as agreed", "to": "stealth_start", "if": { "var": "approach", "eq": "stealth" } },
+        { "text": "Rally your strength for open battle, as agreed", "to": "battle_start", "if": { "var": "approach", "eq": "battle" } },
+        { "text": "Seek out the allies you promised to find, as agreed", "to": "diplomacy_start", "if": { "var": "approach", "eq": "diplomacy" } }
+      ]
+    },
+
+    "stealth_start": {
+      "blocks": [
+        { "type": "text", "text": "Night is the only ally a small party has here. You study the outer wall from a safe distance, looking for the way in that won't announce you." }
+      ],
+      "choices": [
+        { "text": "Follow the old drainage tunnels beneath the walls", "to": "stealth_tunnels" },
+        { "text": "Scale the outer wall where the ivy grows thickest", "to": "stealth_wall" }
+      ]
+    },
+
+    "stealth_tunnels": {
+      "blocks": [
+        { "type": "text", "text": "The tunnels are barely shoulder-width, black as pitch, and old enough that you're trusting centuries of stonework you can't see to hold." }
+      ],
+      "choices": [
+        { "text": "Press on despite the dark", "to": "stealth_tunnels_water" }
+      ]
+    },
+
+    "stealth_tunnels_water": {
+      "blocks": [
+        { "type": "text", "text": "A flooded stretch blocks the passage, black water of unknown depth. Somewhere ahead, voices — orcish, unhurried — echo down the stone." }
+      ],
+      "choices": [
+        { "text": "Wade through, cold and quiet", "to": "stealth_tunnels_close_call" },
+        { "text": "Backtrack and find a dry route, losing precious time", "to": "stealth_tunnels_close_call" }
+      ]
+    },
+
+    "stealth_tunnels_close_call": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "A patrol passes directly overhead, close enough that grit sifts down from the ceiling with every footstep. You hold very still and try to remember how to breathe quietly." }
+      ],
+      "choices": [
+        { "text": "Hold perfectly still and trust your nerve", "to": "stealth_undetected", "if": { "var": "resolve", "gte": 1 }, "whenLocked": "disable", "lockedText": "Your nerve isn't steady enough yet to hold through something this close." },
+        { "text": "It's too close — you have to move", "to": "stealth_spotted_recovery" }
+      ]
+    },
+
+    "stealth_undetected": {
+      "blocks": [
+        { "type": "text", "text": "The patrol moves on, none the wiser. Your heart takes considerably longer to catch up to the good news." }
+      ],
+      "choices": [
+        { "text": "Keep moving", "to": "stealth_watchtower" }
+      ]
+    },
+
+    "stealth_spotted_recovery": {
+      "blocks": [
+        { "type": "text", "text": "You break for a side passage a half-second before torchlight would have found you, and lose them in a run through corridors that were never meant to be run through." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Catch your breath and keep moving", "to": "stealth_watchtower" }
+      ]
+    },
+
+    "stealth_wall": {
+      "blocks": [
+        { "type": "text", "text": "The climb is steep and the ivy takes your weight unevenly — twice a handhold gives without warning, and twice you catch yourself before it matters." }
+      ],
+      "choices": [
+        { "text": "Keep climbing steadily", "to": "stealth_wall_top", "if": { "var": "combatSkill", "gte": 1 }, "whenLocked": "disable", "lockedText": "Your arms aren't strong enough yet for a climb like this one." },
+        { "text": "Take it slow, testing every hold twice", "to": "stealth_wall_top" }
+      ]
+    },
+
+    "stealth_wall_top": {
+      "blocks": [
+        { "type": "text", "text": "You come over the top of the wall into the ruins proper, breathing hard, the broken city spread out dark and enormous below." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Move on", "to": "stealth_watchtower" }
+      ]
+    },
+
+    "stealth_watchtower": {
+      "blocks": [
+        { "type": "text", "text": "A single guard-tower commands the most direct path into the lower city, its light sweeping in a slow, patient arc." }
+      ],
+      "choices": [
+        { "text": "Time your crossing between passes of the light", "to": "stealth_watchtower_cross" },
+        { "text": "Circle wide around it along the old aqueduct", "to": "stealth_watchtower_cross", "if": { "var": "combatSkill", "gte": 1 }, "whenLocked": "disable", "lockedText": "The aqueduct's narrow footing wants a surer step than you've got." }
+      ]
+    },
+
+    "stealth_watchtower_cross": {
+      "blocks": [
+        { "type": "text", "text": "You make it past without the light ever quite finding you, and drop into the lower city's shadow with your pulse only slightly ahead of where it should be." }
+      ],
+      "choices": [
+        { "text": "Keep moving", "to": "stealth_informant" }
+      ]
+    },
+
+    "stealth_informant": {
+      "blocks": [
+        { "type": "text", "text": "A hunched figure in the ruins turns out not to be a statue — a hermit, or a smuggler who never left, mad-eyed but not unkind. \"You'll want to know the old names,\" he says, unprompted, \"if you mean to ask that door for anything.\"" }
+      ],
+      "choices": [
+        { "text": "Listen to what he knows", "to": "stealth_inner_approach", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] },
+        { "text": "He's clearly not right in the head — keep moving", "to": "stealth_inner_approach" }
+      ]
+    },
+
+    "stealth_inner_approach": {
+      "blocks": [
+        { "type": "text", "text": "Through a barred side-chamber, you glimpse a chained prisoner — Dúnedain, by the cut of what's left of his coat, and very much alive." }
+      ],
+      "choices": [
+        { "text": "Free him, whatever the noise costs you", "to": "stealth_free_captive" },
+        { "text": "Leave him — you can't risk the mission on a stranger", "to": "stealth_final_stretch", "set": [ { "var": "resolve", "op": "sub", "value": 1 } ] }
+      ]
+    },
+
+    "stealth_free_captive": {
+      "blocks": [
+        { "type": "text", "text": "Berengar, he tells you his name is, once the chains are off and his voice comes back to him — a Ranger taken three weeks past, and furious in a way that will be extremely useful shortly." }
+      ],
+      "onEnter": [ { "var": "allies", "op": "push", "value": "berengar" }, { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Move on together", "to": "stealth_final_stretch" }
+      ]
+    },
+
+    "stealth_final_stretch": {
+      "blocks": [
+        { "type": "text", "text": "The outer walls of the inner keep are close now, close enough that the air itself seems to thicken around you." }
+      ],
+      "choices": [
+        { "text": "Push on", "to": "stealth_second_thoughts" }
+      ]
+    },
+
+    "stealth_second_thoughts": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "Whoever's still beside you finds a moment, unbidden, to ask if this is really the plan — three or four of you, against whatever's waiting in there. It's a fair question. You don't have a better answer than \"it's the one we have.\"" }
+      ],
+      "choices": [
+        { "text": "Keep moving — there's no better plan waiting", "to": "stealth_stone_whisper" }
+      ]
+    },
+
+    "stealth_stone_whisper": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "Something touches the edge of your thoughts, patient and curious, the way a hand might test a locked door. It knows you're close." }
+      ],
+      "choices": [
+        { "text": "Push the whispering aside and keep moving", "to": "fornost_outer_walls" },
+        { "text": "Listen, just for a moment", "to": "fornost_outer_walls", "set": [ { "var": "resolve", "op": "sub", "value": 1 } ] }
+      ]
+    },
+
+    "battle_start": {
+      "blocks": [
+        { "type": "text", "text": "There's no pretending this will be quiet. You take stock of who actually answered the call, and start planning around what that number really is." }
+      ],
+      "choices": [
+        { "text": "Muster what strength you have", "to": "battle_muster" }
+      ]
+    },
+
+    "battle_muster": {
+      "blocks": [
+        { "type": "text", "text": "Rangers, if you sent for them; Eldarion's bow, if he's beside you; Thrain's axe and a dwarf's stubbornness, if you earned it. It isn't an army. It might be enough of one." }
+      ],
+      "choices": [
+        { "text": "Address them before you march", "to": "battle_rally" }
+      ]
+    },
+
+    "battle_rally": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "You say something — later you won't fully remember what — and it works, in the way that true things said plainly tend to. No one who hears it looks like they're about to turn back." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Prepare what you'll need for the walls", "to": "battle_siege_prep" }
+      ]
+    },
+
+    "battle_siege_prep": {
+      "blocks": [
+        { "type": "text", "text": "Ladders lashed from salvaged timber, a ram improvised from a fallen roof-beam — none of it elegant, all of it enough to get you through a gate built to keep out exactly this kind of stubbornness." }
+      ],
+      "choices": [
+        { "text": "March", "to": "battle_march" }
+      ]
+    },
+
+    "battle_march": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "Orc outriders meet you a mile short of the walls, screaming challenges that are more habit than strategy." }
+      ],
+      "choices": [
+        {
+          "text": "Meet them head-on and break their line",
+          "to": "battle_gate",
+          "if": { "var": "combatSkill", "gte": 2 },
+          "whenLocked": "disable",
+          "lockedText": "Breaking a charge like this clean needs more skill than you've got yet.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Let the Rangers screen the advance", "to": "battle_gate", "if": { "var": "allies", "has": "rangers" } },
+        { "text": "Push straight through the gap in their line", "to": "battle_gate", "set": [ { "var": "wounds", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "battle_gate": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The gate itself is the real fight — a knot of defenders dug in behind old stone, and no clean way through that doesn't cost something." }
+      ],
+      "choices": [
+        {
+          "text": "Cut through the vanguard yourself",
+          "to": "battle_breach",
+          "if": { "var": "combatSkill", "gte": 3 },
+          "whenLocked": "disable",
+          "lockedText": "You don't yet have the skill to lead a breach like this and live.",
+          "set": [ { "var": "wounds", "op": "add", "value": 2 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Let your allies take the front while you find another way through",
+          "to": "battle_breach",
+          "if": { "any": [ { "var": "allies", "has": "hilda" }, { "var": "allies", "has": "eldarion" }, { "var": "allies", "has": "thrain" }, { "var": "allies", "has": "rangers" } ] },
+          "set": [ { "var": "wounds", "op": "add", "value": 1 } ]
+        },
+        { "text": "Push through alone, blade first", "to": "battle_breach", "set": [ { "var": "wounds", "op": "add", "value": 2 } ] }
+      ]
+    },
+
+    "battle_breach": {
+      "blocks": [
+        { "type": "text", "text": "The gate gives, and the fight spills into the streets beyond it — messier now, harder to see more than a few feet in any direction." }
+      ],
+      "choices": [
+        { "text": "Hold the line while the rest of your people pour through", "to": "battle_hold_the_line" }
+      ]
+    },
+
+    "battle_hold_the_line": {
+      "blocks": [
+        { "type": "text", "text": "For one long, ugly minute, the whole assault balances on whether this particular stretch of broken street holds." }
+      ],
+      "choices": [
+        { "text": "Rally them yourself, in the thick of it", "to": "battle_courtyard", "if": { "var": "resolve", "gte": 1 }, "whenLocked": "disable", "lockedText": "You haven't the standing yet to make anyone hold on your word alone." },
+        { "text": "Trust the Rangers to hold it", "to": "battle_courtyard", "if": { "var": "allies", "has": "rangers" } },
+        { "text": "It's chaos — push through regardless", "to": "battle_courtyard", "set": [ { "var": "wounds", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "battle_courtyard": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The inner courtyard is a knot of orcs with nowhere left to retreat to, which makes them considerably more dangerous than the ones outside the walls were." }
+      ],
+      "choices": [
+        {
+          "text": "Lead the final charge yourself",
+          "to": "battle_champion_duel",
+          "if": { "var": "combatSkill", "gte": 3 },
+          "whenLocked": "disable",
+          "lockedText": "You've spent too much of yourself already to lead a charge like this.",
+          "set": [ { "var": "wounds", "op": "add", "value": 2 } ]
+        },
+        {
+          "text": "Coordinate a pincer with whoever's still standing beside you",
+          "to": "battle_champion_duel",
+          "if": { "any": [ { "var": "allies", "has": "hilda" }, { "var": "allies", "has": "eldarion" }, { "var": "allies", "has": "thrain" } ] },
+          "set": [ { "var": "wounds", "op": "add", "value": 1 } ]
+        },
+        { "text": "Fight your way through alone", "to": "battle_champion_duel", "set": [ { "var": "wounds", "op": "add", "value": 2 } ] }
+      ]
+    },
+
+    "battle_champion_duel": {
+      "blocks": [
+        { "type": "text", "text": "The Barrow-lord's own captain steps out from the chaos to meet you personally — armored in old, black-worked iron, and clearly expecting this to be brief." }
+      ],
+      "choices": [
+        {
+          "text": "Meet the challenge",
+          "to": "battle_aftermath",
+          "if": { "var": "combatSkill", "gte": 2 },
+          "whenLocked": "disable",
+          "lockedText": "This one doesn't fall to anything less than real, earned skill.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Let Eldarion's bow answer for you", "to": "battle_aftermath", "if": { "var": "allies", "has": "eldarion" } },
+        { "text": "Refuse the duel and push past — there's no honor left worth dying for here", "to": "battle_aftermath", "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "resolve", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "battle_aftermath": {
+      "blocks": [
+        { "type": "text", "text": "The courtyard falls quiet, littered and smoking, and what's left of your people start the grim business of counting who's still standing." }
+      ],
+      "choices": [
+        { "text": "You're too far gone to go any further", "to": "ending_fallen_ranger", "if": { "var": "wounds", "gte": 5 } },
+        { "text": "Take a moment before pushing on", "to": "battle_triage", "if": { "var": "wounds", "lt": 5 } }
+      ]
+    },
+
+    "battle_triage": {
+      "blocks": [
+        { "type": "text", "text": "You bind what wounds can be bound in the time you've got, and give the ones that can't the only comfort left available — company, and the plain fact of not being alone in it." }
+      ],
+      "choices": [
+        { "text": "Push on toward the keep", "to": "battle_stone_whisper" }
+      ]
+    },
+
+    "battle_stone_whisper": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "Even here, mid-battle-fury, something brushes the edge of your thoughts — patient, curious, pleased at how easily anger comes to you tonight." }
+      ],
+      "choices": [
+        { "text": "Push the whispering aside, mid-fight", "to": "fornost_outer_walls" },
+        { "text": "Let the fury carry you a little further than it should", "to": "fornost_outer_walls", "set": [ { "var": "resolve", "op": "sub", "value": 2 } ] }
+      ]
+    },
+
+    "diplomacy_start": {
+      "blocks": [
+        { "type": "text", "text": "The North has old debts it's stopped collecting on, and older kinships it's mostly stopped remembering. If you're going to fight this properly, you'll need both called in." }
+      ],
+      "choices": [
+        { "text": "Seek out the Bree-land Watch's captain first", "to": "diplomacy_journey" }
+      ]
+    },
+
+    "diplomacy_journey": {
+      "blocks": [
+        { "type": "text", "text": "It's a hard ride back south and then east again, precious days spent that could have gone toward the ruins directly — a cost you feel with every mile." }
+      ],
+      "choices": [
+        { "text": "Arrive and make your case", "to": "diplomacy_arrival" }
+      ]
+    },
+
+    "diplomacy_arrival": {
+      "blocks": [
+        { "type": "text", "text": "Captain Rowan of the Bree-land Watch is exactly as practical and exactly as tired as his reputation promises — a man who has spent a career being asked to solve problems no one funded him to solve." }
+      ],
+      "choices": [
+        { "text": "Make your case", "to": "diplomacy_negotiation" }
+      ]
+    },
+
+    "diplomacy_negotiation": {
+      "blocks": [
+        { "type": "text", "text": "\"Give me a reason that isn't a Ranger's word alone,\" Rowan says, not unkindly. \"I've a town to answer to.\"" }
+      ],
+      "choices": [
+        {
+          "text": "Appeal to old oaths the Watch swore and hasn't forgotten",
+          "to": "diplomacy_terms",
+          "if": { "var": "resolve", "gte": 2 },
+          "whenLocked": "disable",
+          "lockedText": "You don't yet carry the standing to make an old oath sound like more than words."
+        },
+        { "text": "Show him what you learned in Rivendell's archives", "to": "diplomacy_terms", "if": { "var": "knowsFellstoneLore", "eq": true } },
+        { "text": "Offer what coin and goods you can spare", "to": "diplomacy_terms", "set": [ { "var": "resolve", "op": "sub", "value": 1 } ] }
+      ]
+    },
+
+    "diplomacy_terms": {
+      "blocks": [
+        { "type": "text", "text": "\"I'll commit the Watch,\" Rowan says, \"the day you've proven to my own people you're worth trusting with their sons. There's a raiding band troubling the eastern farms. Deal with it, and we'll talk about Fornost.\"" }
+      ],
+      "choices": [
+        { "text": "Deal with them directly", "to": "diplomacy_raiders_choice" }
+      ]
+    },
+
+    "diplomacy_raiders_choice": {
+      "blocks": [
+        { "type": "text", "text": "The raiders turn out to be desperate men as much as dangerous ones, hungry and disorganized rather than truly cruel." }
+      ],
+      "choices": [
+        {
+          "text": "Break the raid by force",
+          "to": "diplomacy_raiders_aftermath",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "You're not quite ready to take a band this size head-on.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Talk them down instead — hunger is a different problem than malice",
+          "to": "diplomacy_raiders_aftermath",
+          "if": { "var": "resolve", "gte": 2 },
+          "set": [ { "var": "resolve", "op": "add", "value": 1 } ]
+        },
+        { "text": "Whatever it takes — just get it done", "to": "diplomacy_raiders_aftermath", "set": [ { "var": "wounds", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "diplomacy_raiders_aftermath": {
+      "blocks": [
+        { "type": "text", "text": "Word reaches Rowan before you've even made it back to town, and he meets you at the gate himself this time, something in his manner noticeably less guarded than it was." }
+      ],
+      "choices": [
+        { "text": "Let him see it's settled", "to": "diplomacy_success" }
+      ]
+    },
+
+    "diplomacy_success": {
+      "blocks": [
+        { "type": "text", "text": "Word travels fast in Bree-land, and faster still when it's good news. Rowan commits the Watch, true to his word, and mentions — almost in passing — that the hill-folk further north might answer too, if someone asked them properly." }
+      ],
+      "onEnter": [ { "var": "allies", "op": "push", "value": "rowan" } ],
+      "choices": [
+        { "text": "Seek out the hill-folk as well, if there's time", "to": "diplomacy_hillfolk" },
+        { "text": "Rowan's Watch is enough — march north now", "to": "diplomacy_march" }
+      ]
+    },
+
+    "diplomacy_hillfolk": {
+      "blocks": [
+        { "type": "text", "text": "The hill-folk of the North Downs answer to no captain and trust outsiders less than Rowan did, but their elder listens all the way through without once interrupting — which, you gather, is itself a rare courtesy." }
+      ],
+      "choices": [
+        {
+          "text": "Share what you learned of the Fellstone honestly, and let the truth do the work",
+          "to": "diplomacy_march",
+          "if": { "var": "knowsFellstoneLore", "eq": true },
+          "set": [ { "var": "allies", "op": "push", "value": "hillfolk" }, { "var": "resolve", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Appeal to a kinship with the North older than either of your peoples' grudges",
+          "to": "diplomacy_march",
+          "if": { "var": "resolve", "gte": 2 },
+          "set": [ { "var": "allies", "op": "push", "value": "hillfolk" } ]
+        },
+        { "text": "They're wary regardless — offer what aid you can and hope it's enough", "to": "diplomacy_march", "set": [ { "var": "allies", "op": "push", "value": "hillfolk" }, { "var": "resolve", "op": "sub", "value": 1 } ] }
+      ]
+    },
+
+    "diplomacy_march": {
+      "blocks": [
+        { "type": "text", "text": "You march north at the head of more people than you set out with, and try not to think too hard about how many of them are trusting a stranger's word about a stone none of them have seen." }
+      ],
+      "choices": [
+        { "text": "Address the doubt before it can spread", "to": "diplomacy_doubt" }
+      ]
+    },
+
+    "diplomacy_doubt": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "Someone in the column finally says what half of them are thinking — that this alliance is young, untested, and built on the word of one Ranger who could, for all any of them really know, be wrong about all of it." },
+        { "type": "text", "text": "You don't have proof to offer. You have only the truth, plainly told, and it turns out to be enough to keep the column moving." }
+      ],
+      "choices": [
+        { "text": "Keep marching", "to": "diplomacy_stone_whisper" }
+      ]
+    },
+
+    "diplomacy_stone_whisper": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "Something touches the edge of your thoughts as the ruins finally come into view, patient and curious, and entirely too interested in how many people are now trusting you to lead them true." }
+      ],
+      "choices": [
+        { "text": "Push the whispering aside", "to": "fornost_outer_walls" },
+        { "text": "Listen, just for a moment", "to": "fornost_outer_walls", "set": [ { "var": "resolve", "op": "sub", "value": 1 } ] }
+      ]
+    },
+
+    "fornost_outer_walls": {
+      "blocks": [
+        { "type": "image", "src": "images/fornost.png", "alt": "The ruined North Kingdom's broken towers rising from mist, a dead city holding its breath." },
+        { "type": "text", "style": "epigraph", "text": "Once this was the seat of a Kingdom that thought itself eternal, the way every Kingdom does, right up until it isn't." },
+        { "type": "text", "text": "Whatever road brought you here, it ends the same way from this point on — inside a dead city that has, very clearly, not stayed entirely dead." }
+      ],
+      "choices": [
+        { "text": "Move into the lower city", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_lower_city": {
+      "blocks": [
+        { "type": "text", "text": "The lower city sprawls in ruin around you — a library half-collapsed, a second treasury the histories barely mention, a guard captain's patrol route, and, if the old songs are true, a shrine that never quite went dark." }
+      ],
+      "choices": [
+        { "text": "Search the ruined library", "to": "fornost_library", "once": true },
+        { "text": "Search the second treasury", "to": "fornost_second_treasury", "once": true },
+        { "text": "Face down the guard captain patrolling here", "to": "fornost_captain_duel", "once": true },
+        { "text": "Visit the old shrine", "to": "fornost_shrine", "once": true },
+        { "text": "Investigate the fallen watchtower", "to": "fornost_watchtower_ruin", "once": true },
+        { "text": "Search the old barracks for anything useful", "to": "fornost_barracks", "once": true },
+        { "text": "Search the dry fountain square", "to": "fornost_fountain", "once": true },
+        { "text": "Look for any sign of what became of the city's last defenders", "to": "fornost_last_stand_site", "once": true },
+        { "text": "Climb the broken tower for a vantage over the city", "to": "fornost_vantage", "once": true },
+        { "text": "Check the old well for anything worth salvaging", "to": "fornost_well", "once": true },
+        { "text": "Pause and let everyone catch their breath before the keep", "to": "fornost_final_rest", "once": true, "if": { "var": "wounds", "gt": 0 } },
+        { "text": "Push on toward the inner keep", "to": "fornost_gatehouse" }
+      ]
+    },
+
+    "fornost_library": {
+      "blocks": [
+        { "type": "text", "style": "terminal", "text": "RECORD, FRAGMENTARY: LORD [ILLEGIBLE], SWORN TO THE LINE OF ANGMAR, OATH-BOUND AND OATH-BROKEN, T.A. [ILLEGIBLE]" },
+        { "type": "text", "text": "The Barrow-lord had a name once, and swore an oath once, before the stone unmade both. It's a strange thing to feel something like pity for what's ahead of you, but there it is." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the lower city", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_second_treasury": {
+      "blocks": [
+        { "type": "text", "text": "A smaller hoard than the first, mostly practical — old tools, old maps, and, half-buried under both, a second ward-stone the first treasury's plunderers apparently missed." }
+      ],
+      "choices": [
+        { "text": "Take it, if you don't already have one", "to": "fornost_lower_city", "set": [ { "var": "hasWardstone", "op": "set", "value": true } ] },
+        { "text": "Leave it — you've taken enough from the dead already", "to": "fornost_lower_city", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "fornost_captain_duel": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The guard captain here is old orc-work armor over something that used to be a man, and fights like someone who's forgotten every reason to stop." }
+      ],
+      "choices": [
+        {
+          "text": "Duel him directly",
+          "to": "fornost_lower_city",
+          "if": { "var": "combatSkill", "gte": 2 },
+          "whenLocked": "disable",
+          "lockedText": "He's fast, and you're not fast enough yet to trade blows with him evenly.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Use the ruins to ambush him", "to": "fornost_lower_city", "set": [ { "var": "wounds", "op": "add", "value": 1 } ] },
+        { "text": "Avoid him entirely and slip past", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_shrine": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "A single lamp still burns here, fed by no oil anyone alive has poured. Some promises, it turns out, keep themselves." },
+        { "type": "text", "text": "You sit with it a while, and leave steadier than you arrived — not because anything was answered, but because something, at least, was still listening." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 2 } ],
+      "choices": [
+        { "text": "Back to the lower city", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_final_rest": {
+      "blocks": [
+        { "type": "text", "text": "You take what little time is left to breathe, bind what still needs binding, and let the weight of everything that's brought you here settle for one quiet moment before the last of it." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "sub", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the lower city", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_well": {
+      "blocks": [
+        { "type": "text", "text": "The well is dry and choked with centuries of debris, and at the bottom of it, a small iron strongbox — locked, rusted, and entirely too curious an object to simply walk past." }
+      ],
+      "choices": [
+        { "text": "Force it open", "to": "fornost_lower_city", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] },
+        { "text": "Leave it — not everything buried needs to be dug up", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_vantage": {
+      "blocks": [
+        { "type": "text", "text": "From the tower's broken top you can see the whole shape of what's left of Fornost — and, at its heart, the inner keep, lit from within by a cold light that has no business being there at all." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Climb back down", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_last_stand_site": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "Here, the old accounts say, the last of the North Kingdom's own Rangers held a broken line for a full day and night, so that others could get clear. No one wrote down their names. Someone should have." },
+        { "type": "text", "text": "You stand there a while, in a silence that feels, for once, like it's actually being kept for a reason." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 2 } ],
+      "choices": [
+        { "text": "Back to the lower city", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_fountain": {
+      "blocks": [
+        { "type": "text", "text": "The fountain hasn't held water in centuries, but its carved basin still bears the North Kingdom's old crest, worn nearly smooth by rain and time and nothing else — no one has touched this stone in longer than you've been alive." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Back to the lower city", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_watchtower_ruin": {
+      "blocks": [
+        { "type": "text", "text": "A collapsed watchtower, and pinned beneath its rubble, the remains of a soldier who never got to finish sounding the alarm — a message still gripped in one hand, ink long since run by rain." }
+      ],
+      "choices": [
+        { "text": "Read what you can of it", "to": "fornost_lower_city", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] },
+        { "text": "Leave him in peace — there's nothing left to learn here", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_barracks": {
+      "blocks": [
+        { "type": "text", "text": "The old barracks are stripped mostly bare, but a single intact rack of arms has survived the centuries better than it has any right to — practical, well-made, and entirely unclaimed." }
+      ],
+      "choices": [
+        {
+          "text": "Take what you can carry and put it to use",
+          "to": "fornost_lower_city",
+          "if": { "var": "combatSkill", "lt": 4 },
+          "set": [ { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        { "text": "Leave it — you've got what you need already", "to": "fornost_lower_city" }
+      ]
+    },
+
+    "fornost_gatehouse": {
+      "blocks": [
+        { "type": "text", "text": "The gatehouse to the inner keep still bears the old royal seal, cracked but legible, and beyond it, the air itself seems to hum faintly, like a held note." }
+      ],
+      "choices": [
+        { "text": "Approach the inner keep", "to": "fornost_inner_keep" }
+      ]
+    },
+
+    "fornost_inner_keep": {
+      "blocks": [
+        { "type": "text", "text": "The keep's door is warded in the old royal pattern, the same one that guarded the barrow-stones — and considerably less forgiving about being forced." }
+      ],
+      "choices": [
+        { "text": "Use your ward-stone to still the door's old magic", "to": "fornost_riddle", "if": { "var": "hasWardstone", "eq": true }, "whenLocked": "disable", "lockedText": "Without a ward-stone, this door's old magic will fight you every step of the way." },
+        { "text": "Force the door open by strength alone", "to": "fornost_riddle", "set": [ { "var": "wounds", "op": "add", "value": 2 } ] }
+      ]
+    },
+
+    "fornost_riddle": {
+      "blocks": [
+        { "type": "text", "text": "Beyond the door, a final ward: an inscription asking for the name that opens the way — and the inscriptions circling it, worn but readable, all point toward the same old truth. Not the name that was taken. The name that was lost." }
+      ],
+      "choices": [
+        { "text": "Speak the name \"Arnor\"", "to": "fornost_hall" },
+        { "text": "Speak the name \"Angmar\"", "to": "fornost_riddle_wrong" },
+        { "text": "Speak your own name instead", "to": "fornost_riddle_wrong2" }
+      ]
+    },
+
+    "fornost_riddle_wrong": {
+      "blocks": [
+        { "type": "text", "text": "The ward groans in something close to fury at hearing its own destroyer's name spoken as a key, and yields anyway — but not gently." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Go on through", "to": "fornost_hall" }
+      ]
+    },
+
+    "fornost_riddle_wrong2": {
+      "blocks": [
+        { "type": "text", "text": "It's not the answer, and the ward makes sure you know it, a jolt running up your arm like grabbing a live wire — but even a wrong name spoken with enough conviction seems to count for something here." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Go on through", "to": "fornost_hall" }
+      ]
+    },
+
+    "fornost_hall": {
+      "blocks": [
+        { "type": "text", "text": "The old throne hall waits beyond, and beyond that, somewhere close now, the thing that's been waking these ruins for weeks. There's a little time left to spend, if you want it." }
+      ],
+      "choices": [
+        { "text": "Search the treasury nearby", "to": "fornost_treasury", "once": true },
+        { "text": "Check the old prison level", "to": "fornost_prison", "once": true },
+        { "text": "Head straight for the throne room", "to": "fornost_throne_approach" }
+      ]
+    },
+
+    "fornost_treasury": {
+      "blocks": [
+        { "type": "text", "text": "The old Kingdom's crown sits exactly where the last true King must have set it down, centuries of dust changing nothing about how it catches the light." }
+      ],
+      "choices": [
+        { "text": "Take it — it might matter, might mean something", "to": "fornost_hall", "set": [ { "var": "resolve", "op": "sub", "value": 1 } ] },
+        { "text": "Leave it — it was never yours to claim", "to": "fornost_hall", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "fornost_prison": {
+      "blocks": [
+        { "type": "text", "text": "A second captive here, weaker than Berengar was — someone's scout, someone's son, chained long enough to have stopped expecting rescue." }
+      ],
+      "choices": [
+        { "text": "Free him despite the risk", "to": "fornost_prison_guard" },
+        { "text": "There's no time — leave him for now", "to": "fornost_hall", "set": [ { "var": "resolve", "op": "sub", "value": 1 } ] }
+      ]
+    },
+
+    "fornost_prison_guard": {
+      "blocks": [
+        { "type": "text", "text": "The chains come off easier than the guard posted at the level's only exit does — he's on you before the prisoner's even found his feet." }
+      ],
+      "choices": [
+        {
+          "text": "Put him down fast",
+          "to": "fornost_hall",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "You're not quite quick enough to end this before he raises the alarm.",
+          "set": [ { "var": "resolve", "op": "add", "value": 1 } ]
+        },
+        { "text": "Let the freed prisoner even the odds with you", "to": "fornost_hall", "set": [ { "var": "resolve", "op": "add", "value": 1 } ] },
+        { "text": "Fight through and hope the noise doesn't matter yet", "to": "fornost_hall", "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "resolve", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "fornost_throne_approach": {
+      "blocks": [
+        { "type": "text", "text": "The corridor to the throne room is short, and very quiet, and feels like exactly the wrong length of time to be alone with your own thoughts." }
+      ],
+      "choices": [
+        { "text": "A quiet word with the one who's come to matter to you", "to": "fornost_final_words", "if": { "var": "romance", "ne": "no one waiting on the road" } },
+        { "text": "There's no time for that now", "to": "barrow_lord_confront" }
+      ]
+    },
+
+    "fornost_final_words": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "You don't say anything important. You don't need to. {romance} takes your hand for a moment, once, and lets go before it can become a goodbye." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Go on", "to": "barrow_lord_confront" }
+      ]
+    },
+
+    "barrow_lord_confront": {
+      "blocks": [
+        { "type": "image", "src": "images/duel.png", "alt": "A robed figure on a broken throne, a black stone set into a gauntlet, eyes like cold embers." },
+        { "type": "text", "style": "epigraph", "text": "\"I remember being a man,\" he says, and it is somehow worse than if he'd simply attacked. \"I remember the exact hour I stopped being one. Would you like to know it?\"" },
+        { "type": "text", "text": "The Barrow-lord rises from a throne that was never his, the Fellstone burning cold in a gauntlet fused to what's left of his hand." }
+      ],
+      "choices": [
+        {
+          "text": "Draw steel and answer his challenge",
+          "to": "lord_duel",
+          "if": { "var": "combatSkill", "gte": 3 },
+          "whenLocked": "disable",
+          "lockedText": "You are not yet skilled enough to answer him with steel alone."
+        },
+        {
+          "text": "Try to reach whatever is left of the man he was",
+          "to": "lord_reason",
+          "if": { "var": "resolve", "gte": 3 }
+        },
+        {
+          "text": "Reach for the Fellstone yourself, to turn its own power against him",
+          "to": "ending_the_stone_speaks",
+          "set": [ { "var": "corruptedByStone", "op": "set", "value": true }, { "var": "resolve", "op": "set", "value": -8 } ]
+        },
+        { "text": "Try to flee with what you've already learned", "to": "fornost_flee" }
+      ]
+    },
+
+    "lord_duel": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "His blade is old and black and colder than any metal has a right to be, and for one long moment the throne hall is very small indeed." }
+      ],
+      "theme": { "palette": { "accent": "#8b1a1a" } },
+      "choices": [
+        { "text": "Press the attack", "to": "lord_duel_round2", "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "resolve", "op": "sub", "value": 1 } ] },
+        {
+          "text": "Fight defensively, and wait for him to overextend",
+          "to": "lord_duel_round2",
+          "if": { "var": "combatSkill", "gte": 4 },
+          "whenLocked": "disable",
+          "lockedText": "You haven't the training yet to out-wait something this old and this patient.",
+          "set": [ { "var": "resolve", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Draw on your Dúnedain heritage, not just your blade",
+          "to": "lord_duel_round2",
+          "if": { "var": "resolve", "gte": 2 },
+          "set": [ { "var": "resolve", "op": "add", "value": 2 }, { "var": "wounds", "op": "add", "value": 1 } ]
+        }
+      ]
+    },
+
+    "lord_duel_round2": {
+      "blocks": [
+        { "type": "text", "text": "He staggers, but doesn't fall — and something older than the wound answers back, the Fellstone flaring in its gauntlet, lending him strength that isn't his to spend." }
+      ],
+      "choices": [
+        {
+          "text": "Hold your ground and answer power with steel",
+          "to": "lord_duel_check",
+          "if": { "var": "combatSkill", "gte": 3 },
+          "whenLocked": "disable",
+          "lockedText": "Not with this little skill in your arm — holding this ground needs more than you have.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Let your own conviction carry you through",
+          "to": "lord_duel_check",
+          "if": { "var": "resolve", "gte": 3 },
+          "set": [ { "var": "resolve", "op": "add", "value": 1 } ]
+        },
+        { "text": "Give ground and look for an opening", "to": "lord_duel_check", "set": [ { "var": "wounds", "op": "add", "value": 1 } ] }
+      ]
+    },
+
+    "lord_duel_check": {
+      "blocks": [
+        { "type": "text", "text": "The duel ends the way duels between something living and something that's stopped quite deciding to be always end — badly, for one of you." }
+      ],
+      "choices": [
+        { "text": "It's you. You're not walking away from this hall.", "to": "ending_fallen_ranger", "if": { "var": "wounds", "gte": 5 } },
+        { "text": "He's beaten — but you never broke his will, only his body", "to": "ending_shadow_wins", "if": { "all": [ { "var": "wounds", "lt": 5 }, { "var": "resolve", "lte": -5 } ] } },
+        { "text": "He's beaten, and something in him seems, for a moment, almost grateful", "to": "fornost_last_temptation", "if": { "all": [ { "var": "wounds", "lt": 5 }, { "not": { "var": "resolve", "lte": -5 } } ] } }
+      ]
+    },
+
+    "lord_reason": {
+      "blocks": [
+        { "type": "text", "text": "You speak to whatever is left of the man beneath the ruin of him, and — improbably, painfully — something in him remembers how to listen. The gauntlet doesn't come off easily. It comes off." }
+      ],
+      "onEnter": [ { "var": "resolve", "op": "add", "value": 2 } ],
+      "choices": [
+        { "text": "Go on", "to": "fornost_last_temptation" }
+      ]
+    },
+
+    "fornost_last_temptation": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "The Fellstone lies free now, exposed, and it makes its case one last time — not to him, but to you. Quietly. Reasonably. It always sounds reasonable." }
+      ],
+      "choices": [
+        { "text": "Destroy it now, before it can speak to anyone else", "to": "final_choice_hub", "set": [ { "var": "resolve", "op": "add", "value": 2 } ] },
+        { "text": "Just a little of its power — enough to make certain this never happens again", "to": "ending_the_stone_speaks", "set": [ { "var": "corruptedByStone", "op": "set", "value": true }, { "var": "resolve", "op": "set", "value": -8 } ] }
+      ]
+    },
+
+    "fornost_flee": {
+      "blocks": [
+        { "type": "text", "text": "You break for the door and don't look back, dragging what allies you have with you, the throne hall's cold burning at your back the whole way out." },
+        { "type": "text", "text": "You didn't finish this. But you carried the truth of it out of that hall alive, and the North will need that truth a great deal, before this is over." }
+      ],
+      "ending": { "kind": "neutral", "title": "You Carried the Warning Home" }
+    },
+
+    "final_choice_hub": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The Fellstone lies inert between you now, and the whole of what happens next — to the North, to whoever still stands beside you, to whatever's left of you — comes down to what you do with this one quiet, enormous moment." }
+      ],
+      "choices": [
+        {
+          "text": "Destroy the Fellstone, and let the old Kingdom's watch begin again",
+          "to": "ending_king_restored_together",
+          "if": { "all": [ { "var": "resolve", "gte": 5 }, { "not": { "var": "companionsLost", "has": "someone" } }, { "var": "romance", "ne": "no one waiting on the road" } ] }
+        },
+        {
+          "text": "Destroy the Fellstone — the watch begins again, whatever it cost you personally",
+          "to": "ending_king_restored",
+          "if": { "all": [ { "var": "resolve", "gte": 5 }, { "not": { "var": "companionsLost", "has": "someone" } }, { "var": "romance", "eq": "no one waiting on the road" } ] }
+        },
+        {
+          "text": "Lead what allies remain to a hard-won victory",
+          "to": "ending_hope_rekindled",
+          "if": { "var": "resolve", "gte": 2 }
+        },
+        {
+          "text": "Trust in the peace your words have already bought",
+          "to": "ending_diplomatic_peace",
+          "if": { "all": [ { "var": "approach", "eq": "diplomacy" }, { "var": "resolve", "gte": 0 } ] }
+        },
+        {
+          "text": "Grieve, but go on — you did what you could, alone as you are",
+          "to": "ending_alone_but_alive",
+          "if": { "all": [ { "var": "romance", "eq": "no one waiting on the road" }, { "var": "companionsLost", "has": "someone" } ] }
+        },
+        {
+          "text": "This cost more than it should have, and you'll carry that for a long time",
+          "to": "ending_broken_fellowship",
+          "if": { "all": [ { "var": "companionsLost", "has": "someone" }, { "var": "resolve", "lte": 0 } ] }
+        },
+        { "text": "Just get everyone out, and let the histories judge you kindly or not", "to": "ending_quiet_victory" }
+      ]
+    },
+
+    "ending_king_restored_together": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The Fellstone shatters under a blow that isn't quite yours alone, and the old throne hall seems to exhale, centuries of held breath finally let go." },
+        { "type": "text", "text": "Word of Fornost's true end spreads faster than any raven could carry it. The North Downs get their watch again — Rangers, Rivendell's scouts, dwarves who remember old debts, all of it — and none of it half so much as the fact that {romance} is still standing beside you when the dust finally settles." },
+        { "type": "text", "style": "whisper", "text": "You did not do this alone, and you have never been gladder of anything in your life." }
+      ],
+      "ending": { "kind": "good", "title": "The Watch Begins Again" }
+    },
+
+    "ending_king_restored": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The Fellstone shatters under your own hand, and the old throne hall seems to exhale, centuries of held breath finally let go." },
+        { "type": "text", "text": "Word of Fornost's true end spreads faster than any raven could carry it. The North Downs get their watch again, and your name gets attached to it whether you wanted that or not — a King's line, restored to its old purpose, if not its old throne." },
+        { "type": "text", "style": "whisper", "text": "You think, once in a while, of {romance}, and let the thought pass without following it anywhere. There will be time enough for that later. Perhaps." }
+      ],
+      "ending": { "kind": "good", "title": "The Watch Begins Again, Alone" }
+    },
+
+    "ending_hope_rekindled": {
+      "blocks": [
+        { "type": "text", "text": "It isn't the clean, complete victory the old songs would want — Fornost is still ruin, and will likely stay ruin a while longer — but the Barrow-lord is broken, the Fellstone is dark, and everyone who stood with you tonight is still breathing." },
+        { "type": "text", "style": "whisper", "text": "You find {romance} in the aftermath, and for the first time in weeks, the two of you have nothing at all that needs doing right this moment." }
+      ],
+      "ending": { "kind": "good", "title": "Everyone Made It Home" }
+    },
+
+    "ending_diplomatic_peace": {
+      "blocks": [
+        { "type": "text", "text": "It's Rowan's Watch, and the hill-folk beside them, who hold the line when it matters most — and it's the North itself, old grudges set aside for one hard night, that ends up winning this more than any single blade does." },
+        { "type": "text", "style": "letter", "text": "\"Funny thing,\" Rowan says afterward, surveying the wreckage. \"Turns out most people just needed a good enough reason to remember they're neighbors.\"" }
+      ],
+      "ending": { "kind": "good", "title": "A North Remembering Itself" }
+    },
+
+    "ending_quiet_victory": {
+      "blocks": [
+        { "type": "text", "text": "It isn't glorious. It isn't even especially clean. But the Fellstone is dark, the Barrow-lord is done troubling the North, and everyone who's going to walk away from tonight is, in fact, walking away from it." },
+        { "type": "text", "style": "whisper", "text": "You think of {romance}, somewhere behind you on the road, and decide that's more than enough of a reason to keep walking." }
+      ],
+      "ending": { "kind": "neutral", "title": "Good Enough, for Tonight" }
+    },
+
+    "ending_alone_but_alive": {
+      "blocks": [
+        { "type": "text", "text": "You did it — the Fellstone is dark, whatever was rising here is put down — but you did it having already lost something, or someone, the road asked for along the way, and there's no version of this victory that gives that back." },
+        { "type": "text", "style": "whisper", "text": "There was no one waiting on the road for you before this started, and there's no one waiting for you now either. You'll manage. You always have." }
+      ],
+      "ending": { "kind": "neutral", "title": "What the Road Took" }
+    },
+
+    "ending_broken_fellowship": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "The Fellstone is dark, and the North is safer for it, and none of that changes the moment you chose the mission over a companion who trusted you not to." },
+        { "type": "text", "text": "You'll tell the story of Fornost's fall for the rest of your life, and you'll leave that part out every single time — which won't stop it from being the part you remember first." }
+      ],
+      "ending": { "kind": "bad", "title": "What You Left Behind" }
+    },
+
+    "ending_shadow_wins": {
+      "blocks": [
+        { "type": "text", "text": "You beat him. His body, anyway — broken and left behind in a hall that's swallowed better warriors than either of you. But you never once reached the man underneath, and something in his will slips free in the confusion, back out into the dark, patient enough to wait for a better night." },
+        { "type": "text", "style": "whisper", "text": "The Fellstone goes quiet, for now. You don't believe, not really, that quiet is the same as gone." }
+      ],
+      "ending": { "kind": "bad", "title": "A Body, Not an Ending" }
+    },
+
+    "ending_sacrifice_noble": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "You made it back through the chaos with your companion — that much, at least, you got right — but the wounds you took getting there were never going to let you see the end of this yourself." },
+        { "type": "text", "text": "The North Downs will get their watch again, eventually, built by other hands. It will be built, in no small part, on the fact that you chose someone else's life over your own remaining days, and didn't hesitate long enough to regret it." }
+      ],
+      "ending": { "kind": "neutral", "title": "The Cost of Going Back" }
+    },
+
+    "ending_fallen_ranger": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "You don't make it out of the North Downs — or the ruins beyond them, or the throne hall past that, wherever exactly the wounds finally caught up to the debt they were owed." },
+        { "type": "text", "text": "Whatever was rising in Fornost, it rises a little further for your absence. The North will need someone else to finish what you started. History, if it remembers you at all, will remember that you tried." }
+      ],
+      "ending": { "kind": "bad", "title": "The Debt the North Owed You" }
+    },
+
+    "ending_the_stone_speaks": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "You take the Fellstone's power the way every hand before yours has taken it — certain, for one seductive moment, that you're the exception, that your reasons are better, that you'll set it down again once the danger's past." },
+        { "type": "text", "text": "You do not set it down again. The throne hall gets a new occupant tonight, and the North gets a new shadow to fear — wearing, for a long time yet, a face that used to be familiar to the people who loved you." },
+        { "type": "text", "style": "whisper", "text": "Somewhere, {romance} hears what happened at Fornost, and does not believe it, right up until the day they have no choice left but to." }
+      ],
+      "ending": { "kind": "bad", "title": "The Stone Remembers Everything" }
+    }
+  }
+}
