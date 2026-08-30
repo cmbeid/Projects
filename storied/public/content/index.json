@@ -30,6 +30,16 @@
       "cover": "moth-king/images/cover.png",
       "tags": ["folk tale", "short"],
       "estimatedMinutes": 6
+    },
+    {
+      "id": "drevash",
+      "title": "Star Wars: Shadows over Drevash",
+      "author": "A. Writer",
+      "blurb": "A smuggling run goes wrong, a hidden Jedi surfaces, and the Empire wants what you're carrying.",
+      "path": "drevash/story.json",
+      "cover": "drevash/images/cover.png",
+      "tags": ["star wars", "action", "epic"],
+      "estimatedMinutes": 30
     }
   ]
 }

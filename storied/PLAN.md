@@ -995,3 +995,58 @@ embedded as a `data:` URI; then, the test that actually matters —
 navigation within an already-loaded page), and both the shelf and a
 previously-opened shipped story render correctly with the network
 completely severed.
+
+## A fourth story — scale and consequence, not spec coverage
+
+**`public/content/drevash/`** ("Star Wars: Shadows over Drevash," 41
+nodes) is a different kind of demo story than the other three. `aviary`
+exists to exercise every feature `format.md` documents; `moth-king` exists
+to test whether the spec is writable from nothing but itself. `drevash`
+exists to find out what happens when a story is actually large — real
+branching combat, two mutually exclusive romance tracks, a light/dark
+alignment variable that changes which of six distinct endings are even
+reachable, and a genuine death ending, not a hypothetical one. It's
+roughly 2.7× `aviary`'s node count and uses every condition operator,
+every mutation op, both `whenLocked` modes, `once`, node-level theme
+overrides, and all seven text styles — deliberately, as a stress test of
+the format at a size the other three never approached.
+
+**`npm run validate` was clean on the first run** — zero errors, zero
+warnings, all 41 nodes reachable. That's worth stating plainly rather than
+taking as a given: at this size, with this much branching, a real
+authoring mistake (a stray node id, an unreachable ending, a variable used
+before it's the right type) would have been easy to make and the
+validator would have caught it immediately. It didn't need to.
+
+**What the validator can't check is exactly what needed checking most**:
+whether the reachable *combinations* of variables actually route to the
+endings they're supposed to. Two numeric thresholds in particular needed
+real arithmetic, not just "some condition somewhere" — reaching the dark
+`lightside <= -3` ending requires combining two specific dark-leaning
+choices (a hostage threat and executing a wounded guard) because refusing
+the antagonist's bargain, the only way to reach that ending node at all,
+itself adds `+2` back. The first draft had this wrong by exactly one point
+and was silently unreachable; it surfaced only by hand-tracing the
+arithmetic before ever opening a browser, not by anything automated. A
+second, real bug — a `toggle` on `disguised` in `infiltrate_disguised`
+that undid the very flag a later choice needed to be readable — was the
+same shape as `aviary`'s phase-7 dead end: something that reads as
+reasonable narratively (take the disguise off once you're through the
+checkpoint) but breaks a downstream condition. Both were fixed before the
+first `npm run validate` run, not after.
+
+Verification, beyond the clean validate/typecheck/test/build gates: a
+seven-path Playwright script against the built app covering every one of
+the six ending nodes plus the standalone flee ending, including two
+boundary-exact cases run deliberately rather than just "some passing
+value" — the dark ending at exactly `lightside == -3`, and an explicit
+assertion that `final_stand`'s choice deck renders with *only one* visible
+choice (the unconditional fallback) when neither the light nor dark
+thresholds are met, confirming the safe-by-construction design actually
+resolves to the intended default rather than merely not crashing. Both
+romance epilogues were checked for the correct partner name appearing in
+the interpolated text. Two of the seven scripted paths initially failed —
+both were the test script's own missing navigation step (skipping the
+"head back to the hub" click after a bonding scene), not story bugs;
+diagnosed the same way `moth-king`'s false alarms were, by isolating each
+failure before changing anything.

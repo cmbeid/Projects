@@ -1,0 +1,575 @@
+{
+  "formatVersion": 1,
+  "id": "drevash",
+  "title": "Star Wars: Shadows over Drevash",
+  "author": "A. Writer",
+  "start": "start",
+  "allowBack": true,
+  "variables": {
+    "lightside": 0,
+    "combatSkill": 0,
+    "wounds": 0,
+    "hasCrystal": false,
+    "hasLightsaber": false,
+    "disguised": false,
+    "trustKael": 0,
+    "trustVessa": 0,
+    "romance": "no one in particular",
+    "knowsSecret": false,
+    "betrayed": false,
+    "allies": []
+  },
+  "theme": {
+    "mode": "dark",
+    "palette": {
+      "bg": "#05070d",
+      "surface": "#0f1420",
+      "text": "#e8ecf5",
+      "dim": "#7c8699",
+      "accent": "#f0c419",
+      "choiceBg": "#161d2e"
+    },
+    "font": { "body": "sans", "display": "display", "scale": 1.02 },
+    "radius": 10
+  },
+  "nodes": {
+    "start": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "The Outer Rim keeps its own accounts. Drevash Station was about to collect on yours." },
+        { "type": "text", "text": "Your freighter, the *Halcyon Drift*, drops out of hyperspace mid-lane — hauled out by something with a lot more mass than a rock. On your scope: an Imperial interdictor, and it's hailing you." },
+        { "type": "text", "style": "terminal", "text": "COMM: UNIDENTIFIED FREIGHTER, POWER DOWN AND PREPARE FOR BOARDING. CARGO MANIFEST WILL BE INSPECTED." }
+      ],
+      "choices": [
+        { "text": "Cut power to the transponder and try to slip past them", "to": "chase" },
+        { "text": "Power down and let them board", "to": "boarded" }
+      ]
+    },
+
+    "chase": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "You kill the transponder and haul the yoke hard to starboard, skimming the interdictor's shadow as it scrambles two TIE fighters after you." },
+        { "type": "text", "text": "It's a rough ten minutes of flying on instinct — but Drevash Station's beacon finally swims into view, and the TIEs peel off rather than follow you into a crowded traffic lane." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Bring her in for a landing", "to": "drevash_dock" }
+      ]
+    },
+
+    "boarded": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "Three stormtroopers come through the airlock and go through your hold crate by crate while an officer reads your transponder history off a datapad, bored." },
+        { "type": "text", "text": "You keep your hands loose and your story simple. Spice, not much of it, all paperwork in order. He believes you, or decides you're not worth the trouble, and waves the squad back out." }
+      ],
+      "onEnter": [ { "var": "lightside", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Breathe out, and bring her in for a landing", "to": "drevash_dock" }
+      ]
+    },
+
+    "drevash_dock": {
+      "blocks": [
+        { "type": "image", "src": "images/station.png", "alt": "Drevash Station's docking ring, a rusted wheel of gantries against a gas giant's amber glow." },
+        { "type": "text", "text": "Drevash Station: a transfer point built into the bones of an old mining rig, held together by cargo tape and mutual need. Half the Rim passes through here, which means half the Rim's problems do too." }
+      ],
+      "choices": [
+        { "text": "Head to the cargo bay to unload before anyone gets curious", "to": "cargo_bay" }
+      ]
+    },
+
+    "cargo_bay": {
+      "blocks": [
+        { "type": "text", "text": "You're cracking crates in the bay when your knuckles find something that isn't spice: a battered utility droid, designation stenciled K-44, wedged behind a false panel you didn't install." },
+        { "type": "text", "style": "aside", "text": "Someone loaded this without telling you. That's either an insult or a compliment, depending on how the next hour goes." }
+      ],
+      "choices": [
+        { "text": "Power the droid up and see what it wants", "to": "discovery" }
+      ]
+    },
+
+    "discovery": {
+      "blocks": [
+        { "type": "text", "text": "K-44 chirps awake and projects a flickering holo — a woman in Jedi robes, mid-sentence, cut off by static." },
+        { "type": "text", "style": "letter", "text": "\"—if you're seeing this, I didn't make it out. The cannon isn't finished, but it will be soon, and Drevash is where they're building it. Someone still owes the Republic a debt. I hope it's you. — Master Elin Sarosh\"" }
+      ],
+      "choices": [
+        { "text": "Pocket the droid before anyone sees the message", "to": "alarm" }
+      ]
+    },
+
+    "alarm": {
+      "blocks": [
+        { "type": "text", "style": "terminal", "text": "STATION SECURITY: UNAUTHORIZED HOLOCRON TRANSMISSION DETECTED, BAY 7. ALL UNITS RESPOND." },
+        { "type": "text", "style": "shout", "text": "The bay's blast doors start grinding shut and boots hit the deck plating outside — a lot of them. Someone on this station was listening for exactly that message." }
+      ],
+      "choices": [
+        { "text": "Get ready — they're coming in", "to": "raid_fight" }
+      ]
+    },
+
+    "raid_fight": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "The door blows and a squad of station troopers pours through the smoke. You've got crates for cover and about four seconds to decide what kind of fight this is." }
+      ],
+      "choices": [
+        {
+          "text": "Draw your blaster and meet them head-on",
+          "to": "raid_aftermath",
+          "if": { "var": "combatSkill", "gte": 1 },
+          "whenLocked": "disable",
+          "lockedText": "You're better with a hydrospanner than a blaster, and you know it.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Duck behind the crates and pick your shots",
+          "to": "raid_aftermath"
+        },
+        {
+          "text": "Grab one of them and threaten the rest into backing off",
+          "to": "raid_aftermath",
+          "set": [ { "var": "lightside", "op": "sub", "value": 2 } ]
+        }
+      ]
+    },
+
+    "raid_aftermath": {
+      "blocks": [
+        { "type": "text", "text": "The squad falls back to call in reinforcements you don't intend to be around for. You grab K-44 and slip out through the maintenance grate before the bay fills up again." },
+        { "type": "text", "style": "whisper", "text": "Whoever tipped them off knows what you're carrying now. That buys you a little time, and costs you a lot of it — you need allies, and you need them fast." }
+      ],
+      "choices": [
+        { "text": "Find somewhere quiet to figure out your next move", "to": "station_hub" }
+      ]
+    },
+
+    "station_hub": {
+      "blocks": [
+        { "type": "text", "text": "You lie low in the station's underlevels — a warren of cantinas, archives, and people who owe each other favors. There's a lot to do here, and a facility to raid once you're ready for it." }
+      ],
+      "choices": [
+        { "text": "Talk with Kael Ordo, the guard everyone hires and no one crosses", "to": "kael_bond1", "once": true },
+        { "text": "Confide in Kael about what you're really carrying", "to": "kael_bond2", "once": true, "if": { "visited": "kael_bond1" } },
+        {
+          "text": "Tell Kael how you feel",
+          "to": "kael_romance_scene",
+          "once": true,
+          "if": { "all": [ { "var": "trustKael", "gte": 2 }, { "var": "romance", "eq": "no one in particular" } ] }
+        },
+        { "text": "Talk with Vessa Thorne, the quartermaster who used to wear a different uniform", "to": "vessa_bond1", "once": true },
+        { "text": "Confide in Vessa about the holocron", "to": "vessa_bond2", "once": true, "if": { "visited": "vessa_bond1" } },
+        {
+          "text": "Tell Vessa how you feel",
+          "to": "vessa_romance_scene",
+          "once": true,
+          "if": { "all": [ { "var": "trustVessa", "gte": 2 }, { "var": "romance", "eq": "no one in particular" } ] }
+        },
+        { "text": "Seek out the hermit everyone on the station avoids", "to": "meet_ren", "once": true },
+        { "text": "Ask him what he meant about the Force", "to": "ren_training1", "once": true, "if": { "visited": "meet_ren" } },
+        { "text": "Undertake the trial he spoke of", "to": "crystal_trial", "once": true, "if": { "visited": "ren_training1" } },
+        { "text": "Dig through the station's cargo manifests for the truth about the facility", "to": "investigate_intel", "once": true },
+        { "text": "Spend an hour at the station's gun range", "to": "gunrange", "once": true },
+        { "text": "Head to the shuttle bay — it's time to move on the facility", "to": "approach_facility" }
+      ]
+    },
+
+    "kael_bond1": {
+      "blocks": [
+        { "type": "image", "src": "images/kael.png", "alt": "Kael Ordo, arms crossed, a battered Mandalorian-pattern vambrace on one forearm." },
+        { "type": "text", "text": "Kael Ordo doesn't do small talk, but he does share a bottle if you buy the first round. Turns out he took the station security contract to pay off a debt of his own — the details he keeps close." },
+        { "type": "text", "style": "whisper", "text": "\"You've got the look of someone who just made an enemy of the wrong Empire,\" he says. \"Lucky for you, I collect those too.\"" }
+      ],
+      "onEnter": [ { "var": "trustKael", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Head back and see who else needs finding", "to": "station_hub" }
+      ]
+    },
+
+    "kael_bond2": {
+      "blocks": [
+        { "type": "text", "text": "You tell him about K-44, the message, the cannon. He doesn't flinch — just checks the charge on his blaster and nods once, like you'd confirmed something he already suspected." },
+        { "type": "text", "style": "whisper", "text": "\"Then we're not just drinking anymore,\" he says. \"I'm in. Whatever this costs.\"" }
+      ],
+      "onEnter": [
+        { "var": "trustKael", "op": "add", "value": 1 },
+        { "var": "allies", "op": "push", "value": "kael" }
+      ],
+      "choices": [
+        { "text": "Head back and see who else needs finding", "to": "station_hub" }
+      ]
+    },
+
+    "kael_romance_scene": {
+      "blocks": [
+        { "type": "text", "text": "You find him alone on the observation deck, watching the gas giant turn. Whatever you meant to say comes out simpler than you planned." },
+        { "type": "text", "style": "whisper", "text": "He doesn't say anything for a long moment. Then he takes your hand — careful, like it's something that could still break — and says, \"Took you long enough.\"" }
+      ],
+      "onEnter": [ { "var": "romance", "op": "set", "value": "Kael" } ],
+      "choices": [
+        { "text": "Stay a while longer, before the war finds you again", "to": "station_hub" }
+      ]
+    },
+
+    "vessa_bond1": {
+      "blocks": [
+        { "type": "image", "src": "images/vessa.png", "alt": "Vessa Thorne, a datapad in one hand, an Imperial rank insignia visible where an old uniform patch was torn away." },
+        { "type": "text", "text": "Vessa Thorne runs the station's quartermaster office like she used to run a supply corps — because she did, until she decided the Empire's ledgers didn't balance with her conscience." },
+        { "type": "text", "style": "aside", "text": "\"I don't do this for free,\" she says, not looking up from her datapad. \"But I'll make an exception for someone who just annoyed the Inquisitorius.\"" }
+      ],
+      "onEnter": [ { "var": "trustVessa", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Head back and see who else needs finding", "to": "station_hub" }
+      ]
+    },
+
+    "vessa_bond2": {
+      "blocks": [
+        { "type": "text", "text": "You show her the holocron. She goes very still, then pulls up a requisition log on her datapad — parts, kyber shipments, a facility she'd flagged months ago and been told to forget." },
+        { "type": "text", "style": "letter", "text": "\"I filed three reports about this facility before I left. All three came back marked 'need to know.' I'd very much like to know now.\"" }
+      ],
+      "onEnter": [
+        { "var": "trustVessa", "op": "add", "value": 1 },
+        { "var": "allies", "op": "push", "value": "vessa" }
+      ],
+      "choices": [
+        { "text": "Head back and see who else needs finding", "to": "station_hub" }
+      ]
+    },
+
+    "vessa_romance_scene": {
+      "blocks": [
+        { "type": "text", "text": "You catch her after hours, the office lit by one dying lamp. She sets the datapad down before you've said a word, which from Vessa is practically a declaration on its own." },
+        { "type": "text", "style": "whisper", "text": "\"I read people for a living,\" she says. \"I've been reading you for weeks. Say it anyway — I want to hear you say it.\"" }
+      ],
+      "onEnter": [ { "var": "romance", "op": "set", "value": "Vessa" } ],
+      "choices": [
+        { "text": "Say it", "to": "station_hub" }
+      ]
+    },
+
+    "meet_ren": {
+      "blocks": [
+        { "type": "image", "src": "images/ren.png", "alt": "An old man in patched robes, sitting cross-legged in a maintenance alcove full of cargo debris." },
+        { "type": "text", "style": "epigraph", "text": "\"Everyone on this station calls me mad. Correct on both counts, usually — mad, and on this station.\"" },
+        { "type": "text", "text": "He doesn't introduce himself as Ren Talvory until you mention the holocron — and then his hands, folded a moment ago, aren't folded anymore." }
+      ],
+      "choices": [
+        { "text": "Ask him what he really is", "to": "station_hub" }
+      ]
+    },
+
+    "ren_training1": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "\"The Force,\" he says, \"doesn't care what you call yourself. Smuggler. Soldier. It was never about the title.\" He has you close your eyes and simply *listen* — to the station's hum, to your own pulse, to something underneath both." },
+        { "type": "text", "text": "It's not much of a lesson. It's also the first time in your life something has answered when you reached for it." }
+      ],
+      "onEnter": [
+        { "var": "combatSkill", "op": "add", "value": 1 },
+        { "var": "allies", "op": "push", "value": "ren" }
+      ],
+      "choices": [
+        { "text": "Ask what comes next", "to": "station_hub" }
+      ]
+    },
+
+    "crystal_trial": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "\"A crystal isn't given. It's found — by whoever it was already waiting for.\"" },
+        { "type": "text", "text": "Ren leads you into a sealed cargo vault stripped of everything but silence and a raw, uncut kyber crystal on a pedestal. He tells you nothing else, and closes the door behind you." },
+        { "type": "text", "style": "shout", "text": "Hours pass, or minutes — you lose the difference. When the crystal finally sings back at you, clear and singular, you understand exactly what it's been waiting for." }
+      ],
+      "onEnter": [ { "var": "hasCrystal", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Take it to Ren and finish what you started", "to": "lightsaber_construct" }
+      ]
+    },
+
+    "lightsaber_construct": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "Piece by piece — emitter, power cell, the crystal itself — you build it under Ren's watch, his corrections quiet and exact. When it's done, you thumb it on for the first time." },
+        { "type": "text", "text": "The blade that answers is steady, and it's yours." }
+      ],
+      "onEnter": [ { "var": "hasLightsaber", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Head back to the hub, changed", "to": "station_hub" }
+      ]
+    },
+
+    "investigate_intel": {
+      "blocks": [
+        { "type": "text", "style": "terminal", "text": "ARCHIVE QUERY: FACILITY 12-DREVASH — CLASSIFICATION: WEAPONS RESEARCH — DESIGNATION: UMBRAL SPIKE — STATUS: 94% COMPLETE" },
+        { "type": "text", "text": "Umbral Spike, whatever it is, uses kyber the way a normal cannon uses tibanna gas — and it's nearly finished. You also find the maintenance-shaft schematics nobody bothered to reclassify." }
+      ],
+      "onEnter": [ { "var": "knowsSecret", "op": "set", "value": true } ],
+      "choices": [
+        { "text": "Memorize the layout and get out before the archive logs your query", "to": "station_hub" }
+      ]
+    },
+
+    "gunrange": {
+      "blocks": [
+        { "type": "text", "text": "You spend an hour putting bolts through target after target until your arm stops shaking between shots. It isn't glamorous work, but it's the kind that keeps you breathing later." }
+      ],
+      "onEnter": [ { "var": "combatSkill", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Call it good and head back", "to": "station_hub" }
+      ]
+    },
+
+    "approach_facility": {
+      "blocks": [
+        { "type": "text", "text": "Facility 12 squats at the edge of the station's shadow, all blast shielding and checkpoint lights. However you're getting in, it starts here." }
+      ],
+      "choices": [
+        { "text": "Put on the stolen maintenance uniform and walk in like you belong", "to": "infiltrate_disguised", "set": [ { "var": "disguised", "op": "toggle" } ] },
+        { "text": "Skip the disguise — go in fast and loud", "to": "infiltrate_loud" }
+      ]
+    },
+
+    "infiltrate_disguised": {
+      "blocks": [
+        { "type": "text", "text": "The checkpoint guard barely glances at your borrowed credentials before waving you through. Nobody looks twice at a maintenance tech carrying a toolkit — which is, conveniently, exactly what your blaster looks like from a distance." }
+      ],
+      "choices": [
+        { "text": "Keep the uniform on and get moving — it'll be useful again before this is over", "to": "inside_facility" }
+      ]
+    },
+
+    "infiltrate_loud": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "You put a bolt through the checkpoint console before the guard finishes reaching for his comm. It works — but it also means every trooper on this side of the facility now knows exactly where you are." }
+      ],
+      "onEnter": [ { "var": "wounds", "op": "add", "value": 1 } ],
+      "choices": [
+        { "text": "Move fast, before they organize", "to": "inside_facility" }
+      ]
+    },
+
+    "inside_facility": {
+      "blocks": [
+        { "type": "text", "style": "terminal", "text": "FACILITY STATUS: UMBRAL SPIKE — FINAL CALIBRATION IN PROGRESS. JEDI PRISONER: HOLDING BAY 3." },
+        { "type": "text", "text": "Two objectives, one corridor between you and both of them — and the corridor is not empty." }
+      ],
+      "choices": [
+        { "text": "Deal with what's in the corridor", "to": "facility_fight" }
+      ]
+    },
+
+    "facility_fight": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "A security detail rounds the corner, weapons already up. One trooper goes down fast and stays down, wounded, groaning against the wall — the others regroup at the far end, waiting for you to make the next move." }
+      ],
+      "choices": [
+        {
+          "text": "Fight your way through, blasters blazing",
+          "to": "facility_aftermath",
+          "if": { "all": [ { "var": "combatSkill", "gt": 1 }, { "not": { "var": "wounds", "gte": 2 } } ] },
+          "whenLocked": "disable",
+          "lockedText": "You're already hurt worse than you can afford to be — a straight fight finishes you, not them.",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "combatSkill", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Slip past through the maintenance shafts",
+          "to": "facility_aftermath",
+          "if": { "any": [ { "var": "disguised", "eq": true }, { "var": "knowsSecret", "eq": true } ] }
+        },
+        {
+          "text": "Signal your allies and let them cover you",
+          "to": "facility_aftermath",
+          "if": { "any": [ { "var": "allies", "has": "kael" }, { "var": "allies", "has": "vessa" }, { "var": "allies", "has": "ren" } ] }
+        },
+        {
+          "text": "End the wounded guard's watch before he can call it in",
+          "to": "facility_aftermath",
+          "set": [ { "var": "lightside", "op": "sub", "value": 3 } ]
+        },
+        {
+          "text": "Fall back and find another way in",
+          "to": "facility_aftermath",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 } ]
+        }
+      ]
+    },
+
+    "facility_aftermath": {
+      "blocks": [
+        { "type": "text", "text": "You clear the corridor, breathing hard, ears ringing. Ahead: Holding Bay 3 on one side, the low, building hum of Umbral Spike's calibration cycle on the other." }
+      ],
+      "choices": [
+        { "text": "You're in no shape for what's coming next", "to": "ending_fallen", "if": { "var": "wounds", "gte": 3 } },
+        { "text": "Push on toward the holding bay", "to": "inquisitor_confront", "if": { "var": "wounds", "lt": 3 } }
+      ]
+    },
+
+    "inquisitor_confront": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "\"I was starting to think Drevash had finally sent someone competent.\"" },
+        { "type": "text", "text": "Inquisitor Draeus Korrn stands between you and the holding bay's controls, a double-bladed hilt loose in one hand, unlit, in no apparent hurry." },
+        { "type": "text", "style": "shout", "text": "\"Master Sarosh talked about you, at the end. Let's see if you're worth what she gave up.\"" }
+      ],
+      "choices": [
+        {
+          "text": "Ignite your blade and answer him",
+          "to": "lightsaber_duel",
+          "if": { "var": "hasLightsaber", "eq": true },
+          "whenLocked": "disable",
+          "lockedText": "Your belt is empty. Whatever you brought to this fight, it isn't a lightsaber."
+        },
+        { "text": "Try to talk him down — or at least stall him", "to": "negotiate" },
+        { "text": "Break for the holding bay controls and run for it", "to": "flee_facility" }
+      ]
+    },
+
+    "lightsaber_duel": {
+      "blocks": [
+        { "type": "image", "src": "images/duel.png", "alt": "Two lightsabers locked mid-strike, throwing hard light across a dim corridor." },
+        { "type": "text", "style": "shout", "text": "His blade ignites red an instant before yours answers gold, and the corridor becomes very small, very fast." }
+      ],
+      "theme": { "palette": { "accent": "#ff3b3b" } },
+      "choices": [
+        {
+          "text": "Press the attack — end this now",
+          "to": "post_duel_check",
+          "set": [ { "var": "wounds", "op": "add", "value": 1 }, { "var": "lightside", "op": "sub", "value": 1 } ]
+        },
+        {
+          "text": "Fight defensively, and wait for him to overextend",
+          "to": "post_duel_check",
+          "if": { "var": "combatSkill", "gte": 2 },
+          "whenLocked": "disable",
+          "lockedText": "You haven't trained enough to out-wait a warrior like this one.",
+          "set": [ { "var": "lightside", "op": "add", "value": 1 } ]
+        },
+        {
+          "text": "Reach for the Force, not just the blade",
+          "to": "post_duel_check",
+          "if": { "var": "lightside", "gte": 1 },
+          "set": [ { "var": "lightside", "op": "add", "value": 2 }, { "var": "wounds", "op": "add", "value": 1 } ]
+        }
+      ]
+    },
+
+    "post_duel_check": {
+      "blocks": [
+        { "type": "text", "text": "The duel ends the way most duels do — badly for someone. Korrn staggers back against the bulkhead, blade guttering out, and doesn't get up right away." }
+      ],
+      "choices": [
+        { "text": "You're hurt worse than you can walk off", "to": "ending_fallen", "if": { "var": "wounds", "gte": 3 } },
+        { "text": "He's beaten, and he knows it", "to": "betrayal_offer", "if": { "var": "wounds", "lt": 3 } }
+      ]
+    },
+
+    "negotiate": {
+      "blocks": [
+        { "type": "text", "text": "You keep your hands visible and your voice level, and buy just enough time talking about chains of command and reassignments that his grip on the hilt loosens — not from trust, but from curiosity." },
+        { "type": "text", "style": "whisper", "text": "\"You're stalling,\" he says, almost admiring. \"Fine. Let's see what you're stalling for.\"" }
+      ],
+      "choices": [
+        { "text": "Hear him out", "to": "betrayal_offer" }
+      ]
+    },
+
+    "flee_facility": {
+      "blocks": [
+        { "type": "text", "text": "You slam the holding bay controls and don't look back, K-44 clutched under one arm, alarms rising behind you like a tide." },
+        { "type": "text", "text": "You didn't finish this fight. But you got out, and so did everyone who trusted you to — and Umbral Spike's calibration cycle, at least, is going to need a very long time to recover from what you left behind in its power conduits." }
+      ],
+      "ending": { "kind": "neutral", "title": "You Live to Run Again" }
+    },
+
+    "betrayal_offer": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "\"The Empire always needs people who get results,\" Korrn says, still on one knee. \"Walk away from your friends, hand me the droid, and I'll see you commissioned instead of hunted. Or don't — and see how long the offer lasts.\"" }
+      ],
+      "choices": [
+        {
+          "text": "Take the deal",
+          "to": "ending_dark_bargain",
+          "set": [
+            { "var": "betrayed", "op": "set", "value": true },
+            { "var": "lightside", "op": "set", "value": -6 },
+            { "var": "allies", "op": "remove", "value": "kael" }
+          ]
+        },
+        {
+          "text": "Refuse, and fight for the people who trusted you",
+          "to": "final_stand",
+          "set": [ { "var": "lightside", "op": "add", "value": 2 } ]
+        }
+      ]
+    },
+
+    "final_stand": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "Korrn calls the rest of the garrison down on you, and for one long, ringing moment it's just you, K-44, and whatever you've become standing between Umbral Spike and the rest of the galaxy." }
+      ],
+      "choices": [
+        {
+          "text": "Feel the Force guide your blade, and let it",
+          "to": "ending_jedi_ascendant",
+          "if": { "all": [ { "var": "lightside", "gte": 4 }, { "var": "hasLightsaber", "ne": false }, { "visited": "lightsaber_construct" } ] }
+        },
+        {
+          "text": "Lead the counterattack yourself",
+          "to": "ending_heroes_return",
+          "if": { "var": "lightside", "gte": 2 }
+        },
+        {
+          "text": "Do whatever it takes — mercy is a luxury for later",
+          "to": "ending_the_beast_within",
+          "if": { "var": "lightside", "lte": -3 }
+        },
+        { "text": "Just get everyone out alive", "to": "ending_uneasy_peace" }
+      ]
+    },
+
+    "ending_jedi_ascendant": {
+      "blocks": [
+        { "type": "text", "style": "epigraph", "text": "\"A crystal isn't given. It's found — by whoever it was already waiting for.\"" },
+        { "type": "text", "text": "Umbral Spike comes apart under a strike that isn't quite your own, guided by something Ren spent weeks teaching you to trust. The garrison breaks and scatters. Master Sarosh's debt is paid, and a new one is only beginning." },
+        { "type": "text", "style": "whisper", "text": "Somewhere on the other side of it, {romance} is waiting to find out what you've become." }
+      ],
+      "ending": { "kind": "good", "title": "The Crystal Remembers" }
+    },
+
+    "ending_heroes_return": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "You don't need the Force to lead a counterattack — just nerve, a good crew, and a station full of people who'd rather fight than watch Umbral Spike get finished. It's enough." },
+        { "type": "text", "text": "The cannon goes dark for good, K-44 gets Master Sarosh's message to people who can finally act on it, and Drevash Station gets a story it'll be telling for years." },
+        { "type": "text", "style": "whisper", "text": "You find {romance} in the crowd afterward, and for once, the debt column reads even." }
+      ],
+      "ending": { "kind": "good", "title": "Everyone Made It Out" }
+    },
+
+    "ending_uneasy_peace": {
+      "blocks": [
+        { "type": "text", "text": "It isn't clean and it isn't glorious — you get Umbral Spike offline, get K-44 to safety, and get everyone breathing again, and that's the whole of what you manage. It's also, on a day like this one, more than enough to ask for." },
+        { "type": "text", "style": "whisper", "text": "Somewhere in the wreckage, you think of {romance}, and let that be enough too." }
+      ],
+      "ending": { "kind": "neutral", "title": "Good Enough" }
+    },
+
+    "ending_the_beast_within": {
+      "blocks": [
+        { "type": "text", "style": "shout", "text": "You win. Umbral Spike is scrap, Korrn's garrison is broken, and you did it without hesitating once — not at the wounded guard, not at anyone who stood in your way." },
+        { "type": "text", "text": "K-44 gets the message out. Master Sarosh's debt is paid in a currency she never would have chosen. When you look for {romance} afterward, you find only the memory of someone who used to look at you differently." }
+      ],
+      "ending": { "kind": "bad", "title": "What You Paid For It" }
+    },
+
+    "ending_dark_bargain": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "You hand K-44 over. Korrn's word turns out to be good, in its way — you get the commission, the clean record, the Imperial credit chip that never quite stops feeling like thirty pieces of durasteel." },
+        { "type": "text", "text": "Kael doesn't make it off the station; the report you file later calls it an unfortunate casualty of the operation. You wrote that sentence yourself, and you'll remember writing it for a long time." }
+      ],
+      "ending": { "kind": "bad", "title": "The Empire Always Needs People Like You" }
+    },
+
+    "ending_fallen": {
+      "blocks": [
+        { "type": "text", "style": "whisper", "text": "You don't make it to the holding bay. Whatever K-44 was carrying, whatever Master Sarosh died protecting, it stays exactly where the Empire wants it — because you're not getting up again." },
+        { "type": "text", "text": "Drevash Station keeps its own accounts, and today, yours came due." }
+      ],
+      "ending": { "kind": "bad", "title": "The Debt Comes Due" }
+    }
+  }
+}
