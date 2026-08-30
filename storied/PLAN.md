@@ -1050,3 +1050,76 @@ both were the test script's own missing navigation step (skipping the
 "head back to the hub" click after a bonding scene), not story bugs;
 diagnosed the same way `moth-king`'s false alarms were, by isolating each
 failure before changing anything.
+
+## A fifth story — deliberately bigger than the fourth
+
+**`public/content/fornost/`** ("The Lord of the Rings: The Shadow of
+Fornost," 202 nodes) is roughly 5× `drevash`'s size, built to the user's
+explicit "200+ is a hard target" request for a Middle-earth story with
+life-threatening stakes, romance, and puzzles — using real Tolkien place
+names (Bree, the Trollshaws, Weathertop, the Barrow-downs, Rivendell,
+Fornost) per the user's own explicit choice, the same call made for
+`drevash`'s Star Wars setting. Every character who can fight, die, or be
+romanced (the Barrow-lord antagonist, Eldarion, Hilda, Rowan, the
+companions) is original to the story; well-known figures like Elrond
+appear only as non-interactive cameos, which sidesteps having to reconcile
+combat or death mechanics with anyone's actual canon fate.
+
+The structure is a full hub-and-spoke campaign, not a single branching
+line padded to size: a Bree prologue, a Trollshaws/Weathertop act with a
+troll-cave riddle, a ~25-spoke Rivendell hub (two parallel romance tracks,
+a library lore-puzzle, an armory spoke, and a three-way council choice
+that sets an `approach` variable to `stealth`/`battle`/`diplomacy`), an
+optional Erebor detour gated on an earned dwarf ally, a five-mound
+Barrow-downs hub with its own ward-stone and rune-lock puzzles, a genuine
+three-way branch for the approach to Fornost, and a climax with a
+royal-seal riddle-lock, a duel-or-reason branch against the Barrow-lord,
+and an 11-way ending hub. It uses every condition operator, every
+mutation op, both `whenLocked` modes, `once`, node-level theme overrides
+(a corrupted-red shift near the Fellstone), and all seven text styles —
+same format-coverage discipline as `drevash`, at over four times the node
+count.
+
+**`npm run validate` needed one real fix**, not zero: the first pass
+flagged one placeholder image (`weathertop.png`) as unreferenced by any
+node, caught immediately by the validator rather than shipping as dead
+weight — fixed by wiring an `image` block into `weathertop_approach`.
+Node count itself took real iteration to get right honestly rather than
+by padding: the initial design landed at roughly 93 nodes against the 200+
+target, and was brought up to 202 over about fifteen rounds of genuine
+structural additions (a full Erebor mini-act, two more barrow mounds, and
+roughly fifteen additional hub spokes across Rivendell, Erebor, and the
+Fornost lower city) rather than by inserting hollow filler nodes.
+
+As with `drevash`, **the validator can't check reachable combinations**,
+so the climax's ending thresholds were hand-traced before `npm run
+validate` ever ran. Reaching `ending_shadow_wins`'s `resolve <= -5` gate
+at the duel requires combining exactly four specific dark choices across
+four different acts (two `-2`s, two `-1`s), and reaching the duel branch
+at all requires a `combatSkill >= 3` unlock — which meant a test path
+built to hit that exact boundary had to route through the Rivendell
+smithy specifically to source `combatSkill` without touching `resolve` or
+`wounds` along the way. The death threshold (`wounds >= 5`) is checked at
+four separate points across the story and was traced the same way at
+each.
+
+Verification: a nine-path Playwright script against the built app,
+covering the accumulated-wounds death ending, the direct-corruption
+ending, both romance tracks (checked for the correct partner name
+interpolated into the epilogue, via both the `battle` and `diplomacy`
+approach branches), the broken-fellowship and noble-sacrifice endings, the
+exact `resolve <= -5` boundary case for the shadow-wins ending, the
+standalone flee ending, and — as with `drevash`'s `final_stand` — an
+isolated check that the final ending hub renders with *exactly one*
+visible choice (the unconditional fallback) when no other threshold is
+met, confirming the six conditional endings and the fallback are truly
+mutually exclusive rather than merely non-crashing. Four of the nine
+scripted paths initially failed, all four the test script's own fault, not
+the story's: two used a truncated choice-text match against text that had
+been rephrased slightly during authoring ("...it can speak" vs. the actual
+"...it can speak to anyone else"), and two more were missing a click on
+the duel's intermediate branch node before the final temptation or ending
+choice. All four were diagnosed by screenshotting the stuck state rather
+than guessing, which in every case showed the story correctly waiting on
+exactly the right node with exactly the right choice visible — the bug
+was always the script's step list, never the story graph.
