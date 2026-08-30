@@ -1,0 +1,4327 @@
+{
+  "formatVersion": 1,
+  "id": "frostmere",
+  "title": "The Frostmere Inheritance",
+  "author": "A. Writer",
+  "start": "start",
+  "allowBack": true,
+  "variables": {
+    "evidence": [],
+    "vaneEvidence": 0,
+    "danger": 0,
+    "trustHelena": 0,
+    "trustInes": 0,
+    "romance": "no one to toast the thaw with",
+    "method": "",
+    "knowsCipher": false,
+    "knowsPoison": false,
+    "knowsLockedRoom": false,
+    "suspectedJulian": false,
+    "suspectedCassandra": false,
+    "suspectedNathaniel": false,
+    "suspectedPruett": false,
+    "starSecured": false,
+    "warnedPruett": false,
+    "secondVictim": false,
+    "accused": ""
+  },
+  "theme": {
+    "mode": "dark",
+    "palette": {
+      "bg": "#0b0f16",
+      "surface": "#151d28",
+      "text": "#e6edf3",
+      "dim": "#8a97a8",
+      "accent": "#7fa8c9",
+      "choiceBg": "#1c2733"
+    },
+    "font": {
+      "body": "serif",
+      "display": "serif",
+      "scale": 1.0
+    },
+    "radius": 12
+  },
+  "nodes": {
+    "start": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The house does not so much rise from the hill as refuse to let it go.",
+          "style": "epigraph"
+        },
+        {
+          "type": "image",
+          "src": "images/cover.png",
+          "alt": "Frostmere Hall at dusk, snow already gathering on its dark roofline."
+        },
+        {
+          "type": "text",
+          "text": "Frostmere Hall sits at the end of a mile of unlit drive, and the snow that started an hour ago hasn't let up since. You're here on ordinary business — the Star, the sale, a signature on a valuation you could have mailed in — but ordinary business has never once explained why a house this size keeps its lamps lit at every window at half past six."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ring the bell",
+          "to": "arrival_hall"
+        }
+      ]
+    },
+    "arrival_hall": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A young woman opens the door herself before the bell has finished — Helena Frostmere, you'd guess, from the family portraits you were sent ahead of the appraisal. \"You made it,\" she says, glancing past you at the weather like it's a guest she didn't invite. \"Another hour and you wouldn't have.\""
+        },
+        {
+          "type": "text",
+          "text": "She takes your coat. \"My father's looking forward to this. He talks about that sapphire like it's a person.\"",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask how bad the roads really are",
+          "to": "arrival_roads"
+        },
+        {
+          "text": "Ask about the family gathered for the evening",
+          "to": "arrival_family"
+        }
+      ]
+    },
+    "arrival_roads": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Bad enough that the last car through was two hours ago, and that was the doctor.\" Helena shrugs off the question the way people do when they've already decided not to worry about it. \"We're stocked for a week. We always are, out here.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Head on in",
+          "to": "meet_household"
+        }
+      ]
+    },
+    "arrival_family": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Everyone who matters to the estate, one way or another,\" Helena says, with a small, dry edge you file away. \"My stepmother. My brother, when he bothers. Dr. Vane, who's practically furniture. Mrs. Pruett, who runs the place better than any of us. And Nathaniel — my fiancé, though my father would rather I hadn't said that out loud.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask to see the Star before you do anything else",
+          "to": "arrival_star_glimpse"
+        },
+        {
+          "text": "Head on in",
+          "to": "meet_household"
+        }
+      ]
+    },
+    "arrival_star_glimpse": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Helena laughs, briefly, at your professionalism, and takes you to the study herself — Alistair isn't down yet, but the case sits on his desk, and he's left it unlocked for exactly this. Inside, on dark velvet, the Frostmere Star is exactly as striking as the file promised: a sapphire the size of a thumbnail, cut in a way that catches even the grey afternoon light and does something with it."
+        },
+        {
+          "type": "image",
+          "src": "images/star.png",
+          "alt": "A large sapphire on dark velvet, catching pale light through a study window."
+        },
+        {
+          "type": "text",
+          "text": "It's the reason you're in this house at all. By tomorrow morning, it will be the least interesting thing in it.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Head on in to meet everyone properly",
+          "to": "meet_household"
+        }
+      ]
+    },
+    "meet_household": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The drawing room holds the rest of them, arranged like a hand of cards nobody's decided to play yet. **Cassandra Frostmere**, Alistair's second wife, twenty years his junior and aware of it, offers you a hand and a smile that doesn't reach anywhere past her mouth. **Julian**, the son, is at the sideboard with a glass he's already refilled once. **Dr. Emory Vane** rises to greet you properly, warm in the specific way of a man used to being liked. **Mrs. Agatha Pruett**, the housekeeper, hovers at the door with the air of someone counting heads. And **Nathaniel Reyes** sits a little apart, watching Helena more than he's watching you."
+        },
+        {
+          "type": "text",
+          "text": "Alistair Frostmere himself is upstairs, Helena says — he'll come down for dinner, and he'll want to show you the Star himself, first, before anyone else gets a word in.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go through to dinner",
+          "to": "dinner_scene"
+        }
+      ]
+    },
+    "dinner_scene": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Alistair Frostmere comes down exactly once, for exactly long enough to be the most interesting person at his own table — sharp, funny, needling everyone by turns, the Star's velvet case sitting unopened by his elbow like a promise he's enjoying making you wait for. \"After,\" he tells you, when you ask. \"Let an old man have his dinner first.\""
+        },
+        {
+          "type": "text",
+          "text": "Under the performance, the table has its own weather. Julian doesn't meet his father's eye. Cassandra's hand finds Alistair's sleeve once, briefly, and he doesn't notice or pretends not to. Nathaniel says almost nothing, and Alistair addresses almost nothing to him.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Watch the room a little longer",
+          "to": "dinner_tension"
+        },
+        {
+          "text": "Let the evening carry you along",
+          "to": "storm_worsens"
+        }
+      ]
+    },
+    "dinner_tension": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dr. Vane laughs too readily at things that aren't especially funny — the laugh of a man keeping a room comfortable on purpose. Once, when Alistair mentions \"settling accounts before the new year,\" you catch Vane's smile hold a half-second too long, like a held breath. Mrs. Pruett, refilling glasses, goes very still at the same words, then keeps moving as if she hadn't."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Watch a little longer still",
+          "to": "dinner_tension_more"
+        }
+      ]
+    },
+    "dinner_tension_more": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Alistair, oblivious or enjoying it, presses on: \"Emory here thinks I ought to slow down. I keep telling him I intend to outlive every doctor who's ever told me that.\" It's meant as a joke. Nobody at the table quite laughs at it the way a joke usually earns."
+        }
+      ],
+      "choices": [
+        {
+          "text": "File it away for later",
+          "to": "storm_worsens"
+        }
+      ]
+    },
+    "storm_worsens": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "By the time dessert is cleared, the windows have gone from grey to black, and the wind has found a register it likes and stayed there. Mrs. Pruett comes in without knocking to say the telephone line has gone dead, and that the drive is impassable in either direction — has been for an hour, if she's honest."
+        },
+        {
+          "type": "text",
+          "text": "\"Well,\" Alistair says, into the small silence that follows, with the particular relish of a man who enjoys being the only one unbothered. \"Then we're all guests here tonight, aren't we.\"",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Head upstairs for the night",
+          "to": "retire_upstairs"
+        }
+      ]
+    },
+    "retire_upstairs": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Helena shows you to a guest room at the end of the east wing, the Star's case still unopened downstairs — Alistair changed his mind about tonight, sent word he was tired, promised the morning instead. The house settles into the particular quiet of somewhere old and full of wind."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Take a short walk through the halls before bed",
+          "to": "night_wander"
+        },
+        {
+          "text": "Go straight to sleep",
+          "to": "sleep"
+        }
+      ]
+    },
+    "night_wander": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The corridor lamps are turned low. Passing Alistair's study, you notice light still under the door and the murmur of two voices — one his, one you don't place before a floorboard gives you away and the murmur stops. By the time you're past, the door hasn't opened."
+        },
+        {
+          "type": "text",
+          "text": "Whoever it was, they didn't want to be seen leaving.",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go on to bed",
+          "to": "sleep",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    "sleep": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Sleep comes slower than the hour deserves. The wind has a way of sounding, in an old house, like someone testing every door in turn."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Morning",
+          "to": "discovery_scream"
+        }
+      ]
+    },
+    "discovery_scream": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A scream — thin, cut short, Mrs. Pruett's — pulls you out of bed before you've finished waking. It's coming from the study.",
+          "style": "shout"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go",
+          "to": "discover_body"
+        }
+      ]
+    },
+    "discover_body": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Alistair Frostmere is at his own desk, head down over the blotter as if he'd simply fallen asleep working — except for the stillness, and the smell of bitter almonds that isn't quite right for anything natural, and the fact that the study door was locked from the inside and Mrs. Pruett had to use her master key to get in at all."
+        },
+        {
+          "type": "image",
+          "src": "images/study.png",
+          "alt": "A locked study at dawn, snow-grey light through tall windows, a figure slumped at the desk."
+        },
+        {
+          "type": "text",
+          "text": "He's cold. He has been for hours.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Take in the room before anyone else disturbs it",
+          "to": "study_first_look"
+        }
+      ]
+    },
+    "study_first_look": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The window is latched from inside. The fireplace still holds a little warmth and a little ash that isn't all wood. A leather appointment book lies open on the desk, and beside Alistair's hand, half-hidden under a stack of correspondence, the Star's velvet case sits closed — untouched, as far as you can tell without opening it."
+        },
+        {
+          "type": "text",
+          "text": "Whatever happened here, it wasn't a robbery. Not directly.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "One more look before you call the others",
+          "to": "study_second_look"
+        }
+      ]
+    },
+    "study_second_look": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A small brass key sits in the top drawer, unremarkable except that it matches nothing in the room — not the desk, not the cabinet, not the window latch. A key kept for a lock that isn't in this study at all."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let the household in",
+          "to": "household_reacts"
+        }
+      ]
+    },
+    "household_reacts": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The house comes apart in the ordinary ways a house does around a death — Cassandra goes white and silent, Julian goes loud and then ashamed of being loud, Helena holds herself together by holding Mrs. Pruett together first. Nathaniel says almost nothing, which you're starting to recognize as the thing he does instead of showing anything at all. Dr. Vane, professionally, is the first to kneel by the body — checks for a pulse that was never going to be there, and pronounces him gone with a steadiness that could be training or could be something else."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask about reaching the police",
+          "to": "constable_unreachable"
+        }
+      ]
+    },
+    "constable_unreachable": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The line is still dead. The drive is still buried. Whatever happened in this house last night, the house is going to have to sit with it — everyone in it, together, for at least a day, maybe two — before anyone from outside can reach them at all."
+        },
+        {
+          "type": "text",
+          "text": "You realize, with the specific discomfort of being handed something you didn't ask for, that you're the only person under this roof who's ever had to think about a crime scene professionally.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Decide what to do about that",
+          "to": "decide_investigate"
+        }
+      ]
+    },
+    "decide_investigate": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Helena finds you first, in the hall outside the study, and doesn't waste time getting to it. \"You do this,\" she says — not quite a question. \"Insurance work, provenance, all of it — you have to know how to look at things properly. I need you to look at this properly. Before it's six people in a locked house lying to each other for a week and calling it grief.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Agree to look into it",
+          "to": "investigation_begins"
+        }
+      ]
+    },
+    "investigation_begins": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You start where every investigation starts — with the room, and the people, and the long list of things everyone is choosing not to say yet. Somewhere under this roof is a killer who is, right now, having breakfast with the rest of the household as though nothing has changed at all."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Begin",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "household_hub": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The house is trapped, and so is everyone in it — which means, for as long as the snow holds, this room and the people in it *are* the case. There's a great deal still to look at, and no one is going anywhere."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Examine the study again, properly",
+          "to": "study_examine",
+          "once": true
+        },
+        {
+          "text": "Search the library",
+          "to": "library_examine",
+          "once": true
+        },
+        {
+          "text": "Look through Dr. Vane's medical study",
+          "to": "medical_study",
+          "once": true
+        },
+        {
+          "text": "Speak with Cassandra",
+          "to": "interview_cassandra_1",
+          "once": true
+        },
+        {
+          "text": "Speak with Julian",
+          "to": "interview_julian_1",
+          "once": true
+        },
+        {
+          "text": "Speak with Dr. Vane",
+          "to": "interview_vane_1",
+          "once": true
+        },
+        {
+          "text": "Speak with Mrs. Pruett",
+          "to": "interview_pruett_1",
+          "once": true
+        },
+        {
+          "text": "Speak with Nathaniel",
+          "to": "interview_nathaniel_1",
+          "once": true
+        },
+        {
+          "text": "Sit through a proper meal with the whole household, and watch them",
+          "to": "hub_dinner_watch",
+          "once": true
+        },
+        {
+          "text": "Find Helena",
+          "to": "meet_helena_ally",
+          "once": true
+        },
+        {
+          "text": "Find Ines Calloway, the journalist who got snowed in with the rest of you",
+          "to": "meet_ines_ally",
+          "once": true
+        },
+        {
+          "text": "Check on the kitchen and the servants' hall",
+          "to": "kitchen_hall",
+          "once": true
+        },
+        {
+          "text": "Have a look at the cellar",
+          "to": "cellar_visit",
+          "once": true
+        },
+        {
+          "text": "See to the Star, while you're thinking of it",
+          "to": "secure_star",
+          "once": true
+        },
+        {
+          "text": "Search the guest wing, room by room",
+          "to": "guest_wing_search",
+          "once": true
+        },
+        {
+          "text": "Walk the grounds and check the gatehouse",
+          "to": "gatehouse_visit",
+          "once": true
+        },
+        {
+          "text": "Speak with Mr. Whitfield, the family solicitor, stranded here same as you",
+          "to": "whitfield_intro",
+          "once": true
+        },
+        {
+          "text": "Spend more time with Helena",
+          "to": "helena_stage2",
+          "once": true
+        },
+        {
+          "text": "Spend more time with Ines",
+          "to": "ines_stage2",
+          "once": true
+        },
+        {
+          "text": "Sit in the conservatory a while, where Cassandra keeps her own hours",
+          "to": "conservatory_visit",
+          "once": true
+        },
+        {
+          "text": "Go up to the attic, among the old family records",
+          "to": "attic_visit",
+          "once": true
+        },
+        {
+          "text": "Cross-check everyone's account against the storm's own timeline",
+          "to": "alibi_hub",
+          "once": true
+        },
+        {
+          "text": "Try to reconstruct the rest of the burned letter",
+          "to": "letter_reconstruct",
+          "once": true
+        },
+        {
+          "text": "Look into the Star's provenance paperwork, while you're at it",
+          "to": "star_provenance",
+          "once": true
+        },
+        {
+          "text": "Go through Alistair's business correspondence",
+          "to": "business_correspondence",
+          "once": true
+        },
+        {
+          "text": "Ask about the family, further back than anyone's mentioned yet",
+          "to": "family_history",
+          "once": true
+        },
+        {
+          "text": "You've learned enough here — move on",
+          "to": "act3_intro"
+        }
+      ]
+    },
+    "letter_reconstruct": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The burned letter's one surviving line isn't the only scrap in that grate, once you go back with better light and more patience — three more fragments, smaller, blacker, barely holding together."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Try to piece the fragments in the order they'd have been written",
+          "to": "letter_reconstruct_wrong",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Try to piece them in the order they'd have burned — last page first",
+          "to": "letter_reconstruct_right"
+        }
+      ]
+    },
+    "letter_reconstruct_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Read forward, the fragments refuse to agree with each other — half-sentences that don't connect, a false start you've mistaken for a middle. You've singed your patience along with the paper."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "letter_reconstruct_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Burned pages curl from the last line first — read backward through the burning, the fragments finally agree with each other: **\"...board. I am not the only one who remembers what happened. If you go through with this, you will not be the only one who suffers for it.\"**",
+          "style": "letter"
+        },
+        {
+          "type": "text",
+          "text": "Someone was threatening more than Vane's reputation. Someone told him he wasn't the only one who'd pay if the truth came out — which means whatever Alistair knew, it wasn't only about one bad year with one patient.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "the rest of the burned letter, read backward through the ash"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "family_history": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mrs. Pruett, of everyone in the house, is the one who actually knows the family's longer history — the grandfather who built the fortune on shipping, the uncle who nearly lost it in a bad decade, Alistair's own long, slow rise into a man who never once, in her memory, apologized for anything."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask if he'd made enemies like that before",
+          "to": "family_history_enemies"
+        }
+      ]
+    },
+    "family_history_enemies": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"He made them the way some men make friends,\" she says, \"without especially trying, and without especially minding once he had. Most of them stayed enemies at a comfortable distance. I couldn't tell you, hand on heart, which ones might have stopped keeping that distance.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "business_correspondence": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Alistair's business affairs turn out to be exactly as dull as business affairs usually are — shipping contracts, a dispute over a warehouse lease, nothing that reads like a motive for murder, however hard you squint at it. It's the one part of this man's life, it seems, that stayed entirely ordinary right up until it ended."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "star_provenance": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The Star's paperwork is, professionally, the most straightforward thing in this entire house — a clean chain of ownership back three generations, nothing forged, nothing missing, no reason at all for anyone to have wanted Alistair dead over a jewel with a file this tidy."
+        },
+        {
+          "type": "text",
+          "text": "It's almost a relief, working through something in this house that turns out to be exactly what it claims to be.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "conservatory_visit": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cassandra has claimed the conservatory as her own since the wedding, the way a person claims one room in a house that was never quite theirs. Orchids that must have cost more than most people's rent line the glass; she waters them with a kind of stubborn attention that has nothing to do with grief."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask her why this room",
+          "to": "conservatory_cassandra"
+        }
+      ]
+    },
+    "conservatory_cassandra": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"It's the one room in this house he never much cared for,\" she says, not looking up from the watering can. \"Too much upkeep for too little to show. I liked that about it. I liked having something that was only mine.\""
+        },
+        {
+          "type": "text",
+          "text": "It isn't an alibi and it isn't a confession. It's just a woman who married into a house that was never built to hold her comfortably, telling you so, in her own way.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "attic_visit": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The attic holds three generations of Frostmere paperwork, most of it dull, some of it not — old ledgers, older photographs, a christening record for Helena with a date that, held up against the family's own telling of things, doesn't quite add up the way everyone's always let it."
+        },
+        {
+          "type": "image",
+          "src": "images/attic.png",
+          "alt": "A dusty attic, trunks and old photographs, pale light through a single small window."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Put it back and say nothing yet",
+          "to": "attic_close"
+        }
+      ]
+    },
+    "attic_close": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You already have the shape of what this means from Mrs. Pruett, and the paper only confirms it. It's not evidence of a murder. It's evidence of a much older, much quieter kind of keeping — a family holding its own history at arm's length for a very long time."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "alibi_hub": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The storm itself is the one witness in this house that hasn't lied to anyone yet — the gate that banged at half nine, the tea at a quarter past, the wind that would have covered footsteps but not swallowed them entirely. Testing each account against it, one at a time, seems worth the hours."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Check Cassandra's account",
+          "to": "alibi_cassandra",
+          "once": true
+        },
+        {
+          "text": "Check Julian's account",
+          "to": "alibi_julian",
+          "once": true
+        },
+        {
+          "text": "Check Mrs. Pruett's account",
+          "to": "alibi_pruett",
+          "once": true
+        },
+        {
+          "text": "Check Nathaniel's account",
+          "to": "alibi_nathaniel",
+          "once": true
+        },
+        {
+          "text": "Check Dr. Vane's account",
+          "to": "alibi_vane",
+          "once": true
+        },
+        {
+          "text": "You've tested enough of them",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "alibi_cassandra": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cassandra's account — her room, alone, from half nine — holds up against the one person who'd know: Helena, who remembers passing her stepmother's door and hearing her moving about inside, right around the time the gate went."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Cross her off, at least for the murder itself",
+          "to": "alibi_cassandra_done"
+        }
+      ]
+    },
+    "alibi_cassandra_done": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whatever else Cassandra Frostmere is carrying, the timeline itself has nothing to say against her."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the timeline",
+          "to": "alibi_hub"
+        }
+      ]
+    },
+    "alibi_julian": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Julian's account holds too, if less comfortably — a maid confirms hearing him through his door, restless and drinking, well past midnight, in a room he clearly never left."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Cross him off too",
+          "to": "alibi_julian_done"
+        }
+      ]
+    },
+    "alibi_julian_done": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A man too drunk to stand steadily is, at least, a man with a fairly convincing reason not to have committed a careful, quiet murder that same night."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the timeline",
+          "to": "alibi_hub"
+        }
+      ]
+    },
+    "alibi_pruett": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mrs. Pruett's own account is the one you already trust most, if only because she's the one who gave you the timeline to test everyone else against in the first place. It holds up against her own staff's memory of her, moving through the house on her usual rounds."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Note that, and move on",
+          "to": "alibi_pruett_done"
+        }
+      ]
+    },
+    "alibi_pruett_done": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "If she'd wanted to lie about her own movements that night, she'd have had every opportunity to build herself a better alibi than the one the rest of the staff can independently confirm."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the timeline",
+          "to": "alibi_hub"
+        }
+      ]
+    },
+    "alibi_nathaniel": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Nathaniel's account is thin — alone in his room, he says, with nothing and no one to confirm it — but thin isn't the same as false, and nothing about the storm's own timeline puts him anywhere near the study specifically."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Leave it as unresolved, for now",
+          "to": "alibi_nathaniel_done"
+        }
+      ]
+    },
+    "alibi_nathaniel_done": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "An unconfirmed alibi is a mark against a man, but it isn't the same thing as evidence he was somewhere in particular. You'll need more than his silence to build a case around him."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the timeline",
+          "to": "alibi_hub"
+        }
+      ]
+    },
+    "alibi_vane": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dr. Vane's account is the one that doesn't survive contact with the timeline at all — his claimed nine o'clock bedtime sits squarely inside the window between Mrs. Pruett's tea and the gate banging shut, and no one in this house can place him anywhere but exactly where the study was."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Lay the whole cross-check out plainly",
+          "to": "alibi_vane_done"
+        }
+      ]
+    },
+    "alibi_vane_done": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Five accounts tested against the one witness that can't be flattered or frightened into lying — the storm itself — and only one of them fails to hold. That's not proof by itself. It's a very hard thing to explain away."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a full cross-check: every account holds up but his"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the timeline",
+          "to": "alibi_hub"
+        }
+      ]
+    },
+    "guest_wing_search": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Room by room, most of the guest wing gives up nothing more than the ordinary disorder of people who packed for a weekend and got a siege instead. Cassandra's room is tidier than grief usually allows for. Julian's smells of last night's whisky."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Look more carefully at Nathaniel's room",
+          "to": "guest_wing_nathaniel"
+        }
+      ]
+    },
+    "guest_wing_nathaniel": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Nathaniel's room is the only one in the wing with a lamp burned down past where an early bedtime would explain, and a wastebasket with several false starts of handwriting screwed up and thrown away — practice, you realize, at forging a hand that isn't his own."
+        },
+        {
+          "type": "text",
+          "text": "It fits what the safe already told you. It doesn't tell you anything the safe hadn't already.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "gatehouse_visit": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The gatehouse sits empty most of the year — a groundskeeper's cottage nobody's used since the last one retired — but the snow around its door shows one set of footprints, days old now, half-filled in, leading up to it and not away again."
+        },
+        {
+          "type": "image",
+          "src": "images/gatehouse.png",
+          "alt": "A small stone gatehouse at the edge of the estate, half-buried in snow, a single blurred trail of footprints leading to its door."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go in and have a look",
+          "to": "gatehouse_inside"
+        }
+      ]
+    },
+    "gatehouse_inside": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Inside, dust and cold and nothing recent — except a spare set of keys on a board by the door, one hook empty where the study's spare should hang. It's been gone long enough that the dust around the other hooks has settled evenly around the gap."
+        },
+        {
+          "type": "text",
+          "text": "Someone took that key before the storm ever started. This wasn't decided the night Alistair died. It was decided before.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "whitfield_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Aldous Whitfield, the Frostmere family's solicitor for longer than Helena's been alive, was here on business of his own the night of the storm and has been quietly, correctly horrified by everything since. \"I came up to update a beneficiary line on a policy,\" he says. \"A small thing. I did not come up for this.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask him about the will",
+          "to": "whitfield_will"
+        }
+      ]
+    },
+    "whitfield_will": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"There is exactly one valid will,\" Whitfield says, precise as a man who's spent a career being precise, \"and it sits in my office safe, not this house's. Anything found here claiming otherwise is, at best, a draft. At worst—\" He stops himself, professionally, before finishing that sentence for you."
+        },
+        {
+          "type": "text",
+          "text": "Whatever the codicil in Alistair's own safe was meant to accomplish, Whitfield's testimony is enough, on its own, to make sure it never would have.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask if Alistair had any recent disputes worth knowing about",
+          "to": "whitfield_malpractice_setup"
+        }
+      ]
+    },
+    "whitfield_malpractice_setup": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whitfield hesitates in a way lawyers hesitate when the honest answer and the discreet answer aren't the same thing, then decides, visibly, that a dead client's discretion has run its course."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Wait him out",
+          "to": "whitfield_malpractice_reveal"
+        }
+      ]
+    },
+    "whitfield_malpractice_reveal": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Alistair filed a formal complaint against Emory Vane with the medical board, six weeks ago. A patient Vane lost, some years back, that Alistair had only recently learned the full circumstances of. He was going to see it through — he told me himself he intended to, whatever it cost their friendship.\""
+        },
+        {
+          "type": "text",
+          "text": "A friendship built on thirty years doesn't survive a complaint like that easily. A man's whole career might not survive it at all.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "Whitfield's account of Alistair's complaint to the medical board"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask what he was doing here so late in the year",
+          "to": "whitfield_insurance"
+        }
+      ]
+    },
+    "whitfield_insurance": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"The policy,\" Whitfield says again, a little apologetically, as if it embarrasses him now to have come all this way for something so ordinary. \"Alistair asked me to update it just last week. Nothing unusual in the change itself. Unusual, perhaps, in the timing, now that I think of it properly.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "helena_stage2": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You find Helena going through her father's correspondence with the particular grim focus of someone who needs a task more than she needs comfort. She talks, unprompted, about the father he was before all this — sharper stories than the grief-softened ones people usually offer."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustHelena",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "ines_stage2": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Ines has taken over a corner of the library as an unofficial press room, notes pinned up in a shorthand only she can read. \"You want to know what I think,\" she says, not quite a question, and tells you anyway — a theory about Vane that's closer to right than she has any evidence yet to justify."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustInes",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "hub_dinner_watch": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A full formal dinner, everyone present, feels almost obscene given the circumstances — and yet the household keeps having them, out of habit or denial or simple hunger, and there's more to learn watching six people perform normalcy around a table than in half your interviews."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Watch who avoids whose eye",
+          "to": "hub_dinner_watch_detail"
+        }
+      ]
+    },
+    "hub_dinner_watch_detail": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cassandra and Julian have found an easy, wary alliance since the death, the way people sometimes do when they've decided the same person isn't the threat. Nathaniel watches Helena more than his plate. Mrs. Pruett serves everyone with the exact same careful attention she always has, including the one person at that table she has more reason than most to watch closely."
+        },
+        {
+          "type": "text",
+          "text": "Dr. Vane, throughout, remains the most relaxed person in the room. Either that means something, or it means he's simply better at this than everyone else here — and you're not yet sure those are different things.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "study_examine": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "In daylight the study gives up more than it did at dawn. The window latch is intact and painted shut besides — no one came or went that way. The door lock is a good one, the kind that takes a proper key, not a hairpin."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Work out how the killer left a locked room",
+          "to": "study_puzzle_lockedroom"
+        }
+      ]
+    },
+    "study_puzzle_lockedroom": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Three ways a locked room stops being locked: the door was never really locked from a witness's honest memory, someone used a second way in nobody's thought of, or someone had a key that wasn't supposed to exist."
+        },
+        {
+          "type": "text",
+          "text": "The window's painted shut and the paint isn't disturbed. That rules out the obvious way out — which leaves two real theories worth testing.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Theory: a secret passage behind the bookshelf",
+          "to": "lockedroom_wrong",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Theory: someone besides Alistair had a key",
+          "to": "lockedroom_right"
+        }
+      ]
+    },
+    "lockedroom_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You spend a good hour tapping panelling that turns out to be exactly as solid as it looks. Frostmere Hall, disappointingly, is not that kind of house. You've lost time you didn't have to lose."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the study door",
+          "to": "study_letter_found"
+        }
+      ]
+    },
+    "lockedroom_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The lock is old but not unique — the kind a household would keep a spare key for, in case a study door ever needed opening without waking the man inside it. Someone with reason to be trusted with that spare could have let themselves in, done what they came to do, and locked it again behind them on the way out."
+        },
+        {
+          "type": "text",
+          "text": "Which means you're not looking for someone who broke in. You're looking for someone the house already trusted with a key.",
+          "style": "whisper"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "knowsLockedRoom",
+          "op": "set",
+          "value": true
+        }
+      ],
+      "choices": [
+        {
+          "text": "Look over the rest of the room",
+          "to": "study_letter_found"
+        }
+      ]
+    },
+    "study_letter_found": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "In the cold grate, mostly ash, one scrap of a burned letter has survived enough to read: **\"...cannot let you ruin what's left of my name over an old mistake. I will not be threatened in my own—\"** and there it stops, curling black at the edge.",
+          "style": "letter"
+        },
+        {
+          "type": "text",
+          "text": "Someone was blackmailing Alistair Frostmere. Or Alistair was refusing to be blackmailed — which, going by what happened to him, may amount to the same thing.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a burned letter, half a threat"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "library_examine": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The library still smells of the pipe Alistair wasn't supposed to smoke in it. His appointment book sits where Mrs. Pruett left it for you, open to last night's page."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Try to make sense of the appointment book",
+          "to": "cipher_puzzle"
+        }
+      ]
+    },
+    "cipher_puzzle": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Most of the page is ordinary — meals, a call about the estate, Helena's name twice underlined. But the last entry for the evening isn't in plain hand at all:",
+          "style": "plain"
+        },
+        {
+          "type": "text",
+          "text": "E.V. — IX — HW GRWWOH LW",
+          "style": "terminal"
+        },
+        {
+          "type": "text",
+          "text": "A concordance sits in the same drawer, in Alistair's writing — a simple shift, the kind a man invents for himself and no one else. Line the cipher up against it.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Read it as a shift of one letter back",
+          "to": "cipher_wrong",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Read it as a shift of one letter forward",
+          "to": "cipher_right"
+        }
+      ]
+    },
+    "cipher_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Shifted the wrong way, the message dissolves into nonsense. You've burned a candle's worth of time on it and have nothing to show for the effort."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on to the will",
+          "to": "safe_puzzle_intro"
+        }
+      ]
+    },
+    "cipher_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Shifted forward, it resolves clean: **F.W. — IX — WE SETTLE IT.**",
+          "style": "terminal"
+        },
+        {
+          "type": "text",
+          "text": "F.W. isn't a name in this house. But E.V. — read correctly as the two initials that matter, the ones that make sense of everyone else's evening — is Emory Vane. Alistair summoned his own physician to the study at nine o'clock last night, to settle something.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "knowsCipher",
+          "op": "set",
+          "value": true
+        },
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "the coded appointment: Vane, nine o'clock"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on to the will",
+          "to": "safe_puzzle_intro"
+        }
+      ]
+    },
+    "safe_puzzle_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A study wall safe is common enough in a house this old, and Alistair's is hidden, not very well, behind the portrait of his own father — the kind of hiding place a man chooses so he can find it easily himself. It wants a combination he never wrote down."
+        },
+        {
+          "type": "text",
+          "text": "He was a man of habits, though, and habits are their own kind of writing, if you know where to read them.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Try the year Frostmere & Co. was founded",
+          "to": "safe_wrong",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Try the date on his father's portrait",
+          "to": "safe_right"
+        }
+      ]
+    },
+    "safe_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The dial clicks past the wrong number three times running. You give it up before you jam the mechanism entirely."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "safe_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The portrait's brass plate carries a date Alistair mentioned twice at dinner without meaning to teach anyone anything — and the safe opens on the third try. Inside: cash, a jewel case that isn't the Star's, and a second will, dated three months after the one his solicitor holds, naming an amended set of beneficiaries in a hand that is almost, but not quite, Alistair's own."
+        },
+        {
+          "type": "text",
+          "text": "Someone forged a codicil to this will. Whoever it favors most is the person with the most reason to have wanted it believed real.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "suspectedNathaniel",
+          "op": "set",
+          "value": true
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a forged codicil to the will"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "medical_study": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dr. Vane keeps a small private study off the surgery he uses for the household — mostly harmless things, tinctures and dressings, but a locked case holds what a country doctor actually needs for the bad nights."
+        },
+        {
+          "type": "image",
+          "src": "images/medical.png",
+          "alt": "A physician's study: glass-fronted cabinets, small labelled bottles, a worn leather case."
+        },
+        {
+          "type": "text",
+          "text": "One bottle in the case is nearly empty, and wiped clean of dust in a way none of its neighbors are.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Work out what it held",
+          "to": "poison_puzzle"
+        }
+      ]
+    },
+    "poison_puzzle": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The label's gone, but the case notes in Vane's own hand describe the symptoms of three things he keeps on hand for entirely legitimate reasons — and only one of them, in the wrong dose, stops a heart quietly enough to look, to an untrained eye, like sleep."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Guess arsenic",
+          "to": "poison_wrong",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "Guess digitalis — foxglove, in the wrong hands",
+          "to": "poison_right"
+        }
+      ]
+    },
+    "poison_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Arsenic leaves its own signs, and Alistair had none of them. You've spent time chasing the wrong poison, and the bottle sits there, still unexplained."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "poison_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Digitalis — a heart medicine in the correct dose, a quiet killer in the wrong one, and exactly the kind of thing a physician would have on hand without anyone thinking twice about the bottle going missing. The vial in the study bookshelf, you realize, is the twin of the empty one here — the same maker's glass."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "knowsPoison",
+          "op": "set",
+          "value": true
+        },
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a matched pair of digitalis vials"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "interview_cassandra_1": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cassandra receives you in the morning room with the particular composure of someone who has rehearsed being asked this. \"I loved him,\" she says, before you've asked anything at all. \"Whatever else you hear in this house, start there.\""
+        },
+        {
+          "type": "text",
+          "text": "Asked where she was after eleven, she says her room, alone, and doesn't offer it as if she expects to be believed.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask what \"whatever else you hear\" means",
+          "to": "interview_cassandra_1b"
+        }
+      ]
+    },
+    "interview_cassandra_1b": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She goes very still, then decides, visibly, to get ahead of it. \"There's a man — was, is, I don't know anymore — who isn't my husband. It ended months ago and it has nothing to do with any of this, except that it will look like everything to you, so I'd rather you heard it from me than from Mrs. Pruett's face when the subject comes up.\""
+        },
+        {
+          "type": "text",
+          "text": "A love affair is a motive for a great many things. Murder isn't usually first among them, but you file the letters she describes — still in her writing desk, she admits, foolishly kept — as worth finding.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "suspectedCassandra",
+          "op": "set",
+          "value": true
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "Cassandra's love letters, kept when they shouldn't have been"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask if Alistair knew",
+          "to": "interview_cassandra_1c"
+        }
+      ]
+    },
+    "interview_cassandra_1c": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"He knew,\" she says, flat. \"He'd known for months. He never said a word about it to me directly — just started talking, more and more, about the prenuptial agreement, and how long exactly I had left before it lapsed. That was his way. He punished you by making you wait to find out how.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "interview_julian_1": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Julian is nursing a headache and a second drink he clearly thinks is his first of the day. \"Ask it,\" he says. \"Whether I hated him. Everyone else is thinking it.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask it",
+          "to": "interview_julian_1b"
+        }
+      ]
+    },
+    "interview_julian_1b": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"He cut me out of the will two years ago over a debt he decided said something about my character. We hadn't spoken properly since.\" Julian's hand isn't quite steady around the glass. \"I came back for Christmas because Helena begged me to. I didn't come back to fix anything with him. I didn't get the chance, as it turns out.\""
+        },
+        {
+          "type": "text",
+          "text": "A bookmaker's letter falls out of his jacket when he shifts — the kind of number that explains a great deal about how badly a man might have wanted his father's money before his father changed his mind about giving it to him.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "suspectedJulian",
+          "op": "set",
+          "value": true
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a bookmaker's letter in Julian's hand"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask how deep the debt actually runs",
+          "to": "interview_julian_1c"
+        }
+      ]
+    },
+    "interview_julian_1c": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He tells you a number he clearly hasn't said out loud to anyone else in this house, and looks almost relieved to have it out of him. \"I wasn't going to hurt him over it,\" he says. \"I was going to ask, one more time, and take the no, the way I always do. That's the whole shameful truth of me.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "interview_vane_1": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dr. Vane is, as ever, easy company — sits you down properly, offers you tea Mrs. Pruett hasn't got round to yet, talks about Alistair with the specific warmth of thirty years' friendship. \"I've been treating his heart for a year,\" he says. \"Nothing that should have killed him last night. I keep turning that over.\""
+        },
+        {
+          "type": "text",
+          "text": "Asked where he was after nine, he says his room, reading, from a little before nine until he heard Mrs. Pruett scream this morning. He says it easily, the way a true thing is said and the way a well-practiced one is too.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask if he was ever alone with Alistair last night",
+          "to": "interview_vane_1b"
+        }
+      ]
+    },
+    "interview_vane_1b": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"I looked in after dinner, the way I always do, to see how he was managing the medication. Ten minutes, perhaps less. He seemed himself.\" Vane meets your eyes without flinching, which either means everything or nothing at all, depending on the kind of man he is."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "Vane's stated alibi: his room, alone, from before nine"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask how Alistair's heart had really been",
+          "to": "interview_vane_1c"
+        }
+      ]
+    },
+    "interview_vane_1c": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Worse than he let anyone believe,\" Vane says, and for a moment the professional warmth slips into something that might be real grief, or might just be a very good performance of it. \"I'd have given him another five years, easily, managed properly. Someone took that from him a great deal sooner than his own heart ever would have.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "interview_pruett_1": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mrs. Pruett has run this house for twenty-six years and looks, this morning, every one of them. \"I brought his tea in at a quarter past nine, same as always,\" she says. \"He was alone. Writing something. He barely looked up.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask if she noticed anything else that night",
+          "to": "interview_pruett_1b"
+        }
+      ]
+    },
+    "interview_pruett_1b": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She hesitates — the kind of hesitation that isn't about forgetting. \"There's a thing this house has kept quiet for a long time, and it isn't murder, and I'll not have you thinking it is just because I'd rather not say it plainly.\" Pressed, she admits only this: Helena isn't quite who the family portraits say she is, and Alistair paid handsomely, for years, to keep it that way.",
+          "style": "whisper"
+        },
+        {
+          "type": "text",
+          "text": "A secret is not the same thing as a motive. But it's the kind of thing that makes a careful housekeeper very careful indeed about what she says to strangers.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "suspectedPruett",
+          "op": "set",
+          "value": true
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a household secret Mrs. Pruett won't name outright"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask if that secret was worth killing to protect",
+          "to": "interview_pruett_1c"
+        }
+      ]
+    },
+    "interview_pruett_1c": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Her look could cut glass. \"I have kept that secret for twenty-six years by being careful, not by being violent,\" she says. \"If I'd wanted Alistair Frostmere dead over it, I'd have had a great many quieter years than this one to manage it in.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "interview_nathaniel_1": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Nathaniel is harder to draw out than anyone else in the house — answers are short, eyes elsewhere, hands doing something with a cufflink that doesn't need doing. \"Alistair didn't think I was good enough for Helena,\" he says finally. \"He wasn't shy about saying so. I don't imagine that surprises you.\""
+        },
+        {
+          "type": "text",
+          "text": "Asked what he'll do now, he says he doesn't know, and for once looks like he means exactly that.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask what he was doing after the household went up for the night",
+          "to": "interview_nathaniel_1c"
+        }
+      ]
+    },
+    "interview_nathaniel_1c": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Walking the grounds,\" he says. \"Badly, in the snow, thinking about a conversation I hadn't had the nerve to have with him yet. No one saw me. I know how that sounds.\" He does know. It doesn't make the answer any less thin."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "meet_helena_ally": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You find Helena in the conservatory, where the cold gets in around the old glass and she doesn't seem to mind it. \"I keep thinking I should be crying more,\" she says, not looking at you. \"Mostly I'm just angry. Is that terrible?\""
+        },
+        {
+          "type": "text",
+          "text": "She's sharper than her grief lets on, and more useful to you than anyone else in this house — she knows every one of these people better than you ever will.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustHelena",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask her, honestly, who she thinks did it",
+          "to": "meet_helena_theory"
+        }
+      ]
+    },
+    "meet_helena_theory": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She's quiet a long moment before she answers. \"I don't want it to be any of them, which I know isn't an answer. If you'd asked me a week ago I'd have said none of these people were capable of it. I don't think that anymore about anyone in this house.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "meet_ines_ally": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Ines Calloway was here on entirely unrelated business — a piece on the estate for a magazine no one in this house reads — and got caught by the storm same as you did. She's taken the whole thing with the delighted, faintly indecent interest of someone whose actual job is exactly this."
+        },
+        {
+          "type": "text",
+          "text": "\"A locked room, a house full of suspects, and nowhere for any of us to go,\" she says. \"I almost feel bad for how good a story this is.\"",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trustInes",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask what she'd do with the story, once she can finally file it",
+          "to": "meet_ines_theory"
+        }
+      ]
+    },
+    "meet_ines_theory": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"Sell it twice, at least,\" she says, half-joking, and then, more seriously: \"Or sit on it, if it turns out to be about someone who was actually cornered into it rather than someone who's simply cruel. There's a difference, and I'd rather get that part right than get it out first.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "kitchen_hall": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The kitchen runs on Mrs. Pruett's schedule as much as she runs on it, and the staff under her — a cook, a maid who's barely eighteen — are frightened enough to talk more freely than the family upstairs. The maid mentions, almost in passing, that she saw someone crossing the servants' stair well after midnight, though she was too frightened to look closely and won't say who."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a maid's half-glimpse of someone on the servants' stair"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask the cook whether the household's routines changed at all this week",
+          "to": "kitchen_cook"
+        }
+      ]
+    },
+    "kitchen_cook": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The cook, glad of something ordinary to talk about, mentions that Dr. Vane asked for the surgery's supply order moved up early this month — nothing she thought twice about at the time, a doctor restocking before winter properly set in, the way he always did."
+        },
+        {
+          "type": "text",
+          "text": "Except he never has before, in six years she's kept that kitchen. Habits are their own kind of tell, even the ones about restocking a medical bag.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "cellar_visit": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The cellar is cold in the particular way of a room that's given up trying to be part of the house — wine racks, old furniture under sheets, a second stair up to the kitchen passage that most of the family has probably forgotten exists. The stair's top step is loose enough to be dangerous, if a person didn't know to expect it."
+        },
+        {
+          "type": "text",
+          "text": "You make a mental note of that loose step. In a house like this, worth knowing what could be made to look like an accident.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Check the old gas lamp fitting while you're down here",
+          "to": "cellar_lamp"
+        }
+      ]
+    },
+    "cellar_lamp": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The lamp fitting is old enough to be dangerous on its own, without anyone's help — a slow leak, easily missed, easily blamed on age rather than intent, if anyone ever thought to look. You make sure it's properly shut before you leave, and try not to think too hard about how easy that would have been for someone else to leave open instead."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "secure_star": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You remember, belatedly, the actual reason you're in this house. The Star's case is still sitting in the study among Alistair's papers, in a room that's had half the household in and out of it since dawn."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move it somewhere secure yourself",
+          "to": "secure_star_done"
+        },
+        {
+          "text": "Leave it — there's a murder to solve, and the jewel isn't going anywhere in a snowbound house",
+          "to": "secure_star_skip"
+        }
+      ]
+    },
+    "secure_star_done": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You take ten minutes you can spare and lock the Star in the one place in the house you trust — your own travel case, under your own key. Whatever else happens here, that much is accounted for."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "starSecured",
+          "op": "set",
+          "value": true
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "secure_star_skip": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You leave it where it is. It's a reasonable enough call — there are worse things than a jewel sitting in a locked house full of people who, whatever else they are, aren't strangers to each other."
+        },
+        {
+          "type": "text",
+          "text": "It's also, you'll come to learn, not a call you get to make twice.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "household_hub"
+        }
+      ]
+    },
+    "act3_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You've learned what a first pass through this house can teach you. What's left needs a method — a way of pressing on the people in it that suits the kind of investigator you actually are."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go straight at people — ask the hard questions to their faces",
+          "to": "direct_intro",
+          "set": [
+            {
+              "var": "method",
+              "op": "set",
+              "value": "direct"
+            }
+          ]
+        },
+        {
+          "text": "Work quietly — search rooms and conversations no one's watching",
+          "to": "quiet_intro",
+          "set": [
+            {
+              "var": "method",
+              "op": "set",
+              "value": "quiet"
+            }
+          ]
+        },
+        {
+          "text": "Work with the household — bring Helena and Ines fully into it",
+          "to": "collab_intro",
+          "set": [
+            {
+              "var": "method",
+              "op": "set",
+              "value": "collaborative"
+            }
+          ]
+        }
+      ]
+    },
+    "direct_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You decide the fastest way through a house full of careful people is to stop being careful yourself. If someone's lying, the quickest way to find the seam is to press until it shows."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Cross-examine Dr. Vane on his alibi",
+          "to": "direct_confront_vane"
+        }
+      ]
+    },
+    "direct_confront_vane": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You lay it out for him plainly — Mrs. Pruett's tea, a quarter past nine, and his own claim of being alone in his room since before nine. Vane's easy manner slips, just for a second, before he recovers it. \"Memory plays tricks in a house like this,\" he says. \"I may have the hour wrong. I was tired. Everyone was.\""
+        },
+        {
+          "type": "text",
+          "text": "A man doesn't usually misremember the hour of his own alibi, on the one night it matters most.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "Vane's own account contradicting Mrs. Pruett's"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Press on before word gets around",
+          "to": "direct_cassandra_pushback"
+        }
+      ]
+    },
+    "direct_cassandra_pushback": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cassandra catches you in the hall not ten minutes later, furious in the controlled way of someone who's spent a marriage learning not to raise her voice. \"You've upset him badly,\" she says. \"He's been kind to this family for thirty years and you're treating him like a suspect in a penny novel.\""
+        },
+        {
+          "type": "text",
+          "text": "It's a strange thing to be angry about, if she has no reason to be protecting him specifically. You note it, and press on anyway.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Press him on his medical bag",
+          "to": "direct_demand_bag"
+        }
+      ]
+    },
+    "direct_demand_bag": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You ask, not quite politely, to see the contents of his bag against his own inventory. He resists for exactly as long as resisting doesn't look worse than complying — then hands it over. One vial of digitalis is missing from where his own ledger says it should be."
+        },
+        {
+          "type": "text",
+          "text": "\"I use it in my rounds,\" he says. \"It goes missing from time to time. That isn't evidence of anything.\" He isn't wrong, on its own. It isn't, on its own.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a missing vial matched against Vane's own inventory"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Push further — ask him outright if he was blackmailing anyone, or being blackmailed",
+          "to": "direct_tension_rises"
+        }
+      ]
+    },
+    "direct_tension_rises": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "He denies it, evenly, and asks — reasonably, infuriatingly — whether you intend to accuse everyone in the house one at a time, or whether you might consider that a grieving household deserves a little more care than an interrogation. Word of your approach gets around fast. By evening, no one is quite meeting your eye at dinner."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Keep going anyway",
+          "to": "direct_dinner_silence"
+        }
+      ]
+    },
+    "direct_dinner_silence": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dinner that night is the quietest the house has managed all week — even the wind seems to have taken the household's mood as a cue. Vane, at the head of the table now that no one else seems inclined to sit there, is unfailingly, unsettlingly polite to you the entire meal."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Keep going anyway",
+          "to": "direct_accident_setup"
+        }
+      ]
+    },
+    "direct_accident_setup": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Late that night, heading down to check something in the cellar, you notice the wine cellar's old lamp has been left burning — unusual, in a house this careful about its stores — and the air at the bottom of the stairs smells faintly, wrongly, of gas."
+        },
+        {
+          "type": "image",
+          "src": "images/danger.png",
+          "alt": "A narrow cellar stair, one lamp burning low, shadows pooling at the bottom."
+        }
+      ],
+      "theme": {
+        "palette": {
+          "accent": "#8b2e2e"
+        }
+      },
+      "choices": [
+        {
+          "text": "Notice the smell and back away before going further",
+          "to": "direct_accident_safe"
+        },
+        {
+          "text": "Push on down anyway — you're close to something",
+          "to": "direct_accident_hurt",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        }
+      ]
+    },
+    "direct_accident_safe": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You back out and shut the door, heart going harder than the situation, on its face, should call for. Someone left that lamp burning on purpose. Someone wanted whoever came down those stairs not to come back up them."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Report the damaged gas line and move on",
+          "to": "direct_danger_check"
+        }
+      ]
+    },
+    "direct_accident_hurt": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You're three steps down before the air catches up with you — a wave of dizziness, a scramble back up stairs that suddenly feel too steep, and a slammed door between you and whatever that was. You make it out. It costs you something to have made it out."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Catch your breath and keep going",
+          "to": "direct_danger_check"
+        }
+      ]
+    },
+    "direct_danger_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whatever else is true in this house, someone in it wants you to stop asking questions badly enough to have tried making that happen.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "It's too much — you're not safe here",
+          "to": "ending_investigator_silenced",
+          "if": {
+            "var": "danger",
+            "gte": 5
+          }
+        },
+        {
+          "text": "Shaken, but you're still standing",
+          "to": "direct_pruett_warn_choice",
+          "if": {
+            "var": "danger",
+            "lt": 5
+          }
+        }
+      ]
+    },
+    "direct_pruett_warn_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mrs. Pruett corners you the next morning, low and urgent — she's noticed the same contradiction you have, in Vane's account, and she means to ask him about it herself, tonight, alone, \"the way one does with someone one's known thirty years.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Tell her plainly what you suspect, and beg her not to confront him alone",
+          "to": "direct_warn_yes",
+          "set": [
+            {
+              "var": "warnedPruett",
+              "op": "set",
+              "value": true
+            }
+          ]
+        },
+        {
+          "text": "Let her go — she's a grown woman, and you need the household to keep talking to you",
+          "to": "direct_warn_no"
+        }
+      ]
+    },
+    "direct_warn_yes": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She hears you out, goes pale, and — reluctantly, grudgingly — agrees to say nothing to Vane alone. \"I've known him thirty years,\" she says again, quieter this time, like she's only now hearing what that might mean.",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on with the investigation",
+          "to": "direct_pruett_check"
+        }
+      ]
+    },
+    "direct_warn_no": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You let her go. It seems, at the time, like the smaller risk.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on with the investigation",
+          "to": "direct_pruett_check"
+        }
+      ]
+    },
+    "direct_pruett_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "That evening the house is quieter than it's been since the murder — the specific, listening quiet of people who know something is happening somewhere out of sight.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Mrs. Pruett is safe, for now",
+          "to": "direct_romance_beat",
+          "if": {
+            "var": "warnedPruett",
+            "eq": true
+          }
+        },
+        {
+          "text": "Mrs. Pruett doesn't come down for breakfast the next morning",
+          "to": "ending_second_victim",
+          "if": {
+            "var": "warnedPruett",
+            "eq": false
+          },
+          "set": [
+            {
+              "var": "secondVictim",
+              "op": "set",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    "direct_romance_beat": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Between rounds of confrontation, two people in this house keep finding reasons to check on you — Helena, badly needing to talk to someone who isn't a suspect and isn't grieving, and Ines, who's decided your directness makes you the most useful person here to compare notes with."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let something real pass between you and Helena",
+          "to": "direct_romance_declare_helena",
+          "if": {
+            "var": "trustHelena",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "You barely know her yet — this isn't the moment.",
+          "set": [
+            {
+              "var": "trustHelena",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Let something real pass between you and Ines",
+          "to": "direct_romance_declare_ines",
+          "if": {
+            "var": "trustInes",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "You barely know her yet — this isn't the moment.",
+          "set": [
+            {
+              "var": "trustInes",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Keep it as it is — friendship, for now, with a killer still loose",
+          "to": "direct_doubt_beat"
+        }
+      ]
+    },
+    "direct_romance_declare_helena": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Neither of you says anything especially eloquent about it. It doesn't need to be eloquent.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "romance",
+          "op": "set",
+          "value": "Helena"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the case",
+          "to": "direct_doubt_beat"
+        }
+      ]
+    },
+    "direct_romance_declare_ines": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"I was starting to think you'd never say it,\" Ines says, and for once isn't being clever about anything.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "romance",
+          "op": "set",
+          "value": "Ines"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the case",
+          "to": "direct_doubt_beat"
+        }
+      ]
+    },
+    "direct_doubt_beat": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Alone for a moment between confrontations, you let yourself doubt it — really doubt it, not the polite kind of doubt you perform for a room. Everything you have on Vane is real, and none of it, on its own, is quite enough to hang a man's whole life on."
+        },
+        {
+          "type": "text",
+          "text": "You keep going anyway. Doubt has never once been a reason to stop looking, only a reason to look more carefully.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Keep going",
+          "to": "direct_medical_journal"
+        }
+      ]
+    },
+    "direct_medical_journal": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cornered on every other front, Vane makes a mistake — leaves his private journal out on the desk in his haste to answer a summons from Cassandra, and you have exactly long enough to read the line that matters: *\"He knows. Thirty years, and he'll ruin me over one bad year I've more than paid for since. I won't let him.\"*",
+          "style": "letter"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "Vane's own journal, in his own hand"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Close the journal and move on",
+          "to": "act3_convergence"
+        }
+      ]
+    },
+    "quiet_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You decide the house will tell you more if it doesn't know it's being asked. People lie to your face. Rooms don't lie at all, if you're patient with them."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Wait until Vane is occupied, and search his room",
+          "to": "quiet_search_vane"
+        }
+      ]
+    },
+    "quiet_search_vane": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You wait until he's called down to see to Cassandra's nerves, and let yourself into his room with the same spare key logic you worked out in the study. His private journal is in the nightstand drawer, unlocked, unguarded — the arrogance, or the carelessness, of a man who's never had reason to hide anything in his own house before."
+        },
+        {
+          "type": "text",
+          "text": "*\"He knows. Thirty years, and he'll ruin me over one bad year I've more than paid for since. I won't let him.\"*",
+          "style": "letter"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "Vane's own journal, found unguarded"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Put it back exactly as you found it and check his medical bag while you're here",
+          "to": "quiet_search_bag"
+        }
+      ]
+    },
+    "quiet_search_bag": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "His bag is downstairs in the surgery, easier to check unnoticed. One vial of digitalis is missing against his own inventory sheet — the same maker's glass as the empty one in the study bookshelf."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "a missing vial matched against Vane's own inventory"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Leave before anyone notices you were here",
+          "to": "quiet_near_miss"
+        }
+      ]
+    },
+    "quiet_near_miss": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You're nearly out the surgery door when Mrs. Pruett rounds the corner with an armful of linens — a heartbeat where either of you could say something, and neither does. She looks at you a moment too long before continuing on."
+        }
+      ],
+      "choices": [
+        {
+          "text": "She knows something's up, but let it lie",
+          "to": "quiet_julian_encounter"
+        }
+      ]
+    },
+    "quiet_julian_encounter": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working the halls quietly a little longer, you find Julian in the estate office, drafting the same letter to his bookmaker over and over, none of the drafts good enough to send once the road finally opens. It's a smaller, sadder kind of secret than the one you're actually chasing, and not the one you needed."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Leave him to it",
+          "to": "quiet_cellar_check"
+        }
+      ]
+    },
+    "quiet_cellar_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working quietly means noticing the things a house doesn't say out loud. Twice this week you've caught someone's shadow leaving a room just as you entered it — never quite fast enough to see who, always in the direction of the cellar stair."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Follow the pattern down",
+          "to": "quiet_cellar_lamp"
+        }
+      ]
+    },
+    "quiet_cellar_lamp": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The wine cellar's lamp has been left burning past when it should have been banked, and the old cellar rope has a frayed place someone's been testing with more attention than housekeeping usually gets."
+        },
+        {
+          "type": "image",
+          "src": "images/danger.png",
+          "alt": "A narrow cellar stair, one lamp burning low, shadows pooling at the bottom."
+        }
+      ],
+      "theme": {
+        "palette": {
+          "accent": "#8b2e2e"
+        }
+      },
+      "choices": [
+        {
+          "text": "Note it and stay well clear tonight",
+          "to": "quiet_danger_check"
+        },
+        {
+          "text": "Go down anyway to see exactly what's been tampered with",
+          "to": "quiet_danger_hurt",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        }
+      ]
+    },
+    "quiet_danger_hurt": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The step gives exactly where you expected it to, and only a hand on the railing you'd noted earlier keeps you from a much worse fall than the one you take. It's still a fall."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Get yourself upright and keep working",
+          "to": "quiet_danger_check"
+        }
+      ]
+    },
+    "quiet_danger_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Someone in this house is starting to notice how much you're noticing.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "It's too much — you're not safe here",
+          "to": "ending_investigator_silenced",
+          "if": {
+            "var": "danger",
+            "gte": 5
+          }
+        },
+        {
+          "text": "You're rattled, but you're still working",
+          "to": "quiet_pruett_warn_choice",
+          "if": {
+            "var": "danger",
+            "lt": 5
+          }
+        }
+      ]
+    },
+    "quiet_pruett_warn_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You catch Mrs. Pruett alone in the pantry, still turning something over in her own head about that near-miss outside the surgery. She's putting pieces together faster than she's letting on."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Tell her what you actually suspect, before she goes looking for the answer herself",
+          "to": "quiet_warn_yes",
+          "set": [
+            {
+              "var": "warnedPruett",
+              "op": "set",
+              "value": true
+            }
+          ]
+        },
+        {
+          "text": "Say nothing — better she doesn't know how far you've got",
+          "to": "quiet_warn_no"
+        }
+      ]
+    },
+    "quiet_warn_yes": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She takes it the way a careful woman takes a hard thing — quietly, and with a promise, extracted more than offered, to leave the confronting to you.",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on with the investigation",
+          "to": "quiet_pruett_check"
+        }
+      ]
+    },
+    "quiet_warn_no": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You keep your own counsel. It feels, at the time, like the safer choice for everyone involved.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on with the investigation",
+          "to": "quiet_pruett_check"
+        }
+      ]
+    },
+    "quiet_pruett_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The house holds its breath a little more tightly with each day the snow doesn't break.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Mrs. Pruett is safe, for now",
+          "to": "quiet_romance_beat",
+          "if": {
+            "var": "warnedPruett",
+            "eq": true
+          }
+        },
+        {
+          "text": "Mrs. Pruett doesn't come down for breakfast the next morning",
+          "to": "ending_second_victim",
+          "if": {
+            "var": "warnedPruett",
+            "eq": false
+          },
+          "set": [
+            {
+              "var": "secondVictim",
+              "op": "set",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    "quiet_romance_beat": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You cross paths with Ines more than once doing your own quiet rounds of the house — she's doing much the same thing, for entirely different reasons, and neither of you is especially subtle about it to the other. Helena finds you too, once, in the small hours, unable to sleep and glad of company that isn't asking anything of her."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Stop pretending this is only professional interest, with Ines",
+          "to": "quiet_romance_declare",
+          "if": {
+            "var": "trustInes",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "You've barely spoken to her outside the investigation — not yet.",
+          "set": [
+            {
+              "var": "trustInes",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Let it be Helena instead, quietly, in the dark house",
+          "to": "quiet_romance_declare_helena",
+          "if": {
+            "var": "trustHelena",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "You've barely spoken to her outside the investigation — not yet.",
+          "set": [
+            {
+              "var": "trustHelena",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Keep it professional — for now",
+          "to": "quiet_doubt_beat"
+        }
+      ]
+    },
+    "quiet_romance_declare_helena": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Neither of you says anything especially eloquent about it. It doesn't need to be eloquent.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "romance",
+          "op": "set",
+          "value": "Helena"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the case",
+          "to": "quiet_doubt_beat"
+        }
+      ]
+    },
+    "quiet_romance_declare": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"I was starting to think you'd never say it,\" Ines says, and for once isn't being clever about anything.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "romance",
+          "op": "set",
+          "value": "Ines"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the case",
+          "to": "quiet_doubt_beat"
+        }
+      ]
+    },
+    "quiet_doubt_beat": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working alone this long, it's easy to start distrusting your own read of things — no one to check your reasoning against, no one to tell you when a theory's gotten ahead of its evidence."
+        },
+        {
+          "type": "text",
+          "text": "You go back over it once more anyway, quietly, the way you've done everything else this week.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Keep going",
+          "to": "quiet_timeline_puzzle"
+        }
+      ]
+    },
+    "quiet_timeline_puzzle": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working alone, you lay out everyone's stated whereabouts against the one clock this house can't lie about — the storm itself. Mrs. Pruett heard the front gate latch bang shut in the wind at half nine, which means the study's outer door was opened again after her nine-fifteen visit, by someone already inside."
+        }
+      ],
+      "choices": [
+        {
+          "text": "The account that doesn't survive that timeline is Julian's",
+          "to": "quiet_alibi_wrong",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "The account that doesn't survive that timeline is Vane's",
+          "to": "quiet_alibi_right"
+        }
+      ]
+    },
+    "quiet_alibi_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Julian's story holds up fine against the gate — he was in his room the whole time, by two separate accounts. You've spent an evening chasing the wrong thread."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "act3_convergence"
+        }
+      ]
+    },
+    "quiet_alibi_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Vane's claim — his room, alone, from before nine — cannot survive a gate that banged shut at half nine from someone standing where only the study's own side door could put them. He was in that study well past when Mrs. Pruett brought the tea."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "the storm's own timeline, contradicting Vane"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "act3_convergence"
+        }
+      ]
+    },
+    "collab_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You decide you don't need to do this alone, and that a house this frightened will talk more freely to its own than to you. You bring Helena and Ines fully into it — pool what everyone's noticed, openly, together."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Sit down with both of them properly",
+          "to": "collab_session"
+        }
+      ]
+    },
+    "collab_session": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Between the three of you, the picture sharpens fast. Helena remembers her father mentioning, weeks ago, \"an old debt Emory still hasn't paid me back for\" — and laughing, at the time, like it was nothing. Ines, who's been quietly charming the staff all week for an entirely different story, has already heard from the maid that Vane's window light was on well past when he claimed to be asleep."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "the maid's account of Vane's lit window, well past his claimed bedtime"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Weigh it against everything else the three of you have between you",
+          "to": "collab_weigh_theories"
+        }
+      ]
+    },
+    "collab_weigh_theories": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You lay every thread out together — Cassandra's affair, Julian's debts, Nathaniel's forgery, Mrs. Pruett's old secret, and now Vane's lit window and an old debt nobody's ever explained. Ines argues for keeping an open mind about all five. Helena, quieter, keeps coming back to the one person in the house everyone's default instinct is to trust without asking why."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask Helena to help you check her father's things more thoroughly",
+          "to": "collab_journal_hunt"
+        }
+      ]
+    },
+    "collab_journal_hunt": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "With Helena's help — she knows this house's hiding places better than any investigator could guess at alone — you find Vane's private journal tucked among his own effects, and read past the polite version of him you've been given all week: *\"He knows. Thirty years, and he'll ruin me over one bad year I've more than paid for since. I won't let him.\"*",
+          "style": "letter"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "Vane's own journal, found with Helena's help"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Bring what you've found to Ines",
+          "to": "collab_ines_danger"
+        }
+      ]
+    },
+    "collab_ines_danger": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working together this openly has a cost the three of you didn't quite plan for — Vane can see exactly who's been talking to whom, and exactly how close you've all gotten, in a way none of you could manage working alone."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Push on anyway",
+          "to": "collab_dinner_probe"
+        }
+      ]
+    },
+    "collab_dinner_probe": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Ines, delighted with the progress and characteristically reckless about her own safety, decides to test Vane directly herself — a probing question over dinner about \"old debts between old friends\" that lands harder than she meant it to. His answer is smooth. His look at her, after, is not."
+        },
+        {
+          "type": "image",
+          "src": "images/danger.png",
+          "alt": "A tense dinner table, one guest's chair pushed slightly back, candlelight uneasy."
+        }
+      ],
+      "theme": {
+        "palette": {
+          "accent": "#8b2e2e"
+        }
+      },
+      "choices": [
+        {
+          "text": "Pull her aside afterward and tell her to be more careful",
+          "to": "collab_danger_safe"
+        },
+        {
+          "text": "Let her keep pushing — she's getting results",
+          "to": "collab_danger_hurt",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        }
+      ]
+    },
+    "collab_danger_safe": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "She takes the warning better than you expected. \"Fine,\" she says. \"But I'm right, aren't I.\" You don't disagree."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Keep working, more carefully now",
+          "to": "collab_danger_check"
+        }
+      ]
+    },
+    "collab_danger_hurt": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Two nights later Ines takes a fall down the cellar stairs that she swears, unconvincingly, was clumsiness — the same loose step, the same suspiciously fresh smell of gas. She's shaken and bruised and lucky, and the fright of it costs you more than it costs her."
+        }
+      ],
+      "choices": [
+        {
+          "text": "See to her and keep working",
+          "to": "collab_danger_check"
+        }
+      ]
+    },
+    "collab_danger_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whoever's behind this has noticed how close the three of you have gotten, working together.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "It's too much — none of you are safe here",
+          "to": "ending_investigator_silenced",
+          "if": {
+            "var": "danger",
+            "gte": 5
+          }
+        },
+        {
+          "text": "Rattled, but still working, together",
+          "to": "collab_pruett_warn_choice",
+          "if": {
+            "var": "danger",
+            "lt": 5
+          }
+        }
+      ]
+    },
+    "collab_pruett_warn_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Helena raises it herself, unprompted — Mrs. Pruett has been odd around Dr. Vane for days, and she's worried the older woman means to have it out with him privately, the way people who've known each other thirty years sometimes decide they're owed."
+        }
+      ],
+      "choices": [
+        {
+          "text": "The three of you make sure she hears the whole picture before she does anything alone",
+          "to": "collab_warn_yes",
+          "set": [
+            {
+              "var": "warnedPruett",
+              "op": "set",
+              "value": true
+            }
+          ]
+        },
+        {
+          "text": "Decide it's not your place to interfere in a friendship that old",
+          "to": "collab_warn_no"
+        }
+      ]
+    },
+    "collab_warn_yes": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mrs. Pruett listens to the three of you together longer than she'd have listened to any one of you alone, and finally, grudgingly, agrees to let it be handled properly.",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on with the investigation",
+          "to": "collab_pruett_check"
+        }
+      ]
+    },
+    "collab_warn_no": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You let it go. It's a kindness, you tell yourself, to trust her own judgment about a man she's known for thirty years.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on with the investigation",
+          "to": "collab_pruett_check"
+        }
+      ]
+    },
+    "collab_pruett_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The house's quiet, these last few days, has stopped feeling peaceful and started feeling like waiting.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Mrs. Pruett is safe, for now",
+          "to": "collab_romance_beat",
+          "if": {
+            "var": "warnedPruett",
+            "eq": true
+          }
+        },
+        {
+          "text": "Mrs. Pruett doesn't come down for breakfast the next morning",
+          "to": "ending_second_victim",
+          "if": {
+            "var": "warnedPruett",
+            "eq": false
+          },
+          "set": [
+            {
+              "var": "secondVictim",
+              "op": "set",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    "collab_romance_beat": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working this closely with both of them, something keeps almost happening in the gaps between the actual investigating — a look held a beat too long, a hand that doesn't quite need to still be resting where it is."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let it be Helena, when the case finally lets you breathe",
+          "to": "collab_romance_helena",
+          "if": {
+            "var": "trustHelena",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "You haven't spent enough time with her alone yet.",
+          "set": [
+            {
+              "var": "trustHelena",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Let it be Ines, when the case finally lets you breathe",
+          "to": "collab_romance_ines",
+          "if": {
+            "var": "trustInes",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "You haven't spent enough time with her alone yet.",
+          "set": [
+            {
+              "var": "trustInes",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Keep the whole thing professional — there's a killer still loose",
+          "to": "collab_doubt_beat"
+        }
+      ]
+    },
+    "collab_romance_helena": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It isn't the moment either of you would have picked, in a house like this, with everything still unresolved. It's the moment you got.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "romance",
+          "op": "set",
+          "value": "Helena"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the case",
+          "to": "collab_doubt_beat"
+        }
+      ]
+    },
+    "collab_romance_ines": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "It isn't the moment either of you would have picked, in a house like this, with everything still unresolved. It's the moment you got.",
+          "style": "aside"
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "romance",
+          "op": "set",
+          "value": "Ines"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the case",
+          "to": "collab_doubt_beat"
+        }
+      ]
+    },
+    "collab_doubt_beat": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Ines argues, half seriously, that three people convincing each other of the same theory isn't the same as three people who've actually proven it. Helena, quieter, admits she'd rather be wrong about Vane than right about anyone else in this house."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Test it once more, properly, before deciding anything",
+          "to": "collab_timeline_puzzle"
+        }
+      ]
+    },
+    "collab_timeline_puzzle": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Working through the storm's own timeline together — the gate latch Mrs. Pruett heard bang at half nine, well after her own tea delivery — the three of you test it against everyone's stated whereabouts."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Helena is sure it points to Cassandra",
+          "to": "collab_alibi_wrong",
+          "set": [
+            {
+              "var": "danger",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "text": "You're sure it points to Vane",
+          "to": "collab_alibi_right"
+        }
+      ]
+    },
+    "collab_alibi_wrong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cassandra's account holds up fine against the gate — she was with Helena herself for part of that hour, which Helena, a little sheepishly, only now remembers to mention. An evening lost to the wrong thread."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "act3_convergence"
+        }
+      ]
+    },
+    "collab_alibi_right": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Vane's claimed alibi cannot survive a gate that banged shut at half nine from someone standing where only the study's own side door could put them. He was in that study well past when the tea was brought in."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "the storm's own timeline, contradicting Vane"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "act3_convergence"
+        }
+      ]
+    },
+    "act3_convergence": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "However you got here, the shape of it is the same now: a house that's stopped feeling merely trapped and started feeling like it's waiting for one more thing to happen before the snow finally lets it go."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Move on",
+          "to": "anonymous_note_found"
+        }
+      ]
+    },
+    "anonymous_note_found": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A note is waiting under your door the next morning, unsigned, block letters pressed hard enough to nearly tear the paper: **YOU SHOULD LEAVE THIS ALONE. SOME THINGS ARE BETTER LEFT WITH THE SNOW.**",
+          "style": "letter"
+        },
+        {
+          "type": "text",
+          "text": "Whoever wrote it wanted you frightened, not caught. It's a strange kind of mistake for someone otherwise this careful to make.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Compare the hand against what you've already seen in this house",
+          "to": "anonymous_note_examine"
+        }
+      ]
+    },
+    "anonymous_note_examine": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The block letters are disguised well enough to fool a casual glance, but not well enough to hide the particular slant a left hand gives to a right-handed alphabet forced into capitals — the same slant you noticed once already, in a physician's careful case notes."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "vaneEvidence",
+          "op": "add",
+          "value": 1
+        },
+        {
+          "var": "evidence",
+          "op": "push",
+          "value": "an anonymous note, in a disguised but familiar hand"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Keep it, and keep going",
+          "to": "act4_intro"
+        }
+      ]
+    },
+    "act4_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The snow hasn't broken, but it's thinning — a day, maybe two, before the road opens and everything you have or don't have becomes a matter for someone else's jurisdiction. Whatever this house is going to tell you, it needs to tell you soon."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Take stock of where things stand",
+          "to": "act4_stocktaking"
+        }
+      ]
+    },
+    "act4_stocktaking": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A week ago this house was six strangers to you and one dead man you'd never met. Now you know more about most of them than their own families likely do — and still, somehow, not quite enough to say the one thing that actually matters out loud."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Tie off what's still loose before the road opens",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "loose_ends_hub": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A last pass, before you have to decide what to do with everything you've found."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Go back to Cassandra about the letters",
+          "to": "interview_cassandra_2",
+          "once": true
+        },
+        {
+          "text": "Go back to Julian about the debt",
+          "to": "interview_julian_2",
+          "once": true
+        },
+        {
+          "text": "Confront Nathaniel with the forged codicil",
+          "to": "interview_nathaniel_2",
+          "once": true
+        },
+        {
+          "text": "Ask Mrs. Pruett, plainly, what the household secret actually is",
+          "to": "interview_pruett_2",
+          "once": true
+        },
+        {
+          "text": "Ask Mr. Whitfield to formally witness what you've found",
+          "to": "interview_whitfield_2",
+          "once": true
+        },
+        {
+          "text": "Listen to what the household's saying about each other, now that the fear's had time to settle",
+          "to": "household_whispers",
+          "once": true
+        },
+        {
+          "text": "Check in on Helena and Nathaniel, whatever's left of that engagement",
+          "to": "helena_nathaniel_check",
+          "once": true
+        },
+        {
+          "text": "Sit down properly and lay out everything you actually have",
+          "to": "review_case_notes",
+          "once": true
+        },
+        {
+          "text": "Spend an evening with whoever's come to matter to you",
+          "to": "final_romance_beat",
+          "once": true
+        },
+        {
+          "text": "You've done what you can here",
+          "to": "confrontation_or_hub_choice"
+        }
+      ]
+    },
+    "household_whispers": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A week trapped together has given the house a whole private mythology of its own by now — half-formed theories passed in doorways, Julian blamed one hour and pitied the next, Cassandra's affair common knowledge belowstairs before you'd even confirmed it yourself. None of it is evidence. All of it is exhausting to sit inside of."
+        },
+        {
+          "type": "text",
+          "text": "Strip the gossip away and one thing stays constant: nobody, in a full week of whispering, has seriously suggested Dr. Vane.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Consider what that means, on its own",
+          "to": "household_whispers_consider"
+        }
+      ]
+    },
+    "household_whispers_consider": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "A house will suspect almost anyone before it suspects the person it's spent thirty years deciding not to. That isn't proof of anything either. It's just the shape trust makes, right up until it's the thing that gets used against you."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "helena_nathaniel_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whatever the forged codicil cost Nathaniel's standing in this house, it hasn't cost him Helena — you find them together in the library, her hand over his, neither of them pretending the last week has been anything other than the worst of their lives."
+        },
+        {
+          "type": "text",
+          "text": "\"He was a fool to do it,\" Helena says, of Nathaniel's forgery, without looking away from him. \"He was a fool for me, which isn't quite the same crime.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "review_case_notes": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You sit with everything you've actually got, laid out the way you'd lay it out for a claims adjuster who wasn't going to be kind about gaps — the cipher, the vial, the timeline, the journal, the letter, whatever else you've found this week, against everything that was only ever gossip and never proof."
+        }
+      ],
+      "choices": [
+        {
+          "text": "The case is stronger than you expected",
+          "to": "review_case_notes_strong",
+          "if": {
+            "var": "vaneEvidence",
+            "gte": 4
+          }
+        },
+        {
+          "text": "There's real doubt still, and you can feel it",
+          "to": "review_case_notes_weak",
+          "if": {
+            "var": "vaneEvidence",
+            "lt": 4
+          }
+        }
+      ]
+    },
+    "review_case_notes_strong": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whatever happens in that drawing room, you're not walking in with a guess. You're walking in with a case."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "review_case_notes_weak": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You believe you know who did this. Believing and proving have never been quite the same thing, and you're short of the second by more than you'd like."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "interview_whitfield_2": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whitfield hears out everything you've assembled with the careful attention of a man building a record he expects to be asked about under oath eventually. \"I'll make a note of all of it,\" he says, \"in case the county's police want a solicitor's account alongside your own. For what it's worth — I believe you.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "interview_cassandra_2": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Confronted with the letters, Cassandra doesn't deny them — just looks tired, mostly, at having to say it all again. \"It ended before Christmas. I told him it was over so I could stay and see this — this marriage, whatever's left of it — through properly. Believe that or don't. It's the truth either way.\""
+        },
+        {
+          "type": "text",
+          "text": "Whatever else Cassandra Frostmere is, nothing she's said points to poison, or a locked door, or a study at nine o'clock. An affair explains a marriage. It doesn't, on its own, explain a murder.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "interview_julian_2": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Julian, sober for once, is almost relieved to have the debt out in the open. \"I owe a bookmaker more than I'd like to say, and I was going to ask my father for it, and he was going to say no, the way he always did. That's the whole of it. I didn't kill him for saying no one more time. I've had a lifetime of practice hearing it.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "interview_nathaniel_2": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Faced with the forged codicil, Nathaniel's careful stillness finally breaks. \"I forged it,\" he says, quiet and fast, like getting it out before he loses his nerve. \"Alistair was going to cut Helena off the moment she married me. I thought — if there were already a later will, a fairer one, in his own hand as far as anyone could tell — it would just quietly become true before he could stop it. I never touched him. I didn't have to. I was going to let a piece of paper do it for me.\""
+        },
+        {
+          "type": "text",
+          "text": "It's a real crime, and a genuinely damning one, and it isn't murder. A man desperate enough to forge a will is not automatically a man capable of poisoning the person who'd have caught him at it.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "interview_pruett_2": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mrs. Pruett finally says it outright, in the flat voice of someone who's carried a thing a very long time and is tired of the weight of it. \"Helena isn't Cassandra's, and everyone assumes she is, because it's easier than the truth — Alistair's, by a woman who died before she was two, and I raised her the first years myself, and he paid me, all this time, to let the story stay simple.\""
+        },
+        {
+          "type": "text",
+          "text": "It's not nothing, as secrets go. It's also, plainly, not a reason to kill Alistair Frostmere — Mrs. Pruett has spent twenty-six years protecting exactly the arrangement his death now threatens to unravel.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "final_romance_beat": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "There's a version of this week that's been happening alongside the investigation the whole time, quieter than the murder but no less real — and tonight, for once, no one needs anything from you."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let it be Helena",
+          "to": "final_romance_helena",
+          "if": {
+            "var": "trustHelena",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "Whatever's between you and Helena, it isn't there yet.",
+          "set": [
+            {
+              "var": "romance",
+              "op": "set",
+              "value": "Helena"
+            }
+          ]
+        },
+        {
+          "text": "Let it be Ines",
+          "to": "final_romance_ines",
+          "if": {
+            "var": "trustInes",
+            "gte": 1
+          },
+          "whenLocked": "disable",
+          "lockedText": "Whatever's between you and Ines, it isn't there yet.",
+          "set": [
+            {
+              "var": "romance",
+              "op": "set",
+              "value": "Ines"
+            }
+          ]
+        },
+        {
+          "text": "Let the evening pass as just an evening",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "final_romance_helena": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Neither of you says it's strange, falling into something like this in a house with a body in its recent history. Maybe it is. Neither of you minds enough to stop."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "final_romance_ines": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"I'm going to write about this house one day,\" Ines says, \"and I'm leaving this part out.\" She doesn't sound like she means it."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Back to the household",
+          "to": "loose_ends_hub"
+        }
+      ]
+    },
+    "confrontation_or_hub_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You have what you have. What's left is deciding how to use it — quietly, one on one, or in front of everyone who has a stake in the answer."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Corner Vane privately before the others gather",
+          "to": "private_confrontation_start",
+          "if": {
+            "var": "vaneEvidence",
+            "gte": 3
+          },
+          "whenLocked": "disable",
+          "lockedText": "You don't have enough yet to risk a private confrontation — he'd talk his way out of it, and you'd have shown your hand for nothing."
+        },
+        {
+          "text": "Do this properly — gather everyone, and lay it out where it can't be denied",
+          "to": "gather_everyone_intro"
+        }
+      ]
+    },
+    "gather_everyone_intro": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You ask Mrs. Pruett to gather the household one last time. She doesn't ask why. She's known, you think, since somewhere around the second day, exactly what this week was always going to end in."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Wait for them to settle",
+          "to": "gather_everyone_settle"
+        }
+      ]
+    },
+    "gather_everyone_settle": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "They file into the drawing room the way people file into rooms they've come to dread — Cassandra first, composed as ever; Julian a step behind her, sober tonight in a way that suits him; Nathaniel close to Helena, whatever's left of his standing in this house riding on what happens next; Mrs. Pruett at the door, out of habit, though there's no one left to serve. Dr. Vane comes last, unhurried, and takes the same chair he always takes."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Begin",
+          "to": "accusation_hub"
+        }
+      ]
+    },
+    "private_confrontation_start": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You find Vane alone in his study, and close the door behind you before he can object to that. \"You summoned him at nine,\" you say. \"The cipher in his own hand says so. Your alibi doesn't survive Mrs. Pruett's tea, or the gate, or your own missing vial. I don't need you to admit it. I already know.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Watch him decide what to do with that",
+          "to": "private_confrontation_break"
+        }
+      ]
+    },
+    "private_confrontation_break": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "For a long moment he says nothing at all — and then, all at once, thirty years of careful composure simply gives out. \"He was going to end me,\" Vane says, and his voice has none of the warmth left in it now, only something tired and old and finally honest. \"Not the practice. Me. One bad year, one patient I couldn't save the way I should have, and he decided to hold it over me forever rather than let it go, the way a friend should have. I told him I wouldn't be threatened. I meant it more than I knew I did.\""
+        },
+        {
+          "type": "text",
+          "text": "It isn't a confession made for anyone but himself. It's a confession all the same.",
+          "style": "whisper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Give him a moment before you ask anything more",
+          "to": "private_confrontation_pause"
+        }
+      ]
+    },
+    "private_confrontation_pause": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Neither of you says anything for a while. There isn't, really, anything left that needs saying yet — just the fact of it, sitting in the room with the two of you, until one of you is ready to move again."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Ask him what he means to do now",
+          "to": "private_confrontation_choice"
+        }
+      ]
+    },
+    "private_confrontation_choice": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "\"What I should have done the night I did it, if I'd had any decency left,\" he says. \"Walk down those stairs myself, in the morning, and tell them plainly. I find I'd rather you walked with me than not.\""
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let it end here, quietly, between the two of you",
+          "to": "ending_confession"
+        }
+      ]
+    },
+    "accusation_hub": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You have Mrs. Pruett gather the household into the drawing room — the same room you first met all of them in, a lifetime ago, a week ago, whichever it feels like tonight. Every face in it is waiting to hear what you have to say.",
+          "style": "shout"
+        },
+        {
+          "type": "image",
+          "src": "images/drawingroom.png",
+          "alt": "A drawing room at night, five uneasy faces lit by firelight, snow still at the windows."
+        },
+        {
+          "type": "text",
+          "text": "Say what you actually believe, if you believe anything yet.",
+          "style": "aside"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Accuse Dr. Emory Vane",
+          "to": "accuse_vane_result",
+          "if": {
+            "var": "vaneEvidence",
+            "gte": 2
+          },
+          "whenLocked": "disable",
+          "lockedText": "You don't have enough on him to say it out loud in front of everyone."
+        },
+        {
+          "text": "Accuse Julian Frostmere",
+          "to": "ending_false_accusation",
+          "if": {
+            "var": "suspectedJulian",
+            "eq": true
+          },
+          "whenLocked": "disable",
+          "lockedText": "Whatever you've heard about Julian, it isn't enough to accuse him of this.",
+          "set": [
+            {
+              "var": "accused",
+              "op": "set",
+              "value": "Julian Frostmere"
+            }
+          ]
+        },
+        {
+          "text": "Accuse Cassandra Frostmere",
+          "to": "ending_false_accusation",
+          "if": {
+            "var": "suspectedCassandra",
+            "eq": true
+          },
+          "whenLocked": "disable",
+          "lockedText": "Whatever you've heard about Cassandra, it isn't enough to accuse her of this.",
+          "set": [
+            {
+              "var": "accused",
+              "op": "set",
+              "value": "Cassandra Frostmere"
+            }
+          ]
+        },
+        {
+          "text": "Accuse Nathaniel Reyes",
+          "to": "ending_false_accusation",
+          "if": {
+            "var": "suspectedNathaniel",
+            "eq": true
+          },
+          "whenLocked": "disable",
+          "lockedText": "Whatever you've heard about Nathaniel, it isn't enough to accuse him of this.",
+          "set": [
+            {
+              "var": "accused",
+              "op": "set",
+              "value": "Nathaniel Reyes"
+            }
+          ]
+        },
+        {
+          "text": "Accuse Mrs. Agatha Pruett",
+          "to": "ending_false_accusation",
+          "if": {
+            "var": "suspectedPruett",
+            "eq": true
+          },
+          "whenLocked": "disable",
+          "lockedText": "Whatever you've heard about Mrs. Pruett, it isn't enough to accuse her of this.",
+          "set": [
+            {
+              "var": "accused",
+              "op": "set",
+              "value": "Mrs. Pruett"
+            }
+          ]
+        },
+        {
+          "text": "Say you need more time before you accuse anyone",
+          "to": "case_closed_check"
+        }
+      ]
+    },
+    "accuse_vane_result": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You lay it out for the room — the cipher, the missing vial, the tea, the gate, the journal, whatever piece of it you actually found. Dr. Vane's face does something complicated, and then, slowly, something like relief."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Watch the room take it in",
+          "to": "accusation_room_reacts"
+        }
+      ]
+    },
+    "accusation_room_reacts": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Cassandra's hand goes to her mouth. Julian sits down heavily, like a man who'd braced for a much worse name than this one. Mrs. Pruett doesn't move at all, and doesn't look surprised, and you understand, watching her, that some part of her worked this out a long time before you said it out loud."
+        },
+        {
+          "type": "text",
+          "text": "Vane himself says nothing in his own defense — not a denial, not an alibi restated, nothing. In a room built on thirty years of easy warmth, that silence is its own kind of answer.",
+          "style": "shout"
+        }
+      ],
+      "choices": [
+        {
+          "text": "It's more than enough — the room believes you, and so, in the end, does he",
+          "to": "romance_check",
+          "if": {
+            "var": "vaneEvidence",
+            "gte": 4
+          }
+        },
+        {
+          "text": "It's suggestive, not conclusive — the room is unsettled, but not convinced",
+          "to": "ending_reasonable_doubt",
+          "if": {
+            "var": "vaneEvidence",
+            "lt": 4
+          }
+        }
+      ]
+    },
+    "romance_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The county police arrive within the hour, once someone finally reaches the gate — summoned, in the end, not by a working telephone but by Mr. Whitfield, who set out walking the moment the drive was passable enough to risk it. It's done. Whatever this house was hiding, it isn't hiding it anymore."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Someone in this house is waiting to hear how you are, after",
+          "to": "ending_justice_served",
+          "if": {
+            "var": "romance",
+            "ne": "no one to toast the thaw with"
+          }
+        },
+        {
+          "text": "You close the case the way you opened it — on your own",
+          "to": "ending_quiet_resolution",
+          "if": {
+            "var": "romance",
+            "eq": "no one to toast the thaw with"
+          }
+        }
+      ]
+    },
+    "case_closed_check": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The room lets its breath out slowly, and nobody quite meets anybody else's eyes. It's not an ending. It's just the evening the accusing didn't happen."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Take one last look around before anyone leaves",
+          "to": "case_closed_lastlook"
+        }
+      ]
+    },
+    "case_closed_lastlook": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Whatever this house has decided to keep, it's kept it well enough that a week of looking wasn't quite enough to pry it loose. That's its own kind of answer, even if it isn't the one you came for."
+        }
+      ],
+      "choices": [
+        {
+          "text": "At least the Star's accounted for",
+          "to": "ending_walked_away",
+          "if": {
+            "var": "starSecured",
+            "eq": true
+          }
+        },
+        {
+          "text": "The Star's case, you notice too late, is standing open and empty",
+          "to": "ending_star_stolen",
+          "if": {
+            "var": "starSecured",
+            "eq": false
+          }
+        }
+      ]
+    },
+    "ending_justice_served": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dr. Emory Vane is arrested the morning the road finally opens, and goes without the performance of surprise — some part of him, you think, has been waiting to be caught since the moment the cipher went into that appointment book. Frostmere Hall empties out slowly after that, the way houses do once the reason everyone was trapped in them is finally, properly over."
+        },
+        {
+          "type": "text",
+          "text": "You don't leave alone. {romance} is waiting by the car when it's time to go, in no particular hurry to say goodbye, and you find you're in no hurry either.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "good",
+        "title": "What the Snow Gave Up"
+      }
+    },
+    "ending_quiet_resolution": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Dr. Emory Vane is arrested the morning the road finally opens, and goes without the performance of surprise — some part of him, you think, has been waiting to be caught since the moment the cipher went into that appointment book. It's a clean case, in the end, built on real evidence, and it closes the way a case is supposed to close."
+        },
+        {
+          "type": "text",
+          "text": "You drive away from Frostmere Hall alone, which is exactly how you arrived, and tell yourself that's not worth minding.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "good",
+        "title": "The Case, Closed Properly"
+      }
+    },
+    "ending_reasonable_doubt": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The room you leave Vane standing in isn't convinced enough to hold him, and the county police, when they finally arrive, aren't convinced enough either — a suggestive case, everyone agrees, not a provable one. He stays in the house he's always lived near, practicing medicine, greeting old patients by name, and you never do learn whether the doubt that saved him was reasonable or simply useful."
+        },
+        {
+          "type": "text",
+          "text": "You leave with everything you actually know and none of the satisfaction of having proven it.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "neutral",
+        "title": "Reasonable Doubt"
+      }
+    },
+    "ending_confession": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You never do stand up in that drawing room and say his name out loud. What you have instead is quieter and, in its own way, more certain — Emory Vane, alone with you in his own study, telling you the truth because there was, finally, nowhere left in himself to keep it."
+        },
+        {
+          "type": "text",
+          "text": "He turns himself in the morning the road opens, on his own two feet, before anyone can make him. It isn't justice exactly as the law would build it. It's close enough to hold."
+        }
+      ],
+      "ending": {
+        "kind": "good",
+        "title": "What He Told You, Not the Room"
+      }
+    },
+    "ending_second_victim": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mrs. Agatha Pruett does not come down for breakfast, and by the time anyone thinks to check on her, it's far too late for checking to matter. She had put together, on her own, in her own quiet and careful way, more of the truth than you'd realized — enough to go to Emory Vane alone, thirty years of trust standing between her and any fear she should have had of him."
+        },
+        {
+          "type": "text",
+          "text": "Whatever you find out after this, about him, about the study, about the cipher and the vial and the gate — it comes too late for the one person in this house who might have deserved to hear it from someone who cared about her.",
+          "style": "whisper"
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "Thirty Years of Trust"
+      }
+    },
+    "ending_false_accusation": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You say {accused}'s name in front of the whole room, and watch it land the way an accusation lands when it's wrong — not with denial, exactly, but with a kind of bewildered grief that no guilty person has ever quite managed to fake. The county police, when they finally reach the house, find nothing to hold {accused} on, and everything, still, to wonder about everyone else."
+        },
+        {
+          "type": "text",
+          "text": "Somewhere in this house, Emory Vane spends that same evening being grateful, in private, that you looked everywhere but at him.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "The Wrong Name in the Room"
+      }
+    },
+    "ending_investigator_silenced": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You don't remember deciding to stop being careful. You remember the cellar stair, and the smell that wasn't right, and then very little else at all — and Frostmere Hall keeps its secret a while longer, the way it's kept every other secret this century, behind good manners and a locked door and a household that has had a great deal of practice not asking questions out loud."
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "One More Thing the House Kept"
+      }
+    },
+    "ending_star_stolen": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The murder, in the end, goes unresolved — the county police call it inconclusive, the family calls it closed, and you know it's neither, not really, just a thing everyone involved has decided to stop looking at. What's certain, and provable, and entirely your own fault, is that the Frostmere Star is gone — taken sometime in the days you spent chasing a killer instead of doing the job you actually came to this house to do."
+        },
+        {
+          "type": "text",
+          "text": "Your firm will have questions. You don't have especially good answers for any of them.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "The One Thing You Were Actually Hired For"
+      }
+    },
+    "ending_walked_away": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The road opens on a grey morning, and you leave Frostmere Hall with the Star secure in your own case and a killer still sitting somewhere inside it, unnamed, unaccused, free to go on being whoever they've always pretended to be. It isn't failure, exactly. It's just an answer you didn't manage to reach in time."
+        },
+        {
+          "type": "text",
+          "text": "You'll think about this house, on and off, for a long time after. You never do find out if anyone else ever worked out what you couldn't quite prove.",
+          "style": "aside"
+        }
+      ],
+      "ending": {
+        "kind": "neutral",
+        "title": "The Road Opens Anyway"
+      }
+    }
+  }
+}

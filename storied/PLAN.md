@@ -1123,3 +1123,85 @@ choice. All four were diagnosed by screenshotting the stuck state rather
 than guessing, which in every case showed the story correctly waiting on
 exactly the right node with exactly the right choice visible — the bug
 was always the script's step list, never the story graph.
+
+## A sixth story — an original mystery, and a different kind of gate
+
+**`public/content/frostmere/`** ("The Frostmere Inheritance," 200 nodes)
+is the first of the six demo stories with no real-world IP behind it at
+all — a snowbound country-house murder, written specifically because the
+user's own size tier for it ("large stress-test, ~150-200+ nodes") landed
+in the same bracket as `fornost` while asking for a structurally different
+kind of gating: not a light/dark alignment threshold, but an **evidence-
+gated accusation** — the player investigates to collect clues tracked as
+variables, and the climactic accusation choices are gated on exactly
+which evidence has actually been found, with a wrong or under-evidenced
+accusation routing to a real, worse ending rather than a soft fail.
+
+The investigation is built around two parallel numeric tracks rather than
+one: `vaneEvidence` (a count of the specific clues that implicate the
+actual killer, Dr. Vane) gates both whether he can be accused at all
+(`>= 2`) and whether that accusation is strong enough to convict
+(`>= 4`); four independent `suspectedX` booleans, set only by each
+innocent suspect's own red-herring clue, gate accusing any of the other
+four — deliberately kept as separate variables from `vaneEvidence` so
+that no combination of red-herring evidence could ever accidentally also
+satisfy the real accusation's threshold, and vice versa. A parallel
+`danger` counter (structurally identical to `fornost`'s `wounds`) tracks
+close calls with the killer once he starts trying to silence the
+investigation, checked at exhaustive `gte 5`/`lt 5` pairs; a `warnedPruett`
+boolean, checked the same exhaustive way, decides whether the
+housekeeper survives investigating alongside the player. All five
+puzzles (a cipher, a poison identification, a locked-room mechanism, a
+safe combination, and an alibi-timeline cross-check) use the simplest
+safe-by-construction shape available: every candidate-answer choice is
+unconditional, so a wrong guess costs `danger` and moves the story
+forward without ever needing a retry loop or a dead end.
+
+**`npm run validate` was clean on the first full pass** — zero errors,
+zero warnings, exactly 200 nodes, all reachable — which is worth noting
+plainly given the size and the two-track evidence design; the closest
+prior story to it structurally, `fornost`, needed one real fix on its
+first pass.
+
+**What the validator can't check** — reachable variable *combinations* —
+got the same hand-tracing discipline as `drevash` and `fornost`, and
+surfaced one genuine design property worth recording rather than treating
+as a bug: because every method branch (`direct`/`quiet`/`collaborative`)
+opens with two *unconditional* evidence-granting nodes, and the
+post-convergence `anonymous_note_examine` beat is unconditional too,
+`vaneEvidence` is mathematically guaranteed to be at least 3 by the time
+any playthrough reaches the accusation hub — meaning "Accuse Dr. Vane" is
+never actually gated shut for a player who reached the climax at all.
+This was found by tracing the mutation graph before writing a single
+Playwright step, not by a failing test, and changed what the isolated
+fallback check needed to assert (see below).
+
+Verification: a nine-path Playwright script against the built app,
+covering the accumulated-`danger` death ending at its exact boundary
+(two optional wrong-puzzle answers plus the one `+3` "close call" choice,
+summed by hand to exactly `5` before the test was written), both romance
+epilogues (Helena and Ines, each checked for the correct name interpolated
+into the text), all three investigative methods, the private-confrontation
+confession ending as a distinct path from the public accusation, the
+second-victim ending from declining to warn Mrs. Pruett, a false
+accusation of an innocent suspect (checked for the correct name
+interpolated via the shared `{accused}` variable), and the two
+neglect-driven endings (the Star stolen vs. a clean walkaway, split only
+by one earlier optional choice). In place of `fornost`'s "exactly one
+visible choice" isolated-hub assertion — which, per the reachability
+finding above, doesn't apply here the same way — the accusation hub was
+instead asserted directly on button state: with no suspects flagged,
+"Accuse Dr. Vane" and the "I need more time" fallback both `enabled`,
+and all four wrong-suspect accusations `disabled` (present in the deck
+per their `whenLocked: "disable"`, per format.md §5, rather than hidden),
+confirming the gating resolves correctly even though the raw choice count
+doesn't. Six of the nine scripted paths initially failed on the first
+run, all six the test script's own missing steps — a skipped "go through
+to dinner" transition, a skipped "one more look" crime-scene beat, a
+skipped "move on to the will" step between the two library puzzles
+(repeated identically in three separate paths since all three were
+authored from the same template before the fix), and, in the two
+neglect-ending paths, a missing final click past an intermediate node
+that was rendering exactly the right single choice. Every failure was
+diagnosed from a screenshot of the stuck state before any story content
+was touched, and in every case the story graph was already correct.

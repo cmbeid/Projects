@@ -50,6 +50,16 @@
       "cover": "fornost/images/cover.png",
       "tags": ["lord of the rings", "epic", "fantasy"],
       "estimatedMinutes": 75
+    },
+    {
+      "id": "frostmere",
+      "title": "The Frostmere Inheritance",
+      "author": "A. Writer",
+      "blurb": "A storm seals the house, the old man is dead in his study, and everyone inside has a reason to want him gone.",
+      "path": "frostmere/story.json",
+      "cover": "frostmere/images/cover.png",
+      "tags": ["mystery", "whodunit", "epic"],
+      "estimatedMinutes": 70
     }
   ]
 }
