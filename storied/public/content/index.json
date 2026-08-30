@@ -1,0 +1,35 @@
+{
+  "formatVersion": 1,
+  "stories": [
+    {
+      "id": "lighthouse",
+      "title": "The Lighthouse at Vail",
+      "author": "A. Writer",
+      "blurb": "A dock, a locked door, and a light that shouldn't be on.",
+      "path": "lighthouse/story.json",
+      "cover": "lighthouse/images/cover.png",
+      "tags": ["mystery", "short"],
+      "estimatedMinutes": 8
+    },
+    {
+      "id": "aviary",
+      "title": "The Clockwork Aviary",
+      "author": "A. Writer",
+      "blurb": "A locked garden, a caged bird, and a debt only one of you can pay.",
+      "path": "aviary/story.json",
+      "cover": "aviary/images/cover.png",
+      "tags": ["mystery", "fable"],
+      "estimatedMinutes": 12
+    },
+    {
+      "id": "moth-king",
+      "title": "The Moth King's Debt",
+      "author": "A. Writer",
+      "blurb": "You owe him three nights of light, and the season is nearly out.",
+      "path": "moth-king/story.json",
+      "cover": "moth-king/images/cover.png",
+      "tags": ["folk tale", "short"],
+      "estimatedMinutes": 6
+    }
+  ]
+}

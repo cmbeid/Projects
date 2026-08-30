@@ -15,6 +15,7 @@ on:
      paths:
        - 'alchemy-forge/**'
        - 'starseed/**'
+       - 'storied/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -45,6 +46,7 @@ jobs:
           cache-dependency-path: |
             alchemy-forge/package-lock.json
             starseed/package-lock.json
+            storied/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -82,6 +84,22 @@ jobs:
         run: npm run build
         working-directory: starseed
 
+      - name: Install (storied)
+        run: npm ci
+        working-directory: storied
+
+      - name: Validate content
+        run: npm run validate
+        working-directory: storied
+
+      - name: Test (storied)
+        run: npm test
+        working-directory: storied
+
+      - name: Build (storied)
+        run: npm run build
+        working-directory: storied
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -93,6 +111,9 @@ jobs:
 
           mkdir -p _site/starseed
           cp -r starseed/dist/. _site/starseed/
+
+          mkdir -p _site/storied
+          cp -r storied/dist/. _site/storied/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -138,6 +159,13 @@ jobs:
                     <span>
                       <span class="name">Starseed</span>
                       <span class="desc">An idle game about a self-replicating space probe. One asteroid, eventually a galaxy.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./storied/">
+                    <span class="emoji" aria-hidden="true">📖</span>
+                    <span>
+                      <span class="name">Storied</span>
+                      <span class="desc">A phone-first reader for branching stories, driven entirely by JSON content.</span>
                     </span>
                   </a>
                 </div>

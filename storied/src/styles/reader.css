@@ -1,0 +1,242 @@
+/* The reader shell and its three layout modes (ui/layout.ts, PLAN.md §4).
+   Every color, font, and radius here comes from a --sy-* custom property —
+   ui/theme.ts is the only thing that sets their values. */
+
+.sy-reader {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--sy-bg);
+  color: var(--sy-text);
+  font-family: var(--sy-font-body);
+  /* --sy-font-scale is the story's own authored scale (format.md §8);
+     --sy-user-scale is the reader's text-size preference (ui/settings.ts).
+     They compose rather than one overriding the other. */
+  font-size: calc(1rem * var(--sy-font-scale, 1) * var(--sy-user-scale, 1));
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  transition: background-color 0.4s ease, color 0.4s ease;
+  overflow: hidden;
+}
+
+.sy-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--sy-bg-image, none);
+  background-size: var(--sy-bg-fit, cover);
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.sy-reader[data-has-bg-image='true'] .sy-bg-layer {
+  opacity: 1;
+}
+.sy-bg-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(var(--sy-bg-overlay-rgb, 0, 0, 0), var(--sy-bg-overlay, 0.5));
+}
+
+/* --- Header --------------------------------------------------------------- */
+.sy-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+.sy-back {
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--sy-radius);
+}
+.sy-back:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.sy-title {
+  font-family: var(--sy-font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* --- The scene panel (wide mode only) ------------------------------------- */
+.sy-scene {
+  display: none;
+}
+.sy-scene .sy-image {
+  height: 100%;
+  margin: 0;
+}
+.sy-scene .sy-image img {
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+/* --- Node content ----------------------------------------------------------- */
+.sy-node {
+  overflow-y: auto;
+  padding: 0 1.25rem 1rem;
+  max-width: 34rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.sy-text {
+  line-height: 1.6;
+  margin: 0 0 1em;
+}
+.sy-text--aside {
+  font-size: 0.85em;
+  color: var(--sy-dim);
+  font-style: italic;
+}
+.sy-text--letter {
+  font-family: var(--sy-font-display);
+  background: var(--sy-surface);
+  padding: 1em 1.25em;
+  border-radius: var(--sy-radius);
+}
+.sy-text--terminal {
+  font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  background: var(--sy-surface);
+  padding: 0.75em 1em;
+  border-radius: calc(var(--sy-radius) / 2);
+  font-size: 0.9em;
+}
+.sy-text--whisper {
+  font-size: 0.85em;
+  color: var(--sy-dim);
+}
+.sy-text--shout {
+  font-size: 1.3em;
+  font-weight: 700;
+}
+.sy-text--epigraph {
+  font-family: var(--sy-font-display);
+  font-style: italic;
+  text-align: center;
+  color: var(--sy-dim);
+}
+
+.sy-image {
+  margin: 1em 0;
+}
+.sy-image img {
+  width: 100%;
+  border-radius: var(--sy-radius);
+  background: var(--sy-surface);
+}
+.sy-image figcaption {
+  font-size: 0.8em;
+  color: var(--sy-dim);
+  margin-top: 0.4em;
+}
+
+.sy-ending {
+  margin-top: 1.5em;
+  padding: 1.25em;
+  border-radius: var(--sy-radius);
+  background: var(--sy-surface);
+  text-align: center;
+  border: 1px solid var(--sy-dim);
+}
+.sy-ending--good {
+  border-color: var(--sy-accent);
+}
+.sy-ending-title {
+  font-family: var(--sy-font-display);
+  font-size: 1.1em;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* --- Choice deck ------------------------------------------------------------ */
+.sy-choices {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+}
+.sy-choices.is-empty {
+  display: none;
+}
+.sy-choice {
+  padding: 0.9em 1em;
+  border-radius: var(--sy-radius);
+  background: var(--sy-choice-bg);
+  text-align: left;
+  transition: background-color 0.2s ease;
+}
+.sy-choice:active {
+  transform: translateY(1px);
+}
+.sy-choice.is-locked {
+  opacity: 0.5;
+}
+.sy-choice-hint {
+  display: block;
+  font-size: 0.8em;
+  color: var(--sy-dim);
+  margin-top: 0.25em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sy-reader,
+  .sy-bg-layer,
+  .sy-choice {
+    transition: none;
+  }
+}
+
+/* A phone turned landscape: the choice deck scrolls instead of eating the
+   screen — there's no portrait lock on the web, so this is the honest fix. */
+@media (max-height: 480px) {
+  .sy-choices {
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+}
+
+/* --- Medium: 700-1023px — same single column, wider gutters. -------------- */
+.sy-reader[data-layout='medium'] .sy-node {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* --- Wide: >=1024px — scene panel left, prose and choices right. ---------- */
+.sy-reader[data-layout='wide'] {
+  grid-template-columns: minmax(260px, 34%) 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'header header'
+    'scene  node'
+    'scene  choices';
+}
+.sy-reader[data-layout='wide'] .sy-header {
+  grid-area: header;
+}
+.sy-reader[data-layout='wide'] .sy-scene {
+  grid-area: scene;
+  display: block;
+  overflow: hidden;
+}
+.sy-reader[data-layout='wide'] .sy-scene.is-empty {
+  display: none;
+}
+.sy-reader[data-layout='wide'] .sy-node {
+  grid-area: node;
+  padding-left: 1.75rem;
+  padding-right: 1.75rem;
+}
+.sy-reader[data-layout='wide'] .sy-choices {
+  grid-area: choices;
+}
+.sy-reader[data-layout='wide'] .sy-scene.is-empty + .sy-node {
+  grid-column: 1 / -1;
+}

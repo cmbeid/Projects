@@ -1,0 +1,453 @@
+{
+  "formatVersion": 1,
+  "id": "aviary",
+  "title": "The Clockwork Aviary",
+  "author": "A. Writer",
+  "start": "gate",
+  "allowBack": false,
+  "variables": {
+    "hasKey": false,
+    "birdFree": false,
+    "trust": 0,
+    "mood": "calm",
+    "satchel": [],
+    "settled": false
+  },
+  "theme": {
+    "mode": "light",
+    "palette": {
+      "bg": "#f4ede0",
+      "surface": "#fffaf2",
+      "text": "#2b2013",
+      "dim": "#8a7a63",
+      "accent": "#4c6b52",
+      "choiceBg": "#efe4d0"
+    },
+    "font": {
+      "body": "serif",
+      "display": "display",
+      "scale": 1.08
+    },
+    "background": {
+      "image": "images/garden.png",
+      "fit": "cover",
+      "overlay": 0.35
+    },
+    "radius": 10
+  },
+  "nodes": {
+    "gate": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Moss softens the latch, and something inside answers your footsteps \u2014 *distant*, and **made of metal**. You've counted *{trust}* reasons to leave already."
+        },
+        {
+          "type": "image",
+          "src": "images/garden.png",
+          "alt": "A wrought-iron garden gate, propped open a few inches, ivy swallowing one hinge."
+        },
+        {
+          "type": "text",
+          "style": "aside",
+          "text": "(The gardener never speaks of what's kept in the aviary.)"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Search the hedges for a way in",
+          "to": "hedges"
+        },
+        {
+          "text": "Slip through the propped side gate",
+          "to": "inside",
+          "if": {
+            "var": "hasKey",
+            "eq": true
+          }
+        }
+      ]
+    },
+    "hedges": {
+      "blocks": [
+        {
+          "type": "text",
+          "style": "letter",
+          "text": "A note, half-buried in the dirt: \"Feed it before you free it. \\*Trust me on this.\\*\""
+        },
+        {
+          "type": "text",
+          "text": "The birdseed is stale but still whole. You tuck it away."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "satchel",
+          "op": "push",
+          "value": "birdseed"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Find the hidden key under the stone",
+          "to": "found-key",
+          "if": {
+            "var": "satchel",
+            "has": "birdseed"
+          },
+          "set": [
+            {
+              "var": "hasKey",
+              "op": "set",
+              "value": true
+            }
+          ]
+        },
+        {
+          "text": "Go straight to the aviary door",
+          "to": "door"
+        }
+      ]
+    },
+    "found-key": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The stone lifts easier than it should. A brass key, warm as if just set down."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trust",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "choices": [
+        {
+          "text": "Continue to the door",
+          "to": "door"
+        }
+      ]
+    },
+    "door": {
+      "blocks": [
+        {
+          "type": "text",
+          "style": "shout",
+          "text": "SOMETHING METAL SCRAPES BEHIND THE DOOR."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Unlock the door",
+          "to": "inside",
+          "if": {
+            "var": "hasKey",
+            "eq": true
+          },
+          "whenLocked": "disable",
+          "lockedText": "No key, no entry."
+        },
+        {
+          "text": "Try the loose board around back",
+          "to": "backdoor",
+          "if": {
+            "var": "trust",
+            "gt": 0
+          },
+          "whenLocked": "disable",
+          "lockedText": "You don't know this place well enough yet to find another way in."
+        },
+        {
+          "text": "Give up and turn back",
+          "to": "ending-neutral"
+        }
+      ]
+    },
+    "backdoor": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The board gives. Dust, then dark, then a draft that smells of oil and feathers."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "mood",
+          "op": "set",
+          "value": "uneasy"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Slip inside anyway",
+          "to": "inside"
+        }
+      ]
+    },
+    "inside": {
+      "blocks": [
+        {
+          "type": "text",
+          "style": "terminal",
+          "text": "PRESSURE \u2014 NOMINAL. OCCUPANT \u2014 1. LAST WOUND \u2014 UNKNOWN."
+        },
+        {
+          "type": "image",
+          "src": "images/cage-bird.png",
+          "alt": "A silver-feathered bird, still and watchful, inside a wire cage suspended from gears.",
+          "caption": "The aviary's one occupant, however long it's been here."
+        },
+        {
+          "type": "image",
+          "src": "images/gears.png",
+          "alt": "Close-up of brass clockwork gears turning slowly behind the cage."
+        },
+        {
+          "type": "text",
+          "text": "It watches you the way something watches a door it has already decided about."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "trust",
+          "op": "sub",
+          "value": 1
+        }
+      ],
+      "theme": {
+        "palette": {
+          "accent": "#8a3b3b"
+        }
+      },
+      "choices": [
+        {
+          "text": "Offer the birdseed",
+          "to": "offer",
+          "if": {
+            "var": "satchel",
+            "has": "birdseed"
+          },
+          "whenLocked": "disable",
+          "lockedText": "You have nothing to offer it."
+        },
+        {
+          "text": "Free it without ceremony",
+          "to": "freed-cold",
+          "set": [
+            {
+              "var": "birdFree",
+              "op": "set",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    "offer": {
+      "blocks": [
+        {
+          "type": "text",
+          "style": "whisper",
+          "text": "It eats from your palm. *Something* in the gears goes quiet."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "satchel",
+          "op": "remove",
+          "value": "birdseed"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Open the cage",
+          "to": "freed-warm",
+          "set": [
+            {
+              "var": "birdFree",
+              "op": "set",
+              "value": true
+            },
+            {
+              "var": "trust",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "text": "Leave it be",
+          "to": "left-caged"
+        }
+      ]
+    },
+    "freed-warm": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "*{trust}* threads of trust, and one small, **stubborn** kindness."
+        }
+      ],
+      "onEnter": [
+        {
+          "var": "settled",
+          "op": "toggle"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Step back into the garden",
+          "to": "reckoning"
+        }
+      ]
+    },
+    "freed-cold": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The latch gives. It doesn't wait to see what you'll do next."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Step back into the garden",
+          "to": "reckoning"
+        }
+      ]
+    },
+    "left-caged": {
+      "blocks": [
+        {
+          "type": "text",
+          "style": "aside",
+          "text": "(You tell yourself it's kinder this way. You don't quite believe it.)"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Step back into the garden",
+          "to": "reckoning"
+        }
+      ]
+    },
+    "reckoning": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "Mood: {mood}. Trust: {trust}. The garden gate is exactly where you left it."
+        },
+        {
+          "type": "text",
+          "style": "epigraph",
+          "text": "Every kindness is a door left open somewhere else."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Speak the bird's old name aloud",
+          "to": "ending-good",
+          "if": {
+            "all": [
+              {
+                "var": "birdFree",
+                "eq": true
+              },
+              {
+                "var": "trust",
+                "gte": 2
+              }
+            ]
+          }
+        },
+        {
+          "text": "Slip out before anyone notices",
+          "to": "ending-bad",
+          "if": {
+            "all": [
+              {
+                "var": "birdFree",
+                "eq": true
+              },
+              {
+                "var": "trust",
+                "lt": 2
+              }
+            ]
+          }
+        },
+        {
+          "text": "Walk quietly away",
+          "to": "ending-neutral",
+          "if": {
+            "not": {
+              "var": "birdFree",
+              "eq": true
+            }
+          }
+        },
+        {
+          "text": "Whisper why you came",
+          "to": "aftermath",
+          "if": {
+            "var": "mood",
+            "ne": "calm"
+          },
+          "once": true
+        }
+      ]
+    },
+    "aftermath": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You say it plainly, without the version that makes you look better."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Let them see you",
+          "to": "reckoning"
+        }
+      ]
+    },
+    "ending-good": {
+      "blocks": [
+        {
+          "type": "text",
+          "style": "shout",
+          "text": "THE AVIARY OPENS, AND SO, EVENTUALLY, DO YOU."
+        }
+      ],
+      "ending": {
+        "kind": "good",
+        "title": "What the Gears Remember"
+      }
+    },
+    "ending-bad": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "The gate clicks shut behind you. Something you can't name stays on the other side of it, unresolved."
+        }
+      ],
+      "ending": {
+        "kind": "bad",
+        "title": "Half a Kindness"
+      }
+    },
+    "ending-neutral": {
+      "blocks": [
+        {
+          "type": "text",
+          "text": "You leave the way you came, no lighter and no heavier than before."
+        }
+      ],
+      "ending": {
+        "kind": "neutral",
+        "title": "The Gate, Closing"
+      }
+    }
+  }
+}

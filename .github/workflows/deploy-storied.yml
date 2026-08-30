@@ -1,0 +1,143 @@
+name: Deploy Storied
+
+# Path-filtered so this and the other two projects' workflows never trigger
+# each other. A change to one project must not redeploy another.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'storied/**'
+      - '.github/workflows/deploy-storied.yml'
+  workflow_dispatch:
+
+# Its own group, separate from the other two deploy workflows. Sharing one
+# would make the projects queue behind each other for no reason — they write
+# to different prefixes and cannot conflict.
+concurrency:
+  group: deploy-storied
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Required for the OIDC path: it lets the job request a signed identity token
+  # from GitHub, which AWS trades for short-lived credentials.
+  id-token: write
+
+env:
+  # Override either of these with repository variables if the target moves.
+  S3_BUCKET: ${{ vars.S3_BUCKET || 's3.cmbeid.com' }}
+  S3_PREFIX: storied
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Kept for the deployment URL and any protection rules; it no longer
+    # holds credentials.
+    environment:
+      name: AWS
+      url: http://${{ vars.S3_BUCKET || 's3.cmbeid.com' }}/storied/
+
+    defaults:
+      run:
+        working-directory: storied
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: storied/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # The content gate. A dangling node reference or an unreachable ending
+      # should stop a release rather than ship quietly.
+      - name: Validate content
+        run: npm run validate
+
+      - name: Test
+        run: npm test
+
+      # `npm run build` runs `tsc --noEmit` first, so the strict typecheck gates
+      # the deploy too. There is no linter in this repo; that is the whole gate.
+      - name: Build
+        run: npm run build
+
+      # Two ways in, preferred first. Set an AWS_ROLE_ARN variable and this repo
+      # needs no stored credentials at all; leave it unset and it falls back to
+      # the access keys in the AWS environment. See .github/aws/README.md.
+      # Fail here with something actionable rather than letting the next step
+      # produce an opaque OIDC error.
+      - name: Check the AWS role is configured
+        env:
+          ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "${ROLE_ARN}" ]; then
+            echo "::error::Repository variable AWS_ROLE_ARN is not set. Add it under Settings -> Secrets and variables -> Actions -> Variables. Run .github/aws/setup.ps1 (or setup.sh) to get the ARN."
+            exit 1
+          fi
+          echo "Assuming ${ROLE_ARN}"
+
+      # No stored credentials: the job presents a signed OIDC token and AWS
+      # hands back short-lived ones. The ARN lives in a repository variable
+      # rather than in this file, so it is not published if the repo is public.
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: deploy-storied
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to S3
+        run: |
+          set -euo pipefail
+          target="s3://${S3_BUCKET}/${S3_PREFIX}"
+
+          # Every sync below is scoped to this prefix, so `--delete` can only
+          # ever remove this project's own files. Nothing here can reach
+          # alchemy-forge/, starseed/, or anything else in the bucket.
+
+          # Order matters. Hashed bundles go up first, so the HTML that
+          # references them is never live before the files it points at.
+          echo "::group::Hashed assets (immutable)"
+          aws s3 sync dist/assets/ "${target}/assets/" \
+            --delete --no-progress --acl public-read \
+            --cache-control 'public,max-age=31536000,immutable'
+          echo "::endgroup::"
+
+          # Entry points and content/ last, and never cached — this second
+          # pass is everything under dist/ except the hashed assets/ folder,
+          # which is exactly right for content/ too: it's the one thing meant
+          # to change without a rebuild (format.md §1), so it must never be
+          # served stale. The excludes apply to deletion too, so this pass
+          # cannot remove the assets uploaded above.
+          echo "::group::Entry points and content (no-cache)"
+          aws s3 sync dist/ "${target}/" \
+            --delete --no-progress --acl public-read \
+            --exclude 'assets/*' \
+            --cache-control 'no-cache'
+          echo "::endgroup::"
+
+      - name: Summarise
+        run: |
+          url="http://${S3_BUCKET}/${S3_PREFIX}/index.html"
+          {
+            echo "### Storied deployed"
+            echo ""
+            echo "- **URL:** [${url}](${url})"
+            echo "- **Bucket:** \`${S3_BUCKET}\` under \`${S3_PREFIX}/\`"
+            echo "- **Commit:** \`${GITHUB_SHA::7}\`"
+            echo ""
+            echo "> Three demo stories on the shelf: The Lighthouse at Vail,"
+            echo "> The Clockwork Aviary, and The Moth King's Debt. Saves and the"
+            echo "> text-size preference live in the browser, so they are"
+            echo "> per-origin and survive a redeploy."
+          } >> "$GITHUB_STEP_SUMMARY"
