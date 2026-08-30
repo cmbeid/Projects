@@ -7,7 +7,7 @@ manifest line, no rebuild required.
 
 **Playable, and unfinished.** The content pipeline, the engine, the reader
 (shelf, blocks, choices, three responsive layouts, theming), saves,
-resume, and settings are all built, with five demo stories on the shelf.
+resume, and settings are all built, with six demo stories on the shelf.
 See [`PLAN.md`](PLAN.md) for the design and what's left — deploy wiring is
 what this covers; everything else is done.
 
@@ -56,6 +56,13 @@ far (202 nodes, roughly 5× `drevash`): a full Middle-earth campaign with
 a three-way approach branch, five deterministic puzzles, two romance
 tracks, and eleven distinct endings, verified across nine real-browser
 playthrough paths including exact-boundary and isolated-fallback checks.
+`public/content/frostmere/` (200 nodes) is the first demo story with no
+real-world IP behind it at all: an original snowbound murder mystery
+built around evidence-gated accusation rather than an alignment track —
+the player gathers clues as variables, and the climactic accusation is
+only as strong as the evidence actually found, verified across nine
+real-browser playthrough paths including an exact `danger` boundary and
+a direct enabled/disabled assertion on the accusation hub's buttons.
 
 ## Playing
 
@@ -113,7 +120,7 @@ scripts/            validate-content.ts / validate-portable.ts (content
 tests/              parse / conditions / mutate / session / inline /
                     persistence / preferences / content / layout /
                     localStories / folderImport / exportPortable
-public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/, drevash/, fornost/
+public/content/     the shipped demo stories — lighthouse/, aviary/, moth-king/, drevash/, fornost/, frostmere/
 ```
 
 Three decisions explain most of the code:
