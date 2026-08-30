@@ -1205,3 +1205,63 @@ neglect-ending paths, a missing final click past an intermediate node
 that was rendering exactly the right single choice. Every failure was
 diagnosed from a screenshot of the stuck state before any story content
 was touched, and in every case the story graph was already correct.
+
+## A seventh story — a smaller canvas, and a bug hand-tracing actually caught before testing
+
+**`public/content/hogwarts/`** ("Harry Potter and the Path Not Taken," 70
+nodes) is deliberately back down in `drevash`'s size class rather than
+`fornost`/`frostmere`'s — the user asked for a medium (~40-60 node) story
+this time, a close branching retelling of Book 1 with the player as Harry
+himself. It's also the first story to use real, currently-in-print,
+actively-protected IP rather than Tolkien's more tolerant estate or a
+decades-old Star Wars corner — the user's explicit call, made knowingly,
+same as `drevash` and `fornost`, and worth naming plainly in this log
+rather than glossing over: Harry Potter's rightsholders pursue fan content
+far more aggressively than either of those, and this is a closer retelling
+of one specific book's plot rather than an original story merely set in
+the universe. All prose is original; only the names, places, and plot
+beats are real.
+
+The design leans on something the book already hands over for free: the
+Mirror of Erised is *itself* a test of desire, so rather than bolting on
+a separate alignment meter, a `darkPull` variable (moved by the Sorting
+Hat's private pitch for Slytherin, a cheating shortcut in Potions, a
+temptation in the Forbidden Forest) decides which of two mirror scenes
+the climax shows — a low-`darkPull` Harry gets the Stone the way the book's
+does; a high-`darkPull` Harry sees himself wanting to *use* it, and
+Quirrell/Voldemort offers him a place at his side instead of a fight. A
+separate `peril` counter (structurally identical to `fornost`'s `wounds`
+and `frostmere`'s `danger`) tracks physical risk through the trapdoor
+gauntlet and gates three different survive/don't-survive tiers; `trustRon`
+and `trustHermione` decide who's with Harry for the climax, with the
+book's own beats (Ron's chess sacrifice, Hermione's potion logic) playing
+out only if that companion actually made the trip. One ending
+(`ending_expelled`) is a direct narrative edge rather than a threshold —
+abandoning Hermione to the troll — deliberately, to avoid a tenth
+variable for a single early bad ending.
+
+**`npm run validate` was clean on the first full pass** — zero errors,
+zero warnings, all 70 nodes reachable.
+
+**Hand-tracing before writing a single test line caught a real bug this
+time, not just a design property worth recording** — the same discipline
+that has now paid off in every story of this size or larger. Summing
+every `peril`-granting choice by hand (the troll, Quidditch, the forest,
+the two gauntlet puzzles, the chess and potions rooms if faced alone)
+came to a maximum of **8**, one short of the `ending_voldemort_wins`
+threshold of `peril >= 9` — meaning that choice could never fire, a dead
+branch `npm run validate` did not flag, because proving a numeric ceiling
+across every reachable combination is exactly the kind of check its
+reachability and warning passes are deliberately conservative about (per
+format.md §13). Fixed by raising one choice's `peril` grant (handling the
+troll alone) from `+1` to `+2` before the Playwright script was written
+at all, restoring a genuine, exactly-hittable boundary at `9`.
+
+Verified with a seven-path Playwright script covering all seven endings,
+including that exact `peril == 9` boundary case (all seven contributing
+choices taken, summed by hand to precisely `9` before the path was
+written), and an epilogue check confirming both companion names appear
+in the interpolated good ending. All seven scripted paths passed on the
+first run — the only story so far where the pre-test hand-tracing catch
+was the fix, rather than something a failing Playwright path had to
+surface afterward.
