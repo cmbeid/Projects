@@ -16,6 +16,7 @@ on:
        - 'alchemy-forge/**'
        - 'starseed/**'
        - 'storied/**'
+       - 'fathomline/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -47,6 +48,7 @@ jobs:
             alchemy-forge/package-lock.json
             starseed/package-lock.json
             storied/package-lock.json
+            fathomline/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -100,6 +102,18 @@ jobs:
         run: npm run build
         working-directory: storied
 
+      - name: Install (fathomline)
+        run: npm ci
+        working-directory: fathomline
+
+      - name: Test (fathomline)
+        run: npm test
+        working-directory: fathomline
+
+      - name: Build (fathomline)
+        run: npm run build
+        working-directory: fathomline
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -114,6 +128,9 @@ jobs:
 
           mkdir -p _site/storied
           cp -r storied/dist/. _site/storied/
+
+          mkdir -p _site/fathomline
+          cp -r fathomline/dist/. _site/fathomline/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -166,6 +183,13 @@ jobs:
                     <span>
                       <span class="name">Storied</span>
                       <span class="desc">A phone-first reader for branching stories, driven entirely by JSON content.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./fathomline/">
+                    <span class="emoji" aria-hidden="true">🎣</span>
+                    <span>
+                      <span class="name">Fathomline</span>
+                      <span class="desc">A casual idle fishing game. Early build — core loop and idle engine only so far.</span>
                     </span>
                   </a>
                 </div>
