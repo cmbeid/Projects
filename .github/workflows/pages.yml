@@ -110,6 +110,10 @@ jobs:
         run: npm test
         working-directory: fathomline
 
+      - name: Audit content (fathomline)
+        run: npm run audit
+        working-directory: fathomline
+
       - name: Build (fathomline)
         run: npm run build
         working-directory: fathomline

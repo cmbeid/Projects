@@ -34,4 +34,4 @@ export function statNextCost(state, statId) {
   return track.tierCost(currentTier + 1);
 }
 
-export { GEAR, STATS };
+export { GEAR, STATS, nextGearTier };

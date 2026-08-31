@@ -14,19 +14,20 @@ export function rarityWeights(rarityBiasMult = 1) {
   return weights;
 }
 
-export function eligibleFish(regionId, { timeOfDay } = {}) {
+export function eligibleFish(regionId, { timeOfDay, weatherId } = {}) {
   return fishForRegion(regionId).filter((f) => {
     if (f.conditions?.time && f.conditions.time !== timeOfDay) return false;
+    if (f.conditions?.weather && weatherId && !f.conditions.weather.includes(weatherId)) return false;
     return true;
   });
 }
 
 // Rolls a species for a cast/idle catch in `regionId`. Falls back one rarity
 // tier down (then to Common) if the rolled tier has no eligible species right
-// now (e.g. a night-only fish rolled during the day), so a bite never comes
-// back empty-handed.
-export function rollSpeciesForRegion(regionId, { rarityBiasMult = 1, timeOfDay = 'day' } = {}, rng) {
-  const pool = eligibleFish(regionId, { timeOfDay });
+// now (e.g. a night-only fish rolled during the day, or a rain-only fish
+// rolled under clear skies), so a bite never comes back empty-handed.
+export function rollSpeciesForRegion(regionId, { rarityBiasMult = 1, timeOfDay = 'day', weatherId } = {}, rng) {
+  const pool = eligibleFish(regionId, { timeOfDay, weatherId });
   const rarityOrder = ['M', 'L', 'E', 'R', 'U', 'C'];
   let rarity = weightedPick(rarityWeights(rarityBiasMult), rng);
   let candidates = pool.filter((f) => f.rarity === rarity);
@@ -46,7 +47,7 @@ export function biteTimeMs(stats) {
 // Resolves a full catch (species + weight/size-class) — used by both the
 // live cast flow and the offline/idle resolver so they share one formula.
 export function resolveCatch(regionId, stats, conditions, rng) {
-  const fish = rollSpeciesForRegion(regionId, { rarityBiasMult: stats.rarityBiasMult, timeOfDay: conditions.timeOfDay }, rng);
+  const fish = rollSpeciesForRegion(regionId, { rarityBiasMult: stats.rarityBiasMult, timeOfDay: conditions.timeOfDay, weatherId: conditions.weatherId }, rng);
   const { kg, sizeClass } = rollWeight(fish, rng);
   return { fish, kg, sizeClass };
 }

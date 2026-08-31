@@ -42,10 +42,14 @@ export const BASE_COOLER_CAPACITY = 12;
 export const BASE_OFFLINE_CAP_HOURS = 4;
 
 // -- Gear cost curves -------------------------------------------------------
-export const GEAR_BASE_COST = { rod: 40, reel: 60, line: 55, hook: 50, boat: 500 };
-export const GEAR_COST_GROWTH = 3.2;
-export const STAT_BASE_COST = 25;
-export const STAT_COST_GROWTH = 1.55;
+// Rebalanced after early playtesting: the original costs let a player buy
+// every Phase 1/2 upgrade in a few minutes of real play. Base costs roughly
+// tripled and growth nudged up so progression has room to breathe now that
+// Phase 3 adds gear tiers 4-8 and boat tiers 2-6 to chase.
+export const GEAR_BASE_COST = { rod: 110, reel: 170, line: 150, hook: 140, boat: 900 };
+export const GEAR_COST_GROWTH = 3.4;
+export const STAT_BASE_COST = 60;
+export const STAT_COST_GROWTH = 1.62;
 
 // -- Crew -------------------------------------------------------------------
 export const CREW_BASE_INTERVAL_MS = 25_000;

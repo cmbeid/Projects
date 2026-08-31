@@ -66,3 +66,20 @@ export function averageModifier(seed, fromMs, toMs, kind) {
   }
   return weightedSum / totalMs;
 }
+
+// Upcoming weather/time-of-day slots from `nowMs`, for the forecast popover.
+// Slot resolution is O(1) per slot (see weatherStateForSlot above), so
+// looking a handful of slots ahead is cheap and needs no simulation.
+export function upcomingForecast(seed, nowMs, count = 4) {
+  const currentSlot = slotIndexAt(nowMs);
+  const forecast = [];
+  for (let i = 1; i <= count; i++) {
+    const slot = currentSlot + i;
+    forecast.push({
+      weatherId: weatherStateForSlot(seed, slot),
+      timeOfDay: timeOfDayForSlot(slot),
+      startsInMs: slot * SLOT_MS - nowMs,
+    });
+  }
+  return forecast;
+}

@@ -1,5 +1,6 @@
 import { SAVE_KEY, SAVE_VERSION } from '../config.js';
 import { randomSeed } from './rng.js';
+import { STARTING_REGION } from '../data/regions.js';
 
 export function defaultState() {
   return {
@@ -8,8 +9,12 @@ export function defaultState() {
     coin: 0,
     pearls: 0,
     depthMarks: 0,
+    currentRegion: STARTING_REGION,
     gear: { rod: 1, reel: 1, line: 1, hook: 1, boat: 1 },
-    stats: { castDistance: 0, lureSpeed: 0, tensionControl: 0, luck: 0, coolerCapacity: 0 },
+    stats: {
+      castDistance: 0, lureSpeed: 0, tensionControl: 0, luck: 0, coolerCapacity: 0,
+      marketPrice: 0, baitEfficiency: 0, offlineCap: 0, crewSpeed: 0, crewYield: 0,
+    },
     passives: [],
     bait: {},
     lures: [],

@@ -9,6 +9,8 @@ import { mountCastbar } from './ui/castbar.js';
 import { createPanel } from './ui/panels.js';
 import { renderShop } from './ui/shop.js';
 import { renderCrew } from './ui/crewui.js';
+import { renderMap, bindMap } from './ui/mapui.js';
+import { renderLog } from './ui/log.js';
 import { renderSettings, bindSettings } from './ui/settings.js';
 import { formatDuration, formatNumber, formatWeight } from './ui/format.js';
 import { effectiveStats } from './systems/stats.js';
@@ -18,9 +20,13 @@ import { bankCatch } from './systems/inventory.js';
 import { sellAll, catchValue } from './systems/economy.js';
 import { purchaseGear, purchaseStatTier } from './systems/upgrades.js';
 import { hireCrew, levelUpCrew, crewProductionTick } from './systems/crew.js';
-import { currentConditions } from './systems/weather.js';
-import { REGIONS, STARTING_REGION } from './data/regions.js';
+import { currentConditions, upcomingForecast } from './systems/weather.js';
+import { REGIONS, STARTING_REGION, isRegionUnlocked } from './data/regions.js';
+import { fishById } from './data/fish.js';
+import { crewById } from './data/crew.js';
 import { BASE_HOOK_WINDOW_MS } from './config.js';
+
+const WEATHER_LABEL = { clear: 'Clear', overcast: 'Overcast', rain: 'Rain', fog: 'Fog', storm: 'Storm' };
 
 const app = document.getElementById('app');
 app.innerHTML = `
@@ -31,11 +37,13 @@ app.innerHTML = `
       <div id="offline-toast" class="pointer-events-none absolute inset-x-3 top-3 hidden rounded-xl bg-tide/90 p-3 text-sm shadow-lg"></div>
     </div>
     <div id="castbar"></div>
-    <div class="flex gap-2 px-4 pb-3">
+    <div class="relative z-30 flex gap-1.5 px-3 pb-3">
       <button data-tab="shop" class="flex-1 rounded-xl bg-white/5 py-2 text-sm">Shop</button>
       <button data-tab="crew" class="flex-1 rounded-xl bg-white/5 py-2 text-sm">Crew</button>
+      <button data-tab="map" class="flex-1 rounded-xl bg-white/5 py-2 text-sm">Map</button>
       <button data-tab="cooler" class="flex-1 rounded-xl bg-white/5 py-2 text-sm">Cooler</button>
-      <button data-tab="settings" class="flex-1 rounded-xl bg-white/5 py-2 text-sm">Settings</button>
+      <button data-tab="log" class="rounded-xl bg-white/5 py-2 px-3 text-sm" aria-label="Fishing log">📋</button>
+      <button data-tab="settings" class="rounded-xl bg-white/5 py-2 px-3 text-sm" aria-label="Settings">⚙️</button>
     </div>
   </div>
   <div id="panel-root"></div>
@@ -53,9 +61,19 @@ const panelRoot = document.getElementById('panel-root');
 const panels = {
   shop: createPanel(panelRoot, { title: 'Shop' }),
   crew: createPanel(panelRoot, { title: 'Crew' }),
+  map: createPanel(panelRoot, { title: 'Map' }),
   cooler: createPanel(panelRoot, { title: 'Cooler' }),
+  log: createPanel(panelRoot, { title: 'Fishing Log' }),
   settings: createPanel(panelRoot, { title: 'Settings' }),
 };
+
+const logEntries = [];
+const MAX_LOG_ENTRIES = 30;
+function pushLog(text) {
+  logEntries.push(text);
+  if (logEntries.length > MAX_LOG_ENTRIES) logEntries.shift();
+  if (panels.log.isOpen) refreshPanels();
+}
 
 document.querySelectorAll('[data-tab]').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -75,9 +93,19 @@ function refreshPanels() {
     panels.crew.setContent(renderCrew(state, stats));
     bindCrew();
   }
+  if (panels.map.isOpen) {
+    panels.map.setContent(renderMap(state));
+    bindMap(panels.map.body, state, () => {
+      panels.map.close();
+      refreshPanels();
+    });
+  }
   if (panels.cooler.isOpen) {
     panels.cooler.setContent(renderCooler());
     bindCooler();
+  }
+  if (panels.log.isOpen) {
+    panels.log.setContent(renderLog(logEntries));
   }
   if (panels.settings.isOpen) {
     panels.settings.setContent(renderSettings(state));
@@ -160,7 +188,7 @@ let bobber = { x: LOGICAL_WIDTH / 2, y: LOGICAL_HEIGHT * 0.4, cast: false };
 let holding = false;
 
 function regionId() {
-  return STARTING_REGION;
+  return isRegionUnlocked(state, state.currentRegion) ? state.currentRegion : STARTING_REGION;
 }
 
 function startCast() {
@@ -211,6 +239,7 @@ function landFish() {
   spawnFloatText(LOGICAL_WIDTH - 40, LOGICAL_HEIGHT / 2 - 20, `+${formatNumber(value)}`, '#f4c542');
   playBlip(880, 140, state.settings.muted);
   endCast(outcome.sold ? `Sold ${fish.name} for ${formatNumber(value)}` : `Landed ${fish.name}!`);
+  pushLog(`🎣 You caught a ${formatWeight(kg)} ${fish.name} (${sizeClass}, ${fish.rarity}) — ${formatNumber(value)} coin`);
   refreshPanels();
 }
 
@@ -286,8 +315,43 @@ engine.addSystem((s) => {
   });
 });
 
-// Refresh open panels on any coin/crew/cooler-affecting event so the UI never goes stale.
-events.on('crew-catch', refreshPanels);
+// Refresh open panels on any coin/crew/cooler-affecting event so the UI never goes stale,
+// and log the catch so idle production is visible instead of silent.
+events.on('crew-catch', ({ crewId, entry, outcome }) => {
+  const crewName = crewById(crewId)?.name ?? 'Crew';
+  const fishName = fishById(entry.speciesId)?.name ?? entry.speciesId;
+  const dest = outcome.sold ? 'sold' : 'banked';
+  pushLog(`🧑‍✈️ ${crewName} caught a ${formatWeight(entry.kg)} ${fishName} — ${dest} for ${formatNumber(entry.value)} coin`);
+  refreshPanels();
+});
+
+// -- Weather forecast popover --------------------------------------------
+let forecastOpen = false;
+hud.weatherButton.addEventListener('click', () => {
+  forecastOpen = !forecastOpen;
+  hud.forecastEl.classList.toggle('hidden', !forecastOpen);
+  if (forecastOpen) renderForecast();
+});
+function renderForecast() {
+  const upcoming = upcomingForecast(state.seed, Date.now(), 4);
+  hud.forecastEl.innerHTML = `
+    <div class="font-semibold mb-1.5">Upcoming weather</div>
+    ${upcoming
+      .map((f) => {
+        const minutes = Math.max(1, Math.round(f.startsInMs / 60000));
+        return `<div class="flex items-center justify-between py-0.5"><span>${f.timeOfDay === 'night' ? '🌙' : '🌤️'} ${WEATHER_LABEL[f.weatherId] ?? f.weatherId}</span><span class="opacity-60">in ${minutes}m</span></div>`;
+      })
+      .join('')}
+  `;
+}
+// Forecast content only changes on the scale of minutes, so it's refreshed
+// on open/close rather than every tick.
+document.addEventListener('click', (e) => {
+  if (forecastOpen && !e.target.closest('[data-hud="weather-button"]') && !e.target.closest('[data-hud="forecast"]')) {
+    forecastOpen = false;
+    hud.forecastEl.classList.add('hidden');
+  }
+});
 
 clearFx();
 engine.start();
