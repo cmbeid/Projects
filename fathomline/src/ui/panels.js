@@ -4,7 +4,10 @@
 export function createPanel(root, { title }) {
   const el = document.createElement('div');
   el.className = [
-    'fixed inset-x-0 bottom-0 z-20 max-h-[85vh] overflow-y-auto overscroll-contain',
+    // bottom-16 (not bottom-0): leaves the tab bar visible and clickable
+    // above the sheet instead of the sheet burying it — otherwise tapping a
+    // different tab while one panel is open hits the sheet, not the button.
+    'fixed inset-x-0 bottom-16 z-20 max-h-[calc(85vh-4rem)] overflow-y-auto overscroll-contain',
     'rounded-t-2xl bg-tide shadow-xl transition-transform duration-200 translate-y-full',
     'lg:static lg:translate-y-0 lg:max-h-none lg:h-full lg:rounded-none lg:shadow-none lg:border-l lg:border-white/10',
   ].join(' ');

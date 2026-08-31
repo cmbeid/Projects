@@ -12,14 +12,11 @@ describe('rarity distribution', () => {
       const fish = rollSpeciesForRegion('marrow_cove', { rarityBiasMult: 1, timeOfDay: 'day' }, rng);
       counts[fish.rarity]++;
     }
-    // Region 1 has no Mythic species yet (that's a Phase 3 Wanderer), so a
-    // rolled 'M' always falls back to 'L' — fold M's weight into L's
-    // expectation rather than asserting on an id that can never land.
+    // Phase 3's Wanderers (region: 'any') make Mythic reachable from every
+    // region, so all six tiers should now show up.
     const totalWeight = Object.values(BASE_RARITY_WEIGHTS).reduce((a, b) => a + b, 0);
-    expect(counts.M).toBe(0);
-    const effectiveWeights = { ...BASE_RARITY_WEIGHTS, L: BASE_RARITY_WEIGHTS.L + BASE_RARITY_WEIGHTS.M };
-    for (const rarity of ['C', 'U', 'R', 'E', 'L']) {
-      const expected = (effectiveWeights[rarity] / totalWeight) * trials;
+    for (const rarity of ['C', 'U', 'R', 'E', 'L', 'M']) {
+      const expected = (BASE_RARITY_WEIGHTS[rarity] / totalWeight) * trials;
       const actual = counts[rarity];
       // Loose tolerance: rare tiers have few expected samples so relative
       // variance is high; require presence and within 3x of expectation,

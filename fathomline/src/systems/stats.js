@@ -40,7 +40,11 @@ export function effectiveStats(state) {
     }
   }
 
-  stats.coolerCapacity += (state.stats.coolerCapacity ?? 0) * 4;
+  // Flat-bonus tracks (Cooler Capacity, Offline Cap) accumulate into a
+  // `*Flat` key above so the generic loop above didn't need a special case;
+  // fold them into the base stat here.
+  stats.coolerCapacity += stats.coolerCapacityFlat ?? 0;
+  stats.offlineCapHours += stats.offlineCapHoursFlat ?? 0;
 
   return stats;
 }
