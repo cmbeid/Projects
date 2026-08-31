@@ -2,9 +2,9 @@
 
 ## Context
 
-`C:\Scripts\pi\fishingidle` is empty — this is a greenfield build. The goal is a casual **idle fishing game** for mobile web (portrait-first) that also lays out well on desktop, with 100+ fish, 140+ purchasable upgrades, a mini story with objectives, and multiple replayability engines.
+`fathomline/` (this folder) is empty — this is a greenfield build. The goal is a casual **idle fishing game** for mobile web (portrait-first) that also lays out well on desktop, with 100+ fish, 140+ purchasable upgrades, a mini story with objectives, and multiple replayability engines.
 
-The stack and structure deliberately mirror the most recent game, **Sunfall Depths** (`C:\Scripts\pi\mininggame`): Vite + Tailwind, vanilla ES modules split into small single-responsibility files, canvas for the play scene and DOM/Tailwind for all UI chrome, procedural art with no asset files, localStorage saves, and a `start.bat` launcher. Reusing that shape means the module boundaries, save layer, and data-driven catalog pattern are already proven in this codebase.
+The stack and structure deliberately mirror a prior game, **Sunfall Depths** (`mininggame`): Vite + Tailwind, vanilla ES modules split into small single-responsibility files, canvas for the play scene and DOM/Tailwind for all UI chrome, procedural art with no asset files, localStorage saves, and a `start.bat` launcher. Reusing that shape means the module boundaries, save layer, and data-driven catalog pattern are already proven.
 
 Work is split into **8 phases, each ending in a genuinely playable build** — never a phase that only compiles. Phase 1 alone is a complete 10-minute fishing game; every later phase widens it without breaking what shipped before.
 
@@ -27,7 +27,7 @@ Working title: **Fathomline** (swappable — appears only in `config.js`, `index
 ## File Structure
 
 ```
-fishingidle/
+fathomline/
   index.html                  # shell: HUD, canvas mount, tab bar, panel containers
   package.json  vite.config.js  tailwind.config.js  postcss.config.js  start.bat
   AGENTS.md                   # project rules (mirror mininggame/AGENTS.md)
@@ -325,7 +325,7 @@ Procedural WebAudio SFX + mute; juice pass (shake, particles, catch celebration,
 - Junk pulls are kept (they're comedy and lore delivery) but capped at ~18% and reducible to ~4% with upgrades.
 - Assist Mode and Auto-Reel exist so the game stays fully playable as a pure idler for players who don't want the minigame.
 - Save is local-only; no accounts, no backend, no analytics.
-- Follows `mininggame/AGENTS.md` branch/PR conventions if this project is put under git (it currently is not).
+- Follows `mininggame/AGENTS.md` branch/PR conventions; this project lives in the same git repo as the other projects here, under `fathomline/`.
 
 ## Out of Scope
 
