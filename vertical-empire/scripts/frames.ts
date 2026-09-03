@@ -13,12 +13,10 @@
  */
 
 import type { IndexedImage } from '../src/assets/dib.js';
+import { inkColumns, inkRows, type Run } from '../src/assets/frames.js';
 import type { Palette } from '../src/assets/palette.js';
 
-export interface Run {
-  from: number;
-  to: number;
-}
+export type { Run };
 
 export interface FrameAnalysis {
   /** Index treated as background: the sheet's own top-left pixel. */
@@ -31,52 +29,20 @@ export interface FrameAnalysis {
   widths: { width: number; count: number }[];
 }
 
-function runsOf(flags: boolean[]): Run[] {
-  const runs: Run[] = [];
-  let start = -1;
-  flags.forEach((set, index) => {
-    if (set && start < 0) start = index;
-    if (!set && start >= 0) {
-      runs.push({ from: start, to: index - 1 });
-      start = -1;
-    }
-  });
-  if (start >= 0) runs.push({ from: start, to: flags.length - 1 });
-  return runs;
-}
-
 export function analyse(image: IndexedImage): FrameAnalysis {
   const background = image.pixels[0] ?? 0;
+  const columns = inkColumns(image, background);
 
-  const columnHasInk: boolean[] = [];
-  for (let x = 0; x < image.width; x += 1) {
-    let ink = false;
-    for (let y = 0; y < image.height && !ink; y += 1) {
-      if (image.pixels[y * image.width + x] !== background) ink = true;
-    }
-    columnHasInk.push(ink);
-  }
-
-  const rowHasInk: boolean[] = [];
-  for (let y = 0; y < image.height; y += 1) {
-    let ink = false;
-    for (let x = 0; x < image.width && !ink; x += 1) {
-      if (image.pixels[y * image.width + x] !== background) ink = true;
-    }
-    rowHasInk.push(ink);
-  }
-
-  const inkColumns = runsOf(columnHasInk);
   const tally = new Map<number, number>();
-  for (const run of inkColumns) {
+  for (const run of columns) {
     const width = run.to - run.from + 1;
     tally.set(width, (tally.get(width) ?? 0) + 1);
   }
 
   return {
     background,
-    inkColumns,
-    inkRows: runsOf(rowHasInk),
+    inkColumns: columns,
+    inkRows: inkRows(image, background),
     widths: [...tally.entries()]
       .map(([width, count]) => ({ width, count }))
       .sort((a, b) => b.count - a.count || a.width - b.width),

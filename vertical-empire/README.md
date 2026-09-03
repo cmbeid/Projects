@@ -78,6 +78,21 @@ The IDs themselves mostly held up, and the arithmetic is what confirms them: a
 condo is 128 wide, which is sixteen segments; a hotel suite sheet is 640, which
 is eight states of ten segments; a lift car is 32×36, exactly as documented.
 
+### What the measurements settled
+
+- **The lift car is `0x842a`**, five 32×36 frames, each the car interior holding
+  progressively more passengers. It is drawn opaque: the frame is solid car, and
+  its corner index is a colour used *inside* the car too, so treating that as
+  see-through punched holes in it.
+- **`0x8468` is not a car or a shaft.** Thirty-five ink runs of 20px figures
+  across a 640px sheet: clumps of people, most likely the queues that gather by
+  the lift doors.
+- **People cannot be cut on a grid.** The 96×24 sheet holds *nine* figures at
+  *six different widths*, from five pixels to eleven, the last few being clumps
+  of two or three rather than one. Twelve equal columns sliced them apart. The
+  catalogue can now cut by ink instead — frames are the runs between columns of
+  pure background — which is what `cut: 'ink'` in `slice.ts` does.
+
 A few entries are still marked **UNVERIFIED** in the catalogue — the shaft, the
 stair and escalator widths, and `people`, whose 96×24 shape is not an obvious
 fit. Check those against the ID-named PNGs from `--all`.
@@ -100,6 +115,9 @@ background, then reports the runs of columns that hold ink — the gutters betwe
 them give the frame width and count — and the range of rows that hold any, which
 gives the figure's real height inside the frame. Sheets narrower than 160px
 print as ASCII; wider ones print a per-column ink profile.
+
+`--window 0,160` looks at just those columns, which is how you read a sheet too
+wide to print — the 1120px lobby strip, say.
 
 IDs can be written either way — `0x82bc` or `33468`. npm rewrites a hex
 argument to decimal before the script sees it, so both readings are tried and

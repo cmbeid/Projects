@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { NotAnExecutableError, readResources } from '../src/assets/ne.js';
 import { BitmapFormatError, crop, decodeDIB, inferCellHeight, readCellStrip } from '../src/assets/dib.js';
 import { CYCLE_GROUPS, decodePalette, mixPalettes, rotateCycles } from '../src/assets/palette.js';
+import { inkColumns } from '../src/assets/frames.js';
 import { FLOOR_HEIGHT, ROOM_HEIGHT, SEGMENT_WIDTH, TYPE_BITMAP, TYPE_PALETTE, extract } from '../src/assets/slice.js';
 import { buildCellStrip, buildDIB, buildNE, buildPaletteResource } from './fixtures.js';
 
@@ -347,5 +348,43 @@ describe('resource id arguments', () => {
   it('splits and trims a comma-separated list', async () => {
     const { parseIdTokens } = await import('../scripts/frames.js');
     expect(parseIdTokens(' 0x8428, 33468 ,, 89e8 ')).toEqual(['0x8428', '33468', '89e8']);
+  });
+});
+
+describe('cutting by ink', () => {
+  it('finds frames of different widths that a grid would slice apart', () => {
+    // Three figures, 5px, 8px and 11px wide, separated by background — the
+    // shape the real people sheet turns out to have.
+    const spans = [
+      { from: 1, width: 5 },
+      { from: 9, width: 8 },
+      { from: 20, width: 11 },
+    ];
+    const sheet = decodeDIB(
+      buildDIB(40, ROOM_HEIGHT, (x, y) =>
+        y >= 4 && spans.some((span) => x >= span.from && x < span.from + span.width) ? 9 : 1,
+      ),
+    );
+
+    const runs = inkColumns(sheet, 1);
+    expect(runs.map((run) => run.to - run.from + 1)).toEqual([5, 8, 11]);
+  });
+
+  it('cuts the people sheet by ink rather than into equal columns', () => {
+    const sheet = buildDIB(96, ROOM_HEIGHT, (x, y) => {
+      // Six 5px figures then a wider clump, all on a background of 1.
+      const narrow = x < 48 && x % 8 < 5;
+      const clump = x >= 60 && x < 71;
+      return y >= 3 && (narrow || clump) ? 9 : 1;
+    });
+    const spec = new Map([[TYPE_BITMAP, new Map([[0x82bc, sheet]])]]);
+
+    const people = extract(readResources(buildNE(spec))).sprites.get('people');
+    // Six narrow figures and one clump: seven frames, not twelve equal slices.
+    expect(people?.frames).toHaveLength(7);
+    expect(people?.frames[0]?.width).toBe(5);
+    expect(people?.frames[6]?.width).toBe(11);
+    // Background comes from the corner, so the figures composite cleanly.
+    expect(people?.transparent).toBe(1);
   });
 });

@@ -17,7 +17,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { decodeDIB, inferCellHeight, readCellStrip } from '../src/assets/dib.js';
+import { crop, decodeDIB, inferCellHeight, readCellStrip } from '../src/assets/dib.js';
 import { hex, readResources, type ResourceTable } from '../src/assets/ne.js';
 import {
   CATALOGUE,
@@ -180,7 +180,12 @@ async function dumpEverything(resources: ResourceTable, palette: Uint8Array): Pr
  * to open a PNG and describe it. Gutter columns give the frame boundaries; the
  * ink rows give the figure height inside them.
  */
-function frames(resources: ResourceTable, tokens: string[], palette: Uint8Array): void {
+function frames(
+  resources: ResourceTable,
+  tokens: string[],
+  palette: Uint8Array,
+  window?: { from: number; to: number },
+): void {
   for (const token of tokens) {
     const readings = candidates(token);
     const found = readings
@@ -205,18 +210,26 @@ function frames(resources: ResourceTable, tokens: string[], palette: Uint8Array)
       continue;
     }
 
+    // A 1120px strip cannot be printed, but a window into it can. The analysis
+    // runs on the window too, so the numbers describe what you are looking at.
+    if (window) {
+      const from = Math.max(0, Math.min(image.width - 1, window.from));
+      const to = Math.max(from + 1, Math.min(image.width, window.to));
+      image = crop(image, from, 0, to - from, image.height);
+    }
+
     const report = analyse(image);
     const inkTop = report.inkRows[0]?.from;
     const inkBottom = report.inkRows[report.inkRows.length - 1]?.to;
 
     console.log(`\n${hex(found.type)}/${hex(id)}  ${image.width}x${image.height}  background index ${report.background}`);
-    console.log(`  ${report.inkColumns.length} ink runs across, widths: ${report.widths.map((w) => `${w.width}x${w.count}`).join(', ') || 'none'}`);
+    console.log(`  ${report.inkColumns.length} ink runs across, widths: ${report.widths.map((entry: { width: number; count: number }) => `${entry.width}x${entry.count}`).join(', ') || 'none'}`);
     if (inkTop !== undefined && inkBottom !== undefined) {
       console.log(`  ink rows ${inkTop}..${inkBottom} — figure is ${inkBottom - inkTop + 1}px tall in a ${image.height}px sheet`);
     }
     // Column starts say whether the runs are evenly spaced, which is what makes
     // a grid a grid rather than a row of differently sized things.
-    console.log(`  run starts: ${report.inkColumns.slice(0, 24).map((run) => run.from).join(' ')}${report.inkColumns.length > 24 ? ' …' : ''}`);
+    console.log(`  run starts: ${report.inkColumns.slice(0, 24).map((run: { from: number }) => run.from).join(' ')}${report.inkColumns.length > 24 ? ' …' : ''}`);
 
     if (image.width <= ASCII_LIMIT) {
       for (const line of ascii(image, image.palette ?? palette, report.background)) console.log(`  |${line}`);
@@ -231,12 +244,21 @@ async function main(): Promise<void> {
   const all = args.includes('--all');
   const framesAt = args.indexOf('--frames');
   const framesIds = framesAt >= 0 ? parseIdTokens(args[framesAt + 1] ?? '') : [];
-  const path = args.find((argument, index) => !argument.startsWith('--') && index !== framesAt + 1);
+  const windowAt = args.indexOf('--window');
+  const windowArg = windowAt >= 0 ? (args[windowAt + 1] ?? '').split(',').map(Number) : [];
+  const window =
+    windowArg.length === 2 && windowArg.every((value) => Number.isFinite(value))
+      ? { from: windowArg[0] ?? 0, to: windowArg[1] ?? 0 }
+      : undefined;
+  const path = args.find(
+    (argument, index) => !argument.startsWith('--') && index !== framesAt + 1 && index !== windowAt + 1,
+  );
 
   if (!path) {
     console.error('Usage: npm run extract -- [--all] [--frames 0x82bc,0x8429] /path/to/SIMTOWER.EXE');
     console.error('\n  --all      also dump every bitmap and cell strip, named by resource ID');
     console.error('  --frames   report how the named sheets are cut into frames');
+    console.error('  --window   with --frames, look at just these columns, e.g. 0,160');
     console.error('\nA compressed SIMTOWER.EX_ has to be expanded first (expand.exe, or msexpand).');
     process.exitCode = 1;
     return;
@@ -249,7 +271,7 @@ async function main(): Promise<void> {
   // Frame analysis is a focused question; printing the whole inventory over the
   // top of it just buries the answer.
   if (framesIds.length > 0) {
-    frames(resources, framesIds, palette);
+    frames(resources, framesIds, palette, window);
     return;
   }
 

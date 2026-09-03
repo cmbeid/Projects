@@ -18,6 +18,7 @@
  */
 
 import { crop, decodeDIB, readCellStrip, type IndexedImage } from './dib.js';
+import { inkColumns } from './frames.js';
 import { decodePalette, type Palette } from './palette.js';
 import { hex, type ResourceTable } from './ne.js';
 
@@ -55,6 +56,13 @@ export interface SpriteSpec {
   mode: 'dib' | 'cells';
   /** Cell height for `cells` mode. Inferred from the resource length if absent. */
   cellHeight?: number;
+  /**
+   * How to divide the sheet. `grid` (the default) cuts it into equal
+   * `states` x `variants` cells; `ink` finds the frames by looking for columns
+   * of pure background between them, which is the only thing that works on a
+   * sheet whose figures are different widths.
+   */
+  cut?: 'grid' | 'ink';
   /** Cut the decoded sheet into this many equal columns (states). */
   states?: number;
   /** Cut the decoded sheet into this many equal rows (variants). */
@@ -114,10 +122,12 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   { key: 'hotel-double', type: TYPE_BITMAP, ids: [0x84e9, 0x84eb, 0x84ed, 0x84ef], mode: 'dib', states: 8 },
   { key: 'hotel-suite', type: TYPE_BITMAP, ids: [0x8529, 0x852b], mode: 'dib', states: 8 },
 
-  // The lift car: 160x36 cut five ways gives 32x36, the documented car size,
-  // and five frames is the door opening. 0x8428 is the same car as a single
-  // bitmap; 0x842d is the 48x36 express one.
-  { key: 'car', type: TYPE_BITMAP, ids: [0x842a], mode: 'dib', states: 5, transparent: 'corner' },
+  // The lift car, confirmed by eye: 160x36 cut five ways gives five 32x36
+  // frames, each the car interior holding progressively more passengers —
+  // empty, one, three, and so on. Drawn opaque over the shaft: the frame is
+  // solid car, and its corner index is a colour used inside the car too, so
+  // treating that as see-through would punch holes in it.
+  { key: 'car', type: TYPE_BITMAP, ids: [0x842a], mode: 'dib', states: 5 },
 
   // No shaft entry, deliberately. Nothing in the 0x842x block is an empty
   // shaft: 0x8429 and 0x8468 both read as cars carrying passengers, and twenty
@@ -132,11 +142,13 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   { key: 'stairs', type: TYPE_BITMAP, ids: [0x8968, 0x8969], mode: 'dib', states: 7 },
   { key: 'escalator', type: TYPE_BITMAP, ids: [0x8aa8, 0x8ae8], mode: 'dib', states: 8 },
 
-  // UNVERIFIED, and the least certain entry here. 96x24 is not an obvious shape
-  // for the four-pixel people the game draws, and the same ID exists under
-  // resource type 0xFF06 as well. Twelve eight-wide frames is a guess; check
-  // raw-0x8002-0x82bc.png before trusting it.
-  { key: 'people', type: TYPE_BITMAP, ids: range(0x82bc, 0x82bf), mode: 'dib', states: 12, transparent: 'corner' },
+  // Nine figures across a 96x24 sheet, and — this is the part a grid cannot
+  // express — they are six different widths, from five pixels to eleven, with
+  // the last few being clumps of two or three people rather than one. Cutting
+  // it into twelve equal columns sliced them apart, which is what made the
+  // crowd look wrong. Ink rows 3..22, so a figure is 20px in a 24px frame,
+  // which is about right against a 24px room.
+  { key: 'people', type: TYPE_BITMAP, ids: range(0x82bc, 0x82bf), mode: 'dib', cut: 'ink', transparent: 'corner' },
 ];
 
 export interface ExtractedSprite {
@@ -160,6 +172,14 @@ function decodeSheet(spec: SpriteSpec, data: Uint8Array): IndexedImage {
 
 /** Cuts a decoded sheet into its states and variants. */
 function cutFrames(spec: SpriteSpec, sheet: IndexedImage): IndexedImage[] {
+  // Frames separated by background rather than laid on a grid.
+  if (spec.cut === 'ink') {
+    const background = sheet.pixels[0] ?? 0;
+    const runs = inkColumns(sheet, background);
+    const frames = runs.map((run) => crop(sheet, run.from, 0, run.to - run.from + 1, sheet.height));
+    return frames.length > 0 ? frames : [sheet];
+  }
+
   // A strip is a run of single-segment cells, each its own frame.
   if (spec.cellFrames) {
     const cells = Math.floor(sheet.width / SEGMENT_WIDTH);
