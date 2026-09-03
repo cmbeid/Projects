@@ -241,6 +241,125 @@ function frames(
   }
 }
 
+/** One resource laid out for the sheet: wrapped into rows of at most `wrapAt`. */
+interface Panel {
+  label: string;
+  image: IndexedImage;
+  rows: number;
+  width: number;
+  height: number;
+}
+
+/** Rows are separated so the seams read as seams rather than as part of the art. */
+const GAP = 2;
+
+function panelFor(label: string, image: IndexedImage, wrapAt: number): Panel {
+  const rows = Math.ceil(image.width / wrapAt);
+  return {
+    label,
+    image,
+    rows,
+    width: Math.min(image.width, wrapAt),
+    height: rows * image.height + (rows - 1) * GAP,
+  };
+}
+
+/** Finds a resource by ID token, trying both readings, and decodes it. */
+function resolve(
+  resources: ResourceTable,
+  token: string,
+): { id: number; type: number; image: IndexedImage } | undefined {
+  const readings = candidates(token);
+  const found = readings
+    .flatMap((id) => [TYPE_BITMAP, TYPE_CELLS].map((type) => ({ id, type, data: resources.get(type)?.get(id) })))
+    .find((candidate) => candidate.data !== undefined);
+  if (!found?.data) {
+    console.log(`${token}: nothing at ${readings.map(hex).join(' or ') || 'any reading'}`);
+    return undefined;
+  }
+  try {
+    const image = found.type === TYPE_BITMAP ? decodeDIB(found.data) : readCellStrip(found.data, SEGMENT_WIDTH);
+    return { id: found.id, type: found.type, image };
+  } catch (error) {
+    console.log(`${token}: ${(error as Error).message}`);
+    return undefined;
+  }
+}
+
+/**
+ * Pastes panels down onto one PNG, labelled, and scales it up.
+ *
+ * Panels flow across into as many columns as fit the target width, so a sweep
+ * of two hundred thumbnails is a page rather than a mile of ribbon. Wide panels
+ * make the column wider than the target on their own, which leaves one column —
+ * the stacked layout, arrived at rather than special-cased.
+ */
+async function paste(panels: Panel[], palette: Uint8Array, scale: number, name: string): Promise<void> {
+  if (panels.length === 0) return;
+
+  // Every panel shares the first one's palette. A PNG carries one table, and in
+  // practice all of SimTower's art comes from the same one.
+  const table = panels[0]?.image.palette ?? palette;
+  const ink = brightestIndex(table);
+  const paper = darkestIndex(table);
+
+  const LABEL = GLYPH_HEIGHT + 3;
+  const PAD = 4;
+  const TARGET = 560;
+  // Past this the page is taller than anything will show it at full size, and
+  // a thumbnail you cannot read is not a thumbnail. Split instead of shrink.
+  const MAX_ROWS = 14;
+
+  const cellWidth = Math.max(...panels.map((panel) => panel.width));
+  const cellHeight = Math.max(...panels.map((panel) => panel.height));
+  const columns = Math.max(1, Math.floor(TARGET / (cellWidth + PAD)));
+  const perPage = columns * MAX_ROWS;
+  const pages = Math.ceil(panels.length / perPage);
+
+  for (let page = 0; page < pages; page += 1) {
+    const slice = panels.slice(page * perPage, (page + 1) * perPage);
+    const rowCount = Math.ceil(slice.length / columns);
+
+    const sheetWidth = columns * (cellWidth + PAD) + PAD;
+    const sheetHeight = rowCount * (LABEL + cellHeight + PAD) + PAD;
+    // Filled with paper first, so short rows, the gaps between them and any
+    // unused corner of the grid read as blank sheet rather than as index zero.
+    const sheet = new Uint8Array(sheetWidth * sheetHeight).fill(paper);
+
+    for (const [index, panel] of slice.entries()) {
+      const left = PAD + (index % columns) * (cellWidth + PAD);
+      let top = PAD + Math.floor(index / columns) * (LABEL + cellHeight + PAD);
+
+      drawText(sheet, sheetWidth, sheetHeight, panel.label, left, top, ink);
+      top += LABEL;
+
+      const { image } = panel;
+      for (let row = 0; row < panel.rows; row += 1) {
+        const rowTop = top + row * (image.height + GAP);
+        const width = Math.min(panel.width, image.width - row * panel.width);
+        for (let y = 0; y < image.height; y += 1) {
+          const from = y * image.width + row * panel.width;
+          sheet.set(image.pixels.subarray(from, from + width), (rowTop + y) * sheetWidth + left);
+        }
+      }
+    }
+
+    // Nearest-neighbour, so the pixels stay square and countable.
+    const bigWidth = sheetWidth * scale;
+    const bigHeight = sheetHeight * scale;
+    const big = new Uint8Array(bigWidth * bigHeight);
+    for (let row = 0; row < bigHeight; row += 1) {
+      for (let column = 0; column < bigWidth; column += 1) {
+        big[row * bigWidth + column] = sheet[Math.floor(row / scale) * sheetWidth + Math.floor(column / scale)] ?? 0;
+      }
+    }
+
+    const file = pages === 1 ? `${name}.png` : `${name}-${page + 1}.png`;
+    await writeFile(join(OUT, file), encodePNG(bigWidth, bigHeight, big, table));
+    console.log(`${OUT}/${file}  ${bigWidth}x${bigHeight}, ${slice.length} panel${slice.length === 1 ? '' : 's'}`);
+  }
+}
+
 /**
  * Writes one PNG holding every sheet asked for, labelled and legible.
  *
@@ -259,95 +378,53 @@ async function contact(
 ): Promise<void> {
   await mkdir(OUT, { recursive: true });
 
-  /** One resource, still unwrapped: wrapping happens when it is pasted down. */
-  interface Panel {
-    label: string;
-    image: IndexedImage;
-    rows: number;
-    width: number;
-    height: number;
-  }
   const panels: Panel[] = [];
-
-  // Rows are separated by a gap so the seams read as seams rather than as part
-  // of the art.
-  const GAP = 2;
-
   for (const token of tokens) {
-    const readings = candidates(token);
-    const found = readings
-      .flatMap((id) => [TYPE_BITMAP, TYPE_CELLS].map((type) => ({ id, type, data: resources.get(type)?.get(id) })))
-      .find((candidate) => candidate.data !== undefined);
-    if (!found?.data) {
-      console.log(`${token}: nothing at ${readings.map(hex).join(' or ') || 'any reading'}`);
-      continue;
-    }
-
-    let image;
-    try {
-      image = found.type === TYPE_BITMAP ? decodeDIB(found.data) : readCellStrip(found.data, SEGMENT_WIDTH);
-    } catch (error) {
-      console.log(`${token}: ${(error as Error).message}`);
-      continue;
-    }
-
-    const rows = Math.ceil(image.width / wrapAt);
-    panels.push({
-      label: `${hex(found.type)}/${hex(found.id)}  ${image.width}x${image.height}`,
-      image,
-      rows,
-      width: Math.min(image.width, wrapAt),
-      height: rows * image.height + (rows - 1) * GAP,
-    });
-    console.log(`  ${hex(found.id)}  ${image.width}x${image.height} -> ${rows} row${rows === 1 ? '' : 's'}`);
+    const found = resolve(resources, token);
+    if (!found) continue;
+    panels.push(
+      panelFor(`${hex(found.type)}/${hex(found.id)}  ${found.image.width}x${found.image.height}`, found.image, wrapAt),
+    );
+    console.log(`  ${hex(found.id)}  ${found.image.width}x${found.image.height}`);
   }
 
-  if (panels.length === 0) return;
+  await paste(panels, palette, scale, 'contact-sheet');
+}
 
-  // Every panel shares the first one's palette. A PNG carries one table, and in
-  // practice all of SimTower's art comes from the same one.
-  const table = panels[0]?.image.palette ?? palette;
-  const ink = brightestIndex(table);
-  const paper = darkestIndex(table);
+/**
+ * Every bitmap and cell strip in the file, thumbnailed onto one page.
+ *
+ * Identifying art an ID at a time is a round trip per guess, and the guesses
+ * are what keep being wrong. A corner of each resource is enough to recognise
+ * it — a marble band is not a brick frontage is not a hotel room — so the sweep
+ * crops each to its top-left `peek` square, labels it with its ID and lays the
+ * lot out as a grid. One image, and the whole catalogue can be checked at once.
+ */
+async function sweep(resources: ResourceTable, palette: Uint8Array, peek: number, scale: number): Promise<void> {
+  await mkdir(OUT, { recursive: true });
 
-  const LABEL = GLYPH_HEIGHT + 3;
-  const PAD = 4;
-  const sheetWidth = Math.max(...panels.map((panel) => panel.width)) + PAD * 2;
-  const sheetHeight = panels.reduce((total, panel) => total + LABEL + panel.height + PAD, PAD);
-  // Filled with paper first, so a short last row and the gaps between rows show
-  // as blank sheet instead of as whatever index zero happens to be.
-  const sheet = new Uint8Array(sheetWidth * sheetHeight).fill(paper);
-
-  let top = PAD;
-  for (const panel of panels) {
-    drawText(sheet, sheetWidth, sheetHeight, panel.label, PAD, top, ink);
-    top += LABEL;
-
-    const { image } = panel;
-    for (let row = 0; row < panel.rows; row += 1) {
-      const rowTop = top + row * (image.height + GAP);
-      const columns = Math.min(wrapAt, image.width - row * wrapAt);
-      for (let y = 0; y < image.height; y += 1) {
-        const from = y * image.width + row * wrapAt;
-        sheet.set(image.pixels.subarray(from, from + columns), (rowTop + y) * sheetWidth + PAD);
+  const panels: Panel[] = [];
+  for (const type of [TYPE_BITMAP, TYPE_CELLS]) {
+    const byId = resources.get(type);
+    if (!byId) continue;
+    for (const id of [...byId.keys()].sort((a, b) => a - b)) {
+      const data = byId.get(id);
+      if (!data) continue;
+      let image;
+      try {
+        image = type === TYPE_BITMAP ? decodeDIB(data) : readCellStrip(data, SEGMENT_WIDTH);
+      } catch {
+        continue; // Undecodable resources are already named in the shape listing.
       }
-    }
-    top += panel.height + PAD;
-  }
-
-  // Nearest-neighbour, so the pixels stay square and countable.
-  const bigWidth = sheetWidth * scale;
-  const bigHeight = sheetHeight * scale;
-  const big = new Uint8Array(bigWidth * bigHeight);
-  for (let row = 0; row < bigHeight; row += 1) {
-    for (let column = 0; column < bigWidth; column += 1) {
-      big[row * bigWidth + column] = sheet[Math.floor(row / scale) * sheetWidth + Math.floor(column / scale)] ?? 0;
+      const corner = crop(image, 0, 0, Math.min(peek, image.width), Math.min(peek, image.height));
+      // The ID alone: the full label does not fit a thumbnail, and the shape
+      // listing already gives the sizes.
+      panels.push(panelFor(hex(id), corner, peek));
     }
   }
 
-  const name = 'contact-sheet.png';
-  await writeFile(join(OUT, name), encodePNG(bigWidth, bigHeight, big, table));
-  console.log(`\n${OUT}/${name}  ${bigWidth}x${bigHeight}, ${panels.length} resource${panels.length === 1 ? '' : 's'}`);
+  console.log(`Sweeping ${panels.length} resources at ${peek}px.`);
+  await paste(panels, palette, scale, 'sweep');
 }
 
 /** Brightest palette entry, for label text that will read against the darkest. */
@@ -372,6 +449,10 @@ async function main(): Promise<void> {
   const framesIds = framesAt >= 0 ? parseIdTokens(args[framesAt + 1] ?? '') : [];
   const contactAt = args.indexOf('--contact');
   const contactIds = contactAt >= 0 ? parseIdTokens(args[contactAt + 1] ?? '') : [];
+  const sweepAt = args.indexOf('--sweep');
+  // Takes an optional peek size, so `--sweep 32` fits more on the page.
+  const sweepPeek = sweepAt >= 0 ? Number(args[sweepAt + 1]) : Number.NaN;
+  const peek = Number.isFinite(sweepPeek) && sweepPeek > 0 ? Math.floor(sweepPeek) : 40;
   const windowAt = args.indexOf('--window');
   const windowArg = windowAt >= 0 ? (args[windowAt + 1] ?? '').split(',').map(Number) : [];
   const window =
@@ -383,7 +464,8 @@ async function main(): Promise<void> {
       !argument.startsWith('--') &&
       index !== framesAt + 1 &&
       index !== windowAt + 1 &&
-      index !== contactAt + 1,
+      index !== contactAt + 1 &&
+      !(index === sweepAt + 1 && Number.isFinite(sweepPeek)),
   );
 
   if (!path) {
@@ -392,6 +474,7 @@ async function main(): Promise<void> {
     console.error('  --frames   report how the named sheets are cut into frames');
     console.error('  --window   with --frames, look at just these columns, e.g. 0,160');
     console.error('  --contact  write one wrapped, labelled, scaled-up PNG of the named sheets');
+    console.error('  --sweep    thumbnail every bitmap and cell strip onto one labelled page');
     console.error('\nA compressed SIMTOWER.EX_ has to be expanded first (expand.exe, or msexpand).');
     process.exitCode = 1;
     return;
@@ -403,6 +486,11 @@ async function main(): Promise<void> {
 
   // Frame analysis is a focused question; printing the whole inventory over the
   // top of it just buries the answer.
+  if (sweepAt >= 0) {
+    await sweep(resources, palette, peek, 2);
+    return;
+  }
+
   if (contactIds.length > 0) {
     await contact(resources, contactIds, palette, 160, 3);
     return;

@@ -149,6 +149,13 @@ ends up, and one file answers several questions at once. Output is
 `assets-private/contact-sheet.png`, which is gitignored: these are the game's
 own bitmaps and they stay on your machine.
 
+`--sweep` skips the guessing altogether: it thumbnails *every* bitmap and cell
+strip in the file onto a labelled grid — the top-left 40px of each, ID written
+above it — and writes it as `sweep-1.png` and `sweep-2.png`. Identifying art an
+ID at a time costs a round trip per guess, and the guesses are what keep being
+wrong; a corner is enough to tell a marble band from a brick frontage from a
+hotel room. `--sweep 32` fits more on the page, `--sweep 64` shows more of each.
+
 IDs can be written either way — `0x82bc` or `33468`. npm rewrites a hex
 argument to decimal before the script sees it, so both readings are tried and
 whichever one is a resource that exists wins.
