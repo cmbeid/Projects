@@ -478,3 +478,31 @@ describe('the build bar and the art agree', () => {
     }
   });
 });
+
+describe('people belong in rooms that exist', () => {
+  it('leaves a facility the atlas cannot draw unpopulated', () => {
+    const atlas = buildFallbackAtlas();
+    // The lobby is the tiled facility, and the one whose original art is still
+    // unidentified. With no sprite it draws as a flat band, and walkers on top
+    // of that read as confetti on a rectangle rather than as a concourse.
+    atlas.sprites.delete('lobby');
+
+    const tower = new Tower();
+    for (let segment = 0; segment < 12; segment += 1) tower.place('lobby', segment, GROUND_LEVEL);
+
+    const camera = new Camera();
+    camera.scale = 1;
+    camera.resize(390, 400);
+    camera.centreOn(SEGMENT_WIDTH * 6, levelTop(GROUND_LEVEL));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, tower, camera, { hour: 13, elapsed: 4000 });
+
+    // The whole band, not one row of it: the placeholder figure is four pixels
+    // tall and a sampled row missed it by two, which made this test pass
+    // against the very bug it was written for.
+    const people = new Set<number>([INK.personA, INK.personB, INK.personC, INK.personD, INK.personAngry]);
+    const drawn = [...buffer.pixels].filter((ink) => people.has(ink));
+    expect(drawn).toHaveLength(0);
+  });
+});

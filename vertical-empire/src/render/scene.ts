@@ -286,7 +286,12 @@ function drawPeople(
     // full 36 for ours. Anchoring to the floor band instead put everyone in
     // the slab below the room.
     const facade = lookup(atlas, kind.sprite, kind.tiled ? placement.segment : placement.state);
-    const floorLine = Math.min(facade?.image.height ?? FLOOR_HEIGHT, FLOOR_HEIGHT);
+    // No room, no occupants. A facility whose art the atlas lacks is drawn as a
+    // flat band, and populating that puts a scatter of figures on a bare
+    // rectangle — which is what the unidentified lobby looked like: confetti on
+    // a black strip.
+    if (!facade) return;
+    const floorLine = Math.min(facade.image.height, FLOOR_HEIGHT);
     const baseY = Math.round(levelTop(placement.level) + floorLine - camera.y);
     if (baseY < 0 || baseY > target.height) return;
 

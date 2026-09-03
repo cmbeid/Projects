@@ -282,9 +282,14 @@ describe('drawing from a real-shaped file', () => {
     const { buildOriginalAtlas } = await import('../src/assets/original.js');
     const skyline = buildOriginalAtlas(mimic()).atlas.sprites.get('skyline');
 
-    // Three resources of 140 cells each. Drawn whole at a one-segment
-    // placement, a 1120px strip smears across the entire ground floor.
-    expect(skyline?.frames).toHaveLength(3 * 140);
+    // One resource of 140 cells. Drawn whole at a one-segment placement, a
+    // 1120px strip smears across the entire ground floor — hence the cutting.
+    //
+    // And one, not the three that sit together in the file: appending their
+    // cells made the street run as a coherent panorama for a hundred and forty
+    // segments and then turn into something else, which only showed once the
+    // lot grew wider than a single strip.
+    expect(skyline?.frames).toHaveLength(140);
     expect(skyline?.frames[0]?.width).toBe(SEGMENT_WIDTH);
     expect(skyline?.frames[0]?.height).toBe(32);
     // Consecutive frames are consecutive cells, so the panorama runs across.

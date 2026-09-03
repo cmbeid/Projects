@@ -116,7 +116,14 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // flag: the panorama SimTower draws along the ground on either side of the
   // tower. Mapping it to the lobby is what made the ground floor look like a
   // parade of shopfronts, because that is exactly what it is.
-  { key: 'skyline', type: TYPE_CELLS, ids: range(0x89e8, 0x89ea), mode: 'cells', cellHeight: 32, cellFrames: true },
+  //
+  // One strip, not three. 0x89e9 and 0x89ea are the same size and sit next to
+  // it, and taking all three appended their cells to this one's — so the street
+  // ran as a coherent panorama for a hundred and forty segments and then became
+  // something else entirely, which is visible the moment the lot is wider than
+  // one strip. What those other two are has not been established; until it is,
+  // they are not drawn.
+  { key: 'skyline', type: TYPE_CELLS, ids: [0x89e8], mode: 'cells', cellHeight: 32, cellFrames: true },
 
   // The lobby itself is still unidentified. The other two cell-strip groups
   // (0x8a28, 0x8a68) are the next candidates. Until then the ground floor draws
