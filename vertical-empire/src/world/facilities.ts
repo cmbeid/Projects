@@ -10,9 +10,27 @@
 
 export type FacilityId = 'lobby' | 'office' | 'condo' | 'hotel' | 'elevator' | 'stairs';
 
+/**
+ * Which drawer of the build bar a facility lives in.
+ *
+ * A flat row of buttons was fine for six. The original's art covers roughly
+ * fifteen, which on a 390px screen is a scroll long enough that you stop
+ * knowing what is in it — so they are grouped, and the bar shows one group at
+ * a time.
+ */
+export type FacilityCategory = 'move' | 'live' | 'work' | 'play';
+
+export const CATEGORIES: readonly { id: FacilityCategory; label: string }[] = [
+  { id: 'move', label: 'Move' },
+  { id: 'live', label: 'Live' },
+  { id: 'work', label: 'Work' },
+  { id: 'play', label: 'Play' },
+];
+
 export interface Facility {
   id: FacilityId;
   label: string;
+  category: FacilityCategory;
   /** Key into the atlas. */
   sprite: string;
   /** Width in segments. */
@@ -31,13 +49,13 @@ export interface Facility {
 }
 
 export const FACILITIES: readonly Facility[] = [
-  { id: 'lobby', label: 'Lobby', sprite: 'lobby', width: 1, cost: 5_000, placement: 'lobby-levels', transport: false, tiled: true },
-  { id: 'office', label: 'Office', sprite: 'office', width: 9, cost: 40_000, placement: 'anywhere', transport: false },
-  { id: 'condo', label: 'Condo', sprite: 'condo', width: 16, cost: 200_000, placement: 'anywhere', transport: false },
-  { id: 'hotel', label: 'Hotel', sprite: 'hotel', width: 4, cost: 20_000, placement: 'anywhere', transport: false },
-  { id: 'elevator', label: 'Elevator', sprite: 'elevator', width: 4, cost: 100_000, placement: 'anywhere', transport: true },
+  { id: 'lobby', label: 'Lobby', category: 'move', sprite: 'lobby', width: 1, cost: 5_000, placement: 'lobby-levels', transport: false, tiled: true },
+  { id: 'elevator', label: 'Elevator', category: 'move', sprite: 'elevator', width: 4, cost: 100_000, placement: 'anywhere', transport: true },
   // Eight segments, from the 448px sheet dividing into seven states.
-  { id: 'stairs', label: 'Stairs', sprite: 'stairs', width: 8, cost: 5_000, placement: 'anywhere', transport: true },
+  { id: 'stairs', label: 'Stairs', category: 'move', sprite: 'stairs', width: 8, cost: 5_000, placement: 'anywhere', transport: true },
+  { id: 'condo', label: 'Condo', category: 'live', sprite: 'condo', width: 16, cost: 200_000, placement: 'anywhere', transport: false },
+  { id: 'hotel', label: 'Hotel', category: 'live', sprite: 'hotel', width: 4, cost: 20_000, placement: 'anywhere', transport: false },
+  { id: 'office', label: 'Office', category: 'work', sprite: 'office', width: 9, cost: 40_000, placement: 'anywhere', transport: false },
 ];
 
 const BY_ID = new Map(FACILITIES.map((facility) => [facility.id, facility]));

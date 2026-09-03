@@ -6,7 +6,7 @@
  * third, because that is what a thumb reaches.
  */
 
-import { FACILITIES, type Facility, type FacilityId } from '../world/facilities.js';
+import { CATEGORIES, FACILITIES, type Facility, type FacilityCategory, type FacilityId } from '../world/facilities.js';
 
 export type Tool = { kind: 'build'; id: FacilityId } | { kind: 'bulldoze' } | { kind: 'look' };
 
@@ -40,9 +40,15 @@ export function buildShell(root: HTMLElement): Shell {
   hud.append(clock, status);
   root.append(hud);
 
+  // Two rows: what you are doing, then what you can build while doing it.
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+  const tabs = document.createElement('div');
+  tabs.className = 'tabs';
   const bar = document.createElement('div');
   bar.className = 'bar';
-  root.append(bar);
+  controls.append(tabs, bar);
+  root.append(controls);
 
   const toolHandlers: ((tool: Tool) => void)[] = [];
   const buttons = new Map<string, HTMLButtonElement>();
@@ -51,7 +57,7 @@ export function buildShell(root: HTMLElement): Shell {
     return tool.kind === 'build' ? `build:${tool.id}` : tool.kind;
   }
 
-  function addButton(tool: Tool, label: string, sub?: string): void {
+  function makeButton(tool: Tool, label: string, sub?: string): HTMLButtonElement {
     const button = document.createElement('button');
     button.className = 'tool';
     button.type = 'button';
@@ -64,17 +70,60 @@ export function buildShell(root: HTMLElement): Shell {
       for (const handler of toolHandlers) handler(tool);
     });
     buttons.set(toolKey(tool), button);
-    bar.append(button);
+    return button;
   }
 
-  addButton({ kind: 'look' }, 'Look');
-  for (const item of FACILITIES) addButton({ kind: 'build', id: item.id }, item.label, width(item));
-  addButton({ kind: 'bulldoze' }, 'Clear');
+  // Only groups that have something in them: a drawer that opens onto nothing
+  // is worse than no drawer.
+  const drawers = CATEGORIES.filter((category) => FACILITIES.some((item) => item.category === category.id));
+
+  // Every button is built once and stays in the page; opening a drawer hides
+  // the others rather than rebuilding the row. Buttons that came and went would
+  // mean a tool is only clickable when its drawer happens to be open, which is
+  // a trap for anything driving this from outside — the screenshot script picks
+  // `button[data-tool="build:office"]` straight out of the page.
+  bar.append(makeButton({ kind: 'look' }, 'Look'));
+  for (const item of FACILITIES) {
+    const button = makeButton({ kind: 'build', id: item.id }, item.label, width(item));
+    button.dataset['category'] = item.category;
+    bar.append(button);
+  }
+  // Look and Clear bracket the row in every drawer: neither belongs to one.
+  bar.append(makeButton({ kind: 'bulldoze' }, 'Clear'));
+
+  const tabButtons = new Map<FacilityCategory, HTMLButtonElement>();
+
+  function showDrawer(id: FacilityCategory): void {
+    for (const [name, button] of tabButtons) button.classList.toggle('is-open', name === id);
+    for (const button of buttons.values()) {
+      const category = button.dataset['category'];
+      if (category) button.hidden = category !== id;
+    }
+  }
+
+  for (const drawer of drawers) {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'tab';
+    tab.textContent = drawer.label;
+    tab.addEventListener('click', () => showDrawer(drawer.id));
+    tabButtons.set(drawer.id, tab);
+    tabs.append(tab);
+  }
 
   function setTool(tool: Tool): void {
     const key = toolKey(tool);
     for (const [name, button] of buttons) button.classList.toggle('is-active', name === key);
+    // Choosing a facility from outside the open drawer opens the drawer holding
+    // it, so the highlighted tool is always one you can see.
+    if (tool.kind === 'build') {
+      const home = FACILITIES.find((item) => item.id === tool.id)?.category;
+      if (home) showDrawer(home);
+    }
   }
+
+  const firstDrawer = drawers[0]?.id;
+  if (firstDrawer) showDrawer(firstDrawer);
   setTool({ kind: 'look' });
 
   // --- where the art comes from ---------------------------------------------
