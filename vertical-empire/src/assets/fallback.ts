@@ -55,6 +55,8 @@ export const INK = {
   townWall: 26,
   townRoof: 27,
   townWindow: 28,
+  starLit: 29,
+  starDim: 30,
   indicatorA: 197,
   indicatorB: 198,
 } as const;
@@ -88,6 +90,8 @@ const DAY: Record<number, [number, number, number]> = {
   [INK.personAngry]: [220, 56, 40],
   [INK.townWall]: [104, 112, 128],
   [INK.townRoof]: [72, 78, 92],
+  [INK.starLit]: [240, 195, 82],
+  [INK.starDim]: [88, 96, 112],
   [INK.townWindow]: [196, 206, 176],
   [INK.indicatorA]: [248, 200, 64],
   [INK.indicatorB]: [80, 60, 24],
@@ -287,6 +291,40 @@ function person(tint: number): IndexedImage {
   return image;
 }
 
+/**
+ * A five-pointed star for the rating badge, as a picture of itself.
+ *
+ * Everything else here is generated, because a rectangle is easier to re-tune
+ * as code than as pixels. A star is the exception: at eleven pixels across the
+ * maths that puts five points in the right places is fiddlier to read *and*
+ * gets them wrong, while the shape below can be checked by looking at it.
+ */
+const STAR = [
+  '.....#.....',
+  '....###....',
+  '....###....',
+  '###########',
+  '.#########.',
+  '..#######..',
+  '..#######..',
+  '.###...###.',
+  '.##.....##.',
+  '.#.......#.',
+];
+
+function star(ink: number): IndexedImage {
+  const width = STAR[0]?.length ?? 0;
+  const height = STAR.length;
+  const pixels = new Uint8Array(width * height).fill(INK.transparent);
+  for (let y = 0; y < height; y += 1) {
+    const row = STAR[y] ?? '';
+    for (let x = 0; x < width; x += 1) {
+      if (row[x] === '#') pixels[y * width + x] = ink;
+    }
+  }
+  return { width, height, pixels };
+}
+
 function sprite(key: string, frames: IndexedImage[], transparent?: number): ExtractedSprite {
   const value: ExtractedSprite = { key, frames };
   if (transparent !== undefined) value.transparent = transparent;
@@ -301,6 +339,8 @@ export function buildFallbackAtlas(): Atlas {
     'sky',
     sprite('sky', [INK.sky0, INK.sky1, INK.sky2, INK.sky3, INK.sky4, INK.sky5].map(sky)),
   );
+  sprites.set('star', sprite('star', [star(INK.starLit)], INK.transparent));
+  sprites.set('star-dim', sprite('star-dim', [star(INK.starDim)], INK.transparent));
   sprites.set('ground', sprite('ground', [ground()]));
   sprites.set('lobby', sprite('lobby', [lobby()]));
   sprites.set('office', sprite('office', [office(0), office(1), office(2), office(3)]));

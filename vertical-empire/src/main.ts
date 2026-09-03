@@ -14,10 +14,11 @@ import { buildFallbackAtlas, INK } from './assets/fallback.js';
 import { buildOriginalAtlas } from './assets/original.js';
 import { fingerprint, forgetAtlas, loadAtlas, saveAtlas } from './assets/store.js';
 import { clonePalette, darkestIndex, mixPalettes, rotateCycles, type Palette } from './assets/palette.js';
-import type { Atlas } from './assets/atlas.js';
+import { lookup, type Atlas } from './assets/atlas.js';
 import { Camera } from './render/camera.js';
 import { Framebuffer } from './render/framebuffer.js';
 import { drawScene } from './render/scene.js';
+import { makeIcon, paintIcon } from './render/icon.js';
 import { facility } from './world/facilities.js';
 import {
   FLOOR_HEIGHT,
@@ -133,12 +134,61 @@ function frame(now: number): void {
   }
 
   shell.setClock(`${clockText(hour)} · ${camera.scale}×`);
+  paintRating(hour);
   if (statusUntil !== 0 && now > statusUntil) {
     shell.setStatus('');
     statusUntil = 0;
   }
 
   requestAnimationFrame(frame);
+}
+
+// --- the rating badge -------------------------------------------------------
+
+/** How many stars the badge has room for, lit or not. */
+const RATING_STARS = 5;
+const STAR_SCALE = 2;
+
+let starIcons: HTMLCanvasElement[] = [];
+/** What is currently painted, so the badge is not redrawn every frame. */
+let paintedStars = -1;
+let paintedHour = -1;
+
+/**
+ * Makes the badge's canvases once per atlas.
+ *
+ * They are then repainted in place rather than rebuilt: the palette moves all
+ * day, and replacing five DOM nodes on every shift of the light would cost far
+ * more than the tower does.
+ */
+function buildRating(): void {
+  const lit = lookup(atlas, 'star');
+  starIcons = lit ? Array.from({ length: RATING_STARS }, () => makeIcon()) : [];
+  paintedStars = -1;
+  paintedHour = -1;
+  shell.setRating(starIcons, '');
+}
+
+function paintRating(hour: number): void {
+  if (starIcons.length === 0) return;
+
+  const stars = tower.stars;
+  // The palette only moves between the eleven tables of the day, so repainting
+  // once an hour keeps the stars in step with the light for no real cost.
+  const band = Math.floor(hour);
+  if (stars === paintedStars && band === paintedHour) return;
+  paintedStars = stars;
+  paintedHour = band;
+
+  const lit = lookup(atlas, 'star');
+  const dim = lookup(atlas, 'star-dim') ?? lit;
+  if (!lit || !dim) return;
+
+  for (const [index, canvas] of starIcons.entries()) {
+    const art = index < stars ? lit : dim;
+    paintIcon(canvas, art.image, workingPalette, STAR_SCALE, art.sprite.transparent);
+  }
+  shell.setRating(starIcons, `${stars} of ${RATING_STARS} stars — how high the tower reaches`);
 }
 
 function flash(text: string, tone: 'plain' | 'warn' = 'plain'): void {
@@ -200,6 +250,7 @@ shell.onToolChange((next) => {
 function adopt(next: Atlas): void {
   atlas = next;
   shell.setArtSource(next.source);
+  buildRating();
 }
 
 shell.onArtFile(async (file) => {
@@ -269,6 +320,9 @@ camera.centreOn(SEGMENT_WIDTH * 24, levelTop(GROUND_LEVEL + 6) + FLOOR_HEIGHT / 
 gestures.onChange(() => {
   /* the loop redraws every frame; nothing to do but keep the camera honest */
 });
+
+// The fallback atlas has never been through `adopt`, so its badge is built here.
+buildRating();
 
 framebuffer.clear(INK.sky3);
 requestAnimationFrame(frame);

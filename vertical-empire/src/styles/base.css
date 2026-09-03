@@ -65,6 +65,7 @@ body {
 }
 
 .hud-clock,
+.hud-rating,
 .hud-status {
   padding: 3px 8px;
   border-radius: 5px;
@@ -83,6 +84,26 @@ body {
 
 .hud-status[data-tone='warn'] {
   color: var(--warn);
+}
+
+.hud-rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-rating[hidden] {
+  display: none;
+}
+
+/* Borrowed chrome is art, so it obeys the one rule the tower does. */
+.icon {
+  display: block;
+  /* Never shrink: a squeezed canvas is a squeezed picture, and the last star
+     in the row was the one paying for it. */
+  flex: 0 0 auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 /* --- build bar -------------------------------------------------------- */

@@ -168,6 +168,12 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   { key: 'stairs', type: TYPE_BITMAP, ids: [0x8968, 0x8969], mode: 'dib', states: 7, transparent: 'corner' },
   { key: 'escalator', type: TYPE_BITMAP, ids: [0x8aa8, 0x8ae8], mode: 'dib', states: 8, transparent: 'corner' },
 
+  // Two pieces of the original's chrome, borrowed for the HUD: the rating star
+  // lit and unlit. Icons rather than sheets, so they are taken whole. Both sit
+  // on a flat background, which is what the corner convention is for.
+  { key: 'star', type: TYPE_BITMAP, ids: [0x8142], mode: 'dib', transparent: 'corner' },
+  { key: 'star-dim', type: TYPE_BITMAP, ids: [0x8143], mode: 'dib', transparent: 'corner' },
+
   // Nine figures across a 96x24 sheet, and — this is the part a grid cannot
   // express — they are six different widths, from five pixels to eleven, with
   // the last few being clumps of two or three people rather than one. Cutting

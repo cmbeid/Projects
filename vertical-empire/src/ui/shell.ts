@@ -21,6 +21,13 @@ export interface Shell {
   setClock: (text: string) => void;
   setStatus: (text: string, tone?: 'plain' | 'warn') => void;
   setArtSource: (source: 'original' | 'fallback') => void;
+  /**
+   * The rating badge, as ready-made elements.
+   *
+   * The shell places them and says what they mean; drawing them is the
+   * renderer's job, because they are palette-indexed art like everything else.
+   */
+  setRating: (icons: HTMLElement[], label: string) => void;
 }
 
 export function buildShell(root: HTMLElement): Shell {
@@ -35,9 +42,11 @@ export function buildShell(root: HTMLElement): Shell {
   hud.className = 'hud';
   const clock = document.createElement('span');
   clock.className = 'hud-clock';
+  const rating = document.createElement('span');
+  rating.className = 'hud-rating';
   const status = document.createElement('span');
   status.className = 'hud-status';
-  hud.append(clock, status);
+  hud.append(clock, rating, status);
   root.append(hud);
 
   // Two rows: what you are doing, then what you can build while doing it.
@@ -220,6 +229,12 @@ export function buildShell(root: HTMLElement): Shell {
       status.dataset['tone'] = tone;
     },
     setArtSource,
+    setRating: (icons, label) => {
+      rating.replaceChildren(...icons);
+      rating.title = label;
+      rating.setAttribute('aria-label', label);
+      rating.hidden = icons.length === 0;
+    },
   };
 }
 

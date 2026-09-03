@@ -4,7 +4,7 @@
  */
 
 import { facility, type FacilityId } from './facilities.js';
-import { LOT_SEGMENTS, isInsideLot, isValidLevel } from './grid.js';
+import { LOT_SEGMENTS, isInsideLot, isValidLevel, levelToFloor } from './grid.js';
 
 export interface Placement {
   id: FacilityId;
@@ -68,6 +68,24 @@ export class Tower {
     // Indices after the hole all shifted, so the map is rebuilt rather than patched.
     this.reindex();
     return removed;
+  }
+
+  /**
+   * A five-star rating, standing in for one the spike does not simulate.
+   *
+   * SimTower's stars come from population and how well the tower serves it.
+   * Nothing here simulates population — there is no simulation at all — so
+   * rather than invent a score, this counts something the tower really does
+   * have: how high it reaches. The badge is honest about being a measure of
+   * the building rather than of how it is doing.
+   */
+  get stars(): number {
+    const floors = levelToFloor(this.topLevel);
+    if (floors < 1) return 0;
+    // Roughly the original's own pacing, where each star is a step change in
+    // what the tower has to be rather than a steady climb.
+    const steps = [1, 10, 25, 50, 75];
+    return steps.filter((needed) => floors >= needed).length;
   }
 
   /** Highest level with anything on it, or -1 for an empty lot. */

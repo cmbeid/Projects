@@ -118,3 +118,28 @@ describe('the demo tower', () => {
     expect(tower.at(0, GROUND_LEVEL)?.id).toBe('lobby');
   });
 });
+
+describe('the rating badge', () => {
+  it('counts stars from how high the tower reaches', () => {
+    const tower = new Tower();
+    expect(tower.stars).toBe(0);
+
+    tower.place('office', 0, GROUND_LEVEL);
+    expect(tower.stars).toBe(1);
+
+    // Floor 10 is the second step. Levels are 0-based and start below ground,
+    // so the tenth floor is GROUND_LEVEL + 9.
+    tower.place('office', 0, GROUND_LEVEL + 9);
+    expect(tower.stars).toBe(2);
+
+    tower.place('office', 0, GROUND_LEVEL + 74);
+    expect(tower.stars).toBe(5);
+  });
+
+  it('does not count basements as height', () => {
+    const tower = new Tower();
+    tower.place('office', 0, GROUND_LEVEL - 1);
+    // Something is built, but the tower does not reach floor 1.
+    expect(tower.stars).toBe(0);
+  });
+});
