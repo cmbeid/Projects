@@ -16,14 +16,16 @@ export const LEVEL_COUNT = BASEMENT_LEVELS + TOWER_LEVELS;
 
 /**
  * The original lot is 375 segments wide. On a phone held upright you can see
- * about two dozen of them at a readable scale, so a lot that wide would be a
- * map you never see the edges of.
+ * about fifty of them at a readable scale, so a lot that wide would be a map
+ * you never see the edges of.
  *
- * Ninety-six is the working answer: four screens across at 2x, wide enough for
- * six offices side by side, narrow enough to grasp. Whether it is the *right*
- * answer is the question this spike exists to settle — change it, reload, look.
+ * Ninety-six was the first answer and the art overruled it: SimTower's own
+ * chapel sheet is seventy segments and its theatre is ninety-six — the whole
+ * block for one room. A hundred and ninety-two leaves those room to be big
+ * without being the entire world, and still reads as a place rather than a
+ * plain, at roughly four screens across.
  */
-export const LOT_SEGMENTS = 96;
+export const LOT_SEGMENTS = 192;
 
 export const WORLD_WIDTH = LOT_SEGMENTS * SEGMENT_WIDTH;
 export const WORLD_HEIGHT = LEVEL_COUNT * FLOOR_HEIGHT;

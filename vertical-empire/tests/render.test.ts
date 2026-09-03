@@ -4,8 +4,16 @@ import { Framebuffer } from '../src/render/framebuffer.js';
 import { Camera, SCALES } from '../src/render/camera.js';
 import { buildFallbackAtlas, INK } from '../src/assets/fallback.js';
 import { drawScene } from '../src/render/scene.js';
-import { FLOOR_HEIGHT, GROUND_LEVEL, SEGMENT_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, levelTop } from '../src/world/grid.js';
-import { Tower, demoTower } from '../src/world/tower.js';
+import {
+  FLOOR_HEIGHT,
+  GROUND_LEVEL,
+  LOT_SEGMENTS,
+  SEGMENT_WIDTH,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  levelTop,
+} from '../src/world/grid.js';
+import { DEMO_LEFT, Tower, demoTower } from '../src/world/tower.js';
 import type { IndexedImage } from '../src/assets/dib.js';
 
 function solid(width: number, height: number, ink: number): IndexedImage {
@@ -136,7 +144,7 @@ describe('drawing a tower', () => {
     const tower = demoTower();
     const camera = new Camera();
     camera.resize(390, 780);
-    camera.centreOn(SEGMENT_WIDTH * 12, levelTop(GROUND_LEVEL) + FLOOR_HEIGHT / 2);
+    camera.centreOn(SEGMENT_WIDTH * (DEMO_LEFT + 12), levelTop(GROUND_LEVEL) + FLOOR_HEIGHT / 2);
 
     const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
     drawScene(buffer, atlas, tower, camera, { hour: 12, elapsed: 0 });
@@ -232,6 +240,41 @@ describe('short facades', () => {
     expect([...buffer.pixels.subarray(2 * 4, 3 * 4)]).toEqual([5, 5, 5, 5]);
     // One row asked for, one row written — the last row is untouched.
     expect([...buffer.pixels.subarray(3 * 4, 4 * 4)]).toEqual([1, 1, 1, 1]);
+  });
+});
+
+describe('every pixel gets painted', () => {
+  // The see-through index is never a colour anyone should see. If it survives
+  // to the framebuffer, something left a hole and the palette resolved it to
+  // the magenta that marks one.
+  const phases = [0, 1, 3, 5, 7];
+
+  it.each(phases)('leaves no hole at camera phase %i', (phase) => {
+    const atlas = buildFallbackAtlas();
+    const camera = new Camera();
+    camera.scale = 1;
+    camera.resize(390, 844);
+    // Off a segment boundary by `phase`, which is what the ground tiling has to
+    // cope with: shifted to stay put as you pan, and still reaching both edges.
+    camera.centreOn((LOT_SEGMENTS / 2) * SEGMENT_WIDTH + phase, levelTop(GROUND_LEVEL + 6));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, demoTower(), camera, { hour: 13, elapsed: 0 });
+
+    expect([...buffer.pixels].filter((ink) => ink === INK.transparent)).toHaveLength(0);
+  });
+
+  it('leaves no hole underground, where there is no sky to fall back on', () => {
+    const atlas = buildFallbackAtlas();
+    const camera = new Camera();
+    camera.scale = 1;
+    camera.resize(390, 844);
+    camera.centreOn(SEGMENT_WIDTH * 3, levelTop(GROUND_LEVEL - 5));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, demoTower(), camera, { hour: 13, elapsed: 0 });
+
+    expect([...buffer.pixels].filter((ink) => ink === INK.transparent)).toHaveLength(0);
   });
 });
 
@@ -382,7 +425,7 @@ describe('the town', () => {
     // street is what there is to see.
     camera.scale = 1;
     camera.resize(390, 780);
-    camera.centreOn(SEGMENT_WIDTH * 92, levelTop(GROUND_LEVEL));
+    camera.centreOn(SEGMENT_WIDTH * (DEMO_LEFT + 86), levelTop(GROUND_LEVEL));
 
     const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
     drawScene(buffer, atlas, demoTower(), camera, { hour: 12, elapsed: 0 });

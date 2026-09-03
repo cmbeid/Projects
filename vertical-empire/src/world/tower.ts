@@ -122,31 +122,40 @@ export class Tower {
 /** How much of the block the demo tower occupies, leaving the rest as street. */
 const FRONTAGE = 70;
 
+/**
+ * Where its left edge sits, so it stands mid-block with street either side.
+ *
+ * Derived rather than written down: the lot has changed width once already and
+ * a tower pinned to segment zero ends up hard against the edge of a wider one.
+ */
+export const DEMO_LEFT = Math.floor((LOT_SEGMENTS - FRONTAGE) / 2);
+
 export function demoTower(): Tower {
   const tower = new Tower();
   const ground = 9; // level index of floor 1
+  const at = (segment: number): number => DEMO_LEFT + segment;
 
   // Transport goes down first. Lifts run *through* the lobby floor rather than
   // sitting beside it, so they have to claim their segments before the lobby
   // fills in around them.
-  tower.place('elevator', 20, ground, 16);
-  tower.place('elevator', 46, ground, 11);
-  tower.place('stairs', 44, ground, 3);
+  tower.place('elevator', at(20), ground, 16);
+  tower.place('elevator', at(46), ground, 11);
+  tower.place('stairs', at(44), ground, 3);
 
   // The lobby spans the tower's own frontage, not the whole block. SimTower
   // stands its tower in a town, and a lobby stretched across every segment
   // paves over the streetscape either side of it.
   for (let segment = 0; segment < FRONTAGE; segment += 1) {
-    tower.place('lobby', segment, ground);
+    tower.place('lobby', at(segment), ground);
   }
 
   // Offices low, hotel in the middle, condos with the view. Wings either side
   // of the lift spine, the way a real floorplate works out — and dense enough
   // that the tower has a silhouette rather than being a scatter of rooms.
   const wings: [number, number][] = [
-    [2, 18],
-    [25, 43],
-    [50, 68],
+    [at(2), at(18)],
+    [at(25), at(43)],
+    [at(50), at(68)],
   ];
 
   for (let level = ground + 1; level <= ground + 6; level += 1) {

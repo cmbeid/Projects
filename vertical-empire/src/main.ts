@@ -23,6 +23,7 @@ import { facility } from './world/facilities.js';
 import {
   FLOOR_HEIGHT,
   GROUND_LEVEL,
+  LOT_SEGMENTS,
   SEGMENT_WIDTH,
   floorLabel,
   levelAtWorldY,
@@ -316,7 +317,7 @@ resize();
 // half the screen is empty basement; a few floors up puts the lobby near the
 // bottom edge with the tower filling the rest, which is how the original framed
 // itself too.
-camera.centreOn(SEGMENT_WIDTH * 24, levelTop(GROUND_LEVEL + 6) + FLOOR_HEIGHT / 2);
+camera.centreOn((LOT_SEGMENTS / 2) * SEGMENT_WIDTH, levelTop(GROUND_LEVEL + 6) + FLOOR_HEIGHT / 2);
 gestures.onChange(() => {
   /* the loop redraws every frame; nothing to do but keep the camera honest */
 });

@@ -14,7 +14,7 @@ import {
   levelTop,
   segmentAtWorldX,
 } from '../src/world/grid.js';
-import { Tower, demoTower } from '../src/world/tower.js';
+import { DEMO_LEFT, Tower, demoTower } from '../src/world/tower.js';
 import { facility } from '../src/world/facilities.js';
 
 describe('the grid', () => {
@@ -114,8 +114,18 @@ describe('the demo tower', () => {
 
   it('lets the lifts through the lobby floor', () => {
     const tower = demoTower();
-    expect(tower.at(21, GROUND_LEVEL)?.id).toBe('elevator');
-    expect(tower.at(0, GROUND_LEVEL)?.id).toBe('lobby');
+    // Positions are relative to where the tower stands, not to the lot, so
+    // these keep holding when the block gets wider.
+    expect(tower.at(DEMO_LEFT + 21, GROUND_LEVEL)?.id).toBe('elevator');
+    expect(tower.at(DEMO_LEFT, GROUND_LEVEL)?.id).toBe('lobby');
+  });
+
+  it('stands mid-block, with street on both sides', () => {
+    const tower = demoTower();
+    expect(DEMO_LEFT).toBeGreaterThan(0);
+    // Nothing built at either edge of the lot: that is where the town shows.
+    expect(tower.at(0, GROUND_LEVEL)).toBeUndefined();
+    expect(tower.at(LOT_SEGMENTS - 1, GROUND_LEVEL)).toBeUndefined();
   });
 });
 

@@ -77,7 +77,13 @@ function drawBackdrop(target: Framebuffer, atlas: Atlas, camera: Camera, groundY
   const top = Math.max(0, horizon);
   const ground = lookup(atlas, 'ground');
   if (ground) {
-    target.tile(ground.image, -mod(camera.x, ground.image.width), top, target.width, target.height - top);
+    // Shifted left so the pattern stays put as the camera pans — and made that
+    // much wider, or the rectangle stops short of the right edge by exactly the
+    // shift. Nothing clears the framebuffer between frames, so those columns
+    // kept whatever was last in them: on the first frame, zeroes, which the
+    // palette resolves to the see-through colour.
+    const phase = mod(camera.x, ground.image.width);
+    target.tile(ground.image, -phase, top, target.width + phase, target.height - top);
   } else {
     target.fillRect(0, top, target.width, target.height - top, INK.ground);
   }
