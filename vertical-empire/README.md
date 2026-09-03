@@ -114,21 +114,77 @@ stand in.
   catalogue can now cut by ink instead — frames are the runs between columns of
   pure background — which is what `cut: 'ink'` in `slice.ts` does.
 
-A few entries are still marked **UNVERIFIED** in the catalogue — the shaft, the
-stair and escalator widths, and `people`, whose 96×24 shape is not an obvious
-fit. Check those against the ID-named PNGs from `--all`.
-
 ### Lifts
 
-There is no shaft bitmap in the game, which is why nothing in the `0x842x` block
-looked like one: `0x8429` and `0x8468` both read as cars carrying passengers,
-and twenty frames is about a SimTower car's capacity. The original draws a lift
-as a flat near-black column with floor numbers over it, one car that moves, and
-a machine room above the top floor served and below the bottom one — so
-`src/render/scene.ts` paints the shaft rather than looking for a bitmap. Floor
-numbers are still missing; they need a digit source.
+An earlier pass concluded there is no shaft bitmap, because nothing in the
+`0x842x` block next to the cars looked like one. That was right about the block
+and wrong about the file. `--sweep` found it at **`0x87e8`**: a near-black
+column, 352×36, eleven frames of four segments. `0x87e9` and `0x87ea` carry the
+floor numbers that run down it — plain digits and a `B` set for basements — and
+`0x87eb`–`0x87ed` repeat all three in red. `0x88e8`–`0x88ed` are the machinery
+and landing doors.
 
-### Working out how a sheet is cut
+`src/render/scene.ts` tiles the real shaft now. The floor numbers and the
+machinery are not catalogued yet: how the digit sheets are cut decides whether a
+number is composed from glyphs or indexed whole, and that wants measuring rather
+than assuming. Machine rooms are still painted rectangles.
+
+### Measuring how a sheet is cut
+
+A sheet's width does not say how it divides. `288×24` is four states of nine
+segments if it is an office and three of twelve if it is a shop; both are whole
+segments and the file says neither. `npm run extract -- --period <ids>` measures
+it: where a sheet is a row of states it nearly matches itself shifted by one
+frame, and at any other width the walls land on each other's floors. Indices are
+compared for equality rather than distance — a palette index is a name, not a
+quantity.
+
+**It only works on some art, and it took a failed calibration to learn which.**
+Run against eight sheets whose cut was already known, it got four wrong: the
+office sheet went to noise, and the three hotel sheets each returned *exactly
+twice* their true frame width, because hotel states alternate in pairs and two
+frames' lag agrees better than one. Not silence — a confident wrong answer.
+
+The passes and failures separated cleanly, though: every correct reading scored
+under 35% and every wrong one over 45%. So the cutoff is 35%, measured rather
+than chosen, and above it `--period` declines to answer instead of naming a
+harmonic. Flat, strongly-structured art — a car, a flight of stairs, a
+shopfront — it reads well. Dense room facades it refuses, and the per-row
+profile it prints alongside is what you read instead.
+
+### The widths that came out of it
+
+| Facility | IDs | Sheet | Cut | Segments |
+| --- | --- | --- | --- | --- |
+| Restaurant | `0x8568`–`0x8571` | 384×24 | 2 states | **24** |
+| Shop | `0x8668`–`0x8672` | 288×24 | 3 states | **12** |
+| Fast food | `0x86e8`–`0x86f1` | 256×24 | 2 states | **16** |
+| Clinic | `0x8768` | 128×24 | one frame | **16** |
+| Parking | `0x8ee8`–`0x8eea` | 128×24 | one frame | **16** |
+| Shaft | `0x87e8`, `0x87eb` | 352×36 | 11 states | **4** |
+
+The first three are the strongest evidence in the catalogue: 24, 12 and 16 are
+SimTower's own documented widths for a restaurant, a shop and a fast food
+counter, reached from the pixels without being told what to expect. Clinic and
+parking are 128×24 — the same shape as a condo, which is sixteen segments and
+was verified separately.
+
+**Deliberately absent**: the chapel (`0x8ca8` measures 7 segments, which is not
+a room), the theatre (`0x88a8`, 34% against a 41% runner-up — too close), the
+cinema (`0x8728`) and the metro (`0x8e28`). Their art is in the file and their
+widths are not defensible yet. Nothing ships at a width that cannot be argued
+for; a facility drawn at the wrong one is how the ground floor became a parade
+of shopfronts.
+
+Also still open: the **lobby**. All eleven cell strips are accounted for — three
+groups of three are the street-level city, and the two left over, `0x8fe9` (622
+cells) and `0x8fea` (828 cells), are the largest art in the file and the last
+plausible home for it.
+
+### The rest of the diagnostics
+
+Four modes, each built because a guess had just been wrong. `--period` above is
+the one that measures how a sheet divides; these three are for looking at one.
 
 `npm run extract -- --frames 0x82bc,0x8429 SIMTOWER.EXE` measures a sprite sheet
 rather than asking you to eyeball a PNG. It takes the top-left pixel as the
