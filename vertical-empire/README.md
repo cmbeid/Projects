@@ -34,12 +34,30 @@ What it does instead is what OpenSkyscraper does, moved into the browser:
 To look at what is inside a copy from the command line:
 
 ```bash
+npm install                                # once, per project — nothing installs at the repo root
 npm run extract -- /path/to/SIMTOWER.EXE
 ```
 
-That prints an inventory of every resource and writes PNGs to `assets-private/`,
-which is gitignored. A compressed `SIMTOWER.EX_` has to be expanded first
-(`expand.exe`, or `msexpand`); the loader only reads the uncompressed form.
+Or, to run only the extractor without pulling down the test and screenshot
+tooling — the whole extraction chain is dependency-free, so `tsx` is all it
+needs:
+
+```bash
+npx tsx scripts/extract.ts /path/to/SIMTOWER.EXE
+```
+
+That prints an inventory of every resource, a listing of the art grouped by
+shape, and writes PNGs to `assets-private/`, which is gitignored. Add `--all` to
+also dump every bitmap and cell strip named by resource ID rather than by what
+the catalogue believes it is.
+
+The shape listing is the useful one while the catalogue is still being
+corrected. Everything the game draws is a whole number of 8px segments wide and
+36px floors tall, so a size is effectively a name — `72x36  9 seg x 1 floor` is
+an office, `32x36  4 seg` is a lift car, and a sheet four times as wide as its
+facility is that facility in four states. A compressed `SIMTOWER.EX_` has to be expanded first
+(`expand.exe SIMTOWER.EX_ SIMTOWER.EXE`, or `msexpand`); the loader reads only
+the uncompressed form, and says so rather than misparsing it.
 
 > **The resource map is unverified.** `src/assets/slice.ts` was written against
 > published format documentation, not against a copy of the game — there was no

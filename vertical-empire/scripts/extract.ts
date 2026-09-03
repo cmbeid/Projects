@@ -17,18 +17,77 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { decodeDIB, readCellStrip } from '../src/assets/dib.js';
 import { hex, readResources, type ResourceTable } from '../src/assets/ne.js';
-import { CATALOGUE, TYPE_BITMAP, TYPE_CELLS, TYPE_PALETTE, TYPE_SOUND, extract } from '../src/assets/slice.js';
+import {
+  CATALOGUE,
+  FLOOR_HEIGHT,
+  SEGMENT_WIDTH,
+  TYPE_BITMAP,
+  TYPE_CELLS,
+  TYPE_PALETTE,
+  TYPE_SOUND,
+  extract,
+} from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
 
 const OUT = 'assets-private';
 
+/**
+ * The `0x80xx` codes are the standard Windows resource types with the
+ * integer-id bit set; the `0xFFxx` ones are SimTower's own. Naming them keeps
+ * the inventory readable and stops the standard half looking mysterious.
+ */
 const TYPE_NAMES = new Map([
+  [0x8001, 'cursors'],
   [TYPE_BITMAP, 'bitmaps'],
+  [0x8003, 'icons'],
+  [0x8004, 'menus'],
+  [0x8005, 'dialogs'],
+  [0x8006, 'strings'],
+  [0x8009, 'accelerators'],
+  [0x800a, 'raw data'],
+  [0x800c, 'cursor groups'],
+  [0x800e, 'icon groups'],
+  [0x800f, 'version info'],
   [TYPE_CELLS, 'cell strips'],
   [TYPE_PALETTE, 'palettes'],
   [TYPE_SOUND, 'sounds'],
 ]);
+
+/**
+ * What a resource turns out to be once decoded, in the terms that identify it.
+ *
+ * Size is the tell. Everything SimTower draws is a whole number of 8px segments
+ * wide and 36px floors tall, so "144x36" is not a dimension so much as a name:
+ * an eighteen-segment, one-floor facility. This is what lets the catalogue be
+ * corrected without opening a single PNG.
+ */
+function shape(type: number, data: Uint8Array): string {
+  if (type === TYPE_BITMAP) {
+    try {
+      const { width, height } = decodeDIB(data);
+      return `${`${width}x${height}`.padEnd(9)} ${grid(width, height)}`;
+    } catch (error) {
+      return `undecodable — ${(error as Error).message}`;
+    }
+  }
+  if (type === TYPE_CELLS) {
+    const cells = data.byteLength / (SEGMENT_WIDTH * FLOOR_HEIGHT);
+    const width = cells * SEGMENT_WIDTH;
+    return Number.isInteger(cells)
+      ? `${`${width}x${FLOOR_HEIGHT}`.padEnd(9)} ${grid(width, FLOOR_HEIGHT)}`
+      : `${data.byteLength} bytes — not a whole number of ${SEGMENT_WIDTH}x${FLOOR_HEIGHT} cells`;
+  }
+  return `${data.byteLength} bytes`;
+}
+
+function grid(width: number, height: number): string {
+  const segments = width / SEGMENT_WIDTH;
+  const floors = height / FLOOR_HEIGHT;
+  if (!Number.isInteger(segments) || !Number.isInteger(floors)) return '(off-grid)';
+  return `${segments} seg x ${floors} floor${floors === 1 ? '' : 's'}`;
+}
 
 function inventory(resources: ResourceTable): void {
   console.log('\nResources found:');
@@ -43,10 +102,76 @@ function inventory(resources: ResourceTable): void {
   }
 }
 
+/**
+ * The art, grouped by what shape it is.
+ *
+ * One line per distinct size, listing every ID that has it. A 250-entry bitmap
+ * table collapses to a couple of dozen lines, and each line reads as a
+ * candidate: "9 seg x 1 floor" is an office, "4 seg x 1 floor" is a lift car or
+ * a hotel single, "1 seg x 1 floor" is lobby or sky.
+ */
+function shapes(resources: ResourceTable): void {
+  for (const type of [TYPE_BITMAP, TYPE_CELLS]) {
+    const byId = resources.get(type);
+    if (!byId) continue;
+
+    const groups = new Map<string, number[]>();
+    for (const [id, data] of byId) {
+      const key = shape(type, data);
+      const bucket = groups.get(key) ?? [];
+      bucket.push(id);
+      groups.set(key, bucket);
+    }
+
+    console.log(`\n${hex(type)} ${TYPE_NAMES.get(type) ?? 'unknown'} by shape:`);
+    // Widest first: the big sheets are the multi-state facilities, and they are
+    // the ones the catalogue most needs to get right.
+    const sorted = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+    for (const [key, ids] of sorted) {
+      console.log(`  ${key.padEnd(34)} ${ids.sort((a, b) => a - b).map(hex).join(' ')}`);
+    }
+  }
+}
+
+/**
+ * Dumps every bitmap and cell strip, named by type and ID rather than by what
+ * the catalogue thinks it is. This is the mode to use while the catalogue is
+ * still wrong: `raw-0x8002-0x85a8.png` makes no claim about being an office.
+ */
+async function dumpEverything(resources: ResourceTable, palette: Uint8Array): Promise<number> {
+  let written = 0;
+  for (const type of [TYPE_BITMAP, TYPE_CELLS]) {
+    const byId = resources.get(type);
+    if (!byId) continue;
+
+    for (const [id, data] of byId) {
+      try {
+        const image =
+          type === TYPE_BITMAP
+            ? decodeDIB(data)
+            : readCellStrip(data, SEGMENT_WIDTH, FLOOR_HEIGHT);
+        const table = image.palette ?? palette;
+        await writeFile(
+          join(OUT, `raw-${hex(type)}-${hex(id)}.png`),
+          encodePNG(image.width, image.height, image.pixels, table),
+        );
+        written += 1;
+      } catch {
+        // Undecodable resources are already named in the shape listing.
+      }
+    }
+  }
+  return written;
+}
+
 async function main(): Promise<void> {
-  const path = process.argv[2];
+  const args = process.argv.slice(2);
+  const all = args.includes('--all');
+  const path = args.find((argument) => !argument.startsWith('--'));
+
   if (!path) {
-    console.error('Usage: npm run extract -- /path/to/SIMTOWER.EXE');
+    console.error('Usage: npm run extract -- [--all] /path/to/SIMTOWER.EXE');
+    console.error('\n  --all   also dump every bitmap and cell strip, named by resource ID');
     console.error('\nA compressed SIMTOWER.EX_ has to be expanded first (expand.exe, or msexpand).');
     process.exitCode = 1;
     return;
@@ -55,6 +180,7 @@ async function main(): Promise<void> {
   const bytes = new Uint8Array(await readFile(path));
   const resources = readResources(bytes);
   inventory(resources);
+  shapes(resources);
 
   const { palette, sprites, problems } = extract(resources);
   await mkdir(OUT, { recursive: true });
@@ -70,12 +196,13 @@ async function main(): Promise<void> {
       written += 1;
     }
   }
+  if (all) written += await dumpEverything(resources, palette);
 
   console.log(`\nWrote ${written} image${written === 1 ? '' : 's'} to ${OUT}/`);
   console.log(`Catalogue: ${sprites.size} of ${CATALOGUE.length} entries extracted.`);
 
   if (problems.length > 0) {
-    console.log('\nNot found — correct these in src/assets/slice.ts against the inventory above:');
+    console.log('\nNot found — correct these in src/assets/slice.ts against the shapes above:');
     for (const problem of problems) console.log(`  ${problem.key.padEnd(10)} ${problem.reason}`);
   }
 }
