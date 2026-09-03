@@ -272,17 +272,17 @@ describe('drawing from a real-shaped file', () => {
     );
   }
 
-  it('cuts a lobby strip into single-segment frames', async () => {
+  it('cuts the town strip into single-segment frames', async () => {
     const { buildOriginalAtlas } = await import('../src/assets/original.js');
-    const lobby = buildOriginalAtlas(mimic()).atlas.sprites.get('lobby');
+    const skyline = buildOriginalAtlas(mimic()).atlas.sprites.get('skyline');
 
     // Three resources of 140 cells each. Drawn whole at a one-segment
     // placement, a 1120px strip smears across the entire ground floor.
-    expect(lobby?.frames).toHaveLength(3 * 140);
-    expect(lobby?.frames[0]?.width).toBe(SEGMENT_WIDTH);
-    expect(lobby?.frames[0]?.height).toBe(32);
-    // Consecutive frames are consecutive cells, so a lobby reads as a frontage.
-    expect(lobby?.frames[1]?.pixels[0]).toBe(2);
+    expect(skyline?.frames).toHaveLength(3 * 140);
+    expect(skyline?.frames[0]?.width).toBe(SEGMENT_WIDTH);
+    expect(skyline?.frames[0]?.height).toBe(32);
+    // Consecutive frames are consecutive cells, so the panorama runs across.
+    expect(skyline?.frames[1]?.pixels[0]).toBe(2);
   });
 
   it('takes the see-through index from the sprite rather than assuming zero', async () => {
@@ -299,7 +299,7 @@ describe('drawing from a real-shaped file', () => {
     // Only the entries this fixture leaves out should be missing.
     const missing = problems.map((problem) => problem.key).sort();
     expect(missing).not.toContain('office');
-    expect(missing).not.toContain('lobby');
+    expect(missing).not.toContain('skyline');
     expect(atlas.skyPalettes.length).toBeGreaterThan(1);
   });
 });

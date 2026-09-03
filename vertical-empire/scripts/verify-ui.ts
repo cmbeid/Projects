@@ -96,6 +96,18 @@ async function main(): Promise<void> {
         await page.screenshot({ path: `${OUT}/phone-${scale}x.png` });
       }
 
+      // Panned to the edge of the block, where the tower stops and the street
+      // the original stands it in is what there is to see.
+      await page.goto(`${URL}?hour=13`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(400);
+      await page.click('.art-collapse');
+      await page.mouse.move(300, 400);
+      await page.mouse.down();
+      await page.mouse.move(40, 400, { steps: 8 });
+      await page.mouse.up();
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: `${OUT}/phone-street.png` });
+
       // Placing something, so the build bar and its feedback are in a shot.
       await page.click('button[data-tool="build:office"]');
       await page.mouse.click(195, 420);

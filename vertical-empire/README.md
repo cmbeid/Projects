@@ -78,6 +78,23 @@ The IDs themselves mostly held up, and the arithmetic is what confirms them: a
 condo is 128 wide, which is sixteen segments; a hotel suite sheet is 640, which
 is eight states of ten segments; a lift car is 32×36, exactly as documented.
 
+### The lobby was never the lobby
+
+`0x89e8` — 140 cells of 8×32, mapped as the lobby on the strength of its ID
+sitting in the documented lobby range — is the **city**. Street-level buildings,
+brick frontages, trees, a park, a flag: the panorama SimTower draws along the
+ground on either side of the tower. That is why the ground floor rendered as a
+parade of shopfronts. It is one now, deliberately, drawn behind the tower and
+indexed by position so the panorama runs across rather than repeating.
+
+The real lobby is still unidentified; the other two cell-strip groups
+(`0x8a28`, `0x8a68`) are the next candidates. Until then the ground floor draws
+as a plain band rather than as the wrong art.
+
+The demo tower's frontage was narrowed to 70 of the 96 segments to suit: a lobby
+stretched across every segment paves over the streetscape it is supposed to
+stand in.
+
 ### What the measurements settled
 
 - **The lift car is `0x842a`**, five 32×36 frames, each the car interior holding
@@ -87,6 +104,10 @@ is eight states of ten segments; a lift car is 32×36, exactly as documented.
 - **`0x8468` is not a car or a shaft.** Thirty-five ink runs of 20px figures
   across a 640px sheet: clumps of people, most likely the queues that gather by
   the lift doors.
+- **Stairs and escalators confirmed by eye.** Stairs: seven 64×24 frames of a
+  tan diagonal flight, figures climbing some. Escalator: eight 64×36 frames with
+  a red handrail and riders. Eight segments each, as the arithmetic suggested,
+  and both need their corner index treated as see-through.
 - **People cannot be cut on a grid.** The 96×24 sheet holds *nine* figures at
   *six different widths*, from five pixels to eleven, the last few being clumps
   of two or three rather than one. Twelve equal columns sliced them apart. The

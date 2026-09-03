@@ -52,6 +52,9 @@ export const INK = {
   personC: 19,
   personD: 20,
   personAngry: 21,
+  townWall: 26,
+  townRoof: 27,
+  townWindow: 28,
   indicatorA: 197,
   indicatorB: 198,
 } as const;
@@ -83,6 +86,9 @@ const DAY: Record<number, [number, number, number]> = {
   [INK.personC]: [40, 80, 56],
   [INK.personD]: [64, 56, 40],
   [INK.personAngry]: [220, 56, 40],
+  [INK.townWall]: [104, 112, 128],
+  [INK.townRoof]: [72, 78, 92],
+  [INK.townWindow]: [196, 206, 176],
   [INK.indicatorA]: [248, 200, 64],
   [INK.indicatorB]: [80, 60, 24],
 };
@@ -254,6 +260,27 @@ function stairs(): IndexedImage {
   return image;
 }
 
+/**
+ * One 8px slice of the town the tower stands in.
+ *
+ * The original ships a hundred and forty of these as a panorama; ours is eight
+ * heights cycled, which is enough to read as a street rather than a wall. Cells
+ * are 32 tall and sit on the ground line.
+ */
+function town(step: number): IndexedImage {
+  const height = 32;
+  const image = blank(SEGMENT_WIDTH, height, INK.transparent);
+  // A repeating but not-quite-regular skyline: eight steps that do not divide
+  // evenly into the lot, so the pattern does not visibly tile.
+  const roof = 6 + ((step * 5) % 18);
+  fill(image, 0, roof, SEGMENT_WIDTH, height - roof, INK.townWall);
+  fill(image, 0, roof, SEGMENT_WIDTH, 1, INK.townRoof);
+  for (let y = roof + 3; y < height - 3; y += 5) {
+    fill(image, 2, y, 4, 2, INK.townWindow);
+  }
+  return image;
+}
+
 function person(tint: number): IndexedImage {
   const image = blank(2, 4, INK.transparent);
   fill(image, 0, 0, 2, 4, tint);
@@ -295,6 +322,11 @@ export function buildFallbackAtlas(): Atlas {
       ],
       INK.transparent,
     ),
+  );
+
+  sprites.set(
+    'skyline',
+    sprite('skyline', [0, 1, 2, 3, 4, 5, 6, 7].map(town), INK.transparent),
   );
 
   const skyPalettes = buildSkyPalettes();

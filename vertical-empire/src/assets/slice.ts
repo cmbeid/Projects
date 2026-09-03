@@ -102,9 +102,16 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // grid, which it is.
   { key: 'sky', type: TYPE_BITMAP, ids: range(0x8351, 0x835b), mode: 'dib' },
 
-  // Lobby, in three variants: ground, sky lobby, and the high one. Cells are 32
-  // tall rather than a full floor — see `ROOM_HEIGHT`.
-  { key: 'lobby', type: TYPE_CELLS, ids: range(0x89e8, 0x89ea), mode: 'cells', cellHeight: 32, cellFrames: true },
+  // Not the lobby, as first assumed — this is the city. A hundred and forty
+  // 8x32 cells of street-level buildings, brick frontages, trees, a park and a
+  // flag: the panorama SimTower draws along the ground on either side of the
+  // tower. Mapping it to the lobby is what made the ground floor look like a
+  // parade of shopfronts, because that is exactly what it is.
+  { key: 'skyline', type: TYPE_CELLS, ids: range(0x89e8, 0x89ea), mode: 'cells', cellHeight: 32, cellFrames: true },
+
+  // The lobby itself is still unidentified. The other two cell-strip groups
+  // (0x8a28, 0x8a68) are the next candidates. Until then the ground floor draws
+  // as a plain band rather than as the wrong art.
 
   // 288x24 = four states of nine segments. Occupancy runs across: empty, then
   // progressively tenanted.
@@ -137,10 +144,11 @@ export const CATALOGUE: readonly SpriteSpec[] = [
 
   // Both of these were in the catalogue at the right IDs but as cell strips.
   // They are ordinary bitmaps, which is why they came back "not found".
-  // UNVERIFIED: the eight-segment width is inferred from the state count
-  // dividing cleanly, not from the documentation.
-  { key: 'stairs', type: TYPE_BITMAP, ids: [0x8968, 0x8969], mode: 'dib', states: 7 },
-  { key: 'escalator', type: TYPE_BITMAP, ids: [0x8aa8, 0x8ae8], mode: 'dib', states: 8 },
+  // Both confirmed by eye. Stairs: seven 64x24 frames of a tan diagonal flight,
+  // some with figures climbing. Escalator: eight 64x36 frames, red handrail,
+  // riders on some. Eight segments each, as the arithmetic suggested.
+  { key: 'stairs', type: TYPE_BITMAP, ids: [0x8968, 0x8969], mode: 'dib', states: 7, transparent: 'corner' },
+  { key: 'escalator', type: TYPE_BITMAP, ids: [0x8aa8, 0x8ae8], mode: 'dib', states: 8, transparent: 'corner' },
 
   // Nine figures across a 96x24 sheet, and — this is the part a grid cannot
   // express — they are six different widths, from five pixels to eleven, with

@@ -256,3 +256,42 @@ describe('lift banks', () => {
     expect(SKY.has(buffer.pixels[above * buffer.width + x] ?? 0)).toBe(false);
   });
 });
+
+describe('the town', () => {
+  it('stands the tower in a street rather than on bare ground', () => {
+    const atlas = buildFallbackAtlas();
+    const camera = new Camera();
+    camera.resize(390, 780);
+    // Looking at the ground line beyond the tower's frontage, where the
+    // street is what there is to see.
+    camera.scale = 1;
+    camera.resize(390, 780);
+    camera.centreOn(SEGMENT_WIDTH * 92, levelTop(GROUND_LEVEL));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, demoTower(), camera, { hour: 12, elapsed: 0 });
+
+    const ink = new Set(buffer.pixels);
+    expect(ink.has(INK.townWall)).toBe(true);
+    expect(ink.has(INK.townWindow)).toBe(true);
+  });
+
+  it('keeps the town behind anything built', () => {
+    const atlas = buildFallbackAtlas();
+    const tower = new Tower();
+    // An office right where the town would otherwise show.
+    tower.place('office', 40, GROUND_LEVEL);
+
+    const camera = new Camera();
+    camera.resize(390, 780);
+    camera.centreOn(SEGMENT_WIDTH * 44, levelTop(GROUND_LEVEL) + FLOOR_HEIGHT / 2);
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, tower, camera, { hour: 12, elapsed: 0 });
+
+    // Mid-office, the office floor wins over the town behind it.
+    const x = Math.round(44 * SEGMENT_WIDTH - camera.x);
+    const y = Math.round(levelTop(GROUND_LEVEL) + 10 - camera.y);
+    expect(buffer.pixels[y * buffer.width + x]).not.toBe(INK.townWall);
+  });
+});

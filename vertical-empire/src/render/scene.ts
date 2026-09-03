@@ -71,6 +71,7 @@ function drawBackdrop(target: Framebuffer, atlas: Atlas, camera: Camera, groundY
   }
 
   const horizon = Math.round(groundY - camera.y);
+  drawSkyline(target, atlas, camera, groundY);
   if (horizon >= target.height) return;
 
   const top = Math.max(0, horizon);
@@ -83,6 +84,35 @@ function drawBackdrop(target: Framebuffer, atlas: Atlas, camera: Camera, groundY
   // One line where the tower meets the ground, drawn once rather than by every
   // tile — a lip inside the tile would stripe the whole basement.
   if (horizon >= 0) target.fillRect(0, horizon, target.width, 1, INK.slabLip);
+}
+
+/**
+ * The city at street level.
+ *
+ * SimTower stands its tower in a town: a long panorama of low buildings, brick
+ * frontages, trees and a park runs along the ground on either side. It is
+ * stored as a strip of 8px cells, so a segment of it is drawn per segment of
+ * the lot, indexed by position — the panorama runs across rather than the same
+ * building repeating.
+ *
+ * Drawn before the tower, so anything built stands in front of it.
+ */
+function drawSkyline(target: Framebuffer, atlas: Atlas, camera: Camera, groundY: number): void {
+  const skyline = atlas.sprites.get('skyline');
+  const count = skyline?.frames.length ?? 0;
+  if (!skyline || count === 0) return;
+
+  const height = skyline.frames[0]?.height ?? 0;
+  const y = Math.round(groundY - camera.y) - height;
+  if (y > target.height || y + height < 0) return;
+
+  const first = Math.floor(camera.x / SEGMENT_WIDTH);
+  const last = Math.ceil((camera.x + camera.viewWidth) / SEGMENT_WIDTH);
+  for (let segment = first; segment <= last; segment += 1) {
+    const image = skyline.frames[((segment % count) + count) % count];
+    if (!image) continue;
+    target.blit(image, Math.round(segment * SEGMENT_WIDTH - camera.x), y, skyline.transparent);
+  }
 }
 
 function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera: Camera): void {
@@ -118,9 +148,11 @@ function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera:
           target.repeatRow(x, y + found.image.height - 1, width, FLOOR_HEIGHT - found.image.height);
         }
       } else {
-        // An atlas missing this key still gets a solid block, so a mis-mapped
-        // resource shows up as a wrong-looking tower rather than an empty one.
-        target.fillRect(x, y, kind.width * SEGMENT_WIDTH, FLOOR_HEIGHT, INK.wall);
+        // A key the atlas does not have still gets a solid band, so an
+        // unidentified facility reads as built rather than as a hole. Drawn in
+        // the atlas's own dark index: INK.wall is a fallback-palette number and
+        // means nothing under the game's palette.
+        target.fillRect(x, y, kind.width * SEGMENT_WIDTH, FLOOR_HEIGHT, atlas.shaftInk);
       }
     }
   }

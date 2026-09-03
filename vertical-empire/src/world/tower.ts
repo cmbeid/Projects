@@ -101,6 +101,9 @@ export class Tower {
  * simulated — the point is a screenshot that answers "does this read as
  * SimTower", and an empty lot answers nothing.
  */
+/** How much of the block the demo tower occupies, leaving the rest as street. */
+const FRONTAGE = 70;
+
 export function demoTower(): Tower {
   const tower = new Tower();
   const ground = 9; // level index of floor 1
@@ -109,10 +112,13 @@ export function demoTower(): Tower {
   // sitting beside it, so they have to claim their segments before the lobby
   // fills in around them.
   tower.place('elevator', 20, ground, 16);
-  tower.place('elevator', 52, ground, 11);
+  tower.place('elevator', 46, ground, 11);
   tower.place('stairs', 44, ground, 3);
 
-  for (let segment = 0; segment < LOT_SEGMENTS; segment += 1) {
+  // The lobby spans the tower's own frontage, not the whole block. SimTower
+  // stands its tower in a town, and a lobby stretched across every segment
+  // paves over the streetscape either side of it.
+  for (let segment = 0; segment < FRONTAGE; segment += 1) {
     tower.place('lobby', segment, ground);
   }
 
@@ -122,7 +128,7 @@ export function demoTower(): Tower {
   const wings: [number, number][] = [
     [2, 18],
     [25, 43],
-    [57, 92],
+    [50, 68],
   ];
 
   for (let level = ground + 1; level <= ground + 6; level += 1) {
