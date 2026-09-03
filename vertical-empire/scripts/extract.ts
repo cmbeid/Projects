@@ -489,7 +489,10 @@ async function contact(
     panels.push(panelFor(window ? `${label}  ${window.from}-${window.to}` : label, image, wrapAt));
   }
 
-  await paste(panels, palette, scale, 'contact-sheet');
+  // Named after the first resource on it, so two runs in a row do not leave the
+  // second silently sitting on top of the first.
+  const first = panels[0]?.label.split('/')[1]?.split(' ')[0] ?? 'sheet';
+  await paste(panels, palette, scale, `contact-${first}`);
 }
 
 /**

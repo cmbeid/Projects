@@ -66,6 +66,9 @@ export const INK = {
   clinicTrim: 37,
   deck: 38,
   bay: 39,
+  house: 40,
+  seat: 41,
+  screen: 42,
   indicatorA: 197,
   indicatorB: 198,
 } as const;
@@ -110,6 +113,9 @@ const DAY: Record<number, [number, number, number]> = {
   [INK.clinicTrim]: [96, 156, 148],
   [INK.deck]: [88, 88, 92],
   [INK.bay]: [64, 64, 68],
+  [INK.house]: [58, 48, 72],
+  [INK.seat]: [138, 62, 74],
+  [INK.screen]: [206, 214, 232],
   [INK.townWindow]: [196, 206, 176],
   [INK.indicatorA]: [248, 200, 64],
   [INK.indicatorB]: [80, 60, 24],
@@ -406,6 +412,33 @@ function parking(): IndexedImage {
 }
 
 /**
+ * A theatre: twenty-four segments of raked seating facing a lit screen.
+ *
+ * A full floor tall rather than a room's twenty-four pixels, which is what the
+ * original's own sheet is — so this one does not get `addSlab`, and nothing
+ * carries its last row down to fill a gap it does not leave.
+ */
+function theatre(state: number): IndexedImage {
+  const width = SEGMENT_WIDTH * 24;
+  const image = blank(width, FLOOR_HEIGHT, INK.house);
+  // The screen, lit, at the left; the rake climbs away from it.
+  fill(image, 4, 5, 34, FLOOR_HEIGHT - 14, INK.screen);
+  fill(image, 4, 5, 34, 2, INK.trim);
+
+  const rows = 9;
+  for (let row = 0; row < rows; row += 1) {
+    const x = 48 + row * 14;
+    // Each row sits a little higher and a little further back than the last.
+    const top = FLOOR_HEIGHT - 8 - Math.round((row / rows) * (FLOOR_HEIGHT - 18));
+    fill(image, x, top, 11, 3, INK.seat);
+    // Filling up as the state rises, the way the offices fill with desks.
+    if (row % 3 <= state) fill(image, x + 3, top - 3, 5, 3, row % 2 === 0 ? INK.personA : INK.personD);
+  }
+  fill(image, 0, FLOOR_HEIGHT - 3, width, 3, INK.slab);
+  return image;
+}
+
+/**
  * A five-pointed star for the rating badge, as a picture of itself.
  *
  * Everything else here is generated, because a rectangle is easier to re-tune
@@ -468,6 +501,7 @@ export function buildFallbackAtlas(): Atlas {
   sprites.set('fast-food', sprite('fast-food', [fastFood(0), fastFood(1)]));
   sprites.set('medical', sprite('medical', [clinic()]));
   sprites.set('parking', sprite('parking', [parking()]));
+  sprites.set('theatre', sprite('theatre', [theatre(0), theatre(1), theatre(2), theatre(3)]));
   sprites.set(
     'people',
     sprite(

@@ -125,9 +125,32 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // they are not drawn.
   { key: 'skyline', type: TYPE_CELLS, ids: [0x89e8], mode: 'cells', cellHeight: 32, cellFrames: true },
 
-  // The lobby itself is still unidentified. The other two cell-strip groups
-  // (0x8a28, 0x8a68) are the next candidates. Until then the ground floor draws
-  // as a plain band rather than as the wrong art.
+  // The lobby, on trial.
+  //
+  // All eleven cell strips are now accounted for: nine are backdrop panoramas
+  // and these last two are neither. 0x8fe9 is 622 cells of mostly-plain light
+  // ground with a figure or a fitting every dozen or so — which is either a
+  // lobby concourse seen end to end, or a sprite sheet with a lot of empty
+  // space in it. The two look the same in a contact sheet and completely
+  // different once drawn at eight pixels a segment, so it is catalogued to be
+  // looked at rather than argued about further.
+  //
+  // Drawn opaque on purpose. Its plain cells are a flat light index, and taking
+  // that as see-through — the usual corner convention — would leave the ground
+  // floor as sky with people standing in it.
+  { key: 'lobby', type: TYPE_CELLS, ids: [0x8fe9], mode: 'cells', cellHeight: 32, cellFrames: true },
+
+  // The theatre: 768x36, four states of twenty-four segments. Raked seating,
+  // a door at one end and a stair at the other, confirmed by eye — which is
+  // what settles it, because the measurement alone put this at 34% against a
+  // 41% runner-up and that is too close to call on its own.
+  { key: 'theatre', type: TYPE_BITMAP, ids: [0x88a8], mode: 'dib', states: 4 },
+
+  // Still out: the cinema (0x8ca8 — red curtains and a screen showing a
+  // different film each frame, so it is certainly a cinema, but 560px divides
+  // at both 7 and 14 segments and the curtain repeating inside the unit is
+  // what makes the narrower reading score well). And 0x8e28, a white lattice
+  // that reads as structure rather than as a room.
 
   // Three sheets, each 288x24 = four states of nine segments. Occupancy runs
   // across: empty, then progressively tenanted.

@@ -19,7 +19,8 @@ export type FacilityId =
   | 'shop'
   | 'fast-food'
   | 'medical'
-  | 'parking';
+  | 'parking'
+  | 'theatre';
 
 /**
  * Which drawer of the build bar a facility lives in.
@@ -75,6 +76,7 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'restaurant', label: 'Restaurant', category: 'play', sprite: 'restaurant', width: 24, cost: 200_000, placement: 'anywhere', transport: false },
   { id: 'shop', label: 'Shop', category: 'play', sprite: 'shop', width: 12, cost: 100_000, placement: 'anywhere', transport: false },
   { id: 'fast-food', label: 'Fast food', category: 'play', sprite: 'fast-food', width: 16, cost: 100_000, placement: 'anywhere', transport: false },
+  { id: 'theatre', label: 'Theatre', category: 'play', sprite: 'theatre', width: 24, cost: 1_000_000, placement: 'anywhere', transport: false },
 ];
 
 const BY_ID = new Map(FACILITIES.map((facility) => [facility.id, facility]));
