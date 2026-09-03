@@ -79,9 +79,21 @@ condo is 128 wide, which is sixteen segments; a hotel suite sheet is 640, which
 is eight states of ten segments; a lift car is 32×36, exactly as documented.
 
 A few entries are still marked **UNVERIFIED** in the catalogue — the shaft, the
-stair and escalator widths, and especially `people`, whose 96×24 shape is not an
-obvious fit for the four-pixel figures the game draws. Check those against the
-ID-named PNGs from `--all`.
+stair and escalator widths, and `people`, whose 96×24 shape is not an obvious
+fit. Check those against the ID-named PNGs from `--all`.
+
+Three further things only showed up once the real art was on screen:
+
+- **A lobby resource is 140 cells wide.** Drawn whole at each one-segment
+  placement it smeared across the entire ground floor, so cell strips are now
+  cut into one frame per cell, and the lobby steps through them by position —
+  a continuous frontage rather than one tile stamped repeatedly.
+- **See-through is not index 0.** Assuming it was gave every person a solid
+  rectangle behind them. Sprites that overlay others now take the index from
+  their own top-left pixel.
+- **The original's rooms come with their occupants painted in.** Walking our own
+  figures through them doubled everyone up, so with the original art people are
+  drawn on the concourse only. The placeholder rooms are empty and keep theirs.
 
 ## What the spike found
 

@@ -59,8 +59,20 @@ export interface SpriteSpec {
   states?: number;
   /** Cut the decoded sheet into this many equal rows (variants). */
   variants?: number;
-  /** Palette index to treat as see-through when drawn over other art. */
-  transparent?: number;
+  /**
+   * Palette index to treat as see-through when drawn over other art.
+   *
+   * `'corner'` reads it from the sprite's own top-left pixel, which is the
+   * usual convention and beats guessing: assuming index 0 gave the people
+   * solid rectangular backgrounds.
+   */
+  transparent?: number | 'corner';
+  /**
+   * Cut a cell strip into one frame per 8px cell rather than handing back the
+   * whole strip. A lobby resource is 140 cells wide; drawn whole at each
+   * one-segment placement it smears across the entire ground floor.
+   */
+  cellFrames?: boolean;
 }
 
 function range(from: number, to: number): number[] {
@@ -84,7 +96,7 @@ export const CATALOGUE: readonly SpriteSpec[] = [
 
   // Lobby, in three variants: ground, sky lobby, and the high one. Cells are 32
   // tall rather than a full floor — see `ROOM_HEIGHT`.
-  { key: 'lobby', type: TYPE_CELLS, ids: range(0x89e8, 0x89ea), mode: 'cells', cellHeight: 32 },
+  { key: 'lobby', type: TYPE_CELLS, ids: range(0x89e8, 0x89ea), mode: 'cells', cellHeight: 32, cellFrames: true },
 
   // 288x24 = four states of nine segments. Occupancy runs across: empty, then
   // progressively tenanted.
@@ -105,11 +117,14 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // The lift car: 160x36 cut five ways gives 32x36, the documented car size,
   // and five frames is the door opening. 0x8428 is the same car as a single
   // bitmap; 0x842d is the 48x36 express one.
-  { key: 'car', type: TYPE_BITMAP, ids: [0x842a], mode: 'dib', states: 5, transparent: 0 },
+  { key: 'car', type: TYPE_BITMAP, ids: [0x842a], mode: 'dib', states: 5, transparent: 'corner' },
 
-  // UNVERIFIED: 640x36 divides into twenty four-segment pieces, which is the
-  // right shape for shaft segments, but the size alone does not prove it.
-  { key: 'elevator', type: TYPE_BITMAP, ids: [0x8468], mode: 'dib', states: 20 },
+  // UNVERIFIED. 0x8468 was the first guess at the shaft — 640x36 divides into
+  // twenty four-segment pieces — but on screen it turned out to be walking
+  // figures, so it is stairs or an escalator, not an empty shaft. 0x8429 is
+  // the same four-segment width in six states and sits in the elevator block
+  // with the two cars, which makes it the better candidate.
+  { key: 'elevator', type: TYPE_BITMAP, ids: [0x8429], mode: 'dib', states: 6 },
 
   // Both of these were in the catalogue at the right IDs but as cell strips.
   // They are ordinary bitmaps, which is why they came back "not found".
@@ -122,7 +137,7 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // for the four-pixel people the game draws, and the same ID exists under
   // resource type 0xFF06 as well. Twelve eight-wide frames is a guess; check
   // raw-0x8002-0x82bc.png before trusting it.
-  { key: 'people', type: TYPE_BITMAP, ids: range(0x82bc, 0x82bf), mode: 'dib', states: 12, transparent: 0 },
+  { key: 'people', type: TYPE_BITMAP, ids: range(0x82bc, 0x82bf), mode: 'dib', states: 12, transparent: 'corner' },
 ];
 
 export interface ExtractedSprite {
@@ -146,6 +161,16 @@ function decodeSheet(spec: SpriteSpec, data: Uint8Array): IndexedImage {
 
 /** Cuts a decoded sheet into its states and variants. */
 function cutFrames(spec: SpriteSpec, sheet: IndexedImage): IndexedImage[] {
+  // A strip is a run of single-segment cells, each its own frame.
+  if (spec.cellFrames) {
+    const cells = Math.floor(sheet.width / SEGMENT_WIDTH);
+    const frames: IndexedImage[] = [];
+    for (let cell = 0; cell < cells; cell += 1) {
+      frames.push(crop(sheet, cell * SEGMENT_WIDTH, 0, SEGMENT_WIDTH, sheet.height));
+    }
+    return frames.length > 0 ? frames : [sheet];
+  }
+
   const states = Math.max(1, spec.states ?? 1);
   const variants = Math.max(1, spec.variants ?? 1);
   if (states === 1 && variants === 1) return [sheet];
@@ -208,11 +233,19 @@ export function extract(resources: ResourceTable): Extraction {
     }
 
     const sprite: ExtractedSprite = { key: spec.key, frames };
-    if (spec.transparent !== undefined) sprite.transparent = spec.transparent;
+    const transparent = resolveTransparent(spec, frames);
+    if (transparent !== undefined) sprite.transparent = transparent;
     sprites.set(spec.key, sprite);
   }
 
   return { palette, sprites, problems };
+}
+
+/** Turns `'corner'` into the actual index the sprite uses for see-through. */
+function resolveTransparent(spec: SpriteSpec, frames: IndexedImage[]): number | undefined {
+  if (spec.transparent === undefined) return undefined;
+  if (spec.transparent !== 'corner') return spec.transparent;
+  return frames[0]?.pixels[0];
 }
 
 function firstValue<K, V>(map: Map<K, V> | undefined): V | undefined {

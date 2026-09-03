@@ -6,6 +6,7 @@ import { CYCLE_GROUPS, decodePalette, mixPalettes, rotateCycles } from '../src/a
 import { FLOOR_HEIGHT, ROOM_HEIGHT, SEGMENT_WIDTH, TYPE_BITMAP, TYPE_PALETTE, extract } from '../src/assets/slice.js';
 import { buildCellStrip, buildDIB, buildNE, buildPaletteResource } from './fixtures.js';
 
+
 describe('NE resources', () => {
   it('reads every resource back out, keyed by raw type and id', () => {
     const spec = new Map([
@@ -240,5 +241,64 @@ describe('the corrected catalogue', () => {
     expect(sprites.get('stairs')?.frames).toHaveLength(7);
     expect(sprites.get('stairs')?.frames[0]?.width).toBe(64);
     expect(problems.some((problem) => problem.key === 'stairs')).toBe(false);
+  });
+});
+
+describe('drawing from a real-shaped file', () => {
+  /** A stand-in with the shapes the real SIMTOWER.EXE reports. */
+  function mimic(): Uint8Array {
+    const bitmaps = new Map<number, Uint8Array>();
+    const put = (id: number, w: number, h: number, ink: (x: number, y: number) => number) =>
+      bitmaps.set(id, buildDIB(w, h, ink));
+
+    for (let id = 0x8351; id <= 0x835b; id += 1) put(id, 32, 360, () => 60);
+    for (let id = 0x85a8; id <= 0x85aa; id += 1) put(id, 288, ROOM_HEIGHT, (x) => Math.floor(x / 72) + 1);
+    // People: a figure on a background, so the corner index is the see-through one.
+    for (let id = 0x82bc; id <= 0x82bf; id += 1) put(id, 96, ROOM_HEIGHT, (x, y) => (y > 8 && x % 8 > 2 ? 200 : 77));
+
+    const cells = new Map<number, Uint8Array>();
+    for (let id = 0x89e8; id <= 0x89ea; id += 1) {
+      // 140 cells, each carrying its own index so a mis-cut shows up.
+      cells.set(id, buildCellStrip(140, SEGMENT_WIDTH, 32, (cell) => (cell % 200) + 1));
+    }
+
+    return buildNE(
+      new Map([
+        [TYPE_BITMAP, bitmaps],
+        [0xff02, cells],
+        [TYPE_PALETTE, new Map([[0x83e8, buildPaletteResource((i) => [i, i, i])]])],
+      ]),
+    );
+  }
+
+  it('cuts a lobby strip into single-segment frames', async () => {
+    const { buildOriginalAtlas } = await import('../src/assets/original.js');
+    const lobby = buildOriginalAtlas(mimic()).atlas.sprites.get('lobby');
+
+    // Three resources of 140 cells each. Drawn whole at a one-segment
+    // placement, a 1120px strip smears across the entire ground floor.
+    expect(lobby?.frames).toHaveLength(3 * 140);
+    expect(lobby?.frames[0]?.width).toBe(SEGMENT_WIDTH);
+    expect(lobby?.frames[0]?.height).toBe(32);
+    // Consecutive frames are consecutive cells, so a lobby reads as a frontage.
+    expect(lobby?.frames[1]?.pixels[0]).toBe(2);
+  });
+
+  it('takes the see-through index from the sprite rather than assuming zero', async () => {
+    const { buildOriginalAtlas } = await import('../src/assets/original.js');
+    const people = buildOriginalAtlas(mimic()).atlas.sprites.get('people');
+    // 77 is the background these were drawn with; assuming 0 gave every person
+    // a solid rectangle behind them.
+    expect(people?.transparent).toBe(77);
+  });
+
+  it('reports no problems for the shapes a real copy actually has', async () => {
+    const { buildOriginalAtlas } = await import('../src/assets/original.js');
+    const { problems, atlas } = buildOriginalAtlas(mimic());
+    // Only the entries this fixture leaves out should be missing.
+    const missing = problems.map((problem) => problem.key).sort();
+    expect(missing).not.toContain('office');
+    expect(missing).not.toContain('lobby');
+    expect(atlas.skyPalettes.length).toBeGreaterThan(1);
   });
 });

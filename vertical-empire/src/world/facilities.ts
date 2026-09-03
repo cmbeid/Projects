@@ -22,10 +22,16 @@ export interface Facility {
   placement: 'anywhere' | 'lobby-levels';
   /** Transport runs between floors rather than sitting on one. */
   transport: boolean;
+  /**
+   * Drawn one segment at a time from a run of cells, stepping through the sheet
+   * by position rather than by state. The lobby is a continuous frontage, not
+   * the same tile repeated.
+   */
+  tiled?: boolean;
 }
 
 export const FACILITIES: readonly Facility[] = [
-  { id: 'lobby', label: 'Lobby', sprite: 'lobby', width: 1, cost: 5_000, placement: 'lobby-levels', transport: false },
+  { id: 'lobby', label: 'Lobby', sprite: 'lobby', width: 1, cost: 5_000, placement: 'lobby-levels', transport: false, tiled: true },
   { id: 'office', label: 'Office', sprite: 'office', width: 9, cost: 40_000, placement: 'anywhere', transport: false },
   { id: 'condo', label: 'Condo', sprite: 'condo', width: 16, cost: 200_000, placement: 'anywhere', transport: false },
   { id: 'hotel', label: 'Hotel', sprite: 'hotel', width: 4, cost: 20_000, placement: 'anywhere', transport: false },

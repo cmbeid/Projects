@@ -95,7 +95,10 @@ function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera:
     if (highest < bottomLevel || placement.level > topLevel) continue;
 
     const kind = facility(placement.id);
-    const found = lookup(atlas, kind.sprite, placement.state);
+    // A tiled facility steps through its sheet by position, so a lobby reads as
+    // one continuous frontage rather than one tile stamped over and over.
+    const frame = kind.tiled ? placement.segment : placement.state;
+    const found = lookup(atlas, kind.sprite, frame);
     const x = Math.round(placement.segment * SEGMENT_WIDTH - camera.x);
     if (x > target.width || x + kind.width * SEGMENT_WIDTH < 0) continue;
 
@@ -171,25 +174,51 @@ function drawPeople(
   // Fewer people about at night, which the palette alone cannot tell you.
   const busy = clock.hour > 7 && clock.hour < 21 ? 1 : 0.25;
 
+  /**
+   * The original's room art already has its occupants painted in — a desk with
+   * someone at it, a bed with someone asleep in it — so walking our own figures
+   * through it doubles them up. There, people belong on the concourse only.
+   * Our placeholder rooms are empty, so they keep their walkers.
+   */
+  const roomWalkers = atlas.source === 'fallback';
+
   tower.placements.forEach((placement, index) => {
     const kind = facility(placement.id);
     if (kind.transport) return;
+    if (!kind.tiled && !roomWalkers) return;
     if (placement.level < bottomLevel - 1 || placement.level > topLevel + 1) return;
 
-    const walkers = Math.round(hash(index) * 3 * busy);
-    const floorY = Math.round(levelTop(placement.level) + FLOOR_HEIGHT - camera.y) - 5;
-    if (floorY < 0 || floorY > target.height) return;
+    // Stand them on the floor of the room they are in, which is the bottom of
+    // the facility's own art — 24 pixels down for the original's facades, a
+    // full 36 for ours. Anchoring to the floor band instead put everyone in
+    // the slab below the room.
+    const facade = lookup(atlas, kind.sprite, kind.tiled ? placement.segment : placement.state);
+    const floorLine = Math.min(facade?.image.height ?? FLOOR_HEIGHT, FLOOR_HEIGHT);
+    const baseY = Math.round(levelTop(placement.level) + floorLine - camera.y);
+    if (baseY < 0 || baseY > target.height) return;
 
+    const walkers = Math.round(hash(index) * 3 * busy);
     const runWidth = kind.width * SEGMENT_WIDTH;
+
     for (let i = 0; i < walkers; i += 1) {
       const seed = index * 31 + i;
-      const speed = 0.008 + hash(seed) * 0.012;
-      const along = mod(hash(seed + 3) * runWidth + clock.elapsed * speed, runWidth);
-      const x = Math.round(placement.segment * SEGMENT_WIDTH + along - camera.x);
       // The last frame is the angry tint; a few of them always are.
-      const frame = hash(seed + 11) > 0.85 ? people.frames.length - 1 : Math.floor(hash(seed + 5) * (people.frames.length - 1));
+      const frame = hash(seed + 11) > 0.85
+        ? people.frames.length - 1
+        : Math.floor(hash(seed + 5) * (people.frames.length - 1));
       const image = people.frames[frame];
-      if (image) target.blit(image, x, floorY, people.transparent);
+      if (!image) continue;
+
+      // Pace back and forth rather than wrapping. Wrapping made everyone
+      // teleport from one side of the room to the other on every lap.
+      const span = Math.max(1, runWidth - image.width);
+      const speed = 0.006 + hash(seed) * 0.008;
+      const phase = mod(hash(seed + 3) + clock.elapsed * speed / span, 2);
+      const along = (phase < 1 ? phase : 2 - phase) * span;
+
+      const x = Math.round(placement.segment * SEGMENT_WIDTH + along - camera.x);
+      // Feet on the floor line, however tall this particular sprite is.
+      target.blit(image, x, baseY - image.height, people.transparent);
     }
   });
 }
