@@ -88,12 +88,39 @@ export class Framebuffer {
   }
 
   /** Tiles an image across a rectangle. Used for sky and ground. */
+  /**
+   * Repeats an image across a rectangle, clipped to it.
+   *
+   * The clipping is the point. Tiling by repeated `blit` overflows whenever the
+   * image does not divide the rectangle, which goes unnoticed for sky and
+   * ground because they cover the screen anyway — and then paints a 128px-wide
+   * shaft interior straight through the rooms either side of a 32px lift.
+   */
   tile(image: IndexedImage, x: number, y: number, width: number, height: number): void {
     if (image.width <= 0 || image.height <= 0) return;
-    for (let row = y; row < y + height; row += image.height) {
-      for (let column = x; column < x + width; column += image.width) {
-        this.blit(image, column, row);
+
+    const left = Math.max(0, x);
+    const top = Math.max(0, y);
+    const right = Math.min(this.width, x + width);
+    const bottom = Math.min(this.height, y + height);
+    if (right <= left || bottom <= top) return;
+
+    // Where in the source the first drawn pixel comes from, for a rectangle
+    // whose corner may be off-screen or at a negative world position.
+    const firstX = mod(left - x, image.width);
+    let sourceY = mod(top - y, image.height);
+
+    for (let row = top; row < bottom; row += 1) {
+      const sourceRow = sourceY * image.width;
+      const targetRow = row * this.width;
+      let sourceX = firstX;
+      for (let column = left; column < right; column += 1) {
+        this.pixels[targetRow + column] = image.pixels[sourceRow + sourceX] ?? 0;
+        sourceX += 1;
+        if (sourceX === image.width) sourceX = 0;
       }
+      sourceY += 1;
+      if (sourceY === image.height) sourceY = 0;
     }
   }
 
@@ -115,4 +142,9 @@ export class Framebuffer {
       target[at + 3] = 255;
     }
   }
+}
+
+/** Positive remainder, so a negative camera position still indexes the source. */
+function mod(value: number, by: number): number {
+  return ((value % by) + by) % by;
 }

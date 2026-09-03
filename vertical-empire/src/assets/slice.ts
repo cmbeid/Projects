@@ -97,10 +97,19 @@ function range(from: number, to: number): number[] {
  * `world/facilities.ts` has to agree with.
  */
 export const CATALOGUE: readonly SpriteSpec[] = [
-  // Eleven of them, one per band of the day, each 32x360 — four segments wide
-  // and ten floors tall. Tiled, so the size only has to be a multiple of the
-  // grid, which it is.
-  { key: 'sky', type: TYPE_BITMAP, ids: range(0x8351, 0x835b), mode: 'dib' },
+  // Ten of them, one per band of altitude. Tiled, so the size only has to be a
+  // multiple of the grid, which it is.
+  //
+  // The range used to start at 0x8351, which is not a sky at all: it is brown
+  // soil. Reading it as the lowest band painted a stripe of dirt across the
+  // horizon. It sits next to the sky in the file because both are background
+  // fills, not because both are sky.
+  { key: 'sky', type: TYPE_BITMAP, ids: range(0x8352, 0x835b), mode: 'dib' },
+
+  // The earth the tower is sunk into. Keyed `ground` because that is what
+  // `render/scene.ts` already tiles below the horizon for the fallback art —
+  // so nine basements' worth of backdrop arrives without the renderer changing.
+  { key: 'ground', type: TYPE_BITMAP, ids: [0x8351], mode: 'dib' },
 
   // Not the lobby, as first assumed — this is the city. A hundred and forty
   // 8x32 cells of street-level buildings, brick frontages, trees, a park and a
@@ -113,9 +122,10 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // (0x8a28, 0x8a68) are the next candidates. Until then the ground floor draws
   // as a plain band rather than as the wrong art.
 
-  // 288x24 = four states of nine segments. Occupancy runs across: empty, then
-  // progressively tenanted.
-  { key: 'office', type: TYPE_BITMAP, ids: range(0x85a8, 0x85aa), mode: 'dib', states: 4 },
+  // Four sheets, each 288x24 = four states of nine segments. Occupancy runs
+  // across: empty, then progressively tenanted. The range stopped one short of
+  // 0x85ab, which is office art like the other three.
+  { key: 'office', type: TYPE_BITMAP, ids: range(0x85a8, 0x85ab), mode: 'dib', states: 4 },
 
   // Fifteen separate 128x24 bitmaps — five states across three variants, which
   // is exactly what the documentation describes, stored one per resource
@@ -136,11 +146,19 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // treating that as see-through would punch holes in it.
   { key: 'car', type: TYPE_BITMAP, ids: [0x842a], mode: 'dib', states: 5 },
 
-  // No shaft entry, deliberately. Nothing in the 0x842x block is an empty
-  // shaft: 0x8429 and 0x8468 both read as cars carrying passengers, and twenty
-  // frames is about a SimTower car's capacity. The original draws the shaft as
-  // a flat dark column with floor numbers over it, so `render/scene.ts` paints
-  // it rather than looking for a bitmap that does not exist.
+  // The shaft, which a previous pass concluded did not exist.
+  //
+  // It was looked for in the 0x842x block, next to the cars, and is not there —
+  // but a sweep of every resource in the file found it at 0x87e8: a near-black
+  // column, with 0x87e9 and 0x87ea carrying the floor numbers that run down it
+  // and 0x87eb-0x87ed repeating all three in red. So the renderer tiles real
+  // art instead of filling a rectangle, which is what made lifts read as holes
+  // cut in the tower.
+  //
+  // The digit sheets are not catalogued yet: how they are cut decides whether a
+  // floor number is composed from glyphs or indexed whole, and that has to be
+  // measured rather than assumed. Same for the machinery at 0x88e8-0x88ed.
+  { key: 'shaft', type: TYPE_BITMAP, ids: [0x87e8], mode: 'dib' },
 
   // Both of these were in the catalogue at the right IDs but as cell strips.
   // They are ordinary bitmaps, which is why they came back "not found".

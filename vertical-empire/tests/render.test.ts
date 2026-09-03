@@ -53,6 +53,33 @@ describe('the framebuffer', () => {
   });
 });
 
+describe('tiling', () => {
+  it('stays inside the rectangle it was given', () => {
+    const buffer = new Framebuffer(8, 4);
+    buffer.clear(1);
+    const stamp: IndexedImage = { width: 5, height: 3, pixels: new Uint8Array(15).fill(7) };
+
+    // A 5-wide image into a 3-wide rectangle: repeated blitting overflowed to
+    // column 5, which is how a 32px lift painted over its neighbours.
+    buffer.tile(stamp, 1, 1, 3, 2);
+
+    expect([...buffer.pixels.subarray(0, 8)]).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    expect([...buffer.pixels.subarray(8, 16)]).toEqual([1, 7, 7, 7, 1, 1, 1, 1]);
+    expect([...buffer.pixels.subarray(16, 24)]).toEqual([1, 7, 7, 7, 1, 1, 1, 1]);
+    expect([...buffer.pixels.subarray(24, 32)]).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+  });
+
+  it('keeps the source aligned when the rectangle starts off-screen', () => {
+    const buffer = new Framebuffer(4, 1);
+    buffer.clear(0);
+    const ramp: IndexedImage = { width: 4, height: 1, pixels: new Uint8Array([1, 2, 3, 4]) };
+
+    // Starting two columns left of the screen, column 0 shows the third pixel.
+    buffer.tile(ramp, -2, 0, 8, 1);
+    expect([...buffer.pixels]).toEqual([3, 4, 1, 2]);
+  });
+});
+
 describe('the camera', () => {
   it('stays over the world', () => {
     const camera = new Camera();
@@ -208,6 +235,61 @@ describe('short facades', () => {
   });
 });
 
+describe('placements that span floors', () => {
+  it('draws a non-transport run once over its whole span', () => {
+    const atlas = buildFallbackAtlas();
+    // A facade with a distinctive top row, so a second stamp is detectable.
+    const CAP = 222;
+    const BODY = 111;
+    const pixels = new Uint8Array(72 * 24).fill(BODY);
+    pixels.fill(CAP, 0, 72);
+    atlas.sprites.set('office', { key: 'office', frames: [{ width: 72, height: 24, pixels }] });
+
+    const tower = new Tower();
+    tower.place('office', 4, GROUND_LEVEL, 2);
+
+    const camera = new Camera();
+    camera.resize(390, 780);
+    camera.centreOn(SEGMENT_WIDTH * 8, levelTop(GROUND_LEVEL));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, tower, camera, { hour: 12, elapsed: 0 });
+
+    const x = Math.round(4 * SEGMENT_WIDTH - camera.x) + 4;
+    const at = (level: number) => buffer.pixels[Math.round(levelTop(level) - camera.y) * buffer.width + x] ?? 0;
+
+    // Top of the span carries the cap; the floor below is the body carried
+    // down, not a second copy of the picture.
+    expect(at(GROUND_LEVEL + 1)).toBe(CAP);
+    expect(at(GROUND_LEVEL)).toBe(BODY);
+  });
+
+  it('still repeats transport, one flight per floor', () => {
+    const atlas = buildFallbackAtlas();
+    const CAP = 222;
+    const pixels = new Uint8Array(64 * 24).fill(111);
+    pixels.fill(CAP, 0, 64);
+    atlas.sprites.set('stairs', { key: 'stairs', frames: [{ width: 64, height: 24, pixels }] });
+
+    const tower = new Tower();
+    tower.place('stairs', 4, GROUND_LEVEL, 2);
+
+    const camera = new Camera();
+    camera.resize(390, 780);
+    camera.centreOn(SEGMENT_WIDTH * 8, levelTop(GROUND_LEVEL));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, tower, camera, { hour: 12, elapsed: 0 });
+
+    const x = Math.round(4 * SEGMENT_WIDTH - camera.x) + 4;
+    const at = (level: number) => buffer.pixels[Math.round(levelTop(level) - camera.y) * buffer.width + x] ?? 0;
+
+    // Both floors get their own flight, so both start with the cap row.
+    expect(at(GROUND_LEVEL + 1)).toBe(CAP);
+    expect(at(GROUND_LEVEL)).toBe(CAP);
+  });
+});
+
 describe('lift banks', () => {
   it('paints a continuous shaft and exactly one car', () => {
     const atlas = buildFallbackAtlas();
@@ -235,6 +317,40 @@ describe('lift banks', () => {
       if (SKY.has(buffer.pixels[y * buffer.width + x] ?? 0)) skyInShaft += 1;
     }
     expect(skyInShaft).toBe(0);
+  });
+
+  it('tiles the original shaft art without smearing into the rooms beside it', () => {
+    const atlas = buildFallbackAtlas();
+    // A shaft interior wider than the four-segment lift, which is the case
+    // that used to paint straight through whatever was next to it.
+    const SHAFT_INK = 201;
+    const wide: IndexedImage = {
+      width: 128,
+      height: 8,
+      pixels: new Uint8Array(128 * 8).fill(SHAFT_INK),
+    };
+    atlas.sprites.set('shaft', { key: 'shaft', frames: [wide] });
+
+    const tower = new Tower();
+    tower.place('elevator', 4, GROUND_LEVEL, 8);
+
+    const camera = new Camera();
+    camera.resize(390, 780);
+    camera.centreOn(SEGMENT_WIDTH * 10, levelTop(GROUND_LEVEL + 4));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, tower, camera, { hour: 12, elapsed: 0 });
+
+    const y = Math.round(levelTop(GROUND_LEVEL + 6) - camera.y) + 4;
+    const row = (column: number) => buffer.pixels[y * buffer.width + column] ?? 0;
+    const left = Math.round(4 * SEGMENT_WIDTH - camera.x);
+    const right = left + 4 * SEGMENT_WIDTH;
+
+    // Inside the shaft: the art. Outside it, on both sides: not the art.
+    expect(row(left + 2)).toBe(SHAFT_INK);
+    expect(row(right - 2)).toBe(SHAFT_INK);
+    expect(row(left - 2)).not.toBe(SHAFT_INK);
+    expect(row(right + 2)).not.toBe(SHAFT_INK);
   });
 
   it('caps the shaft with a machine room past the floors it serves', () => {

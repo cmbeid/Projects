@@ -137,22 +137,32 @@ function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera:
     const x = Math.round(placement.segment * SEGMENT_WIDTH - camera.x);
     if (x > target.width || x + kind.width * SEGMENT_WIDTH < 0) continue;
 
-    for (let level = placement.level; level <= highest; level += 1) {
+    // Transport repeats: every floor of a stair run gets its own flight. Nothing
+    // else does — a parking deck or a metro concourse is one piece of art that
+    // happens to be several floors tall, and stamping it per level would draw
+    // the same picture two or three times up its own span.
+    const bands = kind.transport ? placement.span : 1;
+    const bandHeight = kind.transport ? FLOOR_HEIGHT : placement.span * FLOOR_HEIGHT;
+
+    for (let band = 0; band < bands; band += 1) {
+      // Levels count upwards but pixels count down, so a run drawn as one band
+      // starts at the top of its span.
+      const level = kind.transport ? placement.level + band : highest;
       const y = Math.round(levelTop(level) - camera.y);
       if (found) {
         target.blit(found.image, x, y, found.sprite.transparent);
         // The original's facades are shorter than a floor; carry the last row
         // down so a room does not leave a strip of sky under it.
-        if (found.image.height < FLOOR_HEIGHT) {
+        if (found.image.height < bandHeight) {
           const width = Math.min(found.image.width, kind.width * SEGMENT_WIDTH);
-          target.repeatRow(x, y + found.image.height - 1, width, FLOOR_HEIGHT - found.image.height);
+          target.repeatRow(x, y + found.image.height - 1, width, bandHeight - found.image.height);
         }
       } else {
         // A key the atlas does not have still gets a solid band, so an
         // unidentified facility reads as built rather than as a hole. Drawn in
         // the atlas's own dark index: INK.wall is a fallback-palette number and
         // means nothing under the game's palette.
-        target.fillRect(x, y, kind.width * SEGMENT_WIDTH, FLOOR_HEIGHT, atlas.shaftInk);
+        target.fillRect(x, y, kind.width * SEGMENT_WIDTH, bandHeight, atlas.shaftInk);
       }
     }
   }
@@ -183,6 +193,10 @@ function drawLifts(
   const HOUSING_INSET = 2;
 
   const car = lookup(atlas, 'car');
+  // The original's own shaft interior, where the player supplied their art.
+  // The fallback atlas has no such bitmap and keeps the painted column, so
+  // both paths draw a continuous shaft rather than one sprite per floor.
+  const shaft = lookup(atlas, 'shaft');
 
   tower.placements.forEach((placement, index) => {
     if (placement.id !== 'elevator') return;
@@ -195,9 +209,15 @@ function drawLifts(
     const top = Math.round(levelTop(highest) - camera.y);
     const bottom = Math.round(levelTop(placement.level) + FLOOR_HEIGHT - camera.y);
 
-    target.fillRect(x, top, width, bottom - top, shaftInk);
-    // Machine rooms, top and bottom. Same ink, inset, so the silhouette steps
-    // in at each end the way the original's does.
+    if (shaft) {
+      target.tile(shaft.image, x, top, width, bottom - top);
+    } else {
+      target.fillRect(x, top, width, bottom - top, shaftInk);
+    }
+    // Machine rooms, top and bottom. Inset, so the silhouette steps in at each
+    // end the way the original's does. Still painted rather than drawn from
+    // 0x88e8-0x88ed: which of those six is the motor room and which are landing
+    // doors has not been measured, and a wrong guess here is a visible one.
     target.fillRect(x + HOUSING_INSET, top - HOUSING, width - HOUSING_INSET * 2, HOUSING, shaftInk);
     target.fillRect(x + HOUSING_INSET, bottom, width - HOUSING_INSET * 2, HOUSING, shaftInk);
 

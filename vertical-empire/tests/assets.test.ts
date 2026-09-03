@@ -252,8 +252,11 @@ describe('drawing from a real-shaped file', () => {
     const put = (id: number, w: number, h: number, ink: (x: number, y: number) => number) =>
       bitmaps.set(id, buildDIB(w, h, ink));
 
-    for (let id = 0x8351; id <= 0x835b; id += 1) put(id, 32, 360, () => 60);
-    for (let id = 0x85a8; id <= 0x85aa; id += 1) put(id, 288, ROOM_HEIGHT, (x) => Math.floor(x / 72) + 1);
+    // 0x8351 is soil, not sky, so it carries a different index: a range that
+    // swallows it shows up as a sky band that is the wrong colour.
+    put(0x8351, 32, 360, () => 9);
+    for (let id = 0x8352; id <= 0x835b; id += 1) put(id, 32, 360, () => 60);
+    for (let id = 0x85a8; id <= 0x85ab; id += 1) put(id, 288, ROOM_HEIGHT, (x) => Math.floor(x / 72) + 1);
     // People: a figure on a background, so the corner index is the see-through one.
     for (let id = 0x82bc; id <= 0x82bf; id += 1) put(id, 96, ROOM_HEIGHT, (x, y) => (y > 8 && x % 8 > 2 ? 200 : 77));
 
@@ -283,6 +286,20 @@ describe('drawing from a real-shaped file', () => {
     expect(skyline?.frames[0]?.height).toBe(32);
     // Consecutive frames are consecutive cells, so the panorama runs across.
     expect(skyline?.frames[1]?.pixels[0]).toBe(2);
+  });
+
+  it('keeps the soil tile out of the sky and gives it to the ground', async () => {
+    const { buildOriginalAtlas } = await import('../src/assets/original.js');
+    const { sprites } = buildOriginalAtlas(mimic()).atlas;
+
+    // Ten bands, not eleven. 0x8351 sat at the bottom of the range and painted
+    // a stripe of dirt across the horizon.
+    expect(sprites.get('sky')?.frames).toHaveLength(10);
+    for (const frame of sprites.get('sky')?.frames ?? []) expect(frame.pixels[0]).toBe(60);
+
+    // And it is what the basements are drawn against: `ground` is the key
+    // `render/scene.ts` already tiles below the horizon.
+    expect(sprites.get('ground')?.frames[0]?.pixels[0]).toBe(9);
   });
 
   it('takes the see-through index from the sprite rather than assuming zero', async () => {
