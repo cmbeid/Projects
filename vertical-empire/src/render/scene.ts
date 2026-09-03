@@ -8,8 +8,16 @@
  */
 
 import { lookup, type Atlas } from '../assets/atlas.js';
+import { crop, type IndexedImage } from '../assets/dib.js';
 import { INK } from '../assets/fallback.js';
-import { FLOOR_HEIGHT, GROUND_LEVEL, SEGMENT_WIDTH, levelAtWorldY, levelTop } from '../world/grid.js';
+import {
+  FLOOR_HEIGHT,
+  GROUND_LEVEL,
+  SEGMENT_WIDTH,
+  floorLabel,
+  levelAtWorldY,
+  levelTop,
+} from '../world/grid.js';
 import { facility } from '../world/facilities.js';
 import type { Tower } from '../world/tower.js';
 import type { Camera } from './camera.js';
@@ -182,8 +190,6 @@ function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera:
  * and there is a distinct motor room above the top floor served and below the
  * bottom one. Painting the column rather than tiling a sprite is both closer to
  * the original and the thing that stops a car appearing on every floor.
- *
- * Floor numbers are missing; they need a digit source we do not have yet.
  */
 function drawLifts(
   target: Framebuffer,
@@ -227,6 +233,8 @@ function drawLifts(
     target.fillRect(x + HOUSING_INSET, top - HOUSING, width - HOUSING_INSET * 2, HOUSING, shaftInk);
     target.fillRect(x + HOUSING_INSET, bottom, width - HOUSING_INSET * 2, HOUSING, shaftInk);
 
+    drawFloorNumbers(target, atlas, camera, placement.level, highest, x, width);
+
     if (!car || placement.span < 2) return;
 
     // A slow triangle wave up and down the shaft, offset per bank so no two
@@ -243,6 +251,89 @@ function drawLifts(
 
     target.blit(car.image, x, y, car.sprite.transparent);
   });
+}
+
+/**
+ * The floor number written down a lift shaft.
+ *
+ * This is the most recognisable thing about a SimTower lift bank and it was
+ * missing from the first frame drawn, because there was no digit source. There
+ * is now: 0x87e9 is ten sixteen-pixel cells holding 0 to 9, trimmed to the
+ * glyph by `varyingBox` so none of the shared slab furniture comes with them.
+ *
+ * A label is *composed*, not indexed whole. `floorLabel` in `world/grid.ts`
+ * already knows that level 9 is floor 1 and level 6 is B3, so the renderer asks
+ * it for the text and picks a glyph per character rather than keeping a second,
+ * subtly different idea of what floor it is on.
+ *
+ * A character with no glyph skips the whole label. Today that is exactly the
+ * basements: the `B` lives on 0x87ea, whose twelve cells have not been read
+ * yet. Drawing `3` for B3 would be worse than drawing nothing, and this needs
+ * no special case to avoid it — the rule is general and stops applying by
+ * itself the moment the letters are catalogued.
+ */
+function drawFloorNumbers(
+  target: Framebuffer,
+  atlas: Atlas,
+  camera: Camera,
+  from: number,
+  to: number,
+  x: number,
+  width: number,
+): void {
+  const digits = atlas.sprites.get('digits');
+  if (!digits || digits.frames.length === 0) return;
+  // Trimmed glyphs have lost their place on the floor; the cut recorded it.
+  const offsetY = digits.origin?.y ?? 0;
+
+  for (let level = from; level <= to; level += 1) {
+    const y = Math.round(levelTop(level) - camera.y) + offsetY;
+    if (y > target.height) continue;
+
+    const glyphs = label(digits.frames, floorLabel(level));
+    if (glyphs.length === 0) continue;
+    if (y + (glyphs[0]?.height ?? 0) < 0) continue;
+
+    // Centred in the shaft. Two digits of a twelve-pixel glyph sit inside a
+    // four-segment lift with room to spare; a hundredth floor needs three and
+    // does not, so each glyph is clipped to the shaft rather than allowed to
+    // overhang into whatever was built next door.
+    const textWidth = glyphs.reduce((total, glyph) => total + glyph.width, 0);
+    let cursor = x + Math.round((width - textWidth) / 2);
+    for (const glyph of glyphs) {
+      blitClipped(target, glyph, cursor, y, x, x + width, digits.transparent);
+      cursor += glyph.width;
+    }
+  }
+}
+
+/** One glyph per character, or nothing at all if any character has none. */
+function label(frames: readonly IndexedImage[], text: string): IndexedImage[] {
+  const glyphs: IndexedImage[] = [];
+  for (const character of text) {
+    const digit = character.charCodeAt(0) - 0x30;
+    const glyph = digit >= 0 && digit <= 9 ? frames[digit] : undefined;
+    if (!glyph) return [];
+    glyphs.push(glyph);
+  }
+  return glyphs;
+}
+
+/** Blits an image cropped to a horizontal window, in target coordinates. */
+function blitClipped(
+  target: Framebuffer,
+  image: IndexedImage,
+  x: number,
+  y: number,
+  left: number,
+  right: number,
+  transparent?: number,
+): void {
+  const from = Math.max(0, left - x);
+  const to = Math.min(image.width, right - x);
+  if (to <= from) return;
+  const piece = from === 0 && to === image.width ? image : crop(image, from, 0, to - from, image.height);
+  target.blit(piece, x + from, y, transparent);
 }
 
 /**

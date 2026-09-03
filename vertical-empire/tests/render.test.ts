@@ -506,3 +506,109 @@ describe('people belong in rooms that exist', () => {
     expect(drawn).toHaveLength(0);
   });
 });
+
+/**
+ * A stand-in digit sheet: ten glyphs, each a solid block of its own index, cut
+ * the way `varyingBox` cuts the real one — trimmed to 12x18 and sitting 16
+ * pixels down its 36px cell. Solid blocks make the assertion direct: whatever
+ * indices appear in a shaft row *are* the digits the renderer chose.
+ */
+const GLYPH_INK = 200;
+function withDigits(atlas: ReturnType<typeof buildFallbackAtlas>) {
+  const frames = Array.from({ length: 10 }, (_, digit) => solid(12, 18, GLYPH_INK + digit));
+  const sprites = new Map(atlas.sprites);
+  sprites.set('digits', { key: 'digits', frames, origin: { x: 1, y: 16 } });
+  return { ...atlas, sprites };
+}
+
+/** The digits drawn on one level of a shaft, left to right. */
+function readNumber(buffer: Framebuffer, camera: Camera, level: number): number[] {
+  const top = Math.round(levelTop(level) - camera.y) + 16;
+  const seen: number[] = [];
+  for (let column = 0; column < buffer.width; column += 1) {
+    for (let row = Math.max(0, top); row < Math.min(buffer.height, top + 18); row += 1) {
+      const ink = buffer.pixels[row * buffer.width + column] ?? 0;
+      if (ink >= GLYPH_INK && ink < GLYPH_INK + 10 && seen.at(-1) !== ink - GLYPH_INK) {
+        seen.push(ink - GLYPH_INK);
+        break;
+      }
+    }
+  }
+  return seen;
+}
+
+describe('floor numbers', () => {
+  const tower = new Tower();
+  const span = 20;
+  // Floor 1 up to floor 20, so the run crosses from one digit to two.
+  tower.place('elevator', DEMO_LEFT, GROUND_LEVEL, span);
+
+  // The view is only a few hundred world-pixels tall, so each assertion looks
+  // at the level it is centred on rather than trusting one frame to hold the
+  // whole run — which is how the first version of this test "failed" on a
+  // floor that was simply off the bottom of the screen.
+  function draw(atlas: ReturnType<typeof buildFallbackAtlas>, level: number, at = tower) {
+    const camera = new Camera();
+    camera.resize(390, 800);
+    camera.centreOn(DEMO_LEFT * SEGMENT_WIDTH, levelTop(level));
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, at, camera, { hour: 12, elapsed: 0 });
+    return { buffer, camera };
+  }
+
+  it('writes each floor its own number, composed from the digit sheet', () => {
+    const atlas = withDigits(buildFallbackAtlas());
+    // Level 9 is floor 1, level 18 is floor 10, level 20 is floor 12.
+    for (const [level, expected] of [
+      [GROUND_LEVEL, [1]],
+      [GROUND_LEVEL + 6, [7]],
+      [GROUND_LEVEL + 9, [1, 0]],
+      [GROUND_LEVEL + 11, [1, 2]],
+    ] as const) {
+      const { buffer, camera } = draw(atlas, level);
+      expect(readNumber(buffer, camera, level)).toEqual([...expected]);
+    }
+  });
+
+  it('leaves a basement blank rather than numbering it wrongly', () => {
+    // B-glyphs live on a sheet that has not been measured, so `B1` has no
+    // complete set of glyphs. Drawing the `1` alone would label the basement
+    // as the first floor, which is worse than drawing nothing.
+    const deep = new Tower();
+    deep.place('elevator', DEMO_LEFT, GROUND_LEVEL - 4, 8);
+    const atlas = withDigits(buildFallbackAtlas());
+
+    const { buffer, camera } = draw(atlas, GROUND_LEVEL, deep);
+    expect(readNumber(buffer, camera, GROUND_LEVEL - 1)).toEqual([]);
+    expect(readNumber(buffer, camera, GROUND_LEVEL - 4)).toEqual([]);
+    // The floors above it in the same shaft still get their numbers, so this
+    // is the label being skipped and not the whole bank.
+    expect(readNumber(buffer, camera, GROUND_LEVEL)).toEqual([1]);
+    expect(readNumber(buffer, camera, GROUND_LEVEL + 1)).toEqual([2]);
+  });
+
+  it('keeps every glyph inside the shaft it belongs to', () => {
+    // Floor 100 is three glyphs wide against a four-segment shaft, so the run
+    // has to be clipped rather than allowed to overhang into the next room.
+    const tall = new Tower();
+    tall.place('elevator', DEMO_LEFT, GROUND_LEVEL + 95, 5);
+    const { buffer, camera } = draw(withDigits(buildFallbackAtlas()), GROUND_LEVEL + 99, tall);
+    const left = Math.round(DEMO_LEFT * SEGMENT_WIDTH - camera.x);
+    const right = left + FACILITIES.find((f) => f.id === 'elevator')!.width * SEGMENT_WIDTH;
+    for (let row = 0; row < buffer.height; row += 1) {
+      for (let column = 0; column < buffer.width; column += 1) {
+        const ink = buffer.pixels[row * buffer.width + column] ?? 0;
+        if (ink < GLYPH_INK || ink >= GLYPH_INK + 10) continue;
+        expect(column).toBeGreaterThanOrEqual(left);
+        expect(column).toBeLessThan(right);
+      }
+    }
+  });
+
+  it('draws a shaft with no numbers when the atlas has no digits', () => {
+    const plain = buildFallbackAtlas();
+    expect(plain.sprites.has('digits')).toBe(false);
+    const { buffer, camera } = draw(plain, GROUND_LEVEL);
+    expect(readNumber(buffer, camera, GROUND_LEVEL)).toEqual([]);
+  });
+});

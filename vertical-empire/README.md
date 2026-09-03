@@ -68,9 +68,15 @@ apart**:
 | --- | --- | --- | --- |
 | `0x84a8` hotel | `0x84e8` double | `0x8528` suite | `0x8568` restaurant |
 | `0x85a8` office | `0x8628` condo | `0x8668` shop | `0x86e8` fast food |
-| `0x8768` clinic | `0x87e8` lift shaft | `0x88a8` theatre | `0x88e8` machinery |
-| `0x8928` crowds | `0x8968` stairs | `0x89e8` city | `0x8aa8` escalator |
-| `0x8ca8` cinema | `0x8ee8` parking | | |
+| `0x8768` clinic | `0x87a8` housekeeping | `0x87e8` lift shaft | `0x88a8` theatre |
+| `0x88e8` machinery | `0x8928` crowds | `0x8968` stairs | `0x89e8` city |
+| `0x8aa8` escalator | `0x8ca8` cinema | `0x8ee8` parking | |
+
+A slot is wider than one bitmap. `0x85a8` is the office facade and `0x85e8`,
+one stride on, is a sheet of office *workers*; `0x87e8` is the lift shaft and
+`0x87e9`–`0x87ed`, immediately after it, are the floor numbers that run down
+it. Both of those turned up while looking for something else entirely, which is
+the table doing its job.
 
 The `0xff0a` sound resources use the same IDs — there is a restaurant sound at
 `0x8568` and an office one at `0x85a8` — so a slot is a *thing in the game*,
@@ -111,9 +117,8 @@ ground on either side of the tower. That is why the ground floor rendered as a
 parade of shopfronts. It is one now, deliberately, drawn behind the tower and
 indexed by position so the panorama runs across rather than repeating.
 
-The real lobby is still unidentified; the other two cell-strip groups
-(`0x8a28`, `0x8a68`) are the next candidates. Until then the ground floor draws
-as a plain band rather than as the wrong art.
+The real lobby was never found at all — see below. It is drawn now, in colours
+sampled from the game's own palette rather than guessed at.
 
 The demo tower's frontage was narrowed to 70 of the 96 segments to suit: a lobby
 stretched across every segment paves over the streetscape it is supposed to
@@ -148,10 +153,44 @@ floor numbers that run down it — plain digits and a `B` set for basements — 
 `0x87eb`–`0x87ed` repeat all three in red. `0x88e8`–`0x88ed` are the machinery
 and landing doors.
 
-`src/render/scene.ts` tiles the real shaft now. The floor numbers and the
-machinery are not catalogued yet: how the digit sheets are cut decides whether a
-number is composed from glyphs or indexed whole, and that wants measuring rather
-than assuming. Machine rooms are still painted rectangles.
+`src/render/scene.ts` tiles the real shaft now, and writes the floor numbers
+down it. Machine rooms are still painted rectangles: which of `0x88e8`–`0x88ed`
+is the motor room and which are landing doors has not been measured, and a wrong
+guess there is a visible one.
+
+#### The digits, and the wrong instrument
+
+`0x87e9` is **ten sixteen-pixel cells holding 0 to 9 in order**. Two digits is
+32px, which is exactly the width of a four-segment lift — neat enough to be
+suspicious of, and it held.
+
+Notably, `--period` is the wrong tool for this and said as much: it reported
+32px at 14.1% and 80px at 12.1%, both multiples of the true pitch. That is not a
+bug in it. Autocorrelation looks for a lag at which a sheet resembles itself, and
+a row of *different* glyphs never does; what repeats on a digit sheet is the
+furniture — the slab rule along the top, the shadow band, the hairline down each
+cell's right edge — so the measurement finds where the furniture lines up.
+`--frames` answered it in one look, because those hairlines fall every sixteen
+columns whether the glyphs match or not. Reach for the diagnostic that suits the
+sheet, not the one that worked last time.
+
+That same furniture is why the cut is `glyph` rather than `states: 10`. An
+equal-tenths cut hands back ten copies of the rule and band along with the
+digits, and a number composed from those has a line through the middle of it.
+`varyingBox` in `src/assets/slice.ts` compares the cells to one another and keeps
+the bounding box of everything they *disagree* about — the furniture is by
+definition the part that repeats, so it falls out without anyone naming a row
+number. The box it finds is recorded as the sprite's `origin`, which is what
+puts a trimmed glyph back in the right place on a floor.
+
+A label is composed, not indexed whole. `floorLabel` in `src/world/grid.ts`
+already knows that level 9 is floor 1 and level 6 is B3, so the renderer asks it
+for the text and picks a glyph per character rather than keeping a second,
+subtly different idea of what floor it is on. A character with no glyph skips the
+whole label — today that is exactly the basements, because the `B` lives on
+`0x87ea` and its twelve cells have not been read yet. Labelling B3 as `3` would
+be worse than labelling it not at all, and the rule needs no special case to
+avoid it: it stops applying by itself the moment the letters are catalogued.
 
 ### Measuring how a sheet is cut
 
@@ -221,10 +260,26 @@ one look at it in place made it in a single round trip.
 `0x8fea` was the last candidate among the cells and it is stairs with riders —
 grey treads, a red handrail, figures standing on them. So **all eleven cell
 strips are accounted for and none is the lobby**: nine backdrop panoramas and
-two people sheets. It has to be an ordinary bitmap, and the wide room-height
-sheets are where to look: `0x8868` (96 segments), `0x8b28` (72), `0x8c68` (70).
-Until then the ground floor draws as a plain band, which is honest rather than
-wrong.
+two people sheets.
+
+The wide room-height bitmaps went the same way. `0x8868` (96 segments) is hotel
+interiors, `0x8b28` a function room, `0x8c68` the cinema auditorium, `0x8ba8` a
+shopping arcade, `0x85e8` the office's own staff and `0x87a8` a housekeeping
+room of doors, carts and washing machines.
+
+So the search stopped, and the lobby is **drawn rather than extracted** —
+`drawnLobby` in `src/assets/original.ts`. It cannot invent colours: the
+framebuffer is indexed and the table belongs to the game, so it asks the palette
+for the nearest entry to each intent (a marble, a trim, a skirting shadow, a
+floor) via `nearestIndex`. That keeps it inside the original's own range and
+keeps it cycling with the day/night tables, while staying visibly ours — a plain
+band where SimTower has a decorated concourse, which is how a placeholder should
+look. Knowing when a search is finished is worth as much as the search.
+
+The two failures paid for themselves anyway: `0x85e8` is `0x85a8 + 0x40` and
+`0x87a8` is `0x87e8 - 0x40`, so both land exactly where the slot table below
+says a facility's neighbours live. Two more confirmations of the stride, from a
+hunt for something else.
 
 ### The rest of the diagnostics
 

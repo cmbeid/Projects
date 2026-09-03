@@ -7,9 +7,17 @@
  */
 
 import type { Atlas } from './atlas.js';
+import type { IndexedImage } from './dib.js';
 import { readResources } from './ne.js';
-import { PALETTE_ENTRIES, clonePalette, darkestIndex, mixPalettes, type Palette } from './palette.js';
-import { extract, type Extraction } from './slice.js';
+import {
+  PALETTE_ENTRIES,
+  clonePalette,
+  darkestIndex,
+  mixPalettes,
+  nearestIndex,
+  type Palette,
+} from './palette.js';
+import { ROOM_HEIGHT, SEGMENT_WIDTH, extract, type ExtractedSprite, type Extraction } from './slice.js';
 
 export interface OriginalAtlas {
   atlas: Atlas;
@@ -19,6 +27,12 @@ export interface OriginalAtlas {
 
 export function buildOriginalAtlas(bytes: Uint8Array): OriginalAtlas {
   const extraction = extract(readResources(bytes));
+  // The one piece of the tower with no art behind it. Guarded rather than
+  // assigned outright, so the day a lobby bitmap is identified the catalogue
+  // simply wins and this stops being reached.
+  if (!extraction.sprites.has('lobby')) {
+    extraction.sprites.set('lobby', drawnLobby(extraction.palette));
+  }
   return {
     atlas: {
       source: 'original',
@@ -65,4 +79,45 @@ function skyPalettes(extraction: Extraction): Palette[] {
     palettes.push(mixPalettes(day, night, Math.abs(1 - phase * 2)));
   }
   return palettes;
+}
+
+/**
+ * A lobby, drawn rather than extracted, because there is nothing to extract.
+ *
+ * Every cell strip in the file has been identified and none is a lobby; so have
+ * the widest room-height bitmaps. Rather than keep spending round trips on it,
+ * the ground floor gets a band of our own: a marble wall, a trim line at the
+ * ceiling, a skirting shadow and a floor tone under it. One segment wide, drawn
+ * per segment like the real thing, so a frontage of any length is continuous.
+ *
+ * The colours are *sampled from the game's palette* rather than chosen. We
+ * cannot add entries to an indexed table we did not author, and taking the
+ * nearest match to each intent keeps this inside the original's own range and
+ * keeps it cycling with the day/night tables. It stays visibly ours — a plain
+ * band where SimTower has a decorated concourse — which is the honest way for
+ * a placeholder to look.
+ */
+function drawnLobby(palette: Palette): ExtractedSprite {
+  const shadow = darkestIndex(palette);
+  const marble = nearestIndex(palette, 0xd8, 0xd4, 0xc8, [shadow]);
+  const trim = nearestIndex(palette, 0x8a, 0x82, 0x70, [shadow, marble]);
+  const floor = nearestIndex(palette, 0xa8, 0xa4, 0x9c, [shadow, marble, trim]);
+
+  const image: IndexedImage = {
+    width: SEGMENT_WIDTH,
+    height: ROOM_HEIGHT,
+    pixels: new Uint8Array(SEGMENT_WIDTH * ROOM_HEIGHT).fill(marble),
+  };
+  const band = (top: number, height: number, ink: number): void => {
+    image.pixels.fill(ink, top * SEGMENT_WIDTH, (top + height) * SEGMENT_WIDTH);
+  };
+
+  band(0, 2, trim);
+  band(ROOM_HEIGHT - 4, 1, shadow);
+  // The last row is the one the scene repeats down into the slab, so it has to
+  // be the floor rather than the skirting — otherwise every lobby stands on a
+  // twelve-pixel stripe of its own shadow.
+  band(ROOM_HEIGHT - 3, 3, floor);
+
+  return { key: 'lobby', frames: [image] };
 }

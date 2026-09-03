@@ -60,9 +60,12 @@ export interface SpriteSpec {
    * How to divide the sheet. `grid` (the default) cuts it into equal
    * `states` x `variants` cells; `ink` finds the frames by looking for columns
    * of pure background between them, which is the only thing that works on a
-   * sheet whose figures are different widths.
+   * sheet whose figures are different widths; `glyph` cuts a fixed pitch and
+   * then trims every frame to the box that actually differs between them.
    */
-  cut?: 'grid' | 'ink';
+  cut?: 'grid' | 'ink' | 'glyph';
+  /** Pitch for `glyph` mode, in pixels. */
+  cellWidth?: number;
   /** Cut the decoded sheet into this many equal columns (states). */
   states?: number;
   /** Cut the decoded sheet into this many equal rows (variants). */
@@ -125,19 +128,22 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // they are not drawn.
   { key: 'skyline', type: TYPE_CELLS, ids: [0x89e8], mode: 'cells', cellHeight: 32, cellFrames: true },
 
-  // The lobby is still unidentified, and 0x8fe9 is not it.
+  // The lobby is not catalogued, and the hunt for it is over.
   //
-  // Catalogued as the lobby and looked at, it draws as a dense crowd in the
-  // same four colours as the people sprites — no floor, no walls, just figures.
-  // It is a queue sheet. That is exactly what a contact sheet of it could not
-  // tell you, because a strip of mostly-plain cells with a figure every dozen
-  // looks the same whether the plain part is marble or nothing at all, and one
-  // look at it in place settled it in a single round trip.
+  // All eleven cell strips are accounted for: nine are backdrop panoramas,
+  // 0x8fe9 is a crowd (catalogued as the lobby once, and it drew as confetti on
+  // a black strip), and 0x8fea is a flight of stairs with riders on it. The
+  // widest room-height bitmaps went the same way — 0x8868 is hotel interiors,
+  // 0x8b28 a function room, 0x8c68 the cinema auditorium, 0x8ba8 a shopping
+  // arcade, 0x85e8 the office's own staff and 0x87a8 a housekeeping room.
   //
-  // Of the eleven cell strips, nine are backdrop panoramas and 0x8fea is the
-  // only candidate left. After that the lobby has to be an ordinary bitmap.
-  // Until then the ground floor draws as a plain band, which is honest rather
-  // than wrong.
+  // The last two are worth more than the search that found them: 0x85e8 is
+  // 0x85a8 + 0x40 and 0x87a8 is 0x87e8 - 0x40, so both land exactly where the
+  // slot table says a facility's neighbours live.
+  //
+  // So the lobby is drawn rather than extracted, in colours sampled from the
+  // game's own palette — see `drawnLobby` in `original.ts`. Clearly ours rather
+  // than theirs, and it fixes the one part of the tower that read as a hole.
 
   // The theatre: 768x36, four states of twenty-four segments. Raked seating, a
   // door at one end and a stair at the other, confirmed by eye — which is what
@@ -195,16 +201,36 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // art instead of filling a rectangle, which is what made lifts read as holes
   // cut in the tower.
   //
-  // The digit sheets are not catalogued yet: how they are cut decides whether a
-  // floor number is composed from glyphs or indexed whole, and that has to be
-  // measured rather than assumed. Same for the machinery at 0x88e8-0x88ed.
-  //
   // 352x36 is eleven frames of four segments, which `--period` puts at 8.2%
   // against 51% for the next reading. It was catalogued with no states and
   // tiled whole, and drew the right thing only because `tile` wraps its source
   // and a lift is exactly one frame wide — the right answer for the wrong
   // reason, which stops being right the moment anything else uses it.
   { key: 'shaft', type: TYPE_BITMAP, ids: [0x87e8], mode: 'dib', states: 11 },
+
+  // The digits that run down the shaft: 160x36, ten cells of sixteen pixels,
+  // holding 0 to 9 in order. Two digits is 32px, which is exactly the width of
+  // a four-segment lift — neat enough to be suspicious of, and it held.
+  //
+  // `--period` is the wrong instrument here and said so: it reported 32px at
+  // 14.1% and 80px at 12.1%, both multiples of the real pitch, because
+  // autocorrelation on a row of *different* glyphs finds where the furniture
+  // lines up rather than where a glyph ends. `--frames` settled it in one look
+  // — the hairline down each cell's right edge falls every sixteen columns —
+  // and the glyph shapes read off the dump as the digits in order.
+  //
+  // Cut with `glyph` rather than `states: 10`: an equal-tenths cut keeps the
+  // slab rule and shadow band that every cell shares, and a number composed of
+  // those has a rule through the middle of it. See `varyingBox`.
+  { key: 'digits', type: TYPE_BITMAP, ids: [0x87e9], mode: 'dib', cut: 'glyph', cellWidth: 16, transparent: 'corner' },
+
+  // Not catalogued: 0x87ea, the second digit sheet, 192x36 — twelve cells at
+  // the same sixteen-pixel pitch, so two more than there are digits. The two
+  // extras are most likely the `B` a basement label needs and a blank, but
+  // "most likely" is what put a city on the ground floor, so it waits for a
+  // `--frames` reading. Until then `drawFloorNumbers` skips any label it has no
+  // glyph for, which is exactly the basements. 0x87eb-0x87ed repeat all three
+  // in red. Same for the machinery at 0x88e8-0x88ed.
 
   // Both of these were in the catalogue at the right IDs but as cell strips.
   // They are ordinary bitmaps, which is why they came back "not found".
@@ -267,6 +293,14 @@ export interface ExtractedSprite {
   /** One entry per state; each entry one per variant. */
   frames: IndexedImage[];
   transparent?: number;
+  /**
+   * Where a trimmed frame sat inside the cell it was cut from.
+   *
+   * Only `glyph` mode sets this. A digit that has been trimmed out of its
+   * 16x36 cell has lost the one thing that says where on a floor it belongs,
+   * and the renderer would otherwise have to reinvent it as a magic number.
+   */
+  origin?: { x: number; y: number };
 }
 
 export interface Extraction {
@@ -281,14 +315,83 @@ function decodeSheet(spec: SpriteSpec, data: Uint8Array): IndexedImage {
   return spec.mode === 'cells' ? readCellStrip(data, SEGMENT_WIDTH, spec.cellHeight) : decodeDIB(data);
 }
 
+interface Cut {
+  frames: IndexedImage[];
+  origin?: { x: number; y: number };
+}
+
+/**
+ * The box inside a repeating cell whose pixels are not the same in every cell.
+ *
+ * A digit sheet is not only digits. SimTower's is ten 16px cells each carrying
+ * a slab rule along the top, a shadow band under it and a hairline down the
+ * right edge — decoration identical in all ten — with the glyph itself in the
+ * lower half. Cutting on the pitch alone hands the renderer ten copies of that
+ * furniture and no idea which part is the number.
+ *
+ * What separates the two is not brightness or position but *variation*: the
+ * furniture is by definition the part that repeats. So compare the cells to one
+ * another and keep the bounding box of everything they disagree about. Nothing
+ * here knows it is looking at digits, which is the point — the same cut works
+ * on whatever the `B` sheet turns out to hold.
+ */
+export function varyingBox(
+  sheet: IndexedImage,
+  cellWidth: number,
+): { x: number; y: number; width: number; height: number } | undefined {
+  const cells = Math.floor(sheet.width / cellWidth);
+  // One cell has nothing to differ from, and zero cells is not a sheet.
+  if (cells < 2 || cellWidth <= 0) return undefined;
+
+  let left = cellWidth;
+  let right = -1;
+  let top = sheet.height;
+  let bottom = -1;
+
+  for (let y = 0; y < sheet.height; y += 1) {
+    for (let x = 0; x < cellWidth; x += 1) {
+      const first = sheet.pixels[y * sheet.width + x];
+      let varies = false;
+      for (let cell = 1; cell < cells; cell += 1) {
+        if (sheet.pixels[y * sheet.width + cell * cellWidth + x] !== first) {
+          varies = true;
+          break;
+        }
+      }
+      if (!varies) continue;
+      if (x < left) left = x;
+      if (x > right) right = x;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+    }
+  }
+
+  // Every cell identical: a sheet of one repeated thing, not a set of glyphs.
+  if (right < left || bottom < top) return undefined;
+  return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+}
+
 /** Cuts a decoded sheet into its states and variants. */
-function cutFrames(spec: SpriteSpec, sheet: IndexedImage): IndexedImage[] {
+function cutFrames(spec: SpriteSpec, sheet: IndexedImage): Cut {
+  // A fixed pitch, trimmed to the part that is not shared furniture.
+  if (spec.cut === 'glyph') {
+    const cellWidth = Math.max(1, spec.cellWidth ?? SEGMENT_WIDTH);
+    const cells = Math.floor(sheet.width / cellWidth);
+    const box = varyingBox(sheet, cellWidth);
+    if (!box || cells < 1) return { frames: [sheet] };
+    const frames: IndexedImage[] = [];
+    for (let cell = 0; cell < cells; cell += 1) {
+      frames.push(crop(sheet, cell * cellWidth + box.x, box.y, box.width, box.height));
+    }
+    return { frames, origin: { x: box.x, y: box.y } };
+  }
+
   // Frames separated by background rather than laid on a grid.
   if (spec.cut === 'ink') {
     const background = sheet.pixels[0] ?? 0;
     const runs = inkColumns(sheet, background);
     const frames = runs.map((run) => crop(sheet, run.from, 0, run.to - run.from + 1, sheet.height));
-    return frames.length > 0 ? frames : [sheet];
+    return { frames: frames.length > 0 ? frames : [sheet] };
   }
 
   // A strip is a run of single-segment cells, each its own frame.
@@ -298,16 +401,16 @@ function cutFrames(spec: SpriteSpec, sheet: IndexedImage): IndexedImage[] {
     for (let cell = 0; cell < cells; cell += 1) {
       frames.push(crop(sheet, cell * SEGMENT_WIDTH, 0, SEGMENT_WIDTH, sheet.height));
     }
-    return frames.length > 0 ? frames : [sheet];
+    return { frames: frames.length > 0 ? frames : [sheet] };
   }
 
   const states = Math.max(1, spec.states ?? 1);
   const variants = Math.max(1, spec.variants ?? 1);
-  if (states === 1 && variants === 1) return [sheet];
+  if (states === 1 && variants === 1) return { frames: [sheet] };
 
   const frameWidth = Math.floor(sheet.width / states);
   const frameHeight = Math.floor(sheet.height / variants);
-  if (frameWidth <= 0 || frameHeight <= 0) return [sheet];
+  if (frameWidth <= 0 || frameHeight <= 0) return { frames: [sheet] };
 
   const frames: IndexedImage[] = [];
   for (let variant = 0; variant < variants; variant += 1) {
@@ -315,7 +418,7 @@ function cutFrames(spec: SpriteSpec, sheet: IndexedImage): IndexedImage[] {
       frames.push(crop(sheet, state * frameWidth, variant * frameHeight, frameWidth, frameHeight));
     }
   }
-  return frames;
+  return { frames };
 }
 
 /**
@@ -344,11 +447,14 @@ export function extract(resources: ResourceTable): Extraction {
 
     const frames: IndexedImage[] = [];
     const failures: string[] = [];
+    let origin: { x: number; y: number } | undefined;
     for (const id of spec.ids) {
       const data = byId.get(id);
       if (!data) continue;
       try {
-        frames.push(...cutFrames(spec, decodeSheet(spec, data)));
+        const cut = cutFrames(spec, decodeSheet(spec, data));
+        frames.push(...cut.frames);
+        origin ??= cut.origin;
       } catch (error) {
         failures.push(`${hex(id)}: ${(error as Error).message}`);
       }
@@ -365,6 +471,7 @@ export function extract(resources: ResourceTable): Extraction {
     const sprite: ExtractedSprite = { key: spec.key, frames };
     const transparent = resolveTransparent(spec, frames);
     if (transparent !== undefined) sprite.transparent = transparent;
+    if (origin !== undefined) sprite.origin = origin;
     sprites.set(spec.key, sprite);
   }
 

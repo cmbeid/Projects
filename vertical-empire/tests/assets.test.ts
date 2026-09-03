@@ -2,9 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { NotAnExecutableError, readResources } from '../src/assets/ne.js';
 import { BitmapFormatError, crop, decodeDIB, inferCellHeight, readCellStrip } from '../src/assets/dib.js';
-import { CYCLE_GROUPS, decodePalette, mixPalettes, rotateCycles } from '../src/assets/palette.js';
+import { CYCLE_GROUPS, decodePalette, mixPalettes, nearestIndex, rotateCycles } from '../src/assets/palette.js';
 import { inkColumns } from '../src/assets/frames.js';
-import { FLOOR_HEIGHT, ROOM_HEIGHT, SEGMENT_WIDTH, TYPE_BITMAP, TYPE_PALETTE, extract } from '../src/assets/slice.js';
+import {
+  FLOOR_HEIGHT,
+  ROOM_HEIGHT,
+  SEGMENT_WIDTH,
+  TYPE_BITMAP,
+  TYPE_PALETTE,
+  extract,
+  varyingBox,
+} from '../src/assets/slice.js';
+import { buildOriginalAtlas } from '../src/assets/original.js';
 import { buildCellStrip, buildDIB, buildNE, buildPaletteResource } from './fixtures.js';
 
 
@@ -601,5 +610,91 @@ describe('cutting by ink', () => {
     expect(people?.frames[6]?.width).toBe(11);
     // Background comes from the corner, so the figures composite cleanly.
     expect(people?.transparent).toBe(1);
+  });
+});
+
+/**
+ * A digit sheet in SimTower's own layout: cells of a fixed pitch, each carrying
+ * furniture that every cell shares — a rule down the right edge and a band
+ * across the top — with only the glyph differing. This is the shape that makes
+ * an equal-cells cut wrong, so it is the shape the fixture has to have.
+ */
+function buildDigitSheet(cells: number, pitch: number, height: number): Uint8Array {
+  return buildDIB(cells * pitch, height, (x, y) => {
+    const cell = Math.floor(x / pitch);
+    const within = x % pitch;
+    if (within === pitch - 1) return 5; // the hairline, identical in every cell
+    if (y < 2) return 6; // the slab band, identical in every cell
+    // The glyph: a block whose height encodes which cell it is.
+    const inGlyph = y >= 16 && y < 16 + 12 && within >= 2 && within < 2 + 10;
+    return inGlyph && cell % 2 === 0 ? 9 : inGlyph ? 8 : 17;
+  });
+}
+
+describe('cutting glyphs out of a sheet', () => {
+  it('finds the box that differs between cells and ignores the shared furniture', () => {
+    const sheet = decodeDIB(buildDigitSheet(10, 16, 36));
+    const box = varyingBox(sheet, 16);
+    // The rule at column 15 and the band across rows 0-1 are in every cell, so
+    // neither is part of the box; the glyph block is all that is left.
+    expect(box).toEqual({ x: 2, y: 16, width: 10, height: 12 });
+  });
+
+  it('refuses a sheet whose cells are all identical', () => {
+    const same = decodeDIB(buildDIB(64, 36, (x) => (x % 16 === 15 ? 5 : 17)));
+    expect(varyingBox(same, 16)).toBeUndefined();
+    // A single cell has nothing to be compared against.
+    expect(varyingBox(decodeDIB(buildDIB(16, 36, () => 1)), 16)).toBeUndefined();
+  });
+
+  it('extracts the digits trimmed, and records where they sat', () => {
+    const spec = new Map([[TYPE_BITMAP, new Map([[0x87e9, buildDigitSheet(10, 16, FLOOR_HEIGHT)]])]]);
+    const digits = extract(readResources(buildNE(spec))).sprites.get('digits');
+
+    expect(digits?.frames).toHaveLength(10);
+    expect(digits?.frames[0]?.width).toBe(10);
+    expect(digits?.frames[0]?.height).toBe(12);
+    // None of the shared furniture survives the cut.
+    for (const frame of digits?.frames ?? []) {
+      expect([...frame.pixels]).not.toContain(5);
+      expect([...frame.pixels]).not.toContain(6);
+    }
+    // The origin is what lets the renderer put a trimmed glyph back where it
+    // belongs on the floor, rather than guessing an offset.
+    expect(digits?.origin).toEqual({ x: 2, y: 16 });
+  });
+});
+
+describe('drawing into somebody else’s palette', () => {
+  it('takes the nearest entry that exists, and honours the skip list', () => {
+    const palette = decodePalette(
+      buildPaletteResource((index) => (index === 3 ? [250, 250, 250] : index === 7 ? [200, 200, 200] : [0, 0, 0])),
+    );
+    expect(nearestIndex(palette, 255, 255, 255)).toBe(3);
+    expect(nearestIndex(palette, 255, 255, 255, [3])).toBe(7);
+  });
+
+  it('gives the tower a lobby even though no bitmap is one', () => {
+    // The catalogue has no lobby entry — every candidate in the file turned out
+    // to be something else — so the atlas draws one rather than leaving the
+    // ground floor as a hole the renderer fills with shaft ink.
+    const spec = new Map([
+      [TYPE_BITMAP, new Map([[0x85a8, buildDIB(288, ROOM_HEIGHT, () => 3)]])],
+      [TYPE_PALETTE, new Map([[0x83e8, buildPaletteResource((i) => [i, i, i])]])],
+    ]);
+    const { atlas } = buildOriginalAtlas(buildNE(spec));
+
+    const lobby = atlas.sprites.get('lobby');
+    expect(lobby?.frames).toHaveLength(1);
+    expect(lobby?.frames[0]?.width).toBe(SEGMENT_WIDTH);
+    expect(lobby?.frames[0]?.height).toBe(ROOM_HEIGHT);
+    // Sampled from the supplied palette, not from our own ink table, and light
+    // enough to read as a concourse rather than as more shaft.
+    const pixels = lobby?.frames[0]?.pixels ?? new Uint8Array();
+    expect(pixels[0]).toBeGreaterThan(atlas.shaftInk);
+    // The bottom row is what the scene repeats down into the slab, so it must
+    // not be the skirting shadow.
+    const last = pixels[pixels.length - 1] ?? 0;
+    expect(last).not.toBe(atlas.shaftInk);
   });
 });

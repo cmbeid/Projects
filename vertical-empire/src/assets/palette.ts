@@ -146,3 +146,36 @@ export function darkestIndex(palette: Palette, skip: readonly number[] = []): nu
   }
   return best;
 }
+
+/**
+ * The entry closest to a colour we want, by squared distance in RGB.
+ *
+ * For drawing our own art into somebody else's palette. We cannot add entries —
+ * the framebuffer is indexed and the table belongs to the game — so anything
+ * generated has to be expressed in colours that are already there. Asking for
+ * "a warm off-white" and taking what the palette actually has keeps our art
+ * inside the game's own range, and keeps it cycling correctly when the
+ * day/night tables slide underneath.
+ */
+export function nearestIndex(
+  palette: Palette,
+  red: number,
+  green: number,
+  blue: number,
+  skip: readonly number[] = [],
+): number {
+  let best = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < PALETTE_ENTRIES; i += 1) {
+    if (skip.includes(i)) continue;
+    const dr = (palette[i * 4] ?? 0) - red;
+    const dg = (palette[i * 4 + 1] ?? 0) - green;
+    const db = (palette[i * 4 + 2] ?? 0) - blue;
+    const distance = dr * dr + dg * dg + db * db;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = i;
+    }
+  }
+  return best;
+}
