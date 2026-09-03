@@ -125,3 +125,65 @@ export function parseIdTokens(value: string): string[] {
     .filter((part) => part.length > 0);
 }
 
+/** Everything the CLI takes, once the argument list has been read. */
+export interface Options {
+  /** The file to open. Absent means there is nothing to do but print usage. */
+  path?: string;
+  all: boolean;
+  framesIds: string[];
+  contactIds: string[];
+  sweep: boolean;
+  /** How much of each resource a sweep thumbnail shows, in pixels. */
+  peek: number;
+  window?: { from: number; to: number };
+}
+
+/**
+ * Reads the argument list.
+ *
+ * Separated out and tested because getting it wrong is silent: the file simply
+ * is not found and the usage text prints, which looks like the user's mistake.
+ * It has been wrong twice. `indexOf` returns -1 for a flag that is not there,
+ * and -1 + 1 is 0 — so a check meant to skip a flag's value claimed argument
+ * zero instead, and `extract SIMTOWER.EXE` could not find its own filename.
+ */
+export function parseArgs(args: readonly string[]): Options {
+  const at = (flag: string): number => args.indexOf(flag);
+
+  const framesAt = at('--frames');
+  const contactAt = at('--contact');
+  const windowAt = at('--window');
+  const sweepAt = at('--sweep');
+
+  // `--sweep` takes an optional size, so whether it consumed the next argument
+  // depends on whether that argument is a number.
+  const sweepPeek = sweepAt >= 0 ? Number(args[sweepAt + 1]) : Number.NaN;
+  const sweepTookValue = sweepAt >= 0 && Number.isFinite(sweepPeek);
+
+  // Positions that belong to a flag rather than naming the file. Only flags
+  // that are actually present contribute one.
+  const consumed = new Set<number>();
+  for (const position of [framesAt, contactAt, windowAt]) {
+    if (position >= 0) consumed.add(position + 1);
+  }
+  if (sweepTookValue) consumed.add(sweepAt + 1);
+
+  const windowArg = windowAt >= 0 ? (args[windowAt + 1] ?? '').split(',').map(Number) : [];
+  const window =
+    windowArg.length === 2 && windowArg.every((value) => Number.isFinite(value))
+      ? { from: windowArg[0] ?? 0, to: windowArg[1] ?? 0 }
+      : undefined;
+
+  const path = args.find((argument, index) => !argument.startsWith('--') && !consumed.has(index));
+
+  const options: Options = {
+    all: args.includes('--all'),
+    framesIds: framesAt >= 0 ? parseIdTokens(args[framesAt + 1] ?? '') : [],
+    contactIds: contactAt >= 0 ? parseIdTokens(args[contactAt + 1] ?? '') : [],
+    sweep: sweepAt >= 0,
+    peek: sweepTookValue && sweepPeek > 0 ? Math.floor(sweepPeek) : 40,
+  };
+  if (path !== undefined) options.path = path;
+  if (window !== undefined) options.window = window;
+  return options;
+}

@@ -405,6 +405,46 @@ describe('resource id arguments', () => {
   });
 });
 
+describe('the extractor\u2019s arguments', () => {
+  it('finds the file when it is the only argument', async () => {
+    const { parseArgs } = await import('../scripts/frames.js');
+    // The regression this exists to stop: `indexOf` gives -1 for an absent
+    // flag, and -1 + 1 is 0, so the check that skips a flag's value claimed
+    // argument zero and the plain run could not find its own filename.
+    expect(parseArgs(['SIMTOWER.EXE']).path).toBe('SIMTOWER.EXE');
+    expect(parseArgs(['--all', 'SIMTOWER.EXE']).all).toBe(true);
+  });
+
+  it('does not mistake a flag\u2019s value for the file', async () => {
+    const { parseArgs } = await import('../scripts/frames.js');
+    const framed = parseArgs(['--frames', '0x82bc', 'SIMTOWER.EXE']);
+    expect(framed.path).toBe('SIMTOWER.EXE');
+    expect(framed.framesIds).toEqual(['0x82bc']);
+
+    const windowed = parseArgs(['--window', '0,160', '--contact', '0x89e8', 'SIMTOWER.EXE']);
+    expect(windowed.path).toBe('SIMTOWER.EXE');
+    expect(windowed.window).toEqual({ from: 0, to: 160 });
+    expect(windowed.contactIds).toEqual(['0x89e8']);
+  });
+
+  it('lets --sweep take a size or not', async () => {
+    const { parseArgs } = await import('../scripts/frames.js');
+    // With a size, the number is the flag's value and the file follows.
+    const sized = parseArgs(['--sweep', '32', 'SIMTOWER.EXE']);
+    expect(sized).toMatchObject({ sweep: true, peek: 32, path: 'SIMTOWER.EXE' });
+
+    // Without one, the next argument is the file and the default stands.
+    const bare = parseArgs(['--sweep', 'SIMTOWER.EXE']);
+    expect(bare).toMatchObject({ sweep: true, peek: 40, path: 'SIMTOWER.EXE' });
+  });
+
+  it('reports no path when there is none, rather than inventing one', async () => {
+    const { parseArgs } = await import('../scripts/frames.js');
+    expect(parseArgs([]).path).toBeUndefined();
+    expect(parseArgs(['--sweep', '32']).path).toBeUndefined();
+  });
+});
+
 describe('cutting by ink', () => {
   it('finds frames of different widths that a grid would slice apart', () => {
     // Three figures, 5px, 8px and 11px wide, separated by background — the

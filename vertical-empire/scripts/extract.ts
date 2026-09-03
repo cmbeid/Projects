@@ -31,7 +31,7 @@ import {
   extract,
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
-import { ASCII_LIMIT, analyse, ascii, candidates, parseIdTokens, profile } from './frames.js';
+import { ASCII_LIMIT, analyse, ascii, candidates, parseArgs, profile } from './frames.js';
 import { GLYPH_HEIGHT, drawText } from './label.js';
 import { darkestIndex } from '../src/assets/palette.js';
 
@@ -460,30 +460,7 @@ function brightestIndex(palette: Uint8Array): number {
 }
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const all = args.includes('--all');
-  const framesAt = args.indexOf('--frames');
-  const framesIds = framesAt >= 0 ? parseIdTokens(args[framesAt + 1] ?? '') : [];
-  const contactAt = args.indexOf('--contact');
-  const contactIds = contactAt >= 0 ? parseIdTokens(args[contactAt + 1] ?? '') : [];
-  const sweepAt = args.indexOf('--sweep');
-  // Takes an optional peek size, so `--sweep 32` fits more on the page.
-  const sweepPeek = sweepAt >= 0 ? Number(args[sweepAt + 1]) : Number.NaN;
-  const peek = Number.isFinite(sweepPeek) && sweepPeek > 0 ? Math.floor(sweepPeek) : 40;
-  const windowAt = args.indexOf('--window');
-  const windowArg = windowAt >= 0 ? (args[windowAt + 1] ?? '').split(',').map(Number) : [];
-  const window =
-    windowArg.length === 2 && windowArg.every((value) => Number.isFinite(value))
-      ? { from: windowArg[0] ?? 0, to: windowArg[1] ?? 0 }
-      : undefined;
-  const path = args.find(
-    (argument, index) =>
-      !argument.startsWith('--') &&
-      index !== framesAt + 1 &&
-      index !== windowAt + 1 &&
-      index !== contactAt + 1 &&
-      !(index === sweepAt + 1 && Number.isFinite(sweepPeek)),
-  );
+  const { path, all, framesIds, contactIds, sweep: sweeping, peek, window } = parseArgs(process.argv.slice(2));
 
   if (!path) {
     console.error('Usage: npm run extract -- [--all] [--frames 0x82bc,0x8429] /path/to/SIMTOWER.EXE');
@@ -503,7 +480,7 @@ async function main(): Promise<void> {
 
   // Frame analysis is a focused question; printing the whole inventory over the
   // top of it just buries the answer.
-  if (sweepAt >= 0) {
+  if (sweeping) {
     await sweep(resources, palette, peek, 2);
     return;
   }
