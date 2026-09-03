@@ -103,6 +103,12 @@ function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera:
       const y = Math.round(levelTop(level) - camera.y);
       if (found) {
         target.blit(found.image, x, y, found.sprite.transparent);
+        // The original's facades are shorter than a floor; carry the last row
+        // down so a room does not leave a strip of sky under it.
+        if (found.image.height < FLOOR_HEIGHT) {
+          const width = Math.min(found.image.width, kind.width * SEGMENT_WIDTH);
+          target.repeatRow(x, y + found.image.height - 1, width, FLOOR_HEIGHT - found.image.height);
+        }
       } else {
         // An atlas missing this key still gets a solid block, so a mis-mapped
         // resource shows up as a wrong-looking tower rather than an empty one.

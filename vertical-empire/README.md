@@ -59,13 +59,29 @@ facility is that facility in four states. A compressed `SIMTOWER.EX_` has to be 
 (`expand.exe SIMTOWER.EX_ SIMTOWER.EXE`, or `msexpand`); the loader reads only
 the uncompressed form, and says so rather than misparsing it.
 
-> **The resource map is unverified.** `src/assets/slice.ts` was written against
-> published format documentation, not against a copy of the game — there was no
-> copy to hand while building this. The container parsing is tested and correct;
-> the *IDs* may not be. If a sprite comes out wrong, the inventory tells you
-> which IDs actually exist and the PNGs show what is in them. Correcting the
-> table should be minutes of work, and it is the first thing to do with a real
-> copy.
+### What a real copy turned out to hold
+
+`src/assets/slice.ts` has since been corrected against an actual `SIMTOWER.EXE`.
+Three things were wrong, and only one of them was an ID:
+
+- **A room is 24 pixels tall, not 36.** A *floor* is 36, but the art that sits
+  on it — offices, condos, hotel rooms — is 24, the remaining twelve being slab
+  and ceiling the game draws as structure. `ROOM_HEIGHT` exists for this, and
+  the renderer carries a facade's bottom row down to fill the gap.
+- **Cell strips are 32-pixel cells**, not 36. Every `0xFF02` resource in the
+  real file divides evenly by 8×32; only one of the five divides by 8×36.
+- **Stairs and escalators are ordinary bitmaps**, not cell strips. The IDs were
+  right all along; the resource type was not, which is why they alone came back
+  "not found".
+
+The IDs themselves mostly held up, and the arithmetic is what confirms them: a
+condo is 128 wide, which is sixteen segments; a hotel suite sheet is 640, which
+is eight states of ten segments; a lift car is 32×36, exactly as documented.
+
+A few entries are still marked **UNVERIFIED** in the catalogue — the shaft, the
+stair and escalator widths, and especially `people`, whose 96×24 shape is not an
+obvious fit for the four-pixel figures the game draws. Check those against the
+ID-named PNGs from `--all`.
 
 ## What the spike found
 

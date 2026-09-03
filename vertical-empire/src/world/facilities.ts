@@ -30,7 +30,8 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'condo', label: 'Condo', sprite: 'condo', width: 16, cost: 200_000, placement: 'anywhere', transport: false },
   { id: 'hotel', label: 'Hotel', sprite: 'hotel', width: 4, cost: 20_000, placement: 'anywhere', transport: false },
   { id: 'elevator', label: 'Elevator', sprite: 'elevator', width: 4, cost: 100_000, placement: 'anywhere', transport: true },
-  { id: 'stairs', label: 'Stairs', sprite: 'stairs', width: 4, cost: 5_000, placement: 'anywhere', transport: true },
+  // Eight segments, from the 448px sheet dividing into seven states.
+  { id: 'stairs', label: 'Stairs', sprite: 'stairs', width: 8, cost: 5_000, placement: 'anywhere', transport: true },
 ];
 
 const BY_ID = new Map(FACILITIES.map((facility) => [facility.id, facility]));

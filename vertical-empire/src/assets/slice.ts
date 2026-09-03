@@ -1,16 +1,20 @@
 /**
  * What SimTower's resources actually contain, and how to cut them up.
  *
- * The IDs below come from the format documentation the OpenSkyscraper project
- * published (read as documentation only — none of its GPL code is used here).
- * Treat the table as a strong starting point rather than gospel: it has been
- * written against the documented layout, and `npm run extract` dumps a full
- * inventory precisely so it can be checked against a real copy of the game and
- * corrected where it is wrong.
+ * Corrected against a real copy: the IDs below were checked against the shape
+ * listing `npm run extract` prints, and the arithmetic is what identifies them.
+ * A condo bitmap is 128 wide, which is sixteen segments; a hotel suite is 640
+ * wide, which is eight states of ten segments; a lift car is 32x36, exactly as
+ * documented. Where a size divides cleanly into a documented facility width,
+ * that is not a coincidence and the entry is sound.
  *
  * Two conventions run through every sheet:
  *   - an item's *states* (lit/dark, awake/asleep, clean/dirty) lie horizontally
  *   - an item's *variants* (which shop, which restaurant) lie vertically
+ *
+ * Entries still marked UNVERIFIED are ones whose size is consistent with the
+ * guess but does not pin it down. Check those with the ID-named PNGs that
+ * `npm run extract -- --all` writes.
  */
 
 import { crop, decodeDIB, readCellStrip, type IndexedImage } from './dib.js';
@@ -30,14 +34,27 @@ export const MAIN_PALETTE_ID = 0x83e8;
 export const SEGMENT_WIDTH = 8;
 export const FLOOR_HEIGHT = 36;
 
+/**
+ * How tall a room's facade is.
+ *
+ * A floor is 36 pixels but the art for what sits on it — offices, condos,
+ * hotel rooms — is only 24. The missing twelve are the floor slab and the
+ * ceiling below, which the game draws as structure rather than as part of the
+ * tenant. This is the one thing the catalogue got wrong in a way that mattered:
+ * everything was assumed to be a full floor tall.
+ */
+export const ROOM_HEIGHT = 24;
+
 export interface SpriteSpec {
   /** Name the renderer asks for. */
   key: string;
   type: number;
   /** Resource IDs to try, in order; the first that decodes wins. */
   ids: readonly number[];
-  /** `cells` for headerless 8x36 strips, `dib` for real bitmaps. */
+  /** `cells` for headerless strips of 8px-wide cells, `dib` for real bitmaps. */
   mode: 'dib' | 'cells';
+  /** Cell height for `cells` mode. Inferred from the resource length if absent. */
+  cellHeight?: number;
   /** Cut the decoded sheet into this many equal columns (states). */
   states?: number;
   /** Cut the decoded sheet into this many equal rows (variants). */
@@ -55,28 +72,57 @@ function range(from: number, to: number): number[] {
 /**
  * The sprites the spike renders. Deliberately not the whole game: this is the
  * set needed to judge whether a tower reads as a tower on a phone.
+ *
+ * Widths in the comments are what each cut frame comes out as, which is what
+ * `world/facilities.ts` has to agree with.
  */
 export const CATALOGUE: readonly SpriteSpec[] = [
-  // The sky is the single biggest contributor to the feel — it is what the
-  // day/night palette cycle acts on, and it is most of the screen.
-  { key: 'sky', type: TYPE_BITMAP, ids: range(0x8351, 0x835a), mode: 'dib' },
+  // Eleven of them, one per band of the day, each 32x360 — four segments wide
+  // and ten floors tall. Tiled, so the size only has to be a multiple of the
+  // grid, which it is.
+  { key: 'sky', type: TYPE_BITMAP, ids: range(0x8351, 0x835b), mode: 'dib' },
 
-  // Lobby, and the sky lobbies that break the tower into fifteen-floor bands.
-  { key: 'lobby', type: TYPE_CELLS, ids: range(0x89e8, 0x89ec), mode: 'cells' },
+  // Lobby, in three variants: ground, sky lobby, and the high one. Cells are 32
+  // tall rather than a full floor — see `ROOM_HEIGHT`.
+  { key: 'lobby', type: TYPE_CELLS, ids: range(0x89e8, 0x89ea), mode: 'cells', cellHeight: 32 },
 
-  // Occupancy states run across: vacant, then progressively tenanted.
-  { key: 'office', type: TYPE_BITMAP, ids: range(0x85a8, 0x85ab), mode: 'dib', states: 4 },
-  { key: 'condo', type: TYPE_BITMAP, ids: range(0x8628, 0x862a), mode: 'dib', states: 5 },
-  { key: 'hotel', type: TYPE_BITMAP, ids: range(0x84a8, 0x84b0), mode: 'dib', states: 6 },
+  // 288x24 = four states of nine segments. Occupancy runs across: empty, then
+  // progressively tenanted.
+  { key: 'office', type: TYPE_BITMAP, ids: range(0x85a8, 0x85aa), mode: 'dib', states: 4 },
 
-  // Cars and the shafts they run in. Express cars are half again as wide.
-  { key: 'elevator', type: TYPE_BITMAP, ids: range(0x8428, 0x842c), mode: 'dib', states: 5, transparent: 0 },
-  { key: 'stairs', type: TYPE_CELLS, ids: range(0x8968, 0x896c), mode: 'cells' },
-  { key: 'escalator', type: TYPE_CELLS, ids: range(0x8aa8, 0x8aac), mode: 'cells' },
+  // Fifteen separate 128x24 bitmaps — five states across three variants, which
+  // is exactly what the documentation describes, stored one per resource
+  // rather than as a sheet.
+  { key: 'condo', type: TYPE_BITMAP, ids: range(0x8628, 0x8636), mode: 'dib' },
 
-  // One tiny sprite in five tints. Mood is colour, which is why the people
-  // turning red as the lifts back up is legible at four pixels tall.
-  { key: 'people', type: TYPE_BITMAP, ids: [0x82bc], mode: 'dib', variants: 5, transparent: 0 },
+  // Hotel rooms come as a base bitmap plus a sheet of eight states beside it:
+  // 32/256 for singles, 48/384 for doubles, 80/640 for suites. The sheets are
+  // the useful half. Four segments, six, and ten — the documented widths.
+  { key: 'hotel', type: TYPE_BITMAP, ids: [0x84a9, 0x84ab], mode: 'dib', states: 8 },
+  { key: 'hotel-double', type: TYPE_BITMAP, ids: [0x84e9, 0x84eb, 0x84ed, 0x84ef], mode: 'dib', states: 8 },
+  { key: 'hotel-suite', type: TYPE_BITMAP, ids: [0x8529, 0x852b], mode: 'dib', states: 8 },
+
+  // The lift car: 160x36 cut five ways gives 32x36, the documented car size,
+  // and five frames is the door opening. 0x8428 is the same car as a single
+  // bitmap; 0x842d is the 48x36 express one.
+  { key: 'car', type: TYPE_BITMAP, ids: [0x842a], mode: 'dib', states: 5, transparent: 0 },
+
+  // UNVERIFIED: 640x36 divides into twenty four-segment pieces, which is the
+  // right shape for shaft segments, but the size alone does not prove it.
+  { key: 'elevator', type: TYPE_BITMAP, ids: [0x8468], mode: 'dib', states: 20 },
+
+  // Both of these were in the catalogue at the right IDs but as cell strips.
+  // They are ordinary bitmaps, which is why they came back "not found".
+  // UNVERIFIED: the eight-segment width is inferred from the state count
+  // dividing cleanly, not from the documentation.
+  { key: 'stairs', type: TYPE_BITMAP, ids: [0x8968, 0x8969], mode: 'dib', states: 7 },
+  { key: 'escalator', type: TYPE_BITMAP, ids: [0x8aa8, 0x8ae8], mode: 'dib', states: 8 },
+
+  // UNVERIFIED, and the least certain entry here. 96x24 is not an obvious shape
+  // for the four-pixel people the game draws, and the same ID exists under
+  // resource type 0xFF06 as well. Twelve eight-wide frames is a guess; check
+  // raw-0x8002-0x82bc.png before trusting it.
+  { key: 'people', type: TYPE_BITMAP, ids: range(0x82bc, 0x82bf), mode: 'dib', states: 12, transparent: 0 },
 ];
 
 export interface ExtractedSprite {
@@ -95,9 +141,7 @@ export interface Extraction {
 
 /** Decodes one resource according to its spec, before any state/variant cutting. */
 function decodeSheet(spec: SpriteSpec, data: Uint8Array): IndexedImage {
-  return spec.mode === 'cells'
-    ? readCellStrip(data, SEGMENT_WIDTH, FLOOR_HEIGHT)
-    : decodeDIB(data);
+  return spec.mode === 'cells' ? readCellStrip(data, SEGMENT_WIDTH, spec.cellHeight) : decodeDIB(data);
 }
 
 /** Cuts a decoded sheet into its states and variants. */

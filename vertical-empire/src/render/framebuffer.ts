@@ -65,6 +65,28 @@ export class Framebuffer {
     }
   }
 
+  /**
+   * Copies the row at `fromY` downward over the rows beneath it.
+   *
+   * Facility art is 24 pixels tall where a floor is 36, the missing twelve
+   * being slab and ceiling the game draws as structure. Rather than invent that
+   * structure, extend the facade's own bottom row into it: at this scale a
+   * skirting board repeated a dozen rows reads as a floor, and it cannot
+   * clash with a palette we did not choose.
+   */
+  repeatRow(x: number, fromY: number, width: number, height: number): void {
+    if (fromY < 0 || fromY >= this.height) return;
+    const left = Math.max(0, x);
+    const right = Math.min(this.width, x + width);
+    if (right <= left) return;
+
+    const source = this.pixels.subarray(fromY * this.width + left, fromY * this.width + right);
+    const bottom = Math.min(this.height, fromY + 1 + height);
+    for (let row = fromY + 1; row < bottom; row += 1) {
+      this.pixels.set(source, row * this.width + left);
+    }
+  }
+
   /** Tiles an image across a rectangle. Used for sky and ground. */
   tile(image: IndexedImage, x: number, y: number, width: number, height: number): void {
     if (image.width <= 0 || image.height <= 0) return;

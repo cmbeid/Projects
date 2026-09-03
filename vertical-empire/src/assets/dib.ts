@@ -81,42 +81,70 @@ export function decodeDIB(data: Uint8Array): IndexedImage {
 }
 
 /**
+ * Cell heights worth trying when a resource does not say how tall its cells
+ * are, most likely first.
+ *
+ * A real copy of the game settled this: every `0xFF02` resource in it divides
+ * evenly by 8x32, and only one of the five divides by 8x36. So the strips are
+ * 32 tall even though a *floor* is 36 — the remaining twelve pixels are
+ * structure the game draws itself.
+ */
+export const CELL_HEIGHTS = [32, 36, 24, 16] as const;
+
+/**
+ * Works out how tall the cells in a strip are from its length alone.
+ *
+ * Returns the first candidate that divides the resource into whole cells.
+ * Ambiguity is real — a strip divisible by 32 is also divisible by 16 — so the
+ * order of `CELL_HEIGHTS` is the tie-break, and a caller that knows better
+ * should pass the height rather than rely on this.
+ */
+export function inferCellHeight(byteLength: number, cellWidth: number): number | undefined {
+  return CELL_HEIGHTS.find((height) => byteLength % (cellWidth * height) === 0);
+}
+
+/**
  * Reads a `0xFF02` resource: bare pixels for a run of cells.
  *
- * The game stores these as a single column eight pixels wide — one cell's 36
- * rows, then the next cell's 36 rows, and so on down. On screen those cells sit
- * side by side, so unpacking means cutting the column into `cellHeight` chunks
- * and laying them out left to right. Rows within a cell are bottom-up, like any
+ * The game stores these as a single column eight pixels wide — one cell's rows,
+ * then the next cell's rows, and so on down. On screen those cells sit side by
+ * side, so unpacking means cutting the column into `cellHeight` chunks and
+ * laying them out left to right. Rows within a cell are bottom-up, like any
  * other Windows bitmap of the era.
  *
- * That 8x36 cell is the whole reason SimTower looks the way it does, so the
- * dimensions are parameters rather than constants only in the sense that the
- * tests can vary them; the game itself never does.
+ * `cellHeight` is inferred from the length when not given.
  */
-export function readCellStrip(data: Uint8Array, cellWidth: number, cellHeight: number): IndexedImage {
-  const cellPixels = cellWidth * cellHeight;
+export function readCellStrip(data: Uint8Array, cellWidth: number, cellHeight?: number): IndexedImage {
+  const height = cellHeight ?? inferCellHeight(data.byteLength, cellWidth);
+  if (height === undefined) {
+    throw new BitmapFormatError(
+      `${data.byteLength} bytes is not a whole number of ${cellWidth}-wide cells at any of ${CELL_HEIGHTS.join(', ')} tall.`,
+    );
+  }
+
+  const cellPixels = cellWidth * height;
   if (cellPixels <= 0) throw new BitmapFormatError('Cell dimensions must be positive.');
 
   const cells = Math.floor(data.byteLength / cellPixels);
   if (cells === 0) {
     throw new BitmapFormatError(
-      `Resource holds ${data.byteLength} bytes, less than one ${cellWidth}x${cellHeight} cell.`,
+      `Resource holds ${data.byteLength} bytes, less than one ${cellWidth}x${height} cell.`,
     );
   }
 
   const width = cells * cellWidth;
-  const pixels = new Uint8Array(width * cellHeight);
+  const pixels = new Uint8Array(width * height);
 
   for (let i = 0; i < cells * cellPixels; i += 1) {
     const sourceX = i % cellWidth;
     const sourceY = Math.floor(i / cellWidth);
-    const cell = Math.floor(sourceY / cellHeight);
+    const cell = Math.floor(sourceY / height);
     const x = cell * cellWidth + sourceX;
-    const y = cellHeight - 1 - (sourceY % cellHeight);
+    const y = height - 1 - (sourceY % height);
     pixels[y * width + x] = data[i] ?? 0;
   }
 
-  return { width, height: cellHeight, pixels };
+  return { width, height, pixels };
 }
 
 /** Copies a rectangle out of an indexed image. Out-of-bounds reads come back as 0. */

@@ -184,3 +184,26 @@ describe('drawing a tower', () => {
     expect(midnight[INK.windowLit * 4 + 0]).toBeGreaterThan(200);
   });
 });
+
+describe('short facades', () => {
+  it('carries a room facade down to fill its floor', () => {
+    const buffer = new Framebuffer(8, 36);
+    buffer.clear(99); // stand-in for sky
+    // A 24-tall facade, like the real game's, drawn at the top of the floor.
+    buffer.blit(solid(8, 24, 7), 0, 0);
+    expect(buffer.pixels[24 * 8]).toBe(99); // sky still showing beneath
+
+    buffer.repeatRow(0, 23, 8, 36 - 24);
+    for (let y = 0; y < 36; y += 1) expect(buffer.pixels[y * 8]).toBe(7);
+  });
+
+  it('leaves rows outside the run alone', () => {
+    const buffer = new Framebuffer(4, 4);
+    buffer.clear(1);
+    buffer.pixels.set([5, 5, 5, 5], 1 * 4);
+    buffer.repeatRow(0, 1, 4, 1);
+    expect([...buffer.pixels.subarray(2 * 4, 3 * 4)]).toEqual([5, 5, 5, 5]);
+    // One row asked for, one row written — the last row is untouched.
+    expect([...buffer.pixels.subarray(3 * 4, 4 * 4)]).toEqual([1, 1, 1, 1]);
+  });
+});

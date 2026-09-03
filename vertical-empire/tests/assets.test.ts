@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { NotAnExecutableError, readResources } from '../src/assets/ne.js';
-import { BitmapFormatError, crop, decodeDIB, readCellStrip } from '../src/assets/dib.js';
+import { BitmapFormatError, crop, decodeDIB, inferCellHeight, readCellStrip } from '../src/assets/dib.js';
 import { CYCLE_GROUPS, decodePalette, mixPalettes, rotateCycles } from '../src/assets/palette.js';
-import { FLOOR_HEIGHT, SEGMENT_WIDTH, TYPE_BITMAP, TYPE_PALETTE, extract } from '../src/assets/slice.js';
+import { FLOOR_HEIGHT, ROOM_HEIGHT, SEGMENT_WIDTH, TYPE_BITMAP, TYPE_PALETTE, extract } from '../src/assets/slice.js';
 import { buildCellStrip, buildDIB, buildNE, buildPaletteResource } from './fixtures.js';
 
 describe('NE resources', () => {
@@ -178,5 +178,67 @@ describe('the PNG dump', () => {
     expect(view.getUint32(16)).toBe(4); // width, from the IHDR
     expect(view.getUint32(20)).toBe(2); // height
     expect(String.fromCharCode(...png.subarray(png.byteLength - 8, png.byteLength - 4))).toBe('IEND');
+  });
+});
+
+describe('cell heights', () => {
+  it('works out the cell height from the resource length', () => {
+    // The real game's strips are 32 tall, which is what sent the first
+    // catalogue wrong: a floor is 36, but the art on it is not.
+    expect(inferCellHeight(8 * 32 * 140, SEGMENT_WIDTH)).toBe(32);
+    // 36 wins when it fits, since a full-floor strip is the less surprising case.
+    expect(inferCellHeight(8 * 36 * 5, SEGMENT_WIDTH)).toBe(36);
+    // A prime-ish length divides by nothing sensible.
+    expect(inferCellHeight(8 * 37, SEGMENT_WIDTH)).toBeUndefined();
+  });
+
+  it('unpacks a strip at an inferred height', () => {
+    const strip = readCellStrip(buildCellStrip(4, SEGMENT_WIDTH, 32, (cell) => cell + 1), SEGMENT_WIDTH);
+    expect(strip.height).toBe(32);
+    expect(strip.width).toBe(4 * SEGMENT_WIDTH);
+    expect(strip.pixels[0]).toBe(1);
+    expect(strip.pixels[SEGMENT_WIDTH * 3]).toBe(4);
+  });
+
+  it('says so rather than guessing when nothing divides', () => {
+    expect(() => readCellStrip(new Uint8Array(8 * 37), SEGMENT_WIDTH)).toThrow(/not a whole number/);
+  });
+});
+
+describe('the corrected catalogue', () => {
+  it('cuts an office sheet into nine-segment, room-height frames', () => {
+    // 288x24 is what the real file holds: four states of nine segments.
+    const spec = new Map([
+      [TYPE_BITMAP, new Map([[0x85a8, buildDIB(288, ROOM_HEIGHT, (x) => Math.floor(x / 72) + 1)]])],
+      [TYPE_PALETTE, new Map([[0x83e8, buildPaletteResource((i) => [i, i, i])]])],
+    ]);
+
+    const office = extract(readResources(buildNE(spec))).sprites.get('office');
+    expect(office?.frames).toHaveLength(4);
+    expect(office?.frames[0]?.width).toBe(9 * SEGMENT_WIDTH);
+    expect(office?.frames[0]?.height).toBe(ROOM_HEIGHT);
+    expect(office?.frames[3]?.pixels[0]).toBe(4);
+  });
+
+  it('takes condos one per resource rather than as a sheet', () => {
+    const condos = new Map<number, Uint8Array>();
+    for (let id = 0x8628; id <= 0x8636; id += 1) condos.set(id, buildDIB(128, ROOM_HEIGHT, () => id & 0xff));
+    const spec = new Map([[TYPE_BITMAP, condos]]);
+
+    const condo = extract(readResources(buildNE(spec))).sprites.get('condo');
+    // Five states across three variants, stored as fifteen separate bitmaps.
+    expect(condo?.frames).toHaveLength(15);
+    expect(condo?.frames[0]?.width).toBe(16 * SEGMENT_WIDTH);
+  });
+
+  it('reads stairs as a bitmap, which is what they actually are', () => {
+    // The first catalogue had these as cell strips at the same IDs, which is
+    // why they came back "not found" against a real copy.
+    const spec = new Map([[TYPE_BITMAP, new Map([[0x8968, buildDIB(448, ROOM_HEIGHT, () => 3)]])]]);
+    const { sprites, problems } = extract(readResources(buildNE(spec)));
+
+    expect(sprites.get('stairs')?.frames).toHaveLength(7);
+    expect(sprites.get('stairs')?.frames[0]?.width).toBe(64);
+    expect(problems.some((problem) => problem.key === 'stairs')).toBe(false);
   });
 });

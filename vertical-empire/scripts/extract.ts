@@ -17,11 +17,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { decodeDIB, readCellStrip } from '../src/assets/dib.js';
+import { decodeDIB, inferCellHeight, readCellStrip } from '../src/assets/dib.js';
 import { hex, readResources, type ResourceTable } from '../src/assets/ne.js';
 import {
   CATALOGUE,
   FLOOR_HEIGHT,
+  ROOM_HEIGHT,
   SEGMENT_WIDTH,
   TYPE_BITMAP,
   TYPE_CELLS,
@@ -73,19 +74,26 @@ function shape(type: number, data: Uint8Array): string {
     }
   }
   if (type === TYPE_CELLS) {
-    const cells = data.byteLength / (SEGMENT_WIDTH * FLOOR_HEIGHT);
-    const width = cells * SEGMENT_WIDTH;
-    return Number.isInteger(cells)
-      ? `${`${width}x${FLOOR_HEIGHT}`.padEnd(9)} ${grid(width, FLOOR_HEIGHT)}`
-      : `${data.byteLength} bytes — not a whole number of ${SEGMENT_WIDTH}x${FLOOR_HEIGHT} cells`;
+    const height = inferCellHeight(data.byteLength, SEGMENT_WIDTH);
+    if (height === undefined) return `${data.byteLength} bytes — no whole cell height fits`;
+    const width = (data.byteLength / (SEGMENT_WIDTH * height)) * SEGMENT_WIDTH;
+    // Cell height is called out because it is not the floor height: strips are
+    // 32 tall where a floor is 36.
+    return `${`${width}x${height}`.padEnd(9)} ${grid(width, FLOOR_HEIGHT)} of ${height}px cells`;
   }
   return `${data.byteLength} bytes`;
 }
 
 function grid(width: number, height: number): string {
   const segments = width / SEGMENT_WIDTH;
+  if (!Number.isInteger(segments)) return '(off-grid)';
+
+  // Two heights are on-grid, not one. A full floor is 36; a room facade is 24,
+  // the other twelve being structure the game draws itself. Reporting only the
+  // first is what made the real file's facilities look like arbitrary art.
+  if (height === ROOM_HEIGHT) return `${segments} seg x 1 room`;
   const floors = height / FLOOR_HEIGHT;
-  if (!Number.isInteger(segments) || !Number.isInteger(floors)) return '(off-grid)';
+  if (!Number.isInteger(floors)) return `${segments} seg, ${height}px tall`;
   return `${segments} seg x ${floors} floor${floors === 1 ? '' : 's'}`;
 }
 
@@ -149,7 +157,7 @@ async function dumpEverything(resources: ResourceTable, palette: Uint8Array): Pr
         const image =
           type === TYPE_BITMAP
             ? decodeDIB(data)
-            : readCellStrip(data, SEGMENT_WIDTH, FLOOR_HEIGHT);
+            : readCellStrip(data, SEGMENT_WIDTH);
         const table = image.palette ?? palette;
         await writeFile(
           join(OUT, `raw-${hex(type)}-${hex(id)}.png`),
