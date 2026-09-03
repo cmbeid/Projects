@@ -256,7 +256,10 @@ describe('drawing from a real-shaped file', () => {
     // swallows it shows up as a sky band that is the wrong colour.
     put(0x8351, 32, 360, () => 9);
     for (let id = 0x8352; id <= 0x835b; id += 1) put(id, 32, 360, () => 60);
-    for (let id = 0x85a8; id <= 0x85ab; id += 1) put(id, 288, ROOM_HEIGHT, (x) => Math.floor(x / 72) + 1);
+    for (let id = 0x85a8; id <= 0x85aa; id += 1) put(id, 288, ROOM_HEIGHT, (x) => Math.floor(x / 72) + 1);
+    // The half-width sheet next door, which is not an office however much it
+    // looks like one in a thumbnail.
+    put(0x85ab, 144, ROOM_HEIGHT, () => 5);
     // People: a figure on a background, so the corner index is the see-through one.
     for (let id = 0x82bc; id <= 0x82bf; id += 1) put(id, 96, ROOM_HEIGHT, (x, y) => (y > 8 && x % 8 > 2 ? 200 : 77));
 
@@ -286,6 +289,17 @@ describe('drawing from a real-shaped file', () => {
     expect(skyline?.frames[0]?.height).toBe(32);
     // Consecutive frames are consecutive cells, so the panorama runs across.
     expect(skyline?.frames[1]?.pixels[0]).toBe(2);
+  });
+
+  it('cuts offices at nine segments, and leaves the half-width sheet alone', async () => {
+    const { buildOriginalAtlas } = await import('../src/assets/original.js');
+    const office = buildOriginalAtlas(mimic()).atlas.sprites.get('office');
+
+    // Three sheets of four states. Taking in 0x85ab as a fourth sheet added
+    // four frames of 36px — four and a half segments — to a facility the world
+    // declares nine segments wide.
+    expect(office?.frames).toHaveLength(12);
+    for (const frame of office?.frames ?? []) expect(frame.width).toBe(9 * SEGMENT_WIDTH);
   });
 
   it('keeps the soil tile out of the sky and gives it to the ground', async () => {
@@ -402,6 +416,51 @@ describe('resource id arguments', () => {
   it('splits and trims a comma-separated list', async () => {
     const { parseIdTokens } = await import('../scripts/frames.js');
     expect(parseIdTokens(' 0x8428, 33468 ,, 89e8 ')).toEqual(['0x8428', '33468', '89e8']);
+  });
+});
+
+describe('measuring how a sheet divides', () => {
+  it('finds the frame width of a sheet of near-identical states', async () => {
+    const { periods } = await import('../src/assets/frames.js');
+    // Four 72px states of the same room: same walls and windows, differing
+    // only in how much furniture is in them. That is what an office sheet is.
+    const sheet = decodeDIB(
+      buildDIB(288, 24, (x, y) => {
+        const withinFrame = x % 72;
+        const state = Math.floor(x / 72);
+        if (withinFrame < 2) return 40; // the party wall, in every state
+        if (y > 6 && y < 16 && withinFrame % 12 < 4) return 90; // windows
+        // Desks: the only thing that changes between states.
+        return y > 18 && withinFrame > 8 && withinFrame < 8 + state * 12 ? 120 : 200;
+      }),
+    );
+
+    const table = periods(sheet, SEGMENT_WIDTH, SEGMENT_WIDTH * 4);
+    const best = table.reduce((a, b) => (b.mismatch < a.mismatch ? b : a));
+    expect(best.width).toBe(72);
+    expect(best.frames).toBe(4);
+
+    // And the wrong readings are visibly worse, not marginally so — otherwise
+    // the table cannot be read with any confidence.
+    for (const entry of table.filter((candidate) => candidate.width !== 72)) {
+      expect(entry.mismatch).toBeGreaterThan(best.mismatch * 2);
+    }
+  });
+
+  it('offers only divisions into whole frames of whole segments', async () => {
+    const { periods } = await import('../src/assets/frames.js');
+    const sheet = decodeDIB(buildDIB(288, 24, () => 1));
+    const widths = periods(sheet, SEGMENT_WIDTH, SEGMENT_WIDTH * 4).map((entry) => entry.width);
+
+    // Divisors of 288 that are a multiple of 8 and at least 32. Notably not 36:
+    // it divides 288 but is not a whole number of segments.
+    expect(widths).toEqual([32, 48, 72, 96, 144]);
+  });
+
+  it('says nothing divides a sheet narrower than one frame', async () => {
+    const { periods } = await import('../src/assets/frames.js');
+    const single = decodeDIB(buildDIB(32, 24, () => 1));
+    expect(periods(single, SEGMENT_WIDTH, SEGMENT_WIDTH * 4)).toEqual([]);
   });
 });
 

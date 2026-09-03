@@ -132,6 +132,7 @@ export interface Options {
   all: boolean;
   framesIds: string[];
   contactIds: string[];
+  periodIds: string[];
   sweep: boolean;
   /** How much of each resource a sweep thumbnail shows, in pixels. */
   peek: number;
@@ -153,6 +154,7 @@ export function parseArgs(args: readonly string[]): Options {
   const framesAt = at('--frames');
   const contactAt = at('--contact');
   const windowAt = at('--window');
+  const periodAt = at('--period');
   const sweepAt = at('--sweep');
 
   // `--sweep` takes an optional size, so whether it consumed the next argument
@@ -163,7 +165,7 @@ export function parseArgs(args: readonly string[]): Options {
   // Positions that belong to a flag rather than naming the file. Only flags
   // that are actually present contribute one.
   const consumed = new Set<number>();
-  for (const position of [framesAt, contactAt, windowAt]) {
+  for (const position of [framesAt, contactAt, windowAt, periodAt]) {
     if (position >= 0) consumed.add(position + 1);
   }
   if (sweepTookValue) consumed.add(sweepAt + 1);
@@ -180,6 +182,7 @@ export function parseArgs(args: readonly string[]): Options {
     all: args.includes('--all'),
     framesIds: framesAt >= 0 ? parseIdTokens(args[framesAt + 1] ?? '') : [],
     contactIds: contactAt >= 0 ? parseIdTokens(args[contactAt + 1] ?? '') : [],
+    periodIds: periodAt >= 0 ? parseIdTokens(args[periodAt + 1] ?? '') : [],
     sweep: sweepAt >= 0,
     peek: sweepTookValue && sweepPeek > 0 ? Math.floor(sweepPeek) : 40,
   };

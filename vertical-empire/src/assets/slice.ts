@@ -122,10 +122,14 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // (0x8a28, 0x8a68) are the next candidates. Until then the ground floor draws
   // as a plain band rather than as the wrong art.
 
-  // Four sheets, each 288x24 = four states of nine segments. Occupancy runs
-  // across: empty, then progressively tenanted. The range stopped one short of
-  // 0x85ab, which is office art like the other three.
-  { key: 'office', type: TYPE_BITMAP, ids: range(0x85a8, 0x85ab), mode: 'dib', states: 4 },
+  // Three sheets, each 288x24 = four states of nine segments. Occupancy runs
+  // across: empty, then progressively tenanted.
+  //
+  // Not four sheets: 0x85ab looks like office art in a thumbnail and is 144x24,
+  // half the width of the other three. Cut into four states it yields frames
+  // four and a half segments wide against a facility declared nine, which is
+  // the kind of thing a picture cannot tell you and the shape listing can.
+  { key: 'office', type: TYPE_BITMAP, ids: range(0x85a8, 0x85aa), mode: 'dib', states: 4 },
 
   // Fifteen separate 128x24 bitmaps — five states across three variants, which
   // is exactly what the documentation describes, stored one per resource

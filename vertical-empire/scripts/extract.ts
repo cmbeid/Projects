@@ -32,6 +32,7 @@ import {
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
 import { ASCII_LIMIT, analyse, ascii, candidates, parseArgs, profile } from './frames.js';
+import { periods } from '../src/assets/frames.js';
 import { GLYPH_HEIGHT, drawText } from './label.js';
 import { darkestIndex } from '../src/assets/palette.js';
 
@@ -237,6 +238,58 @@ function frames(
       for (const line of ascii(image, image.palette ?? palette, report.background)) console.log(`  |${line}`);
     } else {
       console.log(`  ${profile(image, report.background)}`);
+    }
+  }
+}
+
+/**
+ * Reports how well each sheet repeats at every frame width it could have.
+ *
+ * This is the mode that decides a catalogue entry's `states`. The lowest
+ * mismatch is the answer, but the whole table is printed rather than a verdict:
+ * a sheet with two plausible readings is worth seeing as two plausible
+ * readings, and a table where nothing stands out means the sheet is not a row
+ * of states at all.
+ */
+function report(resources: ResourceTable, tokens: string[]): void {
+  for (const token of tokens) {
+    const found = resolve(resources, token);
+    if (!found) continue;
+
+    const { image } = found;
+    // Four segments is the narrowest thing SimTower builds — a lift car or a
+    // hotel single — so nothing below that is a real frame.
+    const candidates = periods(image, SEGMENT_WIDTH, SEGMENT_WIDTH * 4);
+    console.log(`\n${hex(found.type)}/${hex(found.id)}  ${image.width}x${image.height}`);
+    if (candidates.length === 0) {
+      console.log(`  no whole-segment division below ${image.width}px — one frame`);
+      continue;
+    }
+
+    const lowest = candidates.reduce((a, b) => (b.mismatch < a.mismatch ? b : a));
+    // A sheet of states is nearly its own neighbour; a sheet of one picture is
+    // not. Past this, the lowest score is just the least bad of a bad set and
+    // marking it would invent a division that is not there.
+    const REPEATS = 0.5;
+    // Twice the true frame width also lines up, so among the readings that
+    // hold, the narrowest is the fundamental — the others are its multiples.
+    const strong = candidates.filter((entry) => entry.mismatch <= Math.max(lowest.mismatch * 2, 0.02));
+    const answer = lowest.mismatch > REPEATS ? undefined : strong[0];
+
+    for (const candidate of candidates) {
+      const segments = candidate.width / SEGMENT_WIDTH;
+      const mark = candidate === answer ? '<-' : '  ';
+      console.log(
+        `  ${mark} ${String(candidate.frames).padStart(3)} x ${String(candidate.width).padStart(4)}px` +
+          ` = ${String(segments).padStart(3)} seg   mismatch ${(candidate.mismatch * 100).toFixed(1).padStart(5)}%`,
+      );
+    }
+
+    if (!answer) {
+      console.log('     nothing repeats — one frame of the whole sheet');
+    } else if (strong.length > 1) {
+      // Worth saying out loud: the arrow is a reading, not a measurement.
+      console.log(`     (${strong.length} readings hold; the narrowest is the frame, the rest are multiples of it)`);
     }
   }
 }
@@ -460,7 +513,7 @@ function brightestIndex(palette: Uint8Array): number {
 }
 
 async function main(): Promise<void> {
-  const { path, all, framesIds, contactIds, sweep: sweeping, peek, window } = parseArgs(process.argv.slice(2));
+  const { path, all, framesIds, contactIds, periodIds, sweep: sweeping, peek, window } = parseArgs(process.argv.slice(2));
 
   if (!path) {
     console.error('Usage: npm run extract -- [--all] [--frames 0x82bc,0x8429] /path/to/SIMTOWER.EXE');
@@ -469,6 +522,7 @@ async function main(): Promise<void> {
     console.error('  --window   with --frames, look at just these columns, e.g. 0,160');
     console.error('  --contact  write one wrapped, labelled, scaled-up PNG of the named sheets');
     console.error('  --sweep    thumbnail every bitmap and cell strip onto one labelled page');
+    console.error('  --period   measure how the named sheets divide into equal frames');
     console.error('\nA compressed SIMTOWER.EX_ has to be expanded first (expand.exe, or msexpand).');
     process.exitCode = 1;
     return;
@@ -487,6 +541,11 @@ async function main(): Promise<void> {
 
   if (contactIds.length > 0) {
     await contact(resources, contactIds, palette, 160, 3);
+    return;
+  }
+
+  if (periodIds.length > 0) {
+    report(resources, periodIds);
     return;
   }
 
