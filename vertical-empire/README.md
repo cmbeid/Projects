@@ -101,6 +101,10 @@ them give the frame width and count — and the range of rows that hold any, whi
 gives the figure's real height inside the frame. Sheets narrower than 160px
 print as ASCII; wider ones print a per-column ink profile.
 
+IDs can be written either way — `0x82bc` or `33468`. npm rewrites a hex
+argument to decimal before the script sees it, so both readings are tried and
+whichever one is a resource that exists wins.
+
 That last number is the one that matters. A 96×24 people sheet whose ink starts
 at row 12 holds 12-pixel figures with headroom, not 24-pixel ones, and that is
 the difference between people who look right and people who fill the room.

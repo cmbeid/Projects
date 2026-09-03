@@ -31,7 +31,7 @@ import {
   extract,
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
-import { ASCII_LIMIT, analyse, ascii, profile } from './frames.js';
+import { ASCII_LIMIT, analyse, ascii, candidates, parseIdTokens, profile } from './frames.js';
 
 const OUT = 'assets-private';
 
@@ -180,16 +180,19 @@ async function dumpEverything(resources: ResourceTable, palette: Uint8Array): Pr
  * to open a PNG and describe it. Gutter columns give the frame boundaries; the
  * ink rows give the figure height inside them.
  */
-function frames(resources: ResourceTable, ids: number[], palette: Uint8Array): void {
-  for (const id of ids) {
-    const found = [TYPE_BITMAP, TYPE_CELLS]
-      .map((type) => ({ type, data: resources.get(type)?.get(id) }))
+function frames(resources: ResourceTable, tokens: string[], palette: Uint8Array): void {
+  for (const token of tokens) {
+    const readings = candidates(token);
+    const found = readings
+      .flatMap((id) => [TYPE_BITMAP, TYPE_CELLS].map((type) => ({ id, type, data: resources.get(type)?.get(id) })))
       .find((candidate) => candidate.data !== undefined);
 
     if (!found?.data) {
-      console.log(`\n${hex(id)}: no bitmap or cell strip with that ID.`);
+      const tried = readings.map(hex).join(' or ') || 'nothing parseable';
+      console.log(`\n${token}: no bitmap or cell strip at ${tried}.`);
       continue;
     }
+    const id = found.id;
 
     let image;
     try {
@@ -223,18 +226,11 @@ function frames(resources: ResourceTable, ids: number[], palette: Uint8Array): v
   }
 }
 
-function parseIds(value: string): number[] {
-  return value
-    .split(',')
-    .map((part) => Number.parseInt(part.trim().replace(/^0x/i, ''), 16))
-    .filter((id) => Number.isFinite(id));
-}
-
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const all = args.includes('--all');
   const framesAt = args.indexOf('--frames');
-  const framesIds = framesAt >= 0 ? parseIds(args[framesAt + 1] ?? '') : [];
+  const framesIds = framesAt >= 0 ? parseIdTokens(args[framesAt + 1] ?? '') : [];
   const path = args.find((argument, index) => !argument.startsWith('--') && index !== framesAt + 1);
 
   if (!path) {

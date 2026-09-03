@@ -135,3 +135,27 @@ export function profile(image: IndexedImage, background: number): string {
   }
   return out;
 }
+
+/**
+ * The numbers an ID token could mean.
+ *
+ * npm rewrites a hex argument to its decimal value before the script ever sees
+ * it — `--frames 0x82bc` arrives as `33468` — so a bare decimal has to be tried
+ * as well as a hex reading. Which one was meant is then settled by looking both
+ * up: at most one of them is a resource that exists.
+ */
+export function candidates(token: string): number[] {
+  const readings: number[] = [];
+  const bare = token.replace(/^0x/i, '');
+  if (/^[0-9a-f]+$/i.test(bare)) readings.push(Number.parseInt(bare, 16));
+  if (/^[0-9]+$/.test(token)) readings.push(Number.parseInt(token, 10));
+  return [...new Set(readings)].filter((value) => Number.isFinite(value));
+}
+
+export function parseIdTokens(value: string): string[] {
+  return value
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+

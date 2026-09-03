@@ -331,3 +331,21 @@ describe('frame analysis', () => {
     expect(analyse(solid).inkColumns).toEqual([{ from: 1, to: 31 }]);
   });
 });
+
+describe('resource id arguments', () => {
+  it('reads a token as hex and, where it could be, as decimal too', async () => {
+    const { candidates } = await import('../scripts/frames.js');
+    // npm rewrites `0x82bc` to `33468` before the script sees it, so a bare
+    // decimal has to be tried alongside the hex reading. Which was meant is
+    // settled by looking both up in the file.
+    expect(candidates('0x82bc')).toEqual([0x82bc]);
+    expect(candidates('33468')).toEqual([0x33468, 33468]);
+    expect(candidates('82bc')).toEqual([0x82bc]);
+    expect(candidates('zz')).toEqual([]);
+  });
+
+  it('splits and trims a comma-separated list', async () => {
+    const { parseIdTokens } = await import('../scripts/frames.js');
+    expect(parseIdTokens(' 0x8428, 33468 ,, 89e8 ')).toEqual(['0x8428', '33468', '89e8']);
+  });
+});
