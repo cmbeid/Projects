@@ -36,6 +36,12 @@ body {
   inset: 0;
   display: grid;
   grid-template-rows: 1fr auto;
+  /* Not the default `auto`. A grid column sizes to its content unless told
+     otherwise, so the build bar's row of buttons stretched the whole app wider
+     than the screen and its own `overflow-x: auto` never engaged — there was
+     nothing to scroll against. This pins the column to the viewport and lets
+     the bar scroll inside it, which is what it was always meant to do. */
+  grid-template-columns: minmax(0, 100%);
 }
 
 .stage {
@@ -76,6 +82,9 @@ body {
 .hud-clock {
   color: var(--accent);
   font-weight: 600;
+  /* A long status message shares this row and would otherwise fold the time
+     onto two lines. */
+  white-space: nowrap;
 }
 
 .hud-status:empty {
@@ -112,6 +121,8 @@ body {
   grid-row: 2;
   grid-column: 1;
   z-index: 2;
+  /* Same reason: a grid item's automatic minimum size is its content. */
+  min-width: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: linear-gradient(to top, var(--chrome), rgb(16 21 31 / 0.94));
   border-top: 1px solid var(--chrome-edge);
@@ -121,6 +132,9 @@ body {
    aim at mid-build — the facilities below it are the things you tap. */
 .tabs {
   display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
   gap: 4px;
   padding: 6px 8px 0;
 }
@@ -147,6 +161,7 @@ body {
 
 .bar {
   display: flex;
+  min-width: 0;
   gap: 6px;
   padding: 6px 8px 8px;
   overflow-x: auto;

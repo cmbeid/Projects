@@ -14,6 +14,7 @@ import {
   levelTop,
 } from '../src/world/grid.js';
 import { DEMO_LEFT, Tower, demoTower } from '../src/world/tower.js';
+import { FACILITIES } from '../src/world/facilities.js';
 import type { IndexedImage } from '../src/assets/dib.js';
 
 function solid(width: number, height: number, ink: number): IndexedImage {
@@ -452,5 +453,28 @@ describe('the town', () => {
     const x = Math.round(44 * SEGMENT_WIDTH - camera.x);
     const y = Math.round(levelTop(GROUND_LEVEL) + 10 - camera.y);
     expect(buffer.pixels[y * buffer.width + x]).not.toBe(INK.townWall);
+  });
+});
+
+describe('the build bar and the art agree', () => {
+  it('has placeholder art for every facility it offers', () => {
+    const atlas = buildFallbackAtlas();
+    // The deployed page draws only this atlas — nobody visiting the site has
+    // supplied a copy of the game. A facility in the build bar with no sprite
+    // behind it is a button that builds a flat band, so the two lists have to
+    // be kept in step and this is what keeps them there.
+    const missing = FACILITIES.filter((item) => !atlas.sprites.has(item.sprite)).map((item) => item.id);
+    expect(missing).toEqual([]);
+  });
+
+  it('draws each facility at the width the world declares', () => {
+    const atlas = buildFallbackAtlas();
+    for (const item of FACILITIES) {
+      const frame = atlas.sprites.get(item.sprite)?.frames[0];
+      if (!frame) continue; // covered by the test above
+      // Placeholder art is drawn to the world's own widths, so a mismatch here
+      // means one of the two moved without the other.
+      expect([item.id, frame.width]).toEqual([item.id, item.width * SEGMENT_WIDTH]);
+    }
   });
 });

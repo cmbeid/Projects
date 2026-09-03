@@ -463,6 +463,7 @@ async function contact(
   palette: Uint8Array,
   wrapAt: number,
   scale: number,
+  window?: { from: number; to: number },
 ): Promise<void> {
   await mkdir(OUT, { recursive: true });
 
@@ -470,10 +471,22 @@ async function contact(
   for (const token of tokens) {
     const found = resolve(resources, token);
     if (!found) continue;
-    panels.push(
-      panelFor(`${hex(found.type)}/${hex(found.id)}  ${found.image.width}x${found.image.height}`, found.image, wrapAt),
-    );
-    console.log(`  ${hex(found.id)}  ${found.image.width}x${found.image.height}`);
+
+    // A 6624px strip is a mile of ribbon: wrapped and scaled it comes out
+    // taller than anything will show at full size, and a contact sheet you
+    // cannot read is not a contact sheet. A window into it is legible.
+    let { image } = found;
+    const label = `${hex(found.type)}/${hex(found.id)}  ${image.width}x${image.height}`;
+    if (window) {
+      const from = Math.max(0, Math.min(image.width - 1, window.from));
+      const to = Math.max(from + 1, Math.min(image.width, window.to));
+      image = crop(image, from, 0, to - from, image.height);
+      console.log(`  ${hex(found.id)}  ${found.image.width}x${found.image.height}, showing ${from}..${to}`);
+    } else {
+      console.log(`  ${hex(found.id)}  ${image.width}x${image.height}`);
+    }
+
+    panels.push(panelFor(window ? `${label}  ${window.from}-${window.to}` : label, image, wrapAt));
   }
 
   await paste(panels, palette, scale, 'contact-sheet');
@@ -537,7 +550,7 @@ async function main(): Promise<void> {
     console.error('Usage: npm run extract -- [--all] [--frames 0x82bc,0x8429] /path/to/SIMTOWER.EXE');
     console.error('\n  --all      also dump every bitmap and cell strip, named by resource ID');
     console.error('  --frames   report how the named sheets are cut into frames');
-    console.error('  --window   with --frames, look at just these columns, e.g. 0,160');
+    console.error('  --window   with --frames or --contact, look at just these columns, e.g. 0,320');
     console.error('  --contact  write one wrapped, labelled, scaled-up PNG of the named sheets');
     console.error('  --sweep    thumbnail every bitmap and cell strip onto one labelled page');
     console.error('  --period   measure how the named sheets divide into equal frames');
@@ -558,7 +571,7 @@ async function main(): Promise<void> {
   }
 
   if (contactIds.length > 0) {
-    await contact(resources, contactIds, palette, 160, 3);
+    await contact(resources, contactIds, palette, 160, 3, window);
     return;
   }
 

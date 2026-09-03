@@ -162,7 +162,13 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // The digit sheets are not catalogued yet: how they are cut decides whether a
   // floor number is composed from glyphs or indexed whole, and that has to be
   // measured rather than assumed. Same for the machinery at 0x88e8-0x88ed.
-  { key: 'shaft', type: TYPE_BITMAP, ids: [0x87e8], mode: 'dib' },
+  //
+  // 352x36 is eleven frames of four segments, which `--period` puts at 8.2%
+  // against 51% for the next reading. It was catalogued with no states and
+  // tiled whole, and drew the right thing only because `tile` wraps its source
+  // and a lift is exactly one frame wide — the right answer for the wrong
+  // reason, which stops being right the moment anything else uses it.
+  { key: 'shaft', type: TYPE_BITMAP, ids: [0x87e8], mode: 'dib', states: 11 },
 
   // Both of these were in the catalogue at the right IDs but as cell strips.
   // They are ordinary bitmaps, which is why they came back "not found".
@@ -171,6 +177,39 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // riders on some. Eight segments each, as the arithmetic suggested.
   { key: 'stairs', type: TYPE_BITMAP, ids: [0x8968, 0x8969], mode: 'dib', states: 7, transparent: 'corner' },
   { key: 'escalator', type: TYPE_BITMAP, ids: [0x8aa8, 0x8ae8], mode: 'dib', states: 8, transparent: 'corner' },
+
+
+  // Everything below came from measuring the sheets rather than reading their
+  // widths, because a width does not say how it is cut: 288x24 is four states
+  // of nine segments if it is an office and three of twelve if it is a shop.
+  //
+  // The first three are the strongest evidence in the whole catalogue. Their
+  // frame widths were recovered from the pixels — 24, 12 and 16 segments — and
+  // those are the original's own documented sizes for a restaurant, a shop and
+  // a fast food counter. Nothing told the measurement what to look for and it
+  // landed on all three.
+
+  // 384x24, two states of 24 segments: 25.0%, against 86.9% for the next.
+  { key: 'restaurant', type: TYPE_BITMAP, ids: range(0x8568, 0x8571), mode: 'dib', states: 2 },
+
+  // 288x24, three states of 12 segments: 20.6%, against 91.0%.
+  { key: 'shop', type: TYPE_BITMAP, ids: range(0x8668, 0x8672), mode: 'dib', states: 3 },
+
+  // 256x24, two states of 16 segments: 22.9%, against 87.3%.
+  { key: 'fast-food', type: TYPE_BITMAP, ids: range(0x86e8, 0x86f1), mode: 'dib', states: 2 },
+
+  // These two repeat at nothing, which is itself the answer: one frame of the
+  // whole sheet. Both are 128x24 — the same shape as a condo, which is sixteen
+  // segments and was verified separately, so the width is corroborated rather
+  // than merely unrefuted.
+  { key: 'medical', type: TYPE_BITMAP, ids: [0x8768], mode: 'dib' },
+  { key: 'parking', type: TYPE_BITMAP, ids: range(0x8ee8, 0x8eea), mode: 'dib' },
+
+  // Deliberately absent: the chapel (0x8ca8 measures 7 segments, which is not a
+  // room), the theatre (0x88a8, 34% against a 41% runner-up — too close to
+  // call), the cinema (0x8728) and the metro (0x8e28). Their art is in the file
+  // and their widths are not defensible yet, and a facility drawn at the wrong
+  // width is how the ground floor came to be a parade of shopfronts.
 
   // Two pieces of the original's chrome, borrowed for the HUD: the rating star
   // lit and unlit. Icons rather than sheets, so they are taken whole. Both sit

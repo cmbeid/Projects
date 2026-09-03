@@ -57,6 +57,15 @@ export const INK = {
   townWindow: 28,
   starLit: 29,
   starDim: 30,
+  shopFront: 31,
+  shopSign: 32,
+  diningFloor: 33,
+  cloth: 34,
+  counter: 35,
+  clinicFloor: 36,
+  clinicTrim: 37,
+  deck: 38,
+  bay: 39,
   indicatorA: 197,
   indicatorB: 198,
 } as const;
@@ -92,6 +101,15 @@ const DAY: Record<number, [number, number, number]> = {
   [INK.townRoof]: [72, 78, 92],
   [INK.starLit]: [240, 195, 82],
   [INK.starDim]: [88, 96, 112],
+  [INK.shopFront]: [232, 214, 186],
+  [INK.shopSign]: [196, 84, 72],
+  [INK.diningFloor]: [186, 158, 142],
+  [INK.cloth]: [236, 230, 218],
+  [INK.counter]: [156, 116, 84],
+  [INK.clinicFloor]: [212, 226, 224],
+  [INK.clinicTrim]: [96, 156, 148],
+  [INK.deck]: [88, 88, 92],
+  [INK.bay]: [64, 64, 68],
   [INK.townWindow]: [196, 206, 176],
   [INK.indicatorA]: [248, 200, 64],
   [INK.indicatorB]: [80, 60, 24],
@@ -257,9 +275,16 @@ function car(): IndexedImage {
 }
 
 function stairs(): IndexedImage {
-  const image = blank(SEGMENT_WIDTH * 4, FLOOR_HEIGHT, INK.wall);
-  for (let step = 0; step < 8; step += 1) {
-    fill(image, step * 4, FLOOR_HEIGHT - 5 - step * 4, 4, 3, INK.slab);
+  // Eight segments, which is what the world declares and what the original's
+  // own sheet divides into. This was four, drawing half a flight in the gap
+  // left by a full-width one, for as long as nothing compared the two numbers.
+  const width = SEGMENT_WIDTH * 8;
+  const image = blank(width, FLOOR_HEIGHT, INK.wall);
+  const steps = 10;
+  const rise = (FLOOR_HEIGHT - 6) / steps;
+  const run = width / steps;
+  for (let step = 0; step < steps; step += 1) {
+    fill(image, Math.round(step * run), Math.round(FLOOR_HEIGHT - 5 - step * rise), Math.ceil(run), 3, INK.slab);
   }
   return image;
 }
@@ -288,6 +313,95 @@ function town(step: number): IndexedImage {
 function person(tint: number): IndexedImage {
   const image = blank(2, 4, INK.transparent);
   fill(image, 0, 0, 2, 4, tint);
+  return image;
+}
+
+/**
+ * A restaurant: twenty-four segments of tables under a long window.
+ *
+ * The width is not invented. `--period` cut the original's own sheet at 192px
+ * and that is twenty-four segments, which is what SimTower documents — so the
+ * placeholder is drawn to the real size rather than to a convenient one.
+ */
+function restaurant(state: number): IndexedImage {
+  const image = blank(SEGMENT_WIDTH * 24, FLOOR_HEIGHT, INK.diningFloor);
+  addSlab(image);
+  addWindows(image, state > 0, 16);
+  for (let table = 0; table < 7; table += 1) {
+    const x = 8 + table * 26;
+    fill(image, x, FLOOR_HEIGHT - 12, 14, 2, INK.cloth);
+    fill(image, x + 6, FLOOR_HEIGHT - 10, 2, 5, INK.counter);
+    // Diners only once the place is open, which is the whole tell for state.
+    if (state > 0) {
+      fill(image, x - 2, FLOOR_HEIGHT - 15, 3, 8, INK.personA);
+      fill(image, x + 13, FLOOR_HEIGHT - 15, 3, 8, INK.personC);
+    }
+  }
+  return image;
+}
+
+/** A shop: twelve segments of lit frontage with a sign over it. */
+function shop(state: number): IndexedImage {
+  const image = blank(SEGMENT_WIDTH * 12, FLOOR_HEIGHT, INK.shopFront);
+  addSlab(image);
+  fill(image, 2, 5, SEGMENT_WIDTH * 12 - 4, 5, INK.shopSign);
+  // Shuttered at state 0; goods in the window once it is trading.
+  if (state === 0) {
+    for (let bar = 0; bar < 12; bar += 1) fill(image, 4 + bar * 8, 12, 5, FLOOR_HEIGHT - 18, INK.wall);
+    return image;
+  }
+  // Shelves fill up as the state rises, the way an office grows desks: the
+  // three states have to look like three things or the third frame is dead
+  // weight in the sheet.
+  for (let shelf = 0; shelf < 3; shelf += 1) {
+    fill(image, 6, 14 + shelf * 6, SEGMENT_WIDTH * 12 - 12, 2, INK.counter);
+    for (let item = 0; item < 2 + state * 3; item += 1) {
+      fill(image, 8 + item * 11, 11 + shelf * 6, 4, 3, item % 2 === 0 ? INK.windowLit : INK.shopSign);
+    }
+  }
+  // And a shopper once it is busy.
+  if (state > 1) fill(image, SEGMENT_WIDTH * 12 - 14, FLOOR_HEIGHT - 15, 3, 8, INK.personC);
+  return image;
+}
+
+/** Fast food: sixteen segments, a counter across the front and a menu board. */
+function fastFood(state: number): IndexedImage {
+  const image = blank(SEGMENT_WIDTH * 16, FLOOR_HEIGHT, INK.shopFront);
+  addSlab(image);
+  fill(image, 0, 5, SEGMENT_WIDTH * 16, 6, INK.shopSign);
+  for (let panel = 0; panel < 6; panel += 1) fill(image, 6 + panel * 20, 6, 12, 4, INK.windowLit);
+  fill(image, 4, FLOOR_HEIGHT - 13, SEGMENT_WIDTH * 16 - 8, 4, INK.counter);
+  if (state > 0) {
+    for (let queue = 0; queue < 5; queue += 1) {
+      fill(image, 10 + queue * 24, FLOOR_HEIGHT - 20, 3, 8, queue % 2 === 0 ? INK.personB : INK.personD);
+    }
+  }
+  return image;
+}
+
+/** A clinic: sixteen segments, pale and evenly lit. */
+function clinic(): IndexedImage {
+  const image = blank(SEGMENT_WIDTH * 16, FLOOR_HEIGHT, INK.clinicFloor);
+  addSlab(image);
+  addWindows(image, true, 12);
+  fill(image, 0, FLOOR_HEIGHT - 12, SEGMENT_WIDTH * 16, 1, INK.clinicTrim);
+  for (let bed = 0; bed < 4; bed += 1) {
+    fill(image, 10 + bed * 30, FLOOR_HEIGHT - 10, 18, 4, INK.cloth);
+    fill(image, 10 + bed * 30, FLOOR_HEIGHT - 10, 4, 4, INK.clinicTrim);
+  }
+  return image;
+}
+
+/** Parking: sixteen segments of dark deck, marked out into bays. */
+function parking(): IndexedImage {
+  const image = blank(SEGMENT_WIDTH * 16, FLOOR_HEIGHT, INK.deck);
+  addSlab(image);
+  for (let bay = 0; bay < 6; bay += 1) {
+    const x = 6 + bay * 20;
+    fill(image, x, 8, 1, FLOOR_HEIGHT - 14, INK.bay);
+    // A car in every other bay, so the deck reads as used rather than empty.
+    if (bay % 2 === 0) fill(image, x + 4, FLOOR_HEIGHT - 14, 12, 5, bay === 2 ? INK.shopSign : INK.personA);
+  }
   return image;
 }
 
@@ -349,6 +463,11 @@ export function buildFallbackAtlas(): Atlas {
   sprites.set('elevator', sprite('elevator', [shaft()]));
   sprites.set('car', sprite('car', [car()], INK.transparent));
   sprites.set('stairs', sprite('stairs', [stairs()]));
+  sprites.set('restaurant', sprite('restaurant', [restaurant(0), restaurant(1)]));
+  sprites.set('shop', sprite('shop', [shop(0), shop(1), shop(2)]));
+  sprites.set('fast-food', sprite('fast-food', [fastFood(0), fastFood(1)]));
+  sprites.set('medical', sprite('medical', [clinic()]));
+  sprites.set('parking', sprite('parking', [parking()]));
   sprites.set(
     'people',
     sprite(

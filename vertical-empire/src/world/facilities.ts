@@ -8,7 +8,18 @@
  * fallback art is used they *are* the sizes it is drawn at.
  */
 
-export type FacilityId = 'lobby' | 'office' | 'condo' | 'hotel' | 'elevator' | 'stairs';
+export type FacilityId =
+  | 'lobby'
+  | 'office'
+  | 'condo'
+  | 'hotel'
+  | 'elevator'
+  | 'stairs'
+  | 'restaurant'
+  | 'shop'
+  | 'fast-food'
+  | 'medical'
+  | 'parking';
 
 /**
  * Which drawer of the build bar a facility lives in.
@@ -53,9 +64,17 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'elevator', label: 'Elevator', category: 'move', sprite: 'elevator', width: 4, cost: 100_000, placement: 'anywhere', transport: true },
   // Eight segments, from the 448px sheet dividing into seven states.
   { id: 'stairs', label: 'Stairs', category: 'move', sprite: 'stairs', width: 8, cost: 5_000, placement: 'anywhere', transport: true },
+  { id: 'parking', label: 'Parking', category: 'move', sprite: 'parking', width: 16, cost: 30_000, placement: 'anywhere', transport: false },
   { id: 'condo', label: 'Condo', category: 'live', sprite: 'condo', width: 16, cost: 200_000, placement: 'anywhere', transport: false },
   { id: 'hotel', label: 'Hotel', category: 'live', sprite: 'hotel', width: 4, cost: 20_000, placement: 'anywhere', transport: false },
   { id: 'office', label: 'Office', category: 'work', sprite: 'office', width: 9, cost: 40_000, placement: 'anywhere', transport: false },
+  { id: 'medical', label: 'Clinic', category: 'work', sprite: 'medical', width: 16, cost: 500_000, placement: 'anywhere', transport: false },
+  // Widths measured off the sheets, not chosen: see the notes in
+  // `assets/slice.ts`. Restaurant, shop and fast food each came back at the
+  // original's own documented size without being told what to expect.
+  { id: 'restaurant', label: 'Restaurant', category: 'play', sprite: 'restaurant', width: 24, cost: 200_000, placement: 'anywhere', transport: false },
+  { id: 'shop', label: 'Shop', category: 'play', sprite: 'shop', width: 12, cost: 100_000, placement: 'anywhere', transport: false },
+  { id: 'fast-food', label: 'Fast food', category: 'play', sprite: 'fast-food', width: 16, cost: 100_000, placement: 'anywhere', transport: false },
 ];
 
 const BY_ID = new Map(FACILITIES.map((facility) => [facility.id, facility]));
