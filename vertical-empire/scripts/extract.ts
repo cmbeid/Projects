@@ -294,7 +294,13 @@ function resolve(
  * make the column wider than the target on their own, which leaves one column —
  * the stacked layout, arrived at rather than special-cased.
  */
-async function paste(panels: Panel[], palette: Uint8Array, scale: number, name: string): Promise<void> {
+async function paste(
+  panels: Panel[],
+  palette: Uint8Array,
+  scale: number,
+  name: string,
+  index = false,
+): Promise<void> {
   if (panels.length === 0) return;
 
   // Every panel shares the first one's palette. A PNG carries one table, and in
@@ -356,7 +362,18 @@ async function paste(panels: Panel[], palette: Uint8Array, scale: number, name: 
 
     const file = pages === 1 ? `${name}.png` : `${name}-${page + 1}.png`;
     await writeFile(join(OUT, file), encodePNG(bigWidth, bigHeight, big, table));
-    console.log(`${OUT}/${file}  ${bigWidth}x${bigHeight}, ${slice.length} panel${slice.length === 1 ? '' : 's'}`);
+    console.log(`\n${OUT}/${file}  ${bigWidth}x${bigHeight}, ${slice.length} panel${slice.length === 1 ? '' : 's'}`);
+
+    // The same grid as text. A 3x5 glyph survives being looked at but not being
+    // resized, and an ID misread by one digit sends the catalogue somewhere
+    // wrong — so the reading order is printed too, and the pixels only have to
+    // show what the art is, not which one it is.
+    if (index) {
+      for (let row = 0; row < rowCount; row += 1) {
+        const labels = slice.slice(row * columns, (row + 1) * columns).map((panel) => panel.label);
+        console.log(`  row ${String(row + 1).padStart(2)}: ${labels.join(' ')}`);
+      }
+    }
   }
 }
 
@@ -424,7 +441,7 @@ async function sweep(resources: ResourceTable, palette: Uint8Array, peek: number
   }
 
   console.log(`Sweeping ${panels.length} resources at ${peek}px.`);
-  await paste(panels, palette, scale, 'sweep');
+  await paste(panels, palette, scale, 'sweep', true);
 }
 
 /** Brightest palette entry, for label text that will read against the darkest. */
