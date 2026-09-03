@@ -624,8 +624,10 @@ function buildDigitSheet(cells: number, pitch: number, height: number): Uint8Arr
     const cell = Math.floor(x / pitch);
     const within = x % pitch;
     if (within === pitch - 1) return 5; // the hairline, identical in every cell
-    if (y < 2) return 6; // the slab band, identical in every cell
-    // The glyph: a block whose height encodes which cell it is.
+    // The slab band, identical in every cell — but not on row 0, so the sheet's
+    // own corner is background the way the real one's is.
+    if (y === 1 || y === 2) return 6;
+    // The glyph: a block whose ink says which cell it is.
     const inGlyph = y >= 16 && y < 16 + 12 && within >= 2 && within < 2 + 10;
     return inGlyph && cell % 2 === 0 ? 9 : inGlyph ? 8 : 17;
   });
@@ -662,6 +664,17 @@ describe('cutting glyphs out of a sheet', () => {
     // The origin is what lets the renderer put a trimmed glyph back where it
     // belongs on the floor, rather than guessing an offset.
     expect(digits?.origin).toEqual({ x: 2, y: 16 });
+  });
+
+  it('takes see-through from the sheet, not from the trimmed frame', () => {
+    const spec = new Map([[TYPE_BITMAP, new Map([[0x87e9, buildDigitSheet(10, 16, FLOOR_HEIGHT)]])]]);
+    const digits = extract(readResources(buildNE(spec))).sprites.get('digits');
+
+    // A trim crops past the background, so the frame's own corner is whatever
+    // the box landed on — here the glyph itself. On 0x87ea that corner is shaft
+    // ink, and taking it as see-through punches the shaft through every number.
+    expect(digits?.frames[0]?.pixels[0]).toBe(9);
+    expect(digits?.transparent).toBe(17);
   });
 });
 

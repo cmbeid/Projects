@@ -9,6 +9,7 @@
 
 import { lookup, type Atlas } from '../assets/atlas.js';
 import { crop, type IndexedImage } from '../assets/dib.js';
+import type { ExtractedSprite } from '../assets/slice.js';
 import { INK } from '../assets/fallback.js';
 import {
   FLOOR_HEIGHT,
@@ -266,11 +267,15 @@ function drawLifts(
  * it for the text and picks a glyph per character rather than keeping a second,
  * subtly different idea of what floor it is on.
  *
- * A character with no glyph skips the whole label. Today that is exactly the
- * basements: the `B` lives on 0x87ea, whose twelve cells have not been read
- * yet. Drawing `3` for B3 would be worse than drawing nothing, and this needs
- * no special case to avoid it — the rule is general and stops applying by
- * itself the moment the letters are catalogued.
+ * A label is spelled from *one* sheet, never mixed across two. 0x87ea holds a
+ * `B` and the digits one to nine — everything a basement needs and nothing
+ * else, since there is no B0 and no B10 — so `B3` comes entirely from there and
+ * its two glyphs share a trim box, and therefore line up with each other by
+ * construction rather than by a fudge factor. Above ground, 0x87e9's ten digits
+ * do the same job. An alphabet that cannot spell a label is passed over; a
+ * label no alphabet can spell is not drawn, which is how this behaved for the
+ * basements before 0x87ea was read and how it will behave for anything else
+ * `floorLabel` learns to say.
  */
 function drawFloorNumbers(
   target: Framebuffer,
@@ -281,42 +286,59 @@ function drawFloorNumbers(
   x: number,
   width: number,
 ): void {
-  const digits = atlas.sprites.get('digits');
-  if (!digits || digits.frames.length === 0) return;
-  // Trimmed glyphs have lost their place on the floor; the cut recorded it.
-  const offsetY = digits.origin?.y ?? 0;
+  const alphabets = ALPHABETS.map((alphabet) => ({
+    order: alphabet.order,
+    sprite: atlas.sprites.get(alphabet.key),
+  })).filter((entry): entry is { order: string; sprite: ExtractedSprite } => entry.sprite !== undefined);
+  if (alphabets.length === 0) return;
 
   for (let level = from; level <= to; level += 1) {
-    const y = Math.round(levelTop(level) - camera.y) + offsetY;
-    if (y > target.height) continue;
+    const text = floorLabel(level);
+    const spelled = alphabets.map((entry) => spell(entry, text)).find((found) => found !== undefined);
+    if (!spelled) continue;
 
-    const glyphs = label(digits.frames, floorLabel(level));
-    if (glyphs.length === 0) continue;
-    if (y + (glyphs[0]?.height ?? 0) < 0) continue;
+    // Trimmed glyphs have lost their place on the floor; the cut recorded it.
+    const y = Math.round(levelTop(level) - camera.y) + (spelled.sprite.origin?.y ?? 0);
+    if (y > target.height || y + (spelled.glyphs[0]?.height ?? 0) < 0) continue;
 
-    // Centred in the shaft. Two digits of a twelve-pixel glyph sit inside a
-    // four-segment lift with room to spare; a hundredth floor needs three and
-    // does not, so each glyph is clipped to the shaft rather than allowed to
-    // overhang into whatever was built next door.
-    const textWidth = glyphs.reduce((total, glyph) => total + glyph.width, 0);
+    // Centred in the shaft. Two glyphs sit inside a four-segment lift with room
+    // to spare; a hundredth floor needs three and does not, so each is clipped
+    // to the shaft rather than allowed to overhang into whatever is next door.
+    const textWidth = spelled.glyphs.reduce((total, glyph) => total + glyph.width, 0);
     let cursor = x + Math.round((width - textWidth) / 2);
-    for (const glyph of glyphs) {
-      blitClipped(target, glyph, cursor, y, x, x + width, digits.transparent);
+    for (const glyph of spelled.glyphs) {
+      blitClipped(target, glyph, cursor, y, x, x + width, spelled.sprite.transparent);
       cursor += glyph.width;
     }
   }
 }
 
-/** One glyph per character, or nothing at all if any character has none. */
-function label(frames: readonly IndexedImage[], text: string): IndexedImage[] {
+/**
+ * The sheets a floor label can be spelled from, tried in order.
+ *
+ * `order` maps frame index to character; a space means "this frame is not a
+ * character we can use". 0x87ea's first two cells are a small `B` raised over a
+ * 1 and a 2 — not needed to spell anything, and unexplained, so they are named
+ * as unusable rather than guessed at.
+ */
+const ALPHABETS: readonly { key: string; order: string }[] = [
+  { key: 'digits', order: '0123456789' },
+  { key: 'digits-basement', order: '  B123456789' },
+];
+
+/** One glyph per character from a single sheet, or nothing if it cannot spell it. */
+function spell(
+  entry: { order: string; sprite: ExtractedSprite },
+  text: string,
+): { sprite: ExtractedSprite; glyphs: IndexedImage[] } | undefined {
   const glyphs: IndexedImage[] = [];
   for (const character of text) {
-    const digit = character.charCodeAt(0) - 0x30;
-    const glyph = digit >= 0 && digit <= 9 ? frames[digit] : undefined;
-    if (!glyph) return [];
+    const at = entry.order.indexOf(character);
+    const glyph = at >= 0 ? entry.sprite.frames[at] : undefined;
+    if (!glyph) return undefined;
     glyphs.push(glyph);
   }
-  return glyphs;
+  return glyphs.length > 0 ? { sprite: entry.sprite, glyphs } : undefined;
 }
 
 /** Blits an image cropped to a horizontal window, in target coordinates. */

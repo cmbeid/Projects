@@ -186,11 +186,35 @@ puts a trimmed glyph back in the right place on a floor.
 A label is composed, not indexed whole. `floorLabel` in `src/world/grid.ts`
 already knows that level 9 is floor 1 and level 6 is B3, so the renderer asks it
 for the text and picks a glyph per character rather than keeping a second,
-subtly different idea of what floor it is on. A character with no glyph skips the
-whole label — today that is exactly the basements, because the `B` lives on
-`0x87ea` and its twelve cells have not been read yet. Labelling B3 as `3` would
-be worse than labelling it not at all, and the rule needs no special case to
-avoid it: it stops applying by itself the moment the letters are catalogued.
+subtly different idea of what floor it is on.
+
+#### The missing zero
+
+`0x87ea` is the basement alphabet: twelve cells at the same pitch, of which
+cells 2–11 are **`B` followed by 1 to 9**. The absent zero is what confirms the
+reading rather than undermining it — there is no B0 and no B10, so a basement
+label needs a `B` and the digits one to nine and nothing else, which is exactly
+what the sheet holds. A sheet that is complete for its job and complete for
+nothing else has been read right.
+
+Cells 0 and 1 each carry a small `B` raised above a 1 and a 2. Nothing needs
+them, nothing explains them, and they are marked unusable rather than given a
+story.
+
+So a label is spelled from **one** sheet, never mixed across two: `B3` comes
+entirely from `0x87ea`, which means its two glyphs share a trim box and line up
+with each other by construction instead of by a fudge factor. Above ground,
+`0x87e9`'s ten digits do the same job and are tried first. An alphabet that
+cannot spell a label is passed over, and a label no alphabet can spell is not
+drawn — which is how the basements behaved before `0x87ea` was read, and how
+anything else `floorLabel` learns to say will behave until its glyphs exist.
+
+Reading `0x87ea` also turned up a bug in the trim. `transparent: 'corner'` takes
+the *frame's* top-left pixel, but a trimmed frame has been cropped past its own
+background — on `0x87ea` that corner is shaft ink, and treating it as
+see-through punches the shaft through every number. A glyph cut now takes its
+see-through index from the **sheet's** corner instead, which is background on
+both sheets.
 
 ### Measuring how a sheet is cut
 

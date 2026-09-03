@@ -76,8 +76,13 @@ export interface SpriteSpec {
    * `'corner'` reads it from the sprite's own top-left pixel, which is the
    * usual convention and beats guessing: assuming index 0 gave the people
    * solid rectangular backgrounds.
+   *
+   * `'sheet'` reads it from the *sheet's* top-left instead, which is what a
+   * trimmed cut needs: a glyph frame has been cropped past the background, so
+   * its own corner is whatever the trim landed on. On 0x87ea that is shaft ink,
+   * and taking it as see-through punches the shaft through every number.
    */
-  transparent?: number | 'corner';
+  transparent?: number | 'corner' | 'sheet';
   /**
    * Cut a cell strip into one frame per 8px cell rather than handing back the
    * whole strip. A lobby resource is 140 cells wide; drawn whole at each
@@ -222,15 +227,26 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // Cut with `glyph` rather than `states: 10`: an equal-tenths cut keeps the
   // slab rule and shadow band that every cell shares, and a number composed of
   // those has a rule through the middle of it. See `varyingBox`.
-  { key: 'digits', type: TYPE_BITMAP, ids: [0x87e9], mode: 'dib', cut: 'glyph', cellWidth: 16, transparent: 'corner' },
+  { key: 'digits', type: TYPE_BITMAP, ids: [0x87e9], mode: 'dib', cut: 'glyph', cellWidth: 16, transparent: 'sheet' },
 
-  // Not catalogued: 0x87ea, the second digit sheet, 192x36 — twelve cells at
-  // the same sixteen-pixel pitch, so two more than there are digits. The two
-  // extras are most likely the `B` a basement label needs and a blank, but
-  // "most likely" is what put a city on the ground floor, so it waits for a
-  // `--frames` reading. Until then `drawFloorNumbers` skips any label it has no
-  // glyph for, which is exactly the basements. 0x87eb-0x87ed repeat all three
-  // in red. Same for the machinery at 0x88e8-0x88ed.
+  // The basement alphabet: 0x87ea, 192x36, twelve cells at the same sixteen-
+  // pixel pitch. Cells 2 to 11 are `B` followed by 1 to 9 — and the missing
+  // zero is the tell that this is the right reading rather than a coincidence.
+  // There is no B0 and no B10, so a basement label needs exactly a B and the
+  // digits one to nine, which is exactly what is here. A sheet that is complete
+  // for its job and complete for nothing else has been read correctly.
+  //
+  // Cells 0 and 1 each carry a small `B` raised above a 1 and a 2. They are not
+  // needed to spell anything and are not used; what they are for is unresolved,
+  // and saying so beats inventing a story for them.
+  //
+  // Basement labels are spelled entirely from this sheet, never mixed with
+  // 0x87e9 — same sheet means same trim box, so the B and its digit line up
+  // with each other by construction rather than by a fudge factor.
+  //
+  // 0x87eb-0x87ed repeat the shaft and both alphabets in red. The machinery at
+  // 0x88e8-0x88ed is still unmeasured.
+  { key: 'digits-basement', type: TYPE_BITMAP, ids: [0x87ea], mode: 'dib', cut: 'glyph', cellWidth: 16, transparent: 'sheet' },
 
   // Both of these were in the catalogue at the right IDs but as cell strips.
   // They are ordinary bitmaps, which is why they came back "not found".
@@ -318,6 +334,8 @@ function decodeSheet(spec: SpriteSpec, data: Uint8Array): IndexedImage {
 interface Cut {
   frames: IndexedImage[];
   origin?: { x: number; y: number };
+  /** The sheet's own corner index, for `transparent: 'sheet'`. */
+  background?: number;
 }
 
 /**
@@ -383,7 +401,7 @@ function cutFrames(spec: SpriteSpec, sheet: IndexedImage): Cut {
     for (let cell = 0; cell < cells; cell += 1) {
       frames.push(crop(sheet, cell * cellWidth + box.x, box.y, box.width, box.height));
     }
-    return { frames, origin: { x: box.x, y: box.y } };
+    return { frames, origin: { x: box.x, y: box.y }, background: sheet.pixels[0] ?? 0 };
   }
 
   // Frames separated by background rather than laid on a grid.
@@ -448,6 +466,7 @@ export function extract(resources: ResourceTable): Extraction {
     const frames: IndexedImage[] = [];
     const failures: string[] = [];
     let origin: { x: number; y: number } | undefined;
+    let background: number | undefined;
     for (const id of spec.ids) {
       const data = byId.get(id);
       if (!data) continue;
@@ -455,6 +474,7 @@ export function extract(resources: ResourceTable): Extraction {
         const cut = cutFrames(spec, decodeSheet(spec, data));
         frames.push(...cut.frames);
         origin ??= cut.origin;
+        background ??= cut.background;
       } catch (error) {
         failures.push(`${hex(id)}: ${(error as Error).message}`);
       }
@@ -469,7 +489,7 @@ export function extract(resources: ResourceTable): Extraction {
     }
 
     const sprite: ExtractedSprite = { key: spec.key, frames };
-    const transparent = resolveTransparent(spec, frames);
+    const transparent = resolveTransparent(spec, frames, background);
     if (transparent !== undefined) sprite.transparent = transparent;
     if (origin !== undefined) sprite.origin = origin;
     sprites.set(spec.key, sprite);
@@ -478,9 +498,14 @@ export function extract(resources: ResourceTable): Extraction {
   return { palette, sprites, problems };
 }
 
-/** Turns `'corner'` into the actual index the sprite uses for see-through. */
-function resolveTransparent(spec: SpriteSpec, frames: IndexedImage[]): number | undefined {
+/** Turns `'corner'`/`'sheet'` into the actual index the sprite uses for see-through. */
+function resolveTransparent(
+  spec: SpriteSpec,
+  frames: IndexedImage[],
+  background: number | undefined,
+): number | undefined {
   if (spec.transparent === undefined) return undefined;
+  if (spec.transparent === 'sheet') return background;
   if (spec.transparent !== 'corner') return spec.transparent;
   return frames[0]?.pixels[0];
 }

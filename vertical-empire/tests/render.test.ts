@@ -521,6 +521,38 @@ function withDigits(atlas: ReturnType<typeof buildFallbackAtlas>) {
   return { ...atlas, sprites };
 }
 
+/**
+ * A stand-in for 0x87ea: twelve cells whose third is `B` and whose fourth
+ * onwards are 1 to 9, trimmed to a taller box than the plain digits because
+ * the two unused cells raise it — which is exactly why a label must never be
+ * spelled from both sheets at once.
+ */
+const BASEMENT_INK = 150;
+const BASEMENT_ORDER = '  B123456789';
+function withBasement(atlas: ReturnType<typeof buildFallbackAtlas>) {
+  const frames = Array.from({ length: 12 }, (_, cell) => solid(13, 29, BASEMENT_INK + cell));
+  const sprites = new Map(atlas.sprites);
+  sprites.set('digits-basement', { key: 'digits-basement', frames, origin: { x: 1, y: 7 } });
+  return { ...atlas, sprites };
+}
+
+/** The basement label drawn on one level, read back as text. */
+function readLabel(buffer: Framebuffer, camera: Camera, level: number): string {
+  const top = Math.round(levelTop(level) - camera.y) + 7;
+  let text = '';
+  for (let column = 0; column < buffer.width; column += 1) {
+    for (let row = Math.max(0, top); row < Math.min(buffer.height, top + 29); row += 1) {
+      const ink = buffer.pixels[row * buffer.width + column] ?? 0;
+      const cell = ink - BASEMENT_INK;
+      if (cell < 0 || cell >= BASEMENT_ORDER.length) continue;
+      const character = BASEMENT_ORDER[cell] ?? '';
+      if (text.at(-1) !== character) text += character;
+      break;
+    }
+  }
+  return text;
+}
+
 /** The digits drawn on one level of a shaft, left to right. */
 function readNumber(buffer: Framebuffer, camera: Camera, level: number): number[] {
   const top = Math.round(levelTop(level) - camera.y) + 16;
@@ -570,10 +602,10 @@ describe('floor numbers', () => {
     }
   });
 
-  it('leaves a basement blank rather than numbering it wrongly', () => {
-    // B-glyphs live on a sheet that has not been measured, so `B1` has no
-    // complete set of glyphs. Drawing the `1` alone would label the basement
-    // as the first floor, which is worse than drawing nothing.
+  it('leaves a basement blank when no alphabet can spell it', () => {
+    // With only 0x87e9 loaded there is no `B`, so `B1` cannot be spelled.
+    // Drawing the `1` alone would label the basement as the first floor, which
+    // is worse than drawing nothing.
     const deep = new Tower();
     deep.place('elevator', DEMO_LEFT, GROUND_LEVEL - 4, 8);
     const atlas = withDigits(buildFallbackAtlas());
@@ -585,6 +617,22 @@ describe('floor numbers', () => {
     // is the label being skipped and not the whole bank.
     expect(readNumber(buffer, camera, GROUND_LEVEL)).toEqual([1]);
     expect(readNumber(buffer, camera, GROUND_LEVEL + 1)).toEqual([2]);
+  });
+
+  it('spells a basement from the basement sheet, and only from it', () => {
+    const deep = new Tower();
+    deep.place('elevator', DEMO_LEFT, GROUND_LEVEL - 4, 8);
+    const atlas = withBasement(withDigits(buildFallbackAtlas()));
+
+    const { buffer, camera } = draw(atlas, GROUND_LEVEL - 2, deep);
+    // Level 8 is B1, level 5 is B4. The `B` and its digit both come out of
+    // 0x87ea, which is what keeps them on the same baseline.
+    expect(readLabel(buffer, camera, GROUND_LEVEL - 1)).toBe('B1');
+    expect(readLabel(buffer, camera, GROUND_LEVEL - 4)).toBe('B4');
+    // Above ground still comes from 0x87e9: an alphabet that can spell the
+    // label wins, and `digits` is tried first.
+    expect(readNumber(buffer, camera, GROUND_LEVEL)).toEqual([1]);
+    expect(readLabel(buffer, camera, GROUND_LEVEL)).toBe('');
   });
 
   it('keeps every glyph inside the shaft it belongs to', () => {
