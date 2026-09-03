@@ -302,3 +302,32 @@ describe('drawing from a real-shaped file', () => {
     expect(atlas.skyPalettes.length).toBeGreaterThan(1);
   });
 });
+
+describe('frame analysis', () => {
+  it('finds the grid and the figure height in a sheet', async () => {
+    const { analyse } = await import('../scripts/frames.js');
+    // Twelve 8px frames, a 1px gutter each, figure only in the bottom half.
+    const sheet = decodeDIB(
+      buildDIB(96, 24, (x, y) => {
+        if (x % 8 === 7) return 77;
+        return y < 12 ? 77 : 9;
+      }),
+    );
+
+    const report = analyse(sheet);
+    expect(report.background).toBe(77);
+    expect(report.inkColumns).toHaveLength(12);
+    expect(report.widths[0]).toEqual({ width: 7, count: 12 });
+    // The measurement that matters: a 24px sheet holding 12px figures is why
+    // people looked twice the size they should.
+    expect(report.inkRows[0]?.from).toBe(12);
+    expect(report.inkRows[report.inkRows.length - 1]?.to).toBe(23);
+  });
+
+  it('treats a sheet with no gutters as one run', async () => {
+    const { analyse } = await import('../scripts/frames.js');
+    const solid = decodeDIB(buildDIB(32, 8, (x) => (x === 0 ? 5 : 6)));
+    // Corner sets the background, so everything but column 0 is ink.
+    expect(analyse(solid).inkColumns).toEqual([{ from: 1, to: 31 }]);
+  });
+});

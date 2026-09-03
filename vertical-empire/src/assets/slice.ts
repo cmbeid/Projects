@@ -119,12 +119,11 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // bitmap; 0x842d is the 48x36 express one.
   { key: 'car', type: TYPE_BITMAP, ids: [0x842a], mode: 'dib', states: 5, transparent: 'corner' },
 
-  // UNVERIFIED. 0x8468 was the first guess at the shaft — 640x36 divides into
-  // twenty four-segment pieces — but on screen it turned out to be walking
-  // figures, so it is stairs or an escalator, not an empty shaft. 0x8429 is
-  // the same four-segment width in six states and sits in the elevator block
-  // with the two cars, which makes it the better candidate.
-  { key: 'elevator', type: TYPE_BITMAP, ids: [0x8429], mode: 'dib', states: 6 },
+  // No shaft entry, deliberately. Nothing in the 0x842x block is an empty
+  // shaft: 0x8429 and 0x8468 both read as cars carrying passengers, and twenty
+  // frames is about a SimTower car's capacity. The original draws the shaft as
+  // a flat dark column with floor numbers over it, so `render/scene.ts` paints
+  // it rather than looking for a bitmap that does not exist.
 
   // Both of these were in the catalogue at the right IDs but as cell strips.
   // They are ordinary bitmaps, which is why they came back "not found".

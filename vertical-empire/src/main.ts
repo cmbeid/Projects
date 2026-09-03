@@ -13,7 +13,7 @@ import './styles/base.css';
 import { buildFallbackAtlas, INK } from './assets/fallback.js';
 import { buildOriginalAtlas } from './assets/original.js';
 import { fingerprint, forgetAtlas, loadAtlas, saveAtlas } from './assets/store.js';
-import { clonePalette, mixPalettes, rotateCycles, type Palette } from './assets/palette.js';
+import { clonePalette, darkestIndex, mixPalettes, rotateCycles, type Palette } from './assets/palette.js';
 import type { Atlas } from './assets/atlas.js';
 import { Camera } from './render/camera.js';
 import { Framebuffer } from './render/framebuffer.js';
@@ -246,6 +246,7 @@ void (async () => {
     source: 'original',
     palette: cached.palette,
     skyPalettes: [cached.palette],
+    shaftInk: darkestIndex(cached.palette),
     sprites: cached.sprites,
   });
 })();

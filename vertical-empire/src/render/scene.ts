@@ -44,7 +44,7 @@ export function drawScene(
 
   drawBackdrop(target, atlas, camera, groundY);
   drawPlacements(target, atlas, tower, camera);
-  drawCars(target, atlas, tower, camera, clock);
+  drawLifts(target, atlas, tower, camera, clock);
   drawPeople(target, atlas, tower, camera, clock);
 }
 
@@ -91,6 +91,11 @@ function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera:
   const bottomLevel = levelAtWorldY(camera.y + camera.viewHeight) - 1;
 
   for (const placement of tower.placements) {
+    // Lifts are not a sprite stamped on every floor they serve — they are a
+    // shaft with one car in it, drawn separately below. Letting the per-level
+    // loop have them tiled a car-with-passengers all the way up the column.
+    if (placement.id === 'elevator') continue;
+
     const highest = placement.level + placement.span - 1;
     if (highest < bottomLevel || placement.level > topLevel) continue;
 
@@ -121,19 +126,50 @@ function drawPlacements(target: Framebuffer, atlas: Atlas, tower: Tower, camera:
   }
 }
 
-/** Lifts running their shafts. The one piece of motion that reads at a glance. */
-function drawCars(
+/**
+ * Lift banks: a shaft, a car in it, and a motor housing at each end.
+ *
+ * The original draws no per-floor shaft graphic. The shaft is a flat dark
+ * column with floor numbers down it, the car is a single lit box that moves,
+ * and there is a distinct motor room above the top floor served and below the
+ * bottom one. Painting the column rather than tiling a sprite is both closer to
+ * the original and the thing that stops a car appearing on every floor.
+ *
+ * Floor numbers are missing; they need a digit source we do not have yet.
+ */
+function drawLifts(
   target: Framebuffer,
   atlas: Atlas,
   tower: Tower,
   camera: Camera,
   clock: SceneClock,
 ): void {
-  const car = lookup(atlas, 'car') ?? lookup(atlas, 'elevator');
-  if (!car) return;
+  const shaftInk = atlas.shaftInk;
+  /** Depth of the motor room above and below the served floors. */
+  const HOUSING = 14;
+  /** How far the housing is inset, so it reads as a cap and not more shaft. */
+  const HOUSING_INSET = 2;
+
+  const car = lookup(atlas, 'car');
 
   tower.placements.forEach((placement, index) => {
-    if (placement.id !== 'elevator' || placement.span < 2) return;
+    if (placement.id !== 'elevator') return;
+
+    const width = facility(placement.id).width * SEGMENT_WIDTH;
+    const x = Math.round(placement.segment * SEGMENT_WIDTH - camera.x);
+    if (x > target.width || x + width < 0) return;
+
+    const highest = placement.level + placement.span - 1;
+    const top = Math.round(levelTop(highest) - camera.y);
+    const bottom = Math.round(levelTop(placement.level) + FLOOR_HEIGHT - camera.y);
+
+    target.fillRect(x, top, width, bottom - top, shaftInk);
+    // Machine rooms, top and bottom. Same ink, inset, so the silhouette steps
+    // in at each end the way the original's does.
+    target.fillRect(x + HOUSING_INSET, top - HOUSING, width - HOUSING_INSET * 2, HOUSING, shaftInk);
+    target.fillRect(x + HOUSING_INSET, bottom, width - HOUSING_INSET * 2, HOUSING, shaftInk);
+
+    if (!car || placement.span < 2) return;
 
     // A slow triangle wave up and down the shaft, offset per bank so no two
     // are ever in step.
@@ -141,10 +177,9 @@ function drawCars(
     const phase = ((clock.elapsed + hash(index + 7) * period) % period) / period;
     const travel = 1 - Math.abs(1 - phase * 2);
 
-    // `levelTop` is plain arithmetic, so a fractional level gives the car a
-    // position between floors rather than snapping it to one.
+    // `levelTop` is plain arithmetic, so a fractional level puts the car
+    // between floors rather than snapping it to one.
     const level = placement.level + travel * (placement.span - 1);
-    const x = Math.round(placement.segment * SEGMENT_WIDTH - camera.x);
     const y = Math.round(levelTop(level) - camera.y) + 2;
     if (y < -FLOOR_HEIGHT || y > target.height) return;
 

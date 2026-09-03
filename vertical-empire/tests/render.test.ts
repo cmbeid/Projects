@@ -5,7 +5,7 @@ import { Camera, SCALES } from '../src/render/camera.js';
 import { buildFallbackAtlas, INK } from '../src/assets/fallback.js';
 import { drawScene } from '../src/render/scene.js';
 import { FLOOR_HEIGHT, GROUND_LEVEL, SEGMENT_WIDTH, WORLD_HEIGHT, WORLD_WIDTH, levelTop } from '../src/world/grid.js';
-import { demoTower } from '../src/world/tower.js';
+import { Tower, demoTower } from '../src/world/tower.js';
 import type { IndexedImage } from '../src/assets/dib.js';
 
 function solid(width: number, height: number, ink: number): IndexedImage {
@@ -205,5 +205,54 @@ describe('short facades', () => {
     expect([...buffer.pixels.subarray(2 * 4, 3 * 4)]).toEqual([5, 5, 5, 5]);
     // One row asked for, one row written — the last row is untouched.
     expect([...buffer.pixels.subarray(3 * 4, 4 * 4)]).toEqual([1, 1, 1, 1]);
+  });
+});
+
+describe('lift banks', () => {
+  it('paints a continuous shaft and exactly one car', () => {
+    const atlas = buildFallbackAtlas();
+    const tower = new Tower();
+    // A shaft spanning ten floors from the ground.
+    tower.place('elevator', 4, GROUND_LEVEL, 10);
+
+    const camera = new Camera();
+    camera.resize(390, 780);
+    camera.centreOn(SEGMENT_WIDTH * 6, levelTop(GROUND_LEVEL + 5));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, tower, camera, { hour: 12, elapsed: 0 });
+
+    // Down the middle of the shaft, every row between the served floors is
+    // shaft or car — never sky. A sprite stamped per floor used to leave the
+    // car's own background showing through in bands.
+    const x = Math.round(4 * SEGMENT_WIDTH + 16 - camera.x);
+    const top = Math.round(levelTop(GROUND_LEVEL + 9) - camera.y);
+    const bottom = Math.round(levelTop(GROUND_LEVEL) + FLOOR_HEIGHT - camera.y);
+    const SKY = new Set<number>([INK.sky0, INK.sky1, INK.sky2, INK.sky3, INK.sky4, INK.sky5]);
+
+    let skyInShaft = 0;
+    for (let y = Math.max(0, top); y < Math.min(buffer.height, bottom); y += 1) {
+      if (SKY.has(buffer.pixels[y * buffer.width + x] ?? 0)) skyInShaft += 1;
+    }
+    expect(skyInShaft).toBe(0);
+  });
+
+  it('caps the shaft with a machine room past the floors it serves', () => {
+    const atlas = buildFallbackAtlas();
+    const tower = new Tower();
+    tower.place('elevator', 4, GROUND_LEVEL, 6);
+
+    const camera = new Camera();
+    camera.resize(390, 780);
+    camera.centreOn(SEGMENT_WIDTH * 6, levelTop(GROUND_LEVEL + 3));
+
+    const buffer = new Framebuffer(camera.viewWidth, camera.viewHeight);
+    drawScene(buffer, atlas, tower, camera, { hour: 12, elapsed: 0 });
+
+    // Just above the topmost served floor there is housing, not sky.
+    const x = Math.round(4 * SEGMENT_WIDTH + 16 - camera.x);
+    const above = Math.round(levelTop(GROUND_LEVEL + 5) - camera.y) - 4;
+    const SKY = new Set<number>([INK.sky0, INK.sky1, INK.sky2, INK.sky3, INK.sky4, INK.sky5]);
+    expect(SKY.has(buffer.pixels[above * buffer.width + x] ?? 0)).toBe(false);
   });
 });

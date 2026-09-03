@@ -122,3 +122,27 @@ export function mixPalettes(from: Palette, to: Palette, t: number): Palette {
   }
   return out;
 }
+
+/**
+ * The darkest entry in a palette, by perceived brightness.
+ *
+ * Used for the inside of a lift shaft, which the original draws as a flat
+ * near-black column rather than from a bitmap. Finding it rather than
+ * hardcoding an index means the same code works against the game's palette and
+ * against ours, and keeps working as the day/night tables slide underneath.
+ */
+export function darkestIndex(palette: Palette, skip: readonly number[] = []): number {
+  let best = 0;
+  let bestLuma = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < PALETTE_ENTRIES; i += 1) {
+    if (skip.includes(i)) continue;
+    // Rec. 601 weights: green carries most of the apparent brightness.
+    const luma =
+      (palette[i * 4] ?? 0) * 0.299 + (palette[i * 4 + 1] ?? 0) * 0.587 + (palette[i * 4 + 2] ?? 0) * 0.114;
+    if (luma < bestLuma) {
+      bestLuma = luma;
+      best = i;
+    }
+  }
+  return best;
+}

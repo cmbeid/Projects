@@ -31,6 +31,7 @@ import {
   extract,
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
+import { ASCII_LIMIT, analyse, ascii, profile } from './frames.js';
 
 const OUT = 'assets-private';
 
@@ -172,14 +173,74 @@ async function dumpEverything(resources: ResourceTable, palette: Uint8Array): Pr
   return written;
 }
 
+/**
+ * Reports the frame grid of specific resources.
+ *
+ * This is the mode that answers "how is this sheet cut" without anyone having
+ * to open a PNG and describe it. Gutter columns give the frame boundaries; the
+ * ink rows give the figure height inside them.
+ */
+function frames(resources: ResourceTable, ids: number[], palette: Uint8Array): void {
+  for (const id of ids) {
+    const found = [TYPE_BITMAP, TYPE_CELLS]
+      .map((type) => ({ type, data: resources.get(type)?.get(id) }))
+      .find((candidate) => candidate.data !== undefined);
+
+    if (!found?.data) {
+      console.log(`\n${hex(id)}: no bitmap or cell strip with that ID.`);
+      continue;
+    }
+
+    let image;
+    try {
+      image =
+        found.type === TYPE_BITMAP
+          ? decodeDIB(found.data)
+          : readCellStrip(found.data, SEGMENT_WIDTH);
+    } catch (error) {
+      console.log(`\n${hex(id)}: ${(error as Error).message}`);
+      continue;
+    }
+
+    const report = analyse(image);
+    const inkTop = report.inkRows[0]?.from;
+    const inkBottom = report.inkRows[report.inkRows.length - 1]?.to;
+
+    console.log(`\n${hex(found.type)}/${hex(id)}  ${image.width}x${image.height}  background index ${report.background}`);
+    console.log(`  ${report.inkColumns.length} ink runs across, widths: ${report.widths.map((w) => `${w.width}x${w.count}`).join(', ') || 'none'}`);
+    if (inkTop !== undefined && inkBottom !== undefined) {
+      console.log(`  ink rows ${inkTop}..${inkBottom} — figure is ${inkBottom - inkTop + 1}px tall in a ${image.height}px sheet`);
+    }
+    // Column starts say whether the runs are evenly spaced, which is what makes
+    // a grid a grid rather than a row of differently sized things.
+    console.log(`  run starts: ${report.inkColumns.slice(0, 24).map((run) => run.from).join(' ')}${report.inkColumns.length > 24 ? ' …' : ''}`);
+
+    if (image.width <= ASCII_LIMIT) {
+      for (const line of ascii(image, image.palette ?? palette, report.background)) console.log(`  |${line}`);
+    } else {
+      console.log(`  ${profile(image, report.background)}`);
+    }
+  }
+}
+
+function parseIds(value: string): number[] {
+  return value
+    .split(',')
+    .map((part) => Number.parseInt(part.trim().replace(/^0x/i, ''), 16))
+    .filter((id) => Number.isFinite(id));
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const all = args.includes('--all');
-  const path = args.find((argument) => !argument.startsWith('--'));
+  const framesAt = args.indexOf('--frames');
+  const framesIds = framesAt >= 0 ? parseIds(args[framesAt + 1] ?? '') : [];
+  const path = args.find((argument, index) => !argument.startsWith('--') && index !== framesAt + 1);
 
   if (!path) {
-    console.error('Usage: npm run extract -- [--all] /path/to/SIMTOWER.EXE');
-    console.error('\n  --all   also dump every bitmap and cell strip, named by resource ID');
+    console.error('Usage: npm run extract -- [--all] [--frames 0x82bc,0x8429] /path/to/SIMTOWER.EXE');
+    console.error('\n  --all      also dump every bitmap and cell strip, named by resource ID');
+    console.error('  --frames   report how the named sheets are cut into frames');
     console.error('\nA compressed SIMTOWER.EX_ has to be expanded first (expand.exe, or msexpand).');
     process.exitCode = 1;
     return;
@@ -187,10 +248,17 @@ async function main(): Promise<void> {
 
   const bytes = new Uint8Array(await readFile(path));
   const resources = readResources(bytes);
+  const { palette, sprites, problems } = extract(resources);
+
+  // Frame analysis is a focused question; printing the whole inventory over the
+  // top of it just buries the answer.
+  if (framesIds.length > 0) {
+    frames(resources, framesIds, palette);
+    return;
+  }
+
   inventory(resources);
   shapes(resources);
-
-  const { palette, sprites, problems } = extract(resources);
   await mkdir(OUT, { recursive: true });
 
   let written = 0;

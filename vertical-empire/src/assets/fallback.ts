@@ -303,6 +303,7 @@ export function buildFallbackAtlas(): Atlas {
     // The still palette, used where nothing is cycling: noon, not midnight.
     palette: skyPalettes[Math.floor(skyPalettes.length / 2)] ?? buildPalette(DAY),
     skyPalettes,
+    shaftInk: INK.shaft,
     sprites,
   };
 }

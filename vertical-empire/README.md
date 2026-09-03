@@ -82,7 +82,30 @@ A few entries are still marked **UNVERIFIED** in the catalogue — the shaft, th
 stair and escalator widths, and `people`, whose 96×24 shape is not an obvious
 fit. Check those against the ID-named PNGs from `--all`.
 
-Three further things only showed up once the real art was on screen:
+### Lifts
+
+There is no shaft bitmap in the game, which is why nothing in the `0x842x` block
+looked like one: `0x8429` and `0x8468` both read as cars carrying passengers,
+and twenty frames is about a SimTower car's capacity. The original draws a lift
+as a flat near-black column with floor numbers over it, one car that moves, and
+a machine room above the top floor served and below the bottom one — so
+`src/render/scene.ts` paints the shaft rather than looking for a bitmap. Floor
+numbers are still missing; they need a digit source.
+
+### Working out how a sheet is cut
+
+`npm run extract -- --frames 0x82bc,0x8429 SIMTOWER.EXE` measures a sprite sheet
+rather than asking you to eyeball a PNG. It takes the top-left pixel as the
+background, then reports the runs of columns that hold ink — the gutters between
+them give the frame width and count — and the range of rows that hold any, which
+gives the figure's real height inside the frame. Sheets narrower than 160px
+print as ASCII; wider ones print a per-column ink profile.
+
+That last number is the one that matters. A 96×24 people sheet whose ink starts
+at row 12 holds 12-pixel figures with headroom, not 24-pixel ones, and that is
+the difference between people who look right and people who fill the room.
+
+### Three more things the real art exposed
 
 - **A lobby resource is 140 cells wide.** Drawn whole at each one-segment
   placement it smeared across the entire ground floor, so cell strips are now

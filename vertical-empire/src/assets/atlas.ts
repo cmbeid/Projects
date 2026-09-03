@@ -16,6 +16,16 @@ export interface Atlas {
   palette: Palette;
   /** Day/night tables, in order, crossfaded by the clock. */
   skyPalettes: Palette[];
+  /**
+   * Palette index for the inside of a lift shaft.
+   *
+   * The original has no shaft bitmap — it is a flat near-black column with
+   * floor numbers over it — so the renderer paints one. Each atlas names its
+   * own index rather than the renderer hunting for the darkest entry, which in
+   * a sparse palette finds an unused slot that happens to be black and then
+   * sits out the day/night cycle.
+   */
+  shaftInk: number;
   sprites: Map<string, ExtractedSprite>;
 }
 

@@ -8,7 +8,7 @@
 
 import type { Atlas } from './atlas.js';
 import { readResources } from './ne.js';
-import { PALETTE_ENTRIES, clonePalette, mixPalettes, type Palette } from './palette.js';
+import { PALETTE_ENTRIES, clonePalette, darkestIndex, mixPalettes, type Palette } from './palette.js';
 import { extract, type Extraction } from './slice.js';
 
 export interface OriginalAtlas {
@@ -24,6 +24,9 @@ export function buildOriginalAtlas(bytes: Uint8Array): OriginalAtlas {
       source: 'original',
       palette: extraction.palette,
       skyPalettes: skyPalettes(extraction),
+      // The game's palette is fully populated, so its darkest entry really is
+      // the near-black the shafts are drawn in.
+      shaftInk: darkestIndex(extraction.palette),
       sprites: extraction.sprites,
     },
     problems: extraction.problems,
