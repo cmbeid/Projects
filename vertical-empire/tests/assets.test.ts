@@ -333,6 +333,43 @@ describe('frame analysis', () => {
   });
 });
 
+describe('contact sheet labels', () => {
+  it('writes a legible glyph and leaves the rest of the buffer alone', async () => {
+    const { GLYPH_HEIGHT, GLYPH_WIDTH, drawText } = await import('../scripts/label.js');
+    const width = 16;
+    const height = 8;
+    const pixels = new Uint8Array(width * height);
+
+    drawText(pixels, width, height, '1', 1, 1, 9);
+
+    // '1' is drawn in a 3x5 box at (1,1); nothing outside it may be touched.
+    let ink = 0;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const set = pixels[y * width + x] === 9;
+        if (set) ink += 1;
+        if (set) {
+          expect(x).toBeGreaterThanOrEqual(1);
+          expect(x).toBeLessThan(1 + GLYPH_WIDTH);
+          expect(y).toBeGreaterThanOrEqual(1);
+          expect(y).toBeLessThan(1 + GLYPH_HEIGHT);
+        }
+      }
+    }
+    expect(ink).toBeGreaterThan(4);
+  });
+
+  it('clips at the edges instead of wrapping onto the next row', async () => {
+    const { drawText } = await import('../scripts/label.js');
+    const width = 8;
+    const pixels = new Uint8Array(width * 8);
+    drawText(pixels, width, 8, '8888', 6, 0, 3);
+    // The glyph's third column falls past the right edge; without the bounds
+    // check it would land in column 0 of the row below.
+    for (let y = 0; y < 8; y += 1) expect(pixels[y * width]).toBe(0);
+  });
+});
+
 describe('resource id arguments', () => {
   it('reads a token as hex and, where it could be, as decimal too', async () => {
     const { candidates } = await import('../scripts/frames.js');

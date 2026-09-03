@@ -140,11 +140,14 @@ print as ASCII; wider ones print a per-column ink profile.
 `--window 0,160` looks at just those columns, which is how you read a sheet too
 wide to print — the 1120px lobby strip, say.
 
-`--contact 0x89e8` writes that strip as a PNG worth looking at: wrapped into
-rows and scaled 3x with nearest-neighbour, so a 1120x32 sliver becomes a
-480x708 image whose pixels are still square and countable. Output lands in
-`assets-private/`, which is gitignored — these are the game's own bitmaps and
-they stay on your machine.
+`--contact 0x89e8,0x8a28,0x8a68` writes one PNG worth looking at, holding every
+sheet you name. Each is wrapped into 160px rows and the whole thing is scaled
+3x with nearest-neighbour, so a 1120x32 sliver becomes something whose pixels
+are still square and countable, and each panel has its type, ID and true size
+written above it in a 3x5 pixel font — so the image explains itself wherever it
+ends up, and one file answers several questions at once. Output is
+`assets-private/contact-sheet.png`, which is gitignored: these are the game's
+own bitmaps and they stay on your machine.
 
 IDs can be written either way — `0x82bc` or `33468`. npm rewrites a hex
 argument to decimal before the script sees it, so both readings are tried and

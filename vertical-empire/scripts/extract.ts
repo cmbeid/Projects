@@ -17,7 +17,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { crop, decodeDIB, inferCellHeight, readCellStrip } from '../src/assets/dib.js';
+import { crop, decodeDIB, inferCellHeight, readCellStrip, type IndexedImage } from '../src/assets/dib.js';
 import { hex, readResources, type ResourceTable } from '../src/assets/ne.js';
 import {
   CATALOGUE,
@@ -32,6 +32,8 @@ import {
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
 import { ASCII_LIMIT, analyse, ascii, candidates, parseIdTokens, profile } from './frames.js';
+import { GLYPH_HEIGHT, drawText } from './label.js';
+import { darkestIndex } from '../src/assets/palette.js';
 
 const OUT = 'assets-private';
 
@@ -240,12 +242,13 @@ function frames(
 }
 
 /**
- * Writes a sheet as a PNG you can actually look at.
+ * Writes one PNG holding every sheet asked for, labelled and legible.
  *
- * A 1120x32 strip is technically an image and practically a sliver: pasted
- * anywhere it renders as a smear a few pixels tall. Wrapping it into rows and
- * scaling it up turns it into something a person — or a model being shown it —
- * can read, without changing a single pixel of what it contains.
+ * Two problems, one answer. A 1120x32 strip is technically an image and
+ * practically a sliver, so it gets wrapped into rows and scaled up. And looking
+ * at resources one file at a time costs a round trip each, so they all go on
+ * one sheet with their IDs written next to them — which beats zipping a folder
+ * of them, and means the image explains itself wherever it ends up.
  */
 async function contact(
   resources: ResourceTable,
@@ -255,6 +258,20 @@ async function contact(
   scale: number,
 ): Promise<void> {
   await mkdir(OUT, { recursive: true });
+
+  /** One resource, still unwrapped: wrapping happens when it is pasted down. */
+  interface Panel {
+    label: string;
+    image: IndexedImage;
+    rows: number;
+    width: number;
+    height: number;
+  }
+  const panels: Panel[] = [];
+
+  // Rows are separated by a gap so the seams read as seams rather than as part
+  // of the art.
+  const GAP = 2;
 
   for (const token of tokens) {
     const readings = candidates(token);
@@ -274,38 +291,78 @@ async function contact(
       continue;
     }
 
-    // One row per wrapAt columns, with a gap between rows so the seams are
-    // obvious rather than looking like part of the art.
-    const GAP = 2;
     const rows = Math.ceil(image.width / wrapAt);
-    const width = Math.min(image.width, wrapAt);
-    const height = rows * image.height + (rows - 1) * GAP;
-    const wrapped = new Uint8Array(width * height);
-
-    for (let row = 0; row < rows; row += 1) {
-      for (let y = 0; y < image.height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-          const sourceX = row * wrapAt + x;
-          if (sourceX >= image.width) continue;
-          wrapped[(row * (image.height + GAP) + y) * width + x] = image.pixels[y * image.width + sourceX] ?? 0;
-        }
-      }
-    }
-
-    // Nearest-neighbour, so the pixels stay square and countable.
-    const bigWidth = width * scale;
-    const bigHeight = height * scale;
-    const big = new Uint8Array(bigWidth * bigHeight);
-    for (let y = 0; y < bigHeight; y += 1) {
-      for (let x = 0; x < bigWidth; x += 1) {
-        big[y * bigWidth + x] = wrapped[Math.floor(y / scale) * width + Math.floor(x / scale)] ?? 0;
-      }
-    }
-
-    const name = `contact-${hex(found.type)}-${hex(found.id)}.png`;
-    await writeFile(join(OUT, name), encodePNG(bigWidth, bigHeight, big, image.palette ?? palette));
-    console.log(`${OUT}/${name}  ${image.width}x${image.height} wrapped to ${rows} row${rows === 1 ? '' : 's'}, ${scale}x`);
+    panels.push({
+      label: `${hex(found.type)}/${hex(found.id)}  ${image.width}x${image.height}`,
+      image,
+      rows,
+      width: Math.min(image.width, wrapAt),
+      height: rows * image.height + (rows - 1) * GAP,
+    });
+    console.log(`  ${hex(found.id)}  ${image.width}x${image.height} -> ${rows} row${rows === 1 ? '' : 's'}`);
   }
+
+  if (panels.length === 0) return;
+
+  // Every panel shares the first one's palette. A PNG carries one table, and in
+  // practice all of SimTower's art comes from the same one.
+  const table = panels[0]?.image.palette ?? palette;
+  const ink = brightestIndex(table);
+  const paper = darkestIndex(table);
+
+  const LABEL = GLYPH_HEIGHT + 3;
+  const PAD = 4;
+  const sheetWidth = Math.max(...panels.map((panel) => panel.width)) + PAD * 2;
+  const sheetHeight = panels.reduce((total, panel) => total + LABEL + panel.height + PAD, PAD);
+  // Filled with paper first, so a short last row and the gaps between rows show
+  // as blank sheet instead of as whatever index zero happens to be.
+  const sheet = new Uint8Array(sheetWidth * sheetHeight).fill(paper);
+
+  let top = PAD;
+  for (const panel of panels) {
+    drawText(sheet, sheetWidth, sheetHeight, panel.label, PAD, top, ink);
+    top += LABEL;
+
+    const { image } = panel;
+    for (let row = 0; row < panel.rows; row += 1) {
+      const rowTop = top + row * (image.height + GAP);
+      const columns = Math.min(wrapAt, image.width - row * wrapAt);
+      for (let y = 0; y < image.height; y += 1) {
+        const from = y * image.width + row * wrapAt;
+        sheet.set(image.pixels.subarray(from, from + columns), (rowTop + y) * sheetWidth + PAD);
+      }
+    }
+    top += panel.height + PAD;
+  }
+
+  // Nearest-neighbour, so the pixels stay square and countable.
+  const bigWidth = sheetWidth * scale;
+  const bigHeight = sheetHeight * scale;
+  const big = new Uint8Array(bigWidth * bigHeight);
+  for (let row = 0; row < bigHeight; row += 1) {
+    for (let column = 0; column < bigWidth; column += 1) {
+      big[row * bigWidth + column] = sheet[Math.floor(row / scale) * sheetWidth + Math.floor(column / scale)] ?? 0;
+    }
+  }
+
+  const name = 'contact-sheet.png';
+  await writeFile(join(OUT, name), encodePNG(bigWidth, bigHeight, big, table));
+  console.log(`\n${OUT}/${name}  ${bigWidth}x${bigHeight}, ${panels.length} resource${panels.length === 1 ? '' : 's'}`);
+}
+
+/** Brightest palette entry, for label text that will read against the darkest. */
+function brightestIndex(palette: Uint8Array): number {
+  let best = 0;
+  let bestLuma = -1;
+  for (let i = 0; i < 256; i += 1) {
+    const luma =
+      (palette[i * 4] ?? 0) * 0.299 + (palette[i * 4 + 1] ?? 0) * 0.587 + (palette[i * 4 + 2] ?? 0) * 0.114;
+    if (luma > bestLuma) {
+      bestLuma = luma;
+      best = i;
+    }
+  }
+  return best;
 }
 
 async function main(): Promise<void> {
@@ -334,7 +391,7 @@ async function main(): Promise<void> {
     console.error('\n  --all      also dump every bitmap and cell strip, named by resource ID');
     console.error('  --frames   report how the named sheets are cut into frames');
     console.error('  --window   with --frames, look at just these columns, e.g. 0,160');
-    console.error('  --contact  write a wrapped, scaled-up PNG of the named sheets, for looking at');
+    console.error('  --contact  write one wrapped, labelled, scaled-up PNG of the named sheets');
     console.error('\nA compressed SIMTOWER.EX_ has to be expanded first (expand.exe, or msexpand).');
     process.exitCode = 1;
     return;
