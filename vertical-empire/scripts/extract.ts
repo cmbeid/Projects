@@ -239,11 +239,82 @@ function frames(
   }
 }
 
+/**
+ * Writes a sheet as a PNG you can actually look at.
+ *
+ * A 1120x32 strip is technically an image and practically a sliver: pasted
+ * anywhere it renders as a smear a few pixels tall. Wrapping it into rows and
+ * scaling it up turns it into something a person — or a model being shown it —
+ * can read, without changing a single pixel of what it contains.
+ */
+async function contact(
+  resources: ResourceTable,
+  tokens: string[],
+  palette: Uint8Array,
+  wrapAt: number,
+  scale: number,
+): Promise<void> {
+  await mkdir(OUT, { recursive: true });
+
+  for (const token of tokens) {
+    const readings = candidates(token);
+    const found = readings
+      .flatMap((id) => [TYPE_BITMAP, TYPE_CELLS].map((type) => ({ id, type, data: resources.get(type)?.get(id) })))
+      .find((candidate) => candidate.data !== undefined);
+    if (!found?.data) {
+      console.log(`${token}: nothing at ${readings.map(hex).join(' or ') || 'any reading'}`);
+      continue;
+    }
+
+    let image;
+    try {
+      image = found.type === TYPE_BITMAP ? decodeDIB(found.data) : readCellStrip(found.data, SEGMENT_WIDTH);
+    } catch (error) {
+      console.log(`${token}: ${(error as Error).message}`);
+      continue;
+    }
+
+    // One row per wrapAt columns, with a gap between rows so the seams are
+    // obvious rather than looking like part of the art.
+    const GAP = 2;
+    const rows = Math.ceil(image.width / wrapAt);
+    const width = Math.min(image.width, wrapAt);
+    const height = rows * image.height + (rows - 1) * GAP;
+    const wrapped = new Uint8Array(width * height);
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let y = 0; y < image.height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const sourceX = row * wrapAt + x;
+          if (sourceX >= image.width) continue;
+          wrapped[(row * (image.height + GAP) + y) * width + x] = image.pixels[y * image.width + sourceX] ?? 0;
+        }
+      }
+    }
+
+    // Nearest-neighbour, so the pixels stay square and countable.
+    const bigWidth = width * scale;
+    const bigHeight = height * scale;
+    const big = new Uint8Array(bigWidth * bigHeight);
+    for (let y = 0; y < bigHeight; y += 1) {
+      for (let x = 0; x < bigWidth; x += 1) {
+        big[y * bigWidth + x] = wrapped[Math.floor(y / scale) * width + Math.floor(x / scale)] ?? 0;
+      }
+    }
+
+    const name = `contact-${hex(found.type)}-${hex(found.id)}.png`;
+    await writeFile(join(OUT, name), encodePNG(bigWidth, bigHeight, big, image.palette ?? palette));
+    console.log(`${OUT}/${name}  ${image.width}x${image.height} wrapped to ${rows} row${rows === 1 ? '' : 's'}, ${scale}x`);
+  }
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const all = args.includes('--all');
   const framesAt = args.indexOf('--frames');
   const framesIds = framesAt >= 0 ? parseIdTokens(args[framesAt + 1] ?? '') : [];
+  const contactAt = args.indexOf('--contact');
+  const contactIds = contactAt >= 0 ? parseIdTokens(args[contactAt + 1] ?? '') : [];
   const windowAt = args.indexOf('--window');
   const windowArg = windowAt >= 0 ? (args[windowAt + 1] ?? '').split(',').map(Number) : [];
   const window =
@@ -251,7 +322,11 @@ async function main(): Promise<void> {
       ? { from: windowArg[0] ?? 0, to: windowArg[1] ?? 0 }
       : undefined;
   const path = args.find(
-    (argument, index) => !argument.startsWith('--') && index !== framesAt + 1 && index !== windowAt + 1,
+    (argument, index) =>
+      !argument.startsWith('--') &&
+      index !== framesAt + 1 &&
+      index !== windowAt + 1 &&
+      index !== contactAt + 1,
   );
 
   if (!path) {
@@ -259,6 +334,7 @@ async function main(): Promise<void> {
     console.error('\n  --all      also dump every bitmap and cell strip, named by resource ID');
     console.error('  --frames   report how the named sheets are cut into frames');
     console.error('  --window   with --frames, look at just these columns, e.g. 0,160');
+    console.error('  --contact  write a wrapped, scaled-up PNG of the named sheets, for looking at');
     console.error('\nA compressed SIMTOWER.EX_ has to be expanded first (expand.exe, or msexpand).');
     process.exitCode = 1;
     return;
@@ -270,6 +346,11 @@ async function main(): Promise<void> {
 
   // Frame analysis is a focused question; printing the whole inventory over the
   // top of it just buries the answer.
+  if (contactIds.length > 0) {
+    await contact(resources, contactIds, palette, 160, 3);
+    return;
+  }
+
   if (framesIds.length > 0) {
     frames(resources, framesIds, palette, window);
     return;
