@@ -32,7 +32,7 @@ import {
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
 import { ASCII_LIMIT, analyse, ascii, candidates, parseArgs, profile } from './frames.js';
-import { periods } from '../src/assets/frames.js';
+import { REPEATS_BELOW, bestPeriod, holding, periods } from '../src/assets/frames.js';
 import { GLYPH_HEIGHT, drawText } from './label.js';
 import { darkestIndex } from '../src/assets/palette.js';
 
@@ -243,6 +243,24 @@ function frames(
 }
 
 /**
+ * Per-row agreement as one string, top row leftmost.
+ *
+ * The averaged number is what failed on room facades: an office's ceiling band
+ * repeats perfectly across states and only its furniture rows do not, and the
+ * mean of those two hides both. Here they are side by side, so a sheet the
+ * measurement cannot score is still a sheet you can read.
+ */
+function bars(rows: readonly number[]): string {
+  const ramp = '#%*+=-:. ';
+  let out = '';
+  for (const mismatch of rows) {
+    const step = Math.min(ramp.length - 1, Math.max(0, Math.round(mismatch * (ramp.length - 1))));
+    out += ramp[step] ?? ' ';
+  }
+  return out;
+}
+
+/**
  * Reports how well each sheet repeats at every frame width it could have.
  *
  * This is the mode that decides a catalogue entry's `states`. The lowest
@@ -267,26 +285,26 @@ function report(resources: ResourceTable, tokens: string[]): void {
     }
 
     const lowest = candidates.reduce((a, b) => (b.mismatch < a.mismatch ? b : a));
-    // A sheet of states is nearly its own neighbour; a sheet of one picture is
-    // not. Past this, the lowest score is just the least bad of a bad set and
-    // marking it would invent a division that is not there.
-    const REPEATS = 0.5;
-    // Twice the true frame width also lines up, so among the readings that
-    // hold, the narrowest is the fundamental — the others are its multiples.
-    const strong = candidates.filter((entry) => entry.mismatch <= Math.max(lowest.mismatch * 2, 0.02));
-    const answer = lowest.mismatch > REPEATS ? undefined : strong[0];
+    const answer = bestPeriod(candidates);
+    const strong = holding(candidates, lowest);
 
     for (const candidate of candidates) {
       const segments = candidate.width / SEGMENT_WIDTH;
       const mark = candidate === answer ? '<-' : '  ';
       console.log(
         `  ${mark} ${String(candidate.frames).padStart(3)} x ${String(candidate.width).padStart(4)}px` +
-          ` = ${String(segments).padStart(3)} seg   mismatch ${(candidate.mismatch * 100).toFixed(1).padStart(5)}%`,
+          ` = ${String(segments).padStart(3)} seg   mismatch ${(candidate.mismatch * 100).toFixed(1).padStart(5)}%` +
+          `  ${bars(candidate.rows)}`,
       );
     }
 
     if (!answer) {
-      console.log('     nothing repeats — one frame of the whole sheet');
+      // Not "one frame": that would be a claim. This measurement cannot tell,
+      // and a dense room facade is exactly where it cannot — its states differ
+      // almost everywhere at pixel scale. The row profile above is the thing to
+      // read instead: a band of near-zero rows at some width is a real repeat
+      // the average has drowned.
+      console.log(`     no reading below ${(REPEATS_BELOW * 100).toFixed(0)}% — cannot tell from repetition alone`);
     } else if (strong.length > 1) {
       // Worth saying out loud: the arrow is a reading, not a measurement.
       console.log(`     (${strong.length} readings hold; the narrowest is the frame, the rest are multiples of it)`);

@@ -447,6 +447,63 @@ describe('measuring how a sheet divides', () => {
     }
   });
 
+  it('declines a dense sheet rather than naming its second harmonic', async () => {
+    const { REPEATS_BELOW, bestPeriod, periods } = await import('../src/assets/frames.js');
+    // The failure that mattered, rebuilt from the numbers it produced. Eight
+    // 32px states alternating in pairs — lit, dark, lit, dark — which is how
+    // the real hotel sheets are laid out. Lag 32 compares lit against dark and
+    // lag 64 compares lit against lit, so twice the true width scores better
+    // than the truth; the first version of this reported 64 and sounded
+    // certain. The mix below lands on 78% and 60%, which is what 0x84a9 gave.
+    const sheet = decodeDIB(
+      buildDIB(256, 24, (x, y) => {
+        const withinFrame = x % 32;
+        const frame = Math.floor(x / 32);
+        const bucket = (withinFrame * 31 + y * 17) % 100;
+        if (bucket < 22) return ((withinFrame * 3 + y) % 90) + 1; // shared by every state
+        if (bucket < 40) return frame % 2 === 0 ? 150 : 190; // the lit/dark pair
+        return ((withinFrame * 7 + y * 13 + frame * 37) % 90) + 60; // this frame only
+      }),
+    );
+
+    const table = periods(sheet, SEGMENT_WIDTH, SEGMENT_WIDTH * 4);
+    const lowest = table.reduce((a, b) => (b.mismatch < a.mismatch ? b : a));
+
+    // Twice the frame width still scores best; the metric cannot help that.
+    // What matters is that it is nowhere near good enough to be believed.
+    expect(lowest.width).toBe(64);
+    expect(lowest.mismatch).toBeGreaterThan(REPEATS_BELOW);
+    expect(bestPeriod(table)).toBeUndefined();
+  });
+
+  it('takes the narrowest of the readings that hold, not the very lowest', async () => {
+    const { bestPeriod, periods } = await import('../src/assets/frames.js');
+    // A sheet that repeats every 64px also repeats every 128 and 256. All three
+    // score well and the widest can score best; the frame is still 64.
+    const sheet = decodeDIB(buildDIB(256, 24, (x, y) => (((x % 64) * 5 + y * 3) % 240) + 1));
+
+    const table = periods(sheet, SEGMENT_WIDTH, SEGMENT_WIDTH * 4);
+    expect(bestPeriod(table)?.width).toBe(64);
+    expect(bestPeriod(table)?.frames).toBe(4);
+  });
+
+  it('ignores rows of a single index, which agree at every lag', async () => {
+    const { periods } = await import('../src/assets/frames.js');
+    // Half the sheet is flat background. Counting those rows would halve every
+    // score equally and drag a hopeless sheet under any threshold.
+    const sheet = decodeDIB(
+      buildDIB(128, 24, (x, y) => (y < 12 ? 7 : ((x * 31) % 251) + 1)),
+    );
+
+    const table = periods(sheet, SEGMENT_WIDTH, SEGMENT_WIDTH * 4);
+    for (const entry of table) {
+      expect(entry.mismatch).toBeGreaterThan(0.5);
+      // The flat rows are still reported, just not averaged in.
+      expect(entry.rows).toHaveLength(24);
+      expect(entry.rows[0]).toBe(0);
+    }
+  });
+
   it('offers only divisions into whole frames of whole segments', async () => {
     const { periods } = await import('../src/assets/frames.js');
     const sheet = decodeDIB(buildDIB(288, 24, () => 1));
