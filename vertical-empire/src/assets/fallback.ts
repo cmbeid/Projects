@@ -439,6 +439,30 @@ function theatre(state: number): IndexedImage {
 }
 
 /**
+ * A cinema: seven segments of screen between curtains, with a door below.
+ *
+ * Narrow, and that is the point — the original's own sheet divides into ten of
+ * these across 560 pixels, which took a 112-pixel window to believe.
+ */
+function cinema(state: number): IndexedImage {
+  const width = SEGMENT_WIDTH * 7;
+  const image = blank(width, FLOOR_HEIGHT, INK.house);
+  // Curtain down each side, screen between them.
+  fill(image, 0, 0, 8, FLOOR_HEIGHT - 3, INK.seat);
+  fill(image, width - 8, 0, 8, FLOOR_HEIGHT - 3, INK.seat);
+  fill(image, 9, 3, width - 18, 17, INK.screen);
+  // Whatever is showing: a different shape on the screen for each state, so
+  // ten frames read as ten films rather than as one repeated.
+  const band = 4 + (state % 5) * 2;
+  fill(image, 11, band, width - 22, 5, state % 2 === 0 ? INK.windowLit : INK.clinicTrim);
+  fill(image, 13, band + 6, Math.max(4, width - 30 - state), 3, INK.trim);
+  // The door out, and the floor.
+  fill(image, width / 2 - 4, FLOOR_HEIGHT - 12, 8, 9, INK.shopSign);
+  fill(image, 0, FLOOR_HEIGHT - 3, width, 3, INK.slab);
+  return image;
+}
+
+/**
  * A five-pointed star for the rating badge, as a picture of itself.
  *
  * Everything else here is generated, because a rectangle is easier to re-tune
@@ -502,6 +526,7 @@ export function buildFallbackAtlas(): Atlas {
   sprites.set('medical', sprite('medical', [clinic()]));
   sprites.set('parking', sprite('parking', [parking()]));
   sprites.set('theatre', sprite('theatre', [theatre(0), theatre(1), theatre(2), theatre(3)]));
+  sprites.set('cinema', sprite('cinema', Array.from({ length: 10 }, (_, state) => cinema(state))));
   sprites.set(
     'people',
     sprite(

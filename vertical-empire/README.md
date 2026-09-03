@@ -162,6 +162,8 @@ profile it prints alongside is what you read instead.
 | Clinic | `0x8768` | 128×24 | one frame | **16** |
 | Parking | `0x8ee8`–`0x8eea` | 128×24 | one frame | **16** |
 | Shaft | `0x87e8`, `0x87eb` | 352×36 | 11 states | **4** |
+| Theatre | `0x88a8` | 768×36 | 4 states | **24** |
+| Cinema | `0x8ca8` | 560×36 | 10 states | **7** |
 
 The first three are the strongest evidence in the catalogue: 24, 12 and 16 are
 SimTower's own documented widths for a restaurant, a shop and a fast food
@@ -169,17 +171,33 @@ counter, reached from the pixels without being told what to expect. Clinic and
 parking are 128×24 — the same shape as a condo, which is sixteen segments and
 was verified separately.
 
-**Deliberately absent**: the chapel (`0x8ca8` measures 7 segments, which is not
-a room), the theatre (`0x88a8`, 34% against a 41% runner-up — too close), the
-cinema (`0x8728`) and the metro (`0x8e28`). Their art is in the file and their
-widths are not defensible yet. Nothing ships at a width that cannot be argued
-for; a facility drawn at the wrong one is how the ground floor became a parade
-of shopfronts.
+The last two took a second look each, in opposite directions. The **theatre**
+measured 34% against a 41% runner-up — too close to call — and a contact sheet
+settled it: raked seating, a door at one end, a stair at the other, repeating
+every 24 segments. The **cinema** went the other way. `--period` said 56px and
+7 segments; that looked too narrow, so it was held back on the strength of an
+eyeballed contact sheet. A window of exactly 112 pixels then held *two*
+complete units, differing only in what was on the screen. The measurement had
+been right and the eye wrong, which is worth recording as carefully as the
+reverse.
 
-Also still open: the **lobby**. All eleven cell strips are accounted for — three
-groups of three are the street-level city, and the two left over, `0x8fe9` (622
-cells) and `0x8fea` (828 cells), are the largest art in the file and the last
-plausible home for it.
+**Deliberately absent**: `0x8e28`, a white lattice that reads as structure
+rather than a room. Nothing ships at a width that cannot be argued for; a
+facility drawn at the wrong one is how the ground floor became a parade of
+shopfronts.
+
+Also still open: the **lobby**. All eleven cell strips are accounted for — nine
+are backdrop panoramas, and of the two left over, `0x8fe9` was catalogued as the
+lobby and looked at: it draws as a dense crowd in the four colours of the people
+sprites, with no floor and no walls. A queue sheet. That is a distinction a
+contact sheet cannot make — a strip of mostly-plain cells with a figure every
+dozen looks the same whether the plain part is marble or nothing at all — and
+one look at it in place made it in a single round trip.
+
+So `0x8fea` is the last candidate among the cells, and after that the lobby has
+to be an ordinary bitmap. The wide room-height sheets are where to look:
+`0x8868` (96 segments), `0x8b28` (72), `0x8c68` (70). Until then the ground
+floor draws as a plain band, which is honest rather than wrong.
 
 ### The rest of the diagnostics
 

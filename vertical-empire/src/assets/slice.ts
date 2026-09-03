@@ -125,32 +125,38 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   // they are not drawn.
   { key: 'skyline', type: TYPE_CELLS, ids: [0x89e8], mode: 'cells', cellHeight: 32, cellFrames: true },
 
-  // The lobby, on trial.
+  // The lobby is still unidentified, and 0x8fe9 is not it.
   //
-  // All eleven cell strips are now accounted for: nine are backdrop panoramas
-  // and these last two are neither. 0x8fe9 is 622 cells of mostly-plain light
-  // ground with a figure or a fitting every dozen or so — which is either a
-  // lobby concourse seen end to end, or a sprite sheet with a lot of empty
-  // space in it. The two look the same in a contact sheet and completely
-  // different once drawn at eight pixels a segment, so it is catalogued to be
-  // looked at rather than argued about further.
+  // Catalogued as the lobby and looked at, it draws as a dense crowd in the
+  // same four colours as the people sprites — no floor, no walls, just figures.
+  // It is a queue sheet. That is exactly what a contact sheet of it could not
+  // tell you, because a strip of mostly-plain cells with a figure every dozen
+  // looks the same whether the plain part is marble or nothing at all, and one
+  // look at it in place settled it in a single round trip.
   //
-  // Drawn opaque on purpose. Its plain cells are a flat light index, and taking
-  // that as see-through — the usual corner convention — would leave the ground
-  // floor as sky with people standing in it.
-  { key: 'lobby', type: TYPE_CELLS, ids: [0x8fe9], mode: 'cells', cellHeight: 32, cellFrames: true },
+  // Of the eleven cell strips, nine are backdrop panoramas and 0x8fea is the
+  // only candidate left. After that the lobby has to be an ordinary bitmap.
+  // Until then the ground floor draws as a plain band, which is honest rather
+  // than wrong.
 
-  // The theatre: 768x36, four states of twenty-four segments. Raked seating,
-  // a door at one end and a stair at the other, confirmed by eye — which is
-  // what settles it, because the measurement alone put this at 34% against a
-  // 41% runner-up and that is too close to call on its own.
+  // The theatre: 768x36, four states of twenty-four segments. Raked seating, a
+  // door at one end and a stair at the other, confirmed by eye — which is what
+  // settles it, because the measurement alone put this at 34% against a 41%
+  // runner-up and that is too close to call on its own.
   { key: 'theatre', type: TYPE_BITMAP, ids: [0x88a8], mode: 'dib', states: 4 },
 
-  // Still out: the cinema (0x8ca8 — red curtains and a screen showing a
-  // different film each frame, so it is certainly a cinema, but 560px divides
-  // at both 7 and 14 segments and the curtain repeating inside the unit is
-  // what makes the narrower reading score well). And 0x8e28, a white lattice
-  // that reads as structure rather than as a room.
+  // The cinema: 560x36, ten states of seven segments. Red curtains, a screen
+  // showing a different film in each state, a door below.
+  //
+  // Seven segments looks narrow and I doubted it. Eyeballing a scaled contact
+  // sheet the unit seemed to be fourteen, so this sat in the held-back pile.
+  // A window of exactly 112 pixels settled it by holding two complete units,
+  // differing only in what is on the screen — states, not halves of one. The
+  // measurement had said 56px at 21.9% from the start. Worth remembering which
+  // of the two was wrong.
+  { key: 'cinema', type: TYPE_BITMAP, ids: [0x8ca8], mode: 'dib', states: 10 },
+
+  // Still out: 0x8e28, a white lattice that reads as structure, not a room.
 
   // Three sheets, each 288x24 = four states of nine segments. Occupancy runs
   // across: empty, then progressively tenanted.
