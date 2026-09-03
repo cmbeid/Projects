@@ -42,6 +42,7 @@ export function buildOriginalAtlas(bytes: Uint8Array): OriginalAtlas {
       // the near-black the shafts are drawn in.
       shaftInk: darkestIndex(extraction.palette),
       sprites: extraction.sprites,
+      sounds: extraction.sounds,
     },
     problems: extraction.problems,
   };

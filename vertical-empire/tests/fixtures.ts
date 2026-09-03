@@ -143,3 +143,49 @@ export function buildPaletteResource(colour: (index: number) => [number, number,
   }
   return bytes;
 }
+
+/**
+ * A minimal but valid RIFF/WAVE file.
+ *
+ * `leading` inserts a `fact` chunk before `fmt `, which is legal and which a
+ * reader that assumes `fmt ` starts at byte 12 would choke on — the reason
+ * `sniffSound` walks the chunk list rather than indexing into it.
+ */
+export function buildWave(
+  samples: number,
+  { rate = 11025, channels = 1, bits = 8, leading = false } = {},
+): Uint8Array {
+  const dataBytes = samples * channels * (bits / 8);
+  const fact = leading ? 12 : 0;
+  const bytes = new Uint8Array(44 + fact + dataBytes);
+  const view = new DataView(bytes.buffer);
+  const ascii = (at: number, text: string): void => {
+    for (let i = 0; i < text.length; i += 1) bytes[at + i] = text.charCodeAt(i);
+  };
+
+  ascii(0, 'RIFF');
+  view.setUint32(4, bytes.byteLength - 8, true);
+  ascii(8, 'WAVE');
+
+  let at = 12;
+  if (leading) {
+    ascii(at, 'fact');
+    view.setUint32(at + 4, 4, true);
+    view.setUint32(at + 8, samples, true);
+    at += 12;
+  }
+
+  ascii(at, 'fmt ');
+  view.setUint32(at + 4, 16, true);
+  view.setUint16(at + 8, 1, true); // PCM
+  view.setUint16(at + 10, channels, true);
+  view.setUint32(at + 12, rate, true);
+  view.setUint32(at + 16, rate * channels * (bits / 8), true);
+  view.setUint16(at + 20, channels * (bits / 8), true);
+  view.setUint16(at + 22, bits, true);
+  at += 24;
+
+  ascii(at, 'data');
+  view.setUint32(at + 4, dataBytes, true);
+  return bytes;
+}

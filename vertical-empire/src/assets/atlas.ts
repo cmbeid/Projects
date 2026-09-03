@@ -27,6 +27,13 @@ export interface Atlas {
    */
   shaftInk: number;
   sprites: Map<string, ExtractedSprite>;
+  /**
+   * The game's own sounds, keyed by resource ID. Empty for the fallback atlas,
+   * which has art of our own but no audio of our own — silence is the honest
+   * placeholder for a sound, where a drawn rectangle is a usable one for a
+   * sprite.
+   */
+  sounds: Map<number, Uint8Array>;
 }
 
 /** Picks a frame, wrapping rather than falling off the end of a short sheet. */

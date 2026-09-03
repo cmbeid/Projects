@@ -80,7 +80,8 @@ the table doing its job.
 
 The `0xff0a` sound resources use the same IDs — there is a restaurant sound at
 `0x8568` and an office one at `0x85a8` — so a slot is a *thing in the game*,
-not just a picture.
+not just a picture. That is what makes **sound** a lookup rather than a
+research project: see below.
 
 This is the most useful single fact about the file and it was found late. It
 says which unidentified IDs are facility slots worth chasing and which are
@@ -304,6 +305,47 @@ The two failures paid for themselves anyway: `0x85e8` is `0x85a8 + 0x40` and
 `0x87a8` is `0x87e8 - 0x40`, so both land exactly where the slot table below
 says a facility's neighbours live. Two more confirmations of the stride, from a
 hunt for something else.
+
+### Sound
+
+The game's own audio plays when you build something, and it needed almost no
+investigation — because the slot table had already done it. A sound resource
+shares the ID of the facility whose art it sits with, so `SOUND_SLOTS` in
+`src/assets/slice.ts` *is* the sound catalogue: a restaurant sound is at
+`0x8568` because that is where the restaurant is. Nothing to measure, nothing
+to cut, nothing to identify by ear.
+
+Three deliberate choices:
+
+- **No codec.** The resources are complete RIFF/WAVE files, so the browser's
+  own `decodeAudioData` does the work. `src/assets/sound.ts` only reads the
+  header — enough to *say* whether a resource is playable, so a sound that is
+  not a WAVE gets diagnosed by `--sounds` instead of vanishing into a decoder
+  that rejects it without explanation. It walks the chunk list rather than
+  indexing to byte 12, because a `fact` chunk before `fmt ` is legal and
+  assuming the offset would reject an ordinary file.
+- **Slots are a claim about the game, not about your copy.** The table says
+  where a restaurant sound *would* be; the extractor takes whatever `0xff0a`
+  resources the file actually holds, and a missing one is silence rather than
+  an error. `--sounds` lists what is really there, names the slot each one sits
+  in, and calls out slots that have art but no audio.
+- **Silence is the placeholder.** The fallback atlas has no sounds and the
+  toggle is hidden entirely, because a drawn rectangle is a usable stand-in for
+  a sprite and a synthesised beep is not a stand-in for anything.
+
+The bank (`src/audio/bank.ts`) builds its `AudioContext` on the first tap, not
+at load — created earlier it starts suspended, and on iOS stays that way — so
+every call before that is a no-op rather than an exception on the first frame.
+A sound still decoding when you tap plays when it is ready instead of being
+dropped, or the first placement of each kind would be silent and read as a
+missing sound rather than a late one. Bytes the browser rejects are forgotten
+rather than retried on every placement.
+
+A run of `--sounds` says what a copy of the game actually holds:
+
+```
+npm run extract -- --sounds SIMTOWER.EXE
+```
 
 ### The rest of the diagnostics
 

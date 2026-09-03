@@ -32,6 +32,8 @@ import {
 } from './world/grid.js';
 import { demoTower } from './world/tower.js';
 import { buildShell, type Tool } from './ui/shell.js';
+import { createBank } from './audio/bank.js';
+import { SOUND_SLOTS } from './assets/slice.js';
 import { attachGestures } from './ui/input.js';
 
 /** One in-game day per this many real milliseconds. Fast enough to see. */
@@ -199,6 +201,18 @@ function flash(text: string, tone: 'plain' | 'warn' = 'plain'): void {
 
 // --- building ---------------------------------------------------------------
 
+const bank = createBank();
+// Browsers refuse to start audio outside a gesture, so the context is built on
+// the first touch anywhere rather than at load. Once is enough; after that the
+// bank resumes itself.
+for (const event of ['pointerdown', 'keydown'] as const) {
+  window.addEventListener(event, () => bank.unlock(), { once: true, passive: true });
+}
+shell.onSoundToggle((muted) => {
+  bank.muted = muted;
+  flash(muted ? 'Sound off' : 'Sound on');
+});
+
 const gestures = attachGestures(shell.canvas, camera);
 
 function cellAt(cssX: number, cssY: number): { segment: number; level: number } {
@@ -233,6 +247,11 @@ gestures.onTap((cssX, cssY) => {
     return;
   }
   tower.place(tool.id, left, base, span);
+  // The game's own sound for what was just built. Its resource shares the ID of
+  // the facility's bitmaps — that is what the 0x40 slot table buys — and a
+  // facility with no slot, or a copy of the game missing that sound, simply
+  // makes no noise.
+  bank.play(SOUND_SLOTS[tool.id]);
   flash(`${kind.label} · floor ${floorLabel(level)}`);
 });
 
@@ -251,6 +270,10 @@ shell.onToolChange((next) => {
 function adopt(next: Atlas): void {
   atlas = next;
   shell.setArtSource(next.source);
+  bank.load(next.sounds);
+  // The control appears only when there is something for it to silence: the
+  // placeholder art has no audio, and a browser without Web Audio never will.
+  shell.setSound(next.sounds.size > 0 && bank.available ? bank.muted : undefined);
   buildRating();
 }
 
@@ -265,7 +288,7 @@ shell.onArtFile(async (file) => {
       return;
     }
     adopt(built);
-    await saveAtlas(fingerprint(bytes), built.palette, built.sprites);
+    await saveAtlas(fingerprint(bytes), built.palette, built.sprites, built.sounds);
 
     flash(
       problems.length === 0
@@ -300,6 +323,7 @@ void (async () => {
     skyPalettes: [cached.palette],
     shaftInk: darkestIndex(cached.palette),
     sprites: cached.sprites,
+    sounds: cached.sounds,
   });
 })();
 

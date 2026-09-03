@@ -28,10 +28,12 @@ import {
   TYPE_CELLS,
   TYPE_PALETTE,
   TYPE_SOUND,
+  SOUND_SLOTS,
   extract,
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
 import { ASCII_LIMIT, analyse, ascii, candidates, parseArgs, profile } from './frames.js';
+import { describeSound, sniffSound } from '../src/assets/sound.js';
 import { REPEATS_BELOW, bestPeriod, holding, periods } from '../src/assets/frames.js';
 import { GLYPH_HEIGHT, drawText } from './label.js';
 import { darkestIndex } from '../src/assets/palette.js';
@@ -99,6 +101,52 @@ function grid(width: number, height: number): string {
   const floors = height / FLOOR_HEIGHT;
   if (!Number.isInteger(floors)) return `${segments} seg, ${height}px tall`;
   return `${segments} seg x ${floors} floor${floors === 1 ? '' : 's'}`;
+}
+
+/**
+ * Every sound in the file, with the facility slot it belongs to.
+ *
+ * The slot table does the identification here, which is the whole point of
+ * having found it: a sound at 0x8568 is the restaurant's because 0x8568 is
+ * where the restaurant lives. No listening required, and no measuring — the
+ * only thing worth checking about a sound resource is whether the browser can
+ * decode it, which is what the format column says.
+ *
+ * Sounds outside any known slot are listed too, under a blank name. Those are
+ * the ones worth chasing: the file's alarms, the lift chime, whatever plays
+ * when a star is earned.
+ */
+function listSounds(resources: ResourceTable): void {
+  const byId = resources.get(TYPE_SOUND);
+  if (!byId || byId.size === 0) {
+    console.log('\nNo sound resources in this file.');
+    return;
+  }
+
+  const slotNames = new Map<number, string>();
+  for (const [key, id] of Object.entries(SOUND_SLOTS)) slotNames.set(id, key);
+
+  const ids = [...byId.keys()].sort((a, b) => a - b);
+  let playable = 0;
+  console.log(`\n${ids.length} sound${ids.length === 1 ? '' : 's'}:\n`);
+  for (const id of ids) {
+    const data = byId.get(id);
+    if (!data) continue;
+    const format = sniffSound(data);
+    if (format.kind === 'riff') playable += 1;
+    const name = slotNames.get(id) ?? '';
+    console.log(`  ${hex(id)}  ${name.padEnd(14)} ${describeSound(format)}`);
+  }
+
+  const named = ids.filter((id) => slotNames.has(id)).length;
+  console.log(
+    `\n  ${playable} of ${ids.length} are RIFF/WAVE and play as-is;` +
+      ` ${named} sit in a known facility slot.`,
+  );
+  const missing = [...slotNames.entries()].filter(([id]) => !byId.has(id));
+  if (missing.length > 0) {
+    console.log(`  Slots with art but no sound: ${missing.map(([, name]) => name).join(', ')}`);
+  }
 }
 
 function inventory(resources: ResourceTable): void {
@@ -557,13 +605,15 @@ function brightestIndex(palette: Uint8Array): number {
 }
 
 async function main(): Promise<void> {
-  const { path, all, framesIds, contactIds, periodIds, sweep: sweeping, peek, window } = parseArgs(process.argv.slice(2));
+  const { path, all, framesIds, contactIds, periodIds, sweep: sweeping, sounds: listing, peek, window } =
+    parseArgs(process.argv.slice(2));
 
   if (!path) {
     console.error('Usage: npm run extract -- [--all] [--frames 0x82bc,0x8429] /path/to/SIMTOWER.EXE');
     console.error('\n  --all      also dump every bitmap and cell strip, named by resource ID');
     console.error('  --frames   report how the named sheets are cut into frames');
     console.error('  --window   with --frames or --contact, look at just these columns, e.g. 0,320');
+    console.error('  --sounds   list every sound, its format, and the facility slot it sits in');
     console.error('  --contact  write one wrapped, labelled, scaled-up PNG of the named sheets');
     console.error('  --sweep    thumbnail every bitmap and cell strip onto one labelled page');
     console.error('  --period   measure how the named sheets divide into equal frames');
@@ -578,6 +628,11 @@ async function main(): Promise<void> {
 
   // Frame analysis is a focused question; printing the whole inventory over the
   // top of it just buries the answer.
+  if (listing) {
+    listSounds(resources);
+    return;
+  }
+
   if (sweeping) {
     await sweep(resources, palette, peek, 2);
     return;

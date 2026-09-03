@@ -304,6 +304,41 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   { key: 'people', type: TYPE_BITMAP, ids: range(0x82bc, 0x82bf), mode: 'dib', cut: 'ink', transparent: 'corner' },
 ];
 
+/**
+ * The slot each facility occupies, keyed by the id `world/facilities.ts` uses.
+ *
+ * Slots are 0x40 apart and hold a facility's whole existence in the file: its
+ * bitmaps, and — at the very same ID, under resource type 0xff0a — its sound.
+ * So this table is the sound catalogue as well, and it needs no separate
+ * research: a restaurant sound is at 0x8568 because that is where the
+ * restaurant is.
+ *
+ * A slot listed here is not a promise that a sound exists at it. The extractor
+ * takes whatever 0xff0a resources the file actually has and the player hears
+ * nothing where there is nothing, rather than a catalogue asserting sounds into
+ * being.
+ *
+ * Keyed by *facility* id, not by sprite key, and a test holds it to that. The
+ * escalator was in here at 0x8aa8 on the strength of its art: it is a sprite
+ * the atlas carries and not a thing the player can build, so its sound could
+ * never have been asked for. The lobby is absent for the opposite reason — it
+ * is buildable but has no identified slot at all.
+ */
+export const SOUND_SLOTS: Readonly<Record<string, number>> = {
+  hotel: 0x84a8,
+  restaurant: 0x8568,
+  office: 0x85a8,
+  condo: 0x8628,
+  shop: 0x8668,
+  'fast-food': 0x86e8,
+  medical: 0x8768,
+  elevator: 0x87e8,
+  theatre: 0x88a8,
+  stairs: 0x8968,
+  cinema: 0x8ca8,
+  parking: 0x8ee8,
+};
+
 export interface ExtractedSprite {
   key: string;
   /** One entry per state; each entry one per variant. */
@@ -322,6 +357,15 @@ export interface ExtractedSprite {
 export interface Extraction {
   palette: Palette;
   sprites: Map<string, ExtractedSprite>;
+  /**
+   * Every sound in the file, keyed by resource ID.
+   *
+   * Taken wholesale rather than catalogued. A sound needs no cutting, no
+   * measuring and no identification to be stored correctly — the only question
+   * is which one to play, and `SOUND_SLOTS` answers that by ID. So there is
+   * nothing here to get wrong, which is a pleasant change.
+   */
+  sounds: Map<number, Uint8Array>;
   /** Specs that produced nothing, with the reason. For the CLI to report. */
   problems: { key: string; reason: string }[];
 }
@@ -495,7 +539,7 @@ export function extract(resources: ResourceTable): Extraction {
     sprites.set(spec.key, sprite);
   }
 
-  return { palette, sprites, problems };
+  return { palette, sprites, sounds: new Map(resources.get(TYPE_SOUND) ?? []), problems };
 }
 
 /** Turns `'corner'`/`'sheet'` into the actual index the sprite uses for see-through. */

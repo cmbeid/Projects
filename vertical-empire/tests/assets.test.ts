@@ -10,11 +10,15 @@ import {
   SEGMENT_WIDTH,
   TYPE_BITMAP,
   TYPE_PALETTE,
+  TYPE_SOUND,
+  SOUND_SLOTS,
   extract,
   varyingBox,
 } from '../src/assets/slice.js';
 import { buildOriginalAtlas } from '../src/assets/original.js';
-import { buildCellStrip, buildDIB, buildNE, buildPaletteResource } from './fixtures.js';
+import { buildCellStrip, buildDIB, buildNE, buildPaletteResource, buildWave } from './fixtures.js';
+import { describeSound, sniffSound } from '../src/assets/sound.js';
+import { FACILITIES } from '../src/world/facilities.js';
 
 
 describe('NE resources', () => {
@@ -709,5 +713,63 @@ describe('drawing into somebody else’s palette', () => {
     // not be the skirting shadow.
     const last = pixels[pixels.length - 1] ?? 0;
     expect(last).not.toBe(atlas.shaftInk);
+  });
+});
+
+describe('sound resources', () => {
+  it('reads a WAVE header without decoding the audio', () => {
+    const format = sniffSound(buildWave(11025, { rate: 11025, bits: 8, channels: 1 }));
+    expect(format.kind).toBe('riff');
+    expect(format.sampleRate).toBe(11025);
+    expect(format.bits).toBe(8);
+    expect(format.channels).toBe(1);
+    expect(format.seconds).toBeCloseTo(1, 5);
+  });
+
+  it('walks the chunk list rather than assuming fmt sits at byte 12', () => {
+    // A `fact` chunk before `fmt ` is legal, and a reader that indexes straight
+    // to byte 12 would call a perfectly ordinary WAVE unreadable.
+    const format = sniffSound(buildWave(2205, { rate: 22050, leading: true }));
+    expect(format.kind).toBe('riff');
+    expect(format.sampleRate).toBe(22050);
+    expect(format.seconds).toBeCloseTo(0.1, 5);
+  });
+
+  it('reports the length it can really play, not the one claimed', () => {
+    // A resource cut short mid-audio: the data chunk says more than is there.
+    const whole = buildWave(11025);
+    const truncated = whole.slice(0, whole.byteLength - 5512);
+    expect(sniffSound(truncated).seconds).toBeCloseTo(0.5, 1);
+  });
+
+  it('says plainly when bytes are not a WAVE', () => {
+    expect(sniffSound(Uint8Array.from([1, 2, 3])).kind).toBe('unknown');
+    expect(describeSound(sniffSound(new Uint8Array(64)))).toContain('not a RIFF/WAVE');
+    expect(describeSound(sniffSound(buildWave(100)))).toContain('RIFF/WAVE');
+  });
+
+  it('takes every sound in the file, keyed by resource ID', () => {
+    const spec = new Map([
+      [TYPE_BITMAP, new Map([[0x85a8, buildDIB(288, ROOM_HEIGHT, () => 3)]])],
+      [TYPE_SOUND, new Map([[0x8568, buildWave(100)], [0x85a8, buildWave(200)]])],
+    ]);
+    const { sounds } = extract(readResources(buildNE(spec)));
+
+    // No cutting, no measuring, no identification: the slot table already says
+    // which is which, so the only job is to keep them.
+    expect([...sounds.keys()].sort()).toEqual([0x8568, 0x85a8]);
+    expect(sniffSound(sounds.get(0x8568) ?? new Uint8Array()).kind).toBe('riff');
+  });
+
+  it('points every facility slot at a real resource ID', () => {
+    // The slots are 0x40 apart, and a sound shares its facility's ID. If one
+    // of these drifts off the stride it is a typo, not a discovery.
+    for (const [key, id] of Object.entries(SOUND_SLOTS)) {
+      expect((id - 0x84a8) % 0x40, `${key} at ${id.toString(16)}`).toBe(0);
+    }
+    // Every slot names a facility the game can actually build.
+    for (const key of Object.keys(SOUND_SLOTS)) {
+      expect(FACILITIES.map((item) => item.id)).toContain(key);
+    }
   });
 });

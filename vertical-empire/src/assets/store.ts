@@ -18,15 +18,33 @@ const DB_VERSION = 1;
 const STORE = 'atlas';
 const KEY = 'original';
 
+/**
+ * What shape the cached entry is in.
+ *
+ * Bumped whenever an entry written by an older build would be *wrong* rather
+ * than merely thin — a mismatch is treated as nothing cached, so the player
+ * picks their copy once more and everything is re-cut. Two things forced the
+ * first bump: glyph sprites carry an `origin` that says where on a floor they
+ * belong, and an entry without it draws every floor number at the top of its
+ * floor; and sounds were not stored at all, so a cached tower stayed mute.
+ *
+ * The alternative — reading a stale entry and hoping — is how a cache turns a
+ * fixed bug back into a live one on someone else's machine.
+ */
+const SCHEMA = 2;
+
 /** What we keep: plain arrays, so it survives structured cloning unchanged. */
 interface StoredAtlas {
+  schema?: number;
   fingerprint: string;
   palette: Uint8Array;
   sprites: {
     key: string;
     transparent?: number;
+    origin?: { x: number; y: number };
     frames: { width: number; height: number; pixels: Uint8Array }[];
   }[];
+  sounds?: { id: number; bytes: Uint8Array }[];
 }
 
 function open(): Promise<IDBDatabase> {
@@ -68,8 +86,10 @@ export async function saveAtlas(
   fingerprintValue: string,
   palette: Palette,
   sprites: Map<string, ExtractedSprite>,
+  sounds: Map<number, Uint8Array> = new Map(),
 ): Promise<void> {
   const stored: StoredAtlas = {
+    schema: SCHEMA,
     fingerprint: fingerprintValue,
     palette,
     sprites: [...sprites.values()].map((sprite) => {
@@ -78,10 +98,12 @@ export async function saveAtlas(
         height: frame.height,
         pixels: frame.pixels,
       }));
-      return sprite.transparent === undefined
-        ? { key: sprite.key, frames }
-        : { key: sprite.key, transparent: sprite.transparent, frames };
+      const entry: StoredAtlas['sprites'][number] = { key: sprite.key, frames };
+      if (sprite.transparent !== undefined) entry.transparent = sprite.transparent;
+      if (sprite.origin !== undefined) entry.origin = sprite.origin;
+      return entry;
     }),
+    sounds: [...sounds.entries()].map(([id, bytes]) => ({ id, bytes })),
   };
 
   const db = await open();
@@ -94,7 +116,13 @@ export async function saveAtlas(
 }
 
 export async function loadAtlas(): Promise<
-  { fingerprint: string; palette: Palette; sprites: Map<string, ExtractedSprite> } | undefined
+  | {
+      fingerprint: string;
+      palette: Palette;
+      sprites: Map<string, ExtractedSprite>;
+      sounds: Map<number, Uint8Array>;
+    }
+  | undefined
 > {
   let db: IDBDatabase;
   try {
@@ -108,6 +136,10 @@ export async function loadAtlas(): Promise<
   try {
     const stored = await run<StoredAtlas | undefined>(db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY));
     if (!stored) return undefined;
+    // Written by a build whose entries are wrong for this one. Treated as
+    // nothing cached, so the art is re-cut rather than drawn from a shape that
+    // has since been corrected.
+    if (stored.schema !== SCHEMA) return undefined;
 
     const sprites = new Map<string, ExtractedSprite>();
     for (const entry of stored.sprites) {
@@ -118,9 +150,14 @@ export async function loadAtlas(): Promise<
       }));
       const sprite: ExtractedSprite = { key: entry.key, frames };
       if (entry.transparent !== undefined) sprite.transparent = entry.transparent;
+      if (entry.origin !== undefined) sprite.origin = { x: entry.origin.x, y: entry.origin.y };
       sprites.set(entry.key, sprite);
     }
-    return { fingerprint: stored.fingerprint, palette: new Uint8Array(stored.palette), sprites };
+
+    const sounds = new Map<number, Uint8Array>();
+    for (const entry of stored.sounds ?? []) sounds.set(entry.id, new Uint8Array(entry.bytes));
+
+    return { fingerprint: stored.fingerprint, palette: new Uint8Array(stored.palette), sprites, sounds };
   } catch {
     return undefined;
   } finally {

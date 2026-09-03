@@ -328,3 +328,26 @@ body {
 .art-chip[hidden] {
   display: none;
 }
+
+/*
+ * The sound toggle. Sized like the other HUD chips and given a fixed width so
+ * swapping the speaker glyph for the muted one does not reflow the clock
+ * beside it.
+ */
+.hud-sound {
+  flex: 0 0 auto;
+  width: 1.9rem;
+  padding: 0.1rem 0;
+  border: 0;
+  border-radius: 0.35rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: inherit;
+  font: inherit;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.hud-sound[aria-pressed='false'] {
+  background: rgba(0, 0, 0, 0.45);
+}

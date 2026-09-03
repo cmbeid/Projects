@@ -17,6 +17,10 @@ export interface Shell {
   /** Called when the player offers a copy of the game. */
   onArtFile: (handler: (file: File) => void) => void;
   onForgetArt: (handler: () => void) => void;
+  /** Fires with the muted state the player just chose. */
+  onSoundToggle: (handler: (muted: boolean) => void) => void;
+  /** `undefined` hides the control entirely, for an atlas with no sounds. */
+  setSound: (muted: boolean | undefined) => void;
   setTool: (tool: Tool) => void;
   setClock: (text: string) => void;
   setStatus: (text: string, tone?: 'plain' | 'warn') => void;
@@ -46,7 +50,15 @@ export function buildShell(root: HTMLElement): Shell {
   rating.className = 'hud-rating';
   const status = document.createElement('span');
   status.className = 'hud-status';
-  hud.append(clock, rating, status);
+  // Sound sits in the HUD rather than the toolbar: it is a property of the
+  // whole tower, not a thing you build. Hidden until there is audio to mute —
+  // the placeholder art has none, and a dead control is worse than no control.
+  const sound = document.createElement('button');
+  sound.type = 'button';
+  sound.className = 'hud-sound';
+  sound.hidden = true;
+
+  hud.append(clock, rating, sound, status);
   root.append(hud);
 
   // Two rows: what you are doing, then what you can build while doing it.
@@ -193,6 +205,23 @@ export function buildShell(root: HTMLElement): Shell {
     if (file) for (const handler of fileHandlers) handler(file);
   });
 
+  const soundHandlers: ((muted: boolean) => void)[] = [];
+  let muted = false;
+  function setSound(state: boolean | undefined): void {
+    sound.hidden = state === undefined;
+    if (state === undefined) return;
+    muted = state;
+    sound.textContent = muted ? '🔇' : '🔊';
+    const label = muted ? 'Turn sound on' : 'Turn sound off';
+    sound.title = label;
+    sound.setAttribute('aria-label', label);
+    sound.setAttribute('aria-pressed', String(!muted));
+  }
+  sound.addEventListener('click', () => {
+    setSound(!muted);
+    for (const handler of soundHandlers) handler(muted);
+  });
+
   const forgetHandlers: (() => void)[] = [];
   forget.addEventListener('click', () => {
     for (const handler of forgetHandlers) handler();
@@ -220,6 +249,8 @@ export function buildShell(root: HTMLElement): Shell {
     onToolChange: (handler) => toolHandlers.push(handler),
     onArtFile: (handler) => fileHandlers.push(handler),
     onForgetArt: (handler) => forgetHandlers.push(handler),
+    onSoundToggle: (handler) => soundHandlers.push(handler),
+    setSound,
     setTool,
     setClock: (text) => {
       clock.textContent = text;

@@ -134,6 +134,8 @@ export interface Options {
   contactIds: string[];
   periodIds: string[];
   sweep: boolean;
+  /** List every sound resource, its format and the facility slot it sits in. */
+  sounds: boolean;
   /** How much of each resource a sweep thumbnail shows, in pixels. */
   peek: number;
   window?: { from: number; to: number };
@@ -184,6 +186,7 @@ export function parseArgs(args: readonly string[]): Options {
     contactIds: contactAt >= 0 ? parseIdTokens(args[contactAt + 1] ?? '') : [],
     periodIds: periodAt >= 0 ? parseIdTokens(args[periodAt + 1] ?? '') : [],
     sweep: sweepAt >= 0,
+    sounds: args.includes('--sounds'),
     peek: sweepTookValue && sweepPeek > 0 ? Math.floor(sweepPeek) : 40,
   };
   if (path !== undefined) options.path = path;

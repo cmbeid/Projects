@@ -554,6 +554,9 @@ export function buildFallbackAtlas(): Atlas {
     palette: skyPalettes[Math.floor(skyPalettes.length / 2)] ?? buildPalette(DAY),
     skyPalettes,
     shaftInk: INK.shaft,
+    // No sounds of our own. Silence is the honest placeholder for audio, where
+    // a drawn rectangle is a usable one for a sprite.
+    sounds: new Map<number, Uint8Array>(),
     sprites,
   };
 }
