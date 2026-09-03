@@ -17,6 +17,7 @@ on:
        - 'starseed/**'
        - 'storied/**'
        - 'fathomline/**'
+       - 'vertical-empire/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -49,6 +50,7 @@ jobs:
             starseed/package-lock.json
             storied/package-lock.json
             fathomline/package-lock.json
+            vertical-empire/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -118,6 +120,18 @@ jobs:
         run: npm run build
         working-directory: fathomline
 
+      - name: Install (vertical-empire)
+        run: npm ci
+        working-directory: vertical-empire
+
+      - name: Test (vertical-empire)
+        run: npm test
+        working-directory: vertical-empire
+
+      - name: Build (vertical-empire)
+        run: npm run build
+        working-directory: vertical-empire
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -135,6 +149,9 @@ jobs:
 
           mkdir -p _site/fathomline
           cp -r fathomline/dist/. _site/fathomline/
+
+          mkdir -p _site/vertical-empire
+          cp -r vertical-empire/dist/. _site/vertical-empire/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -194,6 +211,13 @@ jobs:
                     <span>
                       <span class="name">Fathomline</span>
                       <span class="desc">A casual idle fishing game. Early build — core loop and idle engine only so far.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./vertical-empire/">
+                    <span class="emoji" aria-hidden="true">🏢</span>
+                    <span>
+                      <span class="name">Vertical Empire</span>
+                      <span class="desc">A portrait-first tower builder in the SimTower idiom. A look-and-feel spike — no simulation yet.</span>
                     </span>
                   </a>
                 </div>

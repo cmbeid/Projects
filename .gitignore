@@ -4,3 +4,13 @@ dist-ssr/
 *.local
 .DS_Store
 .vite/
+
+# Original SimTower game files and anything extracted from them. The art in
+# SIMTOWER.EXE is © Maxis / OPeNBooK / Yoot Saito and cannot be redistributed,
+# so vertical-empire reads it from a copy the player supplies and nothing it
+# produces is ever committed or deployed. See vertical-empire/README.md.
+*.EXE
+*.exe
+*.EX_
+*.ex_
+assets-private/

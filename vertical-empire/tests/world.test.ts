@@ -1,0 +1,120 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  FLOOR_HEIGHT,
+  GROUND_LEVEL,
+  LEVEL_COUNT,
+  LOT_SEGMENTS,
+  SEGMENT_WIDTH,
+  WORLD_HEIGHT,
+  floorLabel,
+  floorToLevel,
+  levelAtWorldY,
+  levelToFloor,
+  levelTop,
+  segmentAtWorldX,
+} from '../src/world/grid.js';
+import { Tower, demoTower } from '../src/world/tower.js';
+import { facility } from '../src/world/facilities.js';
+
+describe('the grid', () => {
+  it('keeps SimTower’s measurements', () => {
+    expect(SEGMENT_WIDTH).toBe(8);
+    expect(FLOOR_HEIGHT).toBe(36);
+    expect(LEVEL_COUNT).toBe(109); // nine basements and a hundred storeys
+  });
+
+  it('numbers floors the way a building does, skipping zero', () => {
+    expect(levelToFloor(GROUND_LEVEL)).toBe(1);
+    expect(levelToFloor(GROUND_LEVEL - 1)).toBe(-1);
+    expect(floorLabel(GROUND_LEVEL - 1)).toBe('B1');
+    expect(floorLabel(GROUND_LEVEL)).toBe('1');
+  });
+
+  it('round-trips floors and levels', () => {
+    for (const floor of [-9, -1, 1, 2, 50, 100]) {
+      expect(levelToFloor(floorToLevel(floor))).toBe(floor);
+    }
+  });
+
+  it('maps world pixels back to the cell they fall in', () => {
+    const level = 40;
+    expect(levelAtWorldY(levelTop(level))).toBe(level);
+    expect(levelAtWorldY(levelTop(level) + FLOOR_HEIGHT - 1)).toBe(level);
+    // One pixel further down is the next floor, not a rounding artefact.
+    expect(levelAtWorldY(levelTop(level) + FLOOR_HEIGHT)).toBe(level - 1);
+    expect(segmentAtWorldX(SEGMENT_WIDTH * 7 + 3)).toBe(7);
+  });
+
+  it('stacks levels bottom-up, deepest basement last', () => {
+    expect(levelTop(LEVEL_COUNT - 1)).toBe(0);
+    expect(levelTop(0)).toBe(WORLD_HEIGHT - FLOOR_HEIGHT);
+  });
+});
+
+describe('placing things', () => {
+  it('refuses to overlap', () => {
+    const tower = new Tower();
+    expect(tower.place('office', 10, 20)).not.toBeNull();
+    expect(tower.blockedBy('office', 12, 20)).toBe('occupied');
+    expect(tower.place('office', 12, 20)).toBeNull();
+    // Clear of it by one segment, so it fits.
+    expect(tower.place('office', 10 + facility('office').width, 20)).not.toBeNull();
+  });
+
+  it('refuses to hang off the lot or the tower', () => {
+    const tower = new Tower();
+    expect(tower.blockedBy('condo', LOT_SEGMENTS - 2, 20)).toBe('off-lot');
+    expect(tower.blockedBy('office', 0, -1)).toBe('off-tower');
+    expect(tower.blockedBy('office', 0, LEVEL_COUNT)).toBe('off-tower');
+    // Flush with the right edge is inside, not off.
+    expect(tower.blockedBy('condo', LOT_SEGMENTS - facility('condo').width, 20)).toBeNull();
+  });
+
+  it('claims every level a shaft passes through', () => {
+    const tower = new Tower();
+    tower.place('elevator', 30, 9, 10);
+    expect(tower.at(30, 9)?.id).toBe('elevator');
+    expect(tower.at(33, 18)?.id).toBe('elevator');
+    expect(tower.at(33, 19)).toBeUndefined();
+    expect(tower.blockedBy('office', 26, 14)).toBe('occupied');
+  });
+
+  it('frees the whole footprint when something is cleared', () => {
+    const tower = new Tower();
+    tower.place('office', 4, 30);
+    tower.place('elevator', 40, 9, 5);
+
+    // Remove the first, and the second must still be findable — the occupancy
+    // index is rebuilt around the hole rather than left pointing at the wrong row.
+    expect(tower.removeAt(6, 30)?.id).toBe('office');
+    expect(tower.at(4, 30)).toBeUndefined();
+    expect(tower.at(41, 12)?.id).toBe('elevator');
+    expect(tower.blockedBy('office', 4, 30)).toBeNull();
+  });
+
+  it('reports nothing to clear on an empty cell', () => {
+    expect(new Tower().removeAt(3, 3)).toBeUndefined();
+  });
+});
+
+describe('the demo tower', () => {
+  it('builds a lobby, lifts and tenants without any of them colliding', () => {
+    const tower = demoTower();
+
+    expect(tower.placements.length).toBeGreaterThan(50);
+    expect(tower.placements.some((placement) => placement.id === 'elevator')).toBe(true);
+    expect(tower.topLevel).toBeGreaterThan(GROUND_LEVEL + 10);
+
+    // Nothing overlaps: every placement is still the one the index points at.
+    for (const placement of tower.placements) {
+      expect(tower.at(placement.segment, placement.level)).toBe(placement);
+    }
+  });
+
+  it('lets the lifts through the lobby floor', () => {
+    const tower = demoTower();
+    expect(tower.at(21, GROUND_LEVEL)?.id).toBe('elevator');
+    expect(tower.at(0, GROUND_LEVEL)?.id).toBe('lobby');
+  });
+});
