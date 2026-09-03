@@ -20,6 +20,7 @@ import {
   levelTop,
 } from '../world/grid.js';
 import { facility } from '../world/facilities.js';
+import { carLevel, hash } from '../world/lift.js';
 import type { Tower } from '../world/tower.js';
 import type { Camera } from './camera.js';
 import type { Framebuffer } from './framebuffer.js';
@@ -29,17 +30,6 @@ export interface SceneClock {
   hour: number;
   /** Milliseconds since start, for lift travel and pedestrians. */
   elapsed: number;
-}
-
-/**
- * Cheap deterministic noise. Pedestrians and lift timings need to look
- * unplanned without needing to *be* simulated, and a hash keeps the scene
- * reproducible from frame to frame and screenshot to screenshot.
- */
-function hash(n: number): number {
-  let x = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b);
-  x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35);
-  return ((x ^ (x >>> 16)) >>> 0) / 0x1_0000_0000;
 }
 
 export function drawScene(
@@ -238,15 +228,11 @@ function drawLifts(
 
     if (!car || placement.span < 2) return;
 
-    // A slow triangle wave up and down the shaft, offset per bank so no two
-    // are ever in step.
-    const period = 9_000 + hash(index) * 6_000;
-    const phase = ((clock.elapsed + hash(index + 7) * period) % period) / period;
-    const travel = 1 - Math.abs(1 - phase * 2);
-
-    // `levelTop` is plain arithmetic, so a fractional level puts the car
-    // between floors rather than snapping it to one.
-    const level = placement.level + travel * (placement.span - 1);
+    // Where the car is now. Shared with the arrival detector in `main.ts`
+    // rather than derived twice — a chime that plays where the car visibly is
+    // not would be worse than no chime. `levelTop` is plain arithmetic, so a
+    // fractional level puts the car between floors rather than snapping it.
+    const level = carLevel(placement, index, clock.elapsed);
     const y = Math.round(levelTop(level) - camera.y) + 2;
     if (y < -FLOOR_HEIGHT || y > target.height) return;
 

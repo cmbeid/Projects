@@ -80,8 +80,8 @@ the table doing its job.
 
 The `0xff0a` sound resources use the same IDs — there is a restaurant sound at
 `0x8568` and an office one at `0x85a8` — so a slot is a *thing in the game*,
-not just a picture. That is what makes **sound** a lookup rather than a
-research project: see below.
+not just a picture. It is not, however, where most of the sound lives: see
+below.
 
 This is the most useful single fact about the file and it was found late. It
 says which unidentified IDs are facility slots worth chasing and which are
@@ -306,14 +306,54 @@ The two failures paid for themselves anyway: `0x85e8` is `0x85a8 + 0x40` and
 says a facility's neighbours live. Two more confirmations of the stride, from a
 hunt for something else.
 
-### Sound
+### Sound, and a claim that was too broad
 
-The game's own audio plays when you build something, and it needed almost no
-investigation — because the slot table had already done it. A sound resource
-shares the ID of the facility whose art it sits with, so `SOUND_SLOTS` in
-`src/assets/slice.ts` *is* the sound catalogue: a restaurant sound is at
-`0x8568` because that is where the restaurant is. Nothing to measure, nothing
-to cut, nothing to identify by ear.
+The game's own audio plays when you build something. The slot table found some
+of it: a sound resource shares the ID of the facility whose art it sits with, so
+a restaurant sound is at `0x8568` because that is where the restaurant is.
+
+That was written up here as "the slot table *is* the sound catalogue", which was
+wrong, and wrong in the direction that flatters it. A listing of a real copy
+found **58 sounds, of which the slot table names four buildable facilities** —
+restaurant, office, condo, shop. Nine facilities have art and no audio at their
+slot. The mechanism was right; the coverage claim was not, and the difference
+matters: the fix is a fallback for the nine, not a different mechanism.
+
+#### Two tables, two strides
+
+What the listing actually showed is that the file has **two** sound tables.
+
+- **Eleven sounds on the 0x40 slot stride**, every one landing exactly on a slot
+  boundary — or one past it, which is a slot's second sound. Three sit on slots
+  whose art we know but whose sound was never catalogued: `0x88e8` is the **lift
+  machinery** (slot 17), `0x8b28` the function room (26), `0x8ba8` the shopping
+  arcade (28). Slot 8 (`0x86a8`) has *two sounds and no identified art at all* —
+  which is a lead for a facility, found by looking for something else.
+- **Forty-seven sounds in seven banks**, based at `0x9388`, `0x9770`, `0x9b58`,
+  `0x9f40`, `0xa328`, `0xa710` and `0xce20`. Those bases are exactly **1000
+  decimal apart** (37768, 38768, 39768 …, all ≡ 768 mod 1000), with the last one
+  ten thousand further on.
+
+Two strides, one hexadecimal and one decimal, is worth stating plainly because it
+looks like noise until you check: `0x40` reads as a compiler's doing, 1000 reads
+as a person numbering things by hand. And it says where the effort goes — the
+banks hold 81% of the audio and **nothing in them can be identified by
+arithmetic**. That takes an ear.
+
+#### Labelling by ear, without forty-seven file-opens
+
+`npm run extract -- --sounds --all SIMTOWER.EXE` writes every sound to
+`assets-private/sounds/` and builds an `index.html` beside them: one row per
+sound with a play button, its ID, slot and length, and a box to type what you
+hear. Enter moves to the next row, what you type survives a refresh, and a button
+copies the lot as CSV.
+
+It is deliberately **not** seeded with guesses. A row reading "probably a lift
+chime" gets agreed with, and an anchored listener is a worse instrument than an
+unanchored one — the same reason `--period` reports its measurement rather than
+its conclusion.
+
+#### The rest
 
 Three deliberate choices:
 
@@ -341,11 +381,18 @@ dropped, or the first placement of each kind would be silent and read as a
 missing sound rather than a late one. Bytes the browser rejects are forgotten
 rather than retried on every placement.
 
-A run of `--sounds` says what a copy of the game actually holds:
+Four things make a noise: placing a facility (its own sound where the slot has
+one, a shared build sound otherwise), bulldozing, a lift reaching a floor, and
+the tower earning a star. The bank puts them all through one gain, collapses the
+same sound started twice within 80ms into one event, and gives the lift a channel
+of its own that holds a single clip — its machine-room sound runs five seconds
+and a busy tower arrives somewhere every second, which layered is a drone rather
+than a sound.
 
-```
-npm run extract -- --sounds SIMTOWER.EXE
-```
+A lift arrival needs to know where a car is, which the renderer also needs, so
+`carLevel` lives in `src/world/lift.ts` and both ask it. Two copies of a triangle
+wave would agree today and drift the first time one was tuned, and a chime that
+plays where the car visibly is not is worse than no chime.
 
 ### The rest of the diagnostics
 

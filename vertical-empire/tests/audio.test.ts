@@ -13,22 +13,37 @@ import { buildWave } from './fixtures.js';
  */
 function fakeAudio(options: { decodes?: boolean } = {}) {
   const started: AudioBuffer[] = [];
+  const stopped: AudioBuffer[] = [];
   const pending: (() => void)[] = [];
   let resumed = 0;
+  let seconds = 0;
+  let gains = 0;
 
   class FakeContext {
     destination = {} as AudioDestinationNode;
+
+    /** The bank times its re-trigger guard off this, so tests control it. */
+    get currentTime(): number {
+      return seconds;
+    }
 
     resume(): Promise<void> {
       resumed += 1;
       return Promise.resolve();
     }
 
+    createGain(): GainNode {
+      gains += 1;
+      return { gain: { value: 1 }, connect: () => undefined } as unknown as GainNode;
+    }
+
     createBufferSource(): AudioBufferSourceNode {
       const node = {
         buffer: null as AudioBuffer | null,
         connect: () => undefined,
+        addEventListener: () => undefined,
         start: () => started.push(node.buffer as AudioBuffer),
+        stop: () => stopped.push(node.buffer as AudioBuffer),
       };
       return node as unknown as AudioBufferSourceNode;
     }
@@ -47,8 +62,16 @@ function fakeAudio(options: { decodes?: boolean } = {}) {
 
   return {
     started,
+    stopped,
     get resumed() {
       return resumed;
+    },
+    get gains() {
+      return gains;
+    },
+    /** Moves the context clock on, so the re-trigger guard stops applying. */
+    advance(ms: number) {
+      seconds += ms / 1000;
     },
     /** Lets every queued decode settle, then drains the microtask queue. */
     async settle() {
@@ -96,7 +119,8 @@ describe('the sound bank', () => {
     await audio.settle();
     expect(audio.started).toHaveLength(1);
 
-    // Decoded once and kept: a second placement plays without decoding again.
+    // Decoded once and kept: a later placement plays without decoding again.
+    audio.advance(500);
     bank.play(0x85a8);
     expect(audio.started).toHaveLength(2);
   });
@@ -163,11 +187,63 @@ describe('the sound bank', () => {
     // Same IDs, different bytes. Keeping the decoded buffers would play the old
     // copy's audio for the new copy's tower.
     bank.load(new Map([[0x8568, buildWave(500)]]));
+    audio.advance(500);
     bank.play(0x8568);
     expect(audio.started).toHaveLength(1);
     await audio.settle();
     expect(audio.started).toHaveLength(2);
     expect(audio.started[1]?.length).toBeGreaterThan(audio.started[0]?.length ?? 0);
+  });
+
+  it('collapses the same sound started twice in a blink into one', async () => {
+    const audio = fakeAudio();
+    const bank = createBank();
+    bank.load(new Map([[0x8568, buildWave(100)]]));
+    bank.unlock();
+    bank.play(0x8568);
+    await audio.settle();
+    expect(audio.started).toHaveLength(1);
+
+    // A tap that registers twice, or an arrival seen on two frames, is one
+    // event. A four-second clip layered on itself a beat later is not a sound.
+    audio.advance(20);
+    bank.play(0x8568);
+    expect(audio.started).toHaveLength(1);
+
+    // Far enough apart to be two deliberate placements.
+    audio.advance(200);
+    bank.play(0x8568);
+    expect(audio.started).toHaveLength(2);
+  });
+
+  it('lets the exclusive channel hold one sound, stopping the last', async () => {
+    const audio = fakeAudio();
+    const bank = createBank();
+    bank.load(new Map([[0x88e8, buildWave(100)]]));
+    bank.unlock();
+
+    bank.playExclusive(0x88e8);
+    await audio.settle();
+    expect(audio.started).toHaveLength(1);
+    expect(audio.stopped).toHaveLength(0);
+
+    // A busy tower arrives somewhere every second or so, and the lift clip runs
+    // five: layered it would be a drone rather than a sound.
+    audio.advance(500);
+    bank.playExclusive(0x88e8);
+    expect(audio.started).toHaveLength(2);
+    expect(audio.stopped).toHaveLength(1);
+  });
+
+  it('puts everything through one gain, built once', () => {
+    const audio = fakeAudio();
+    const bank = createBank();
+    bank.unlock();
+    bank.unlock();
+    // Unlock fires on the first tap and again whenever the tab wakes; building
+    // a second context each time would leak one per resume.
+    expect(audio.gains).toBe(1);
+    expect(audio.resumed).toBe(2);
   });
 
   it('reports itself unavailable where there is no Web Audio at all', () => {

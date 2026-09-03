@@ -304,39 +304,84 @@ export const CATALOGUE: readonly SpriteSpec[] = [
   { key: 'people', type: TYPE_BITMAP, ids: range(0x82bc, 0x82bf), mode: 'dib', cut: 'ink', transparent: 'corner' },
 ];
 
+/** Where the facility slot table starts, and how far apart its slots are. */
+export const SLOT_BASE = 0x84a8;
+export const SLOT_STRIDE = 0x40;
+
 /**
- * The slot each facility occupies, keyed by the id `world/facilities.ts` uses.
+ * The bases of the seven sound banks, which are a *different* table.
  *
- * Slots are 0x40 apart and hold a facility's whole existence in the file: its
- * bitmaps, and — at the very same ID, under resource type 0xff0a — its sound.
- * So this table is the sound catalogue as well, and it needs no separate
- * research: a restaurant sound is at 0x8568 because that is where the
- * restaurant is.
+ * A listing of a real copy found 58 sounds in two groups. Eleven sit on the
+ * 0x40 facility slots and name themselves that way. The other forty-seven sit
+ * in banks based here — and these bases are exactly **1000 decimal apart**
+ * (0x9388 = 37768, 0x9770 = 38768, and so on, all ≡ 768 mod 1000), with the
+ * last one ten thousand further on.
  *
- * A slot listed here is not a promise that a sound exists at it. The extractor
- * takes whatever 0xff0a resources the file actually has and the player hears
- * nothing where there is nothing, rather than a catalogue asserting sounds into
- * being.
+ * Two tables with two strides, one hexadecimal and one decimal, is worth
+ * stating plainly because it is the sort of thing that looks like noise until
+ * you check: a 0x40 stride reads as a compiler's doing, a 1000 stride reads as
+ * a person numbering things by hand. The banks hold most of the audio — every
+ * blip, chime, alarm and fanfare — and nothing in them can be identified by
+ * arithmetic. That takes an ear, which is what `--sounds --all` is for.
+ */
+export const SOUND_BANKS: readonly number[] = [0x9388, 0x9770, 0x9b58, 0x9f40, 0xa328, 0xa710, 0xce20];
+
+/**
+ * Which table a sound belongs to, and where in it.
+ *
+ * Slot numbers are the useful part: slot 17 is the lift machinery, slot 3 the
+ * restaurant. A sound one past a slot boundary is that slot's second sound,
+ * which several facilities have.
+ */
+export function soundGroup(id: number): { slot?: number; offset?: number; bank?: number } {
+  let best: number | undefined;
+  for (const base of SOUND_BANKS) {
+    if (id >= base && (best === undefined || base > best)) best = base;
+  }
+  if (best !== undefined) return { bank: best };
+  if (id < SLOT_BASE) return {};
+  return { slot: Math.floor((id - SLOT_BASE) / SLOT_STRIDE), offset: (id - SLOT_BASE) % SLOT_STRIDE };
+}
+
+/**
+ * The sound each buildable facility makes, keyed by the id `world/facilities.ts`
+ * uses.
+ *
+ * This table used to be described as "the sound catalogue", which was wrong and
+ * wrong in the direction that flatters it. Slots are 0x40 apart and hold a
+ * facility's whole existence in the file — its bitmaps, and at the very same ID
+ * under type 0xff0a its sound — so the arithmetic really does name a sound
+ * without anyone listening to it. But a listing of a real copy found sounds on
+ * only **four** buildable facilities. Nine have art and no audio at their slot.
+ *
+ * The mechanism was right and the coverage claim was not, which is a distinction
+ * worth keeping: the fix is a fallback for the nine, not a different mechanism.
  *
  * Keyed by *facility* id, not by sprite key, and a test holds it to that. The
- * escalator was in here at 0x8aa8 on the strength of its art: it is a sprite
- * the atlas carries and not a thing the player can build, so its sound could
- * never have been asked for. The lobby is absent for the opposite reason — it
- * is buildable but has no identified slot at all.
+ * escalator was in here at 0x8aa8 on the strength of its art: it is a sprite the
+ * atlas carries and not a thing the player can build, so its sound could never
+ * have been asked for.
  */
-export const SOUND_SLOTS: Readonly<Record<string, number>> = {
-  hotel: 0x84a8,
+export const FACILITY_SOUNDS: Readonly<Record<string, number>> = {
   restaurant: 0x8568,
   office: 0x85a8,
   condo: 0x8628,
   shop: 0x8668,
-  'fast-food': 0x86e8,
-  medical: 0x8768,
-  elevator: 0x87e8,
-  theatre: 0x88a8,
-  stairs: 0x8968,
-  cinema: 0x8ca8,
-  parking: 0x8ee8,
+};
+
+/**
+ * Sounds for things that happen to the tower rather than to one facility.
+ *
+ * Only `lift` is filled in, and only because the arithmetic identifies it:
+ * 0x88e8 is slot 17, the lift machinery, whose bitmaps sit right beside the
+ * shaft's. The rest wait for the listening pass — a build sound guessed at from
+ * a duration is exactly the kind of plausible-looking mistake that put a city on
+ * the ground floor, and an unfilled entry is silence, which is honest.
+ *
+ * `place` is the fallback for the nine facilities with no sound of their own.
+ */
+export const EVENT_SOUNDS: Readonly<Partial<Record<'place' | 'bulldoze' | 'lift' | 'star', number>>> = {
+  lift: 0x88e8,
 };
 
 export interface ExtractedSprite {

@@ -11,7 +11,12 @@ import {
   TYPE_BITMAP,
   TYPE_PALETTE,
   TYPE_SOUND,
-  SOUND_SLOTS,
+  FACILITY_SOUNDS,
+  EVENT_SOUNDS,
+  SOUND_BANKS,
+  SLOT_BASE,
+  SLOT_STRIDE,
+  soundGroup,
   extract,
   varyingBox,
 } from '../src/assets/slice.js';
@@ -761,15 +766,41 @@ describe('sound resources', () => {
     expect(sniffSound(sounds.get(0x8568) ?? new Uint8Array()).kind).toBe('riff');
   });
 
-  it('points every facility slot at a real resource ID', () => {
+  it('points every facility sound at a real slot and a buildable facility', () => {
     // The slots are 0x40 apart, and a sound shares its facility's ID. If one
     // of these drifts off the stride it is a typo, not a discovery.
-    for (const [key, id] of Object.entries(SOUND_SLOTS)) {
-      expect((id - 0x84a8) % 0x40, `${key} at ${id.toString(16)}`).toBe(0);
-    }
-    // Every slot names a facility the game can actually build.
-    for (const key of Object.keys(SOUND_SLOTS)) {
+    for (const [key, id] of Object.entries(FACILITY_SOUNDS)) {
+      expect((id - SLOT_BASE) % SLOT_STRIDE, `${key} at ${id.toString(16)}`).toBe(0);
+      // And it names something the player can actually build. The escalator was
+      // in here once on the strength of its art: a sprite, not a facility, so
+      // its sound could never have been asked for.
       expect(FACILITIES.map((item) => item.id)).toContain(key);
     }
+  });
+
+  it('keeps the two sound tables apart', () => {
+    // Eleven sounds sit on the 0x40 facility slots; forty-seven sit in banks
+    // whose bases are a thousand apart. Two tables, two strides — one that
+    // reads as a compiler's doing and one that reads as a person numbering
+    // things by hand.
+    for (const [index, base] of SOUND_BANKS.entries()) {
+      if (index === 0) continue;
+      const previous = SOUND_BANKS[index - 1] ?? 0;
+      expect((base - previous) % 1000, base.toString(16)).toBe(0);
+      expect(base % 1000).toBe(768);
+    }
+
+    // A facility sound resolves to its slot, not to a bank.
+    expect(soundGroup(0x8568)).toEqual({ slot: 3, offset: 0 });
+    expect(soundGroup(0x85a8)).toEqual({ slot: 4, offset: 0 });
+    // 0x88e8 is slot 17: the lift machinery, which is the one event sound the
+    // arithmetic identifies without anyone listening to it.
+    expect(soundGroup(EVENT_SOUNDS.lift ?? 0)).toEqual({ slot: 17, offset: 0 });
+    // A slot's second sound is one past the boundary, not a slot of its own.
+    expect(soundGroup(0x8629)).toEqual({ slot: 6, offset: 1 });
+    // Anything from the first bank up belongs to a bank.
+    expect(soundGroup(0x9388)).toEqual({ bank: 0x9388 });
+    expect(soundGroup(0xa337)).toEqual({ bank: 0xa328 });
+    expect(soundGroup(0xce20)).toEqual({ bank: 0xce20 });
   });
 });

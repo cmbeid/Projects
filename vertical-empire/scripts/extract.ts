@@ -28,12 +28,14 @@ import {
   TYPE_CELLS,
   TYPE_PALETTE,
   TYPE_SOUND,
-  SOUND_SLOTS,
+  FACILITY_SOUNDS,
+  soundGroup,
   extract,
 } from '../src/assets/slice.js';
 import { encodePNG } from './png.js';
 import { ASCII_LIMIT, analyse, ascii, candidates, parseArgs, profile } from './frames.js';
 import { describeSound, sniffSound } from '../src/assets/sound.js';
+import { soundsPage, type SoundRow } from './sounds-page.js';
 import { REPEATS_BELOW, bestPeriod, holding, periods } from '../src/assets/frames.js';
 import { GLYPH_HEIGHT, drawText } from './label.js';
 import { darkestIndex } from '../src/assets/palette.js';
@@ -104,19 +106,21 @@ function grid(width: number, height: number): string {
 }
 
 /**
- * Every sound in the file, with the facility slot it belongs to.
+ * Every sound in the file, grouped by the table it belongs to.
  *
- * The slot table does the identification here, which is the whole point of
- * having found it: a sound at 0x8568 is the restaurant's because 0x8568 is
- * where the restaurant lives. No listening required, and no measuring — the
- * only thing worth checking about a sound resource is whether the browser can
- * decode it, which is what the format column says.
+ * There are two tables, which is the whole point of this listing. Eleven sounds
+ * sit on the 0x40 facility slots and identify themselves by arithmetic: a sound
+ * at 0x8568 is the restaurant's because 0x8568 is where the restaurant is. The
+ * other forty-seven sit in banks a thousand apart and identify themselves not at
+ * all — no amount of staring at IDs will say which is a lift chime and which is
+ * an alarm.
  *
- * Sounds outside any known slot are listed too, under a blank name. Those are
- * the ones worth chasing: the file's alarms, the lift chime, whatever plays
- * when a star is earned.
+ * So with `--all` this also writes every sound out as a `.wav` and builds a page
+ * for listening to them, because the only instrument for the second table is an
+ * ear and the job is to put as little as possible between hearing a sound and
+ * having written down what it was.
  */
-function listSounds(resources: ResourceTable): void {
+async function listSounds(resources: ResourceTable, dump: boolean): Promise<void> {
   const byId = resources.get(TYPE_SOUND);
   if (!byId || byId.size === 0) {
     console.log('\nNo sound resources in this file.');
@@ -124,29 +128,58 @@ function listSounds(resources: ResourceTable): void {
   }
 
   const slotNames = new Map<number, string>();
-  for (const [key, id] of Object.entries(SOUND_SLOTS)) slotNames.set(id, key);
+  for (const [key, id] of Object.entries(FACILITY_SOUNDS)) slotNames.set(id, key);
 
   const ids = [...byId.keys()].sort((a, b) => a - b);
+  const rows: SoundRow[] = [];
   let playable = 0;
+
   console.log(`\n${ids.length} sound${ids.length === 1 ? '' : 's'}:\n`);
   for (const id of ids) {
     const data = byId.get(id);
     if (!data) continue;
     const format = sniffSound(data);
     if (format.kind === 'riff') playable += 1;
-    const name = slotNames.get(id) ?? '';
-    console.log(`  ${hex(id)}  ${name.padEnd(14)} ${describeSound(format)}`);
+
+    const group = soundGroup(id);
+    // A facility name where we have one; otherwise the slot number, which is
+    // still an identification — slot 17 is the machinery whatever we call it.
+    const where =
+      slotNames.get(id) ??
+      (group.slot !== undefined ? `slot ${group.slot}${group.offset ? `+${group.offset}` : ''}` : '');
+    console.log(`  ${hex(id)}  ${where.padEnd(14)} ${describeSound(format)}`);
+
+    const row: SoundRow = { id, label: hex(id), file: `${hex(id)}.wav`, bytes: data.byteLength };
+    if (format.seconds !== undefined) row.seconds = format.seconds;
+    if (where) row.slot = where;
+    if (group.bank !== undefined) row.bank = hex(group.bank);
+    rows.push(row);
   }
 
-  const named = ids.filter((id) => slotNames.has(id)).length;
+  const banked = rows.filter((row) => row.bank !== undefined).length;
   console.log(
-    `\n  ${playable} of ${ids.length} are RIFF/WAVE and play as-is;` +
-      ` ${named} sit in a known facility slot.`,
+    `\n  ${playable} of ${ids.length} are RIFF/WAVE and play as-is.` +
+      ` ${ids.length - banked} sit on facility slots; ${banked} are in the thousand-apart banks.`,
   );
   const missing = [...slotNames.entries()].filter(([id]) => !byId.has(id));
   if (missing.length > 0) {
     console.log(`  Slots with art but no sound: ${missing.map(([, name]) => name).join(', ')}`);
   }
+
+  if (!dump) {
+    console.log('\n  Add --all to write them out and build a page for labelling them.');
+    return;
+  }
+
+  const into = join(OUT, 'sounds');
+  await mkdir(into, { recursive: true });
+  for (const row of rows) {
+    const data = byId.get(row.id);
+    if (data) await writeFile(join(into, row.file), data);
+  }
+  await writeFile(join(into, 'index.html'), soundsPage(rows));
+  console.log(`\n  Wrote ${rows.length} .wav files to ${into}/`);
+  console.log(`  Open ${join(into, 'index.html')} to play them and write down what they are.`);
 }
 
 function inventory(resources: ResourceTable): void {
@@ -613,7 +646,7 @@ async function main(): Promise<void> {
     console.error('\n  --all      also dump every bitmap and cell strip, named by resource ID');
     console.error('  --frames   report how the named sheets are cut into frames');
     console.error('  --window   with --frames or --contact, look at just these columns, e.g. 0,320');
-    console.error('  --sounds   list every sound, its format, and the facility slot it sits in');
+    console.error('  --sounds   list every sound and its format; with --all, write them out to label');
     console.error('  --contact  write one wrapped, labelled, scaled-up PNG of the named sheets');
     console.error('  --sweep    thumbnail every bitmap and cell strip onto one labelled page');
     console.error('  --period   measure how the named sheets divide into equal frames');
@@ -629,7 +662,7 @@ async function main(): Promise<void> {
   // Frame analysis is a focused question; printing the whole inventory over the
   // top of it just buries the answer.
   if (listing) {
-    listSounds(resources);
+    await listSounds(resources, all);
     return;
   }
 

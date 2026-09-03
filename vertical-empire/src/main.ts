@@ -33,7 +33,8 @@ import {
 import { demoTower } from './world/tower.js';
 import { buildShell, type Tool } from './ui/shell.js';
 import { createBank } from './audio/bank.js';
-import { SOUND_SLOTS } from './assets/slice.js';
+import { EVENT_SOUNDS, FACILITY_SOUNDS } from './assets/slice.js';
+import { carAtFloor } from './world/lift.js';
 import { attachGestures } from './ui/input.js';
 
 /** One in-game day per this many real milliseconds. Fast enough to see. */
@@ -138,12 +139,54 @@ function frame(now: number): void {
 
   shell.setClock(`${clockText(hour)} · ${camera.scale}×`);
   paintRating(hour);
+  listen(now);
   if (statusUntil !== 0 && now > statusUntil) {
     shell.setStatus('');
     statusUntil = 0;
   }
 
   requestAnimationFrame(frame);
+}
+
+/**
+ * What the tower has done since the last frame, in sound.
+ *
+ * Kept out of `paintRating` and out of the scene on purpose. Drawing is a
+ * function of the current moment and can be repeated harmlessly; a sound is an
+ * event and must fire exactly once, so it needs its own memory of what was true
+ * last frame. Folding the two together is how a chime ends up playing sixty
+ * times a second.
+ */
+let heardStars = -1;
+/** The floor each lift bank was last seen at, by placement index. */
+const heardFloors = new Map<number, number>();
+
+function listen(now: number): void {
+  const stars = tower.stars;
+  // Not on the first frame: -1 is "we have not looked yet", and a tower that
+  // opens with one star should not congratulate you for it.
+  if (heardStars >= 0 && stars > heardStars) bank.play(EVENT_SOUNDS.star);
+  heardStars = stars;
+
+  const left = camera.x / SEGMENT_WIDTH;
+  const right = (camera.x + camera.viewWidth) / SEGMENT_WIDTH;
+
+  tower.placements.forEach((placement, index) => {
+    if (placement.id !== 'elevator') return;
+
+    const floor = carAtFloor(placement, index, now);
+    const previous = heardFloors.get(index);
+    if (floor !== undefined) heardFloors.set(index, floor);
+    else heardFloors.delete(index);
+    if (floor === undefined || floor === previous) return;
+
+    // Only what you can see. A lot four screens wide could hold a dozen banks,
+    // and hearing every one of them arrive is a rattle rather than a tower.
+    const width = facility(placement.id).width;
+    if (placement.segment > right || placement.segment + width < left) return;
+
+    bank.playExclusive(EVENT_SOUNDS.lift);
+  });
 }
 
 // --- the rating badge -------------------------------------------------------
@@ -225,6 +268,7 @@ gestures.onTap((cssX, cssY) => {
 
   if (tool.kind === 'bulldoze') {
     const removed = tower.removeAt(segment, level);
+    if (removed) bank.play(EVENT_SOUNDS.bulldoze);
     flash(removed ? `Cleared ${facility(removed.id).label}` : 'Nothing there', removed ? 'plain' : 'warn');
     return;
   }
@@ -251,14 +295,18 @@ gestures.onTap((cssX, cssY) => {
   // the facility's bitmaps — that is what the 0x40 slot table buys — and a
   // facility with no slot, or a copy of the game missing that sound, simply
   // makes no noise.
-  bank.play(SOUND_SLOTS[tool.id]);
+  // Its own sound if the file has one at its slot — only four facilities do —
+  // and the shared build sound otherwise. Both may be absent, which is silence.
+  bank.play(FACILITY_SOUNDS[tool.id] ?? EVENT_SOUNDS.place);
   flash(`${kind.label} · floor ${floorLabel(level)}`);
 });
 
 gestures.onLongPress((cssX, cssY) => {
   const { segment, level } = cellAt(cssX, cssY);
   const removed = tower.removeAt(segment, level);
-  if (removed) flash(`Cleared ${facility(removed.id).label}`);
+  if (!removed) return;
+  bank.play(EVENT_SOUNDS.bulldoze);
+  flash(`Cleared ${facility(removed.id).label}`);
 });
 
 shell.onToolChange((next) => {
