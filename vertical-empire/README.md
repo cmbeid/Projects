@@ -291,7 +291,10 @@ rather than asking you to eyeball a PNG. It takes the top-left pixel as the
 background, then reports the runs of columns that hold ink — the gutters between
 them give the frame width and count — and the range of rows that hold any, which
 gives the figure's real height inside the frame. Sheets narrower than 160px
-print as ASCII; wider ones print a per-column ink profile.
+print as ASCII; wider ones print a per-column ink profile — and say so, with
+the two `--window` ranges that would print, because a profile read as the first
+row of a picture looks exactly like a dump that got cut off, and the obvious
+next move is then to re-run the command that just answered you.
 
 `--window 0,160` looks at just those columns, which is how you read a sheet too
 wide to print — the 1120px lobby strip, say.

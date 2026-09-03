@@ -237,7 +237,17 @@ function frames(
     if (image.width <= ASCII_LIMIT) {
       for (const line of ascii(image, image.palette ?? palette, report.background)) console.log(`  |${line}`);
     } else {
+      // One line per column, not a picture — and it has to say so. Read as the
+      // top row of an ASCII dump that got cut off, a profile of a digit sheet
+      // looks exactly like a sheet whose glyphs did not print, and the obvious
+      // next move is to re-run the command that just answered. Naming the
+      // windows that would print turns a dead end into the next step.
       console.log(`  ${profile(image, report.background)}`);
+      const half = Math.ceil(image.width / 2);
+      console.log(
+        `  (${image.width}px is too wide to draw; that line is one character per column.` +
+          ` For the pixels: --window 0,${half} then --window ${half},${image.width})`,
+      );
     }
   }
 }
