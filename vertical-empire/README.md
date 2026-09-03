@@ -59,6 +59,30 @@ facility is that facility in four states. A compressed `SIMTOWER.EX_` has to be 
 (`expand.exe SIMTOWER.EX_ SIMTOWER.EXE`, or `msexpand`); the loader reads only
 the uncompressed form, and says so rather than misparsing it.
 
+### The art is a table, and the table has a stride
+
+Every facility's bitmaps sit in a slot, and the slots are exactly **0x40
+apart**:
+
+| | | | |
+| --- | --- | --- | --- |
+| `0x84a8` hotel | `0x84e8` double | `0x8528` suite | `0x8568` restaurant |
+| `0x85a8` office | `0x8628` condo | `0x8668` shop | `0x86e8` fast food |
+| `0x8768` clinic | `0x87e8` lift shaft | `0x88a8` theatre | `0x88e8` machinery |
+| `0x8928` crowds | `0x8968` stairs | `0x89e8` city | `0x8aa8` escalator |
+| `0x8ca8` cinema | `0x8ee8` parking | | |
+
+The `0xff0a` sound resources use the same IDs — there is a restaurant sound at
+`0x8568` and an office one at `0x85a8` — so a slot is a *thing in the game*,
+not just a picture.
+
+This is the most useful single fact about the file and it was found late. It
+says which unidentified IDs are facility slots worth chasing and which are
+incidental art, and it turns "what is this bitmap" into "which slot is this,
+and what is missing from the sequence". Reason about the remaining gaps this
+way rather than by eyeballing thumbnails, which is how the ground floor came to
+be a parade of shopfronts.
+
 ### What a real copy turned out to hold
 
 `src/assets/slice.ts` has since been corrected against an actual `SIMTOWER.EXE`.
@@ -194,10 +218,13 @@ contact sheet cannot make — a strip of mostly-plain cells with a figure every
 dozen looks the same whether the plain part is marble or nothing at all — and
 one look at it in place made it in a single round trip.
 
-So `0x8fea` is the last candidate among the cells, and after that the lobby has
-to be an ordinary bitmap. The wide room-height sheets are where to look:
-`0x8868` (96 segments), `0x8b28` (72), `0x8c68` (70). Until then the ground
-floor draws as a plain band, which is honest rather than wrong.
+`0x8fea` was the last candidate among the cells and it is stairs with riders —
+grey treads, a red handrail, figures standing on them. So **all eleven cell
+strips are accounted for and none is the lobby**: nine backdrop panoramas and
+two people sheets. It has to be an ordinary bitmap, and the wide room-height
+sheets are where to look: `0x8868` (96 segments), `0x8b28` (72), `0x8c68` (70).
+Until then the ground floor draws as a plain band, which is honest rather than
+wrong.
 
 ### The rest of the diagnostics
 
