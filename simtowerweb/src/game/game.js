@@ -96,6 +96,10 @@ export class Game {
     // ISSUE-039 drag-to-place batching: while an item-tool button is held,
     // queued cells are preview-only; construction happens on release.
     this.batchDrag = null; // { x0, y0, cells:[{x,y,valid,reason}], affordableTotal, firstBlockReason }
+    // ISSUE-040: a touch press that would commit something irreversible is
+    // held here until pointerup, so a second finger can turn it into a pinch
+    // instead. { kind: "construct" | "bulldoze" }. Mouse presses never set it.
+    this.pendingPress = null;
     this._batchCommitting = false;
     // ISSUE-040: touch has no Shift key to hold during a batch drag, so a
     // long-press at the drag's start (input.js) arms grid mode for that one
@@ -656,7 +660,7 @@ export class Game {
   // ------------------------------------------------------- pointer input
   // Port of Game::handleEvent's MouseButtonPressed/Move/Release branches.
   // The UI layer calls these with normalized input; worldPos is in world px (y up).
-  handlePointerDown({ worldPos, overUI }) {
+  handlePointerDown({ worldPos, overUI, deferCommit = false }) {
     this.mouseWorld = worldPos;
     this.updateToolPosition();
     if (overUI) return false;
@@ -667,26 +671,25 @@ export class Game {
     if (this.selectedTool.startsWith("item-") && this.toolPrototype) {
       // ISSUE-039: batch-capable tools start a preview-only drag and build on
       // pointerup; special-cased tools keep the classic instant click.
-      if (!this.startBatchDrag()) this.clickConstruct();
+      if (!this.startBatchDrag()) {
+        // ...except on touch, where "instant" means the first finger of a
+        // pinch builds before the second one lands. Batch tools were already
+        // safe here because their preview is cancelled when the pinch starts;
+        // this gives the single-click tools the same deferral.
+        if (deferCommit) this.pendingPress = { kind: "construct" };
+        else this.clickConstruct();
+      }
       return true;
     }
 
     if (this.selectedTool === "bulldozer") {
-      // Port of Game.cpp:644-657 — demolish only the topmost item under the
-      // cursor (itemBelowCursor is the last-drawn, i.e. closest-to-viewer item),
-      // never the floor/lobby/metro behind it. No drag-select, no refund.
-      const item = this.itemBelowCursor;
-      if (!item) return false;
-      const icon = item.prototype.icon;
-      if (icon === ICON.LOBBY || icon === ICON.FLOOR || icon === ICON.METRO) {
-        this.playOnce("simtower/construction/impossible");
-        this.ui.showMessage("Cannot bulldoze " + item.prototype.name);
-        return true;
-      }
-      const canHaulPeople = item.canHaulPeople();
-      this.removeItem(item);
-      if (canHaulPeople) this.updateRoutes();
-      this.playOnce("simtower/bulldozer");
+      // Nothing under the cursor is not a bulldoze at all — report that now so
+      // the gesture layer can treat the press as a pan rather than a tool.
+      if (!this.itemBelowCursor) return false;
+      // Demolition is instant and there is no undo anywhere, which makes it
+      // the worst thing to fire off the first finger of a pinch.
+      if (deferCommit) this.pendingPress = { kind: "bulldoze" };
+      else this.bulldozeUnderCursor();
       return true;
     }
 
@@ -780,7 +783,44 @@ export class Game {
     }
   }
 
+  // Port of Game.cpp:644-657 — demolish only the topmost item under the
+  // cursor (itemBelowCursor is the last-drawn, i.e. closest-to-viewer item),
+  // never the floor/lobby/metro behind it. No drag-select, no refund.
+  bulldozeUnderCursor() {
+    const item = this.itemBelowCursor;
+    if (!item) return false;
+    const icon = item.prototype.icon;
+    if (icon === ICON.LOBBY || icon === ICON.FLOOR || icon === ICON.METRO) {
+      this.playOnce("simtower/construction/impossible");
+      this.ui.showMessage("Cannot bulldoze " + item.prototype.name);
+      return true;
+    }
+    const canHaulPeople = item.canHaulPeople();
+    this.removeItem(item);
+    if (canHaulPeople) this.updateRoutes();
+    this.playOnce("simtower/bulldozer");
+    return true;
+  }
+
+  // Drops a deferred touch press without acting on it — a second finger
+  // landed, or the gesture was cancelled.
+  cancelPendingPress() {
+    this.pendingPress = null;
+  }
+
   handlePointerUp() {
+    const pending = this.pendingPress;
+    this.pendingPress = null;
+    if (pending) {
+      // Builds where the finger ended, not where it started. A "tool" gesture
+      // keeps feeding pointermove into updateToolPosition, so this is exactly
+      // the cell the placement ghost has been drawing under the finger — which
+      // on touch, where the finger hides the target, is the more predictable
+      // of the two.
+      if (pending.kind === "construct") this.clickConstruct();
+      else if (pending.kind === "bulldoze") this.bulldozeUnderCursor();
+      return;
+    }
     if (this.batchDrag) {
       this.finishBatchDrag();
       return;
@@ -1415,6 +1455,7 @@ export class Game {
     this.draggingElevatorStart = 0;
     this.draggingElevatorLower = false;
     this.batchDrag = null;
+    this.pendingPress = null;
     this.toolPrototype = null;
     this.soundPlayTimes.clear();
     this.vipSystem.reset();

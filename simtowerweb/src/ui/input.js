@@ -51,7 +51,9 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
 
   // Press on the canvas: shared by every pointer type. Returns true when the
   // game consumed the press (a tool acted / a batch preview armed).
-  const canvasPress = (e) => {
+  // deferCommit holds back anything irreversible until pointerup — see the
+  // touch branch of onPointerDown.
+  const canvasPress = (e, deferCommit = false) => {
     syncKeys(e);
     if (e.button !== undefined && e.button !== 0) return false;
     const { x, y } = relative(e);
@@ -63,7 +65,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
       return true;
     }
     const worldPos = renderer.screenToWorld(x, y);
-    return game.handlePointerDown({ worldPos, overUI: false }) === true;
+    return game.handlePointerDown({ worldPos, overUI: false, deferCommit }) === true;
   };
 
   // ---- gesture state ---------------------------------------------------------
@@ -100,9 +102,10 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
       canvasH: canvas.clientHeight || renderer.windowH || 768,
       anchorWorld: renderer.screenToWorld(m.mid.x, m.mid.y),
     };
-    // Nothing built yet at this point, but a batch preview or an in-progress
-    // drag must never survive a second finger landing.
+    // A batch preview, or a press the first finger deferred, must never
+    // survive a second finger landing.
     game.cancelBatchDrag?.();
+    game.cancelPendingPress?.();
     scrollbarDrag = null;
     mode = "pinch";
   };
@@ -216,7 +219,12 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
         downPt = pos;
         lastPt = null;
         panned = false;
-        const acted = canvasPress(e);
+        // deferCommit: the first finger of a pinch is indistinguishable from
+        // a tap until the second one lands, so a press that would build or
+        // demolish is held until pointerup rather than fired here. Panning,
+        // batch previews and the elevator drag still start immediately —
+        // they are either reversible or cancelled by enterPinch.
+        const acted = canvasPress(e, true);
         mode = acted ? "tool" : "pan";
         preventDefault(e); // block scroll / double-tap-zoom on the canvas
 
@@ -255,6 +263,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     if (cancelled) {
       // Escape-like semantics: never commit on cancellation.
       if (game.batchDrag) game.cancelBatchDrag();
+      game.cancelPendingPress?.();
       scrollbarDrag = null;
       game.handlePointerUp();
     } else {
@@ -432,6 +441,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     clearGesture();
     clearGridHoldTimer();
     game.cancelBatchDrag?.(); // never commit a drag lost to focus (ISSUE-039)
+    game.cancelPendingPress?.();
     game.handlePointerUp();
   };
 
