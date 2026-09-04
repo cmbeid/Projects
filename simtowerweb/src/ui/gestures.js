@@ -1,0 +1,48 @@
+// Touch gesture math (UI agent) — pure helpers behind the pointer-event
+// gesture layer in input.js (ISSUE-040). Headless-safe: no DOM access.
+//
+// Screen px (y down) map to world px (y up) at a 1:zoom ratio — see
+// renderer.computeView + screenToWorld. Keeping the content glued to a
+// dragging finger therefore means:
+//   poi.x += dxScreen * zoom ; poi.y -= dyScreen * zoom
+// Both signs follow from inverting screenToWorld for a fixed zoom.
+
+// Drift tolerated (CSS px) before a tap becomes a drag/pan.
+export const TAP_SLOP_PX = 12;
+
+export function panWorldOffset(dxPx, dyPx, zoom) {
+  return { dx: dxPx * zoom, dy: -dyPx * zoom };
+}
+
+export function pinchMetrics(a, b) {
+  return {
+    dist: Math.hypot(b.x - a.x, b.y - a.y),
+    mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+  };
+}
+
+function clamp01(v) {
+  return Math.max(0, Math.min(1, v));
+}
+
+// Camera state that pins state.anchorWorld under curMid with zoom scaled by
+// curDist/state.dist0 and clamped. state: { zoom0, dist0, canvasW, canvasH,
+// anchorWorld } (anchorWorld is renderer.screenToWorld of the pinch start
+// midpoint); all positions are CSS px.
+export function pinchTarget(state, curDist, curMid, minZoom = 1 / 64, maxZoom = 64) {
+  const ratio = state.dist0 > 0 ? curDist / state.dist0 : 1;
+  let zoom = state.zoom0 * ratio;
+  if (!Number.isFinite(zoom)) zoom = state.zoom0;
+  zoom = Math.max(minZoom, Math.min(maxZoom, zoom));
+
+  const fx = clamp01(curMid.x / state.canvasW);
+  const fy = clamp01(curMid.y / state.canvasH);
+  return {
+    zoom,
+    // Inverse of screenToWorld at fixed zoom: view.x = poi.x - halfW etc.
+    poi: {
+      x: state.anchorWorld.x - (fx - 0.5) * zoom * state.canvasW,
+      y: state.anchorWorld.y + (fy - 0.5) * zoom * state.canvasH,
+    },
+  };
+}

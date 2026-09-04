@@ -1,0 +1,1501 @@
+/* OpenSkyWeb game UI (UI agent) — beveled pixel-art panels over the canvas.
+   Imported by src/main.js, so the build emits it as a hashed stylesheet. */
+
+:root {
+  /* Live size of #menubar, kept in sync by a ResizeObserver in menubar.js.
+     The fallback (single row, no touch mod-chip row) covers the brief
+     window before JS runs. */
+  --menubar-h: 22px;
+  --menubar-w: 60px;
+}
+
+#ui {
+  font-family: "Ubuntu Mono", "Play", "Courier New", monospace;
+  color: #e8ecf4;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* ---- shared window chrome ------------------------------------------------ */
+
+.oswin {
+  position: absolute;
+  background: rgba(24, 28, 36, 0.94);
+  border: 1px solid #5a6478;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.oswin-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 18px;
+  padding: 0 4px 0 6px;
+  background: #2d3240;
+  border-bottom: 1px solid #14161c;
+  color: #cfe3ff;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+.oswin-title .oswin-x {
+  width: 14px;
+  height: 14px;
+  line-height: 12px;
+  text-align: center;
+  background: #c6c6c6;
+  color: #10131a;
+  border: 1px solid;
+  border-color: #fff #6f6f6f #6f6f6f #fff;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.oswin-title .oswin-x:active {
+  border-color: #6f6f6f #fff #fff #6f6f6f;
+}
+
+.oswin-body { padding: 6px; }
+
+.osbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  background: #c6c6c6;
+  color: #10131a;
+  border: 1px solid;
+  border-color: #fff #6f6f6f #6f6f6f #fff;
+  box-shadow: 1px 1px 0 #000;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.osbtn:hover { background: #d8d8d0; }
+.osbtn:active,
+.osbtn.checked {
+  border-color: #6f6f6f #fff #fff #6f6f6f;
+  background: #b0b0a8;
+  box-shadow: none;
+}
+
+.osbtn:disabled {
+  color: #7c7c74;
+  background: #adada6;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ---- menubar -------------------------------------------------------------- */
+
+#menubar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: #242936;
+  border-bottom: 1px solid #4a566c;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  gap: 2px;
+  /* Must always sit above every floating .oswin panel, including ones the
+     player has tapped/dragged: draggable.js's bringToFront() hands out
+     incrementing z-indexes starting at 100 on every pointerdown on a
+     draggable window (toolbox, time strip, dialogs...), so any panel the
+     player has so much as tapped once outranks a merely-static 95 and can
+     paint over an open dropdown. Pick a ceiling far above anything a real
+     session will reach (ISSUE-040 field feedback: menu unreachable behind
+     the HUD after using the toolbox once). */
+  z-index: 500;
+  user-select: none;
+}
+
+/* ISSUE-040: phone-portrait replacement for the per-title dropdown row —
+   see .menubar-menu below for the desktop/tablet version and the
+   max-width:480px block for the swap. Hidden by default (desktop/tablet
+   keep the classic dropdown menu; only phone width gets the hamburger). */
+.menubar-hamburger {
+  display: none;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #dce4f0;
+  cursor: pointer;
+  flex: none;
+}
+
+.menubar-hamburger:hover,
+.menubar-hamburger:active {
+  background: #3c4456;
+}
+
+.menubar-menu {
+  position: relative;
+}
+
+.menubar-item-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #dce4f0;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+  user-select: none;
+}
+
+.menubar-item-btn:hover,
+.menubar-item-btn.active {
+  background: #3c4456;
+  border-color: #5a667f;
+  color: #ffffff;
+}
+
+.menubar-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 1px;
+  min-width: 200px;
+  background: rgba(26, 30, 40, 0.98);
+  border: 1px solid #5a667f;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 3px 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 105;
+}
+
+.menubar-dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  color: #dce4f0;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.menubar-dropdown-item:hover {
+  background: #007acc;
+  color: #ffffff;
+}
+
+.menubar-item-shortcut {
+  font-size: 10px;
+  color: #8fa2bb;
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+.menubar-dropdown-item:hover .menubar-item-shortcut {
+  color: #d0e8ff;
+}
+
+.menubar-separator {
+  height: 1px;
+  background: #3a4254;
+  margin: 3px 4px;
+}
+
+/* ---- toolbox -------------------------------------------------------------- */
+
+#toolbox {
+  left: 4px;
+  top: 26px;
+  width: 136px;
+  padding: 4px;
+  user-select: none;
+  touch-action: none;
+}
+
+#toolbox .tb-tools {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+#toolbox .tb-toolbtn {
+  width: 26px;
+  height: 26px;
+  padding: 1px;
+  background: #c6c6c6;
+  border: 1px solid;
+  border-color: #fff #6f6f6f #6f6f6f #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#toolbox .tb-toolbtn.checked {
+  border-color: #6f6f6f #fff #fff #6f6f6f;
+  background: #9d9d96;
+}
+
+#toolbox .tb-toolbtn canvas { image-rendering: pixelated; display: block; }
+
+#toolbox .tb-grid-wrap {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+#toolbox .tb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 38px);
+  gap: 3px;
+  justify-content: center;
+}
+
+#toolbox .tb-item {
+  position: relative;
+  background: #3c4250;
+  border: 1px solid #2a2f3a;
+  padding: 2px 1px 1px;
+  text-align: center;
+  cursor: pointer;
+  width: 38px;
+  box-sizing: border-box;
+}
+
+#toolbox .tb-item:hover,
+#toolbox .tb-item.hover {
+  background: #495064;
+}
+
+#toolbox .tb-item.checked {
+  background: #14395e;
+  border-color: #63c8ff;
+  box-shadow: inset 0 0 0 1px #63c8ff;
+}
+
+#toolbox .tb-item .tb-icon {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+#toolbox .tb-item .tb-price {
+  display: block;
+  font-size: 9px;
+  color: #ffd66f;
+  white-space: nowrap;
+  line-height: 1.1;
+  margin-top: 1px;
+}
+
+/* Press-and-hold popup overlay */
+#toolbox .tb-overlay {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  gap: 3px;
+  background: rgba(18, 22, 30, 0.96);
+  border: 1px solid #63c8ff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.75), 0 0 8px rgba(99, 200, 255, 0.4);
+  padding: 3px;
+  border-radius: 2px;
+  pointer-events: auto;
+}
+
+#toolbox .tb-overlay-item {
+  cursor: pointer;
+}
+
+/* Synthetic lobby-height entries in the overlay (toolbox.js) — a text
+   badge instead of a sprite icon, since there's no separate prototype/art
+   for a 2- or 3-floor lobby, just a taller placement of the same one. */
+#toolbox .tb-height-icon {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: #cfe3ff;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+}
+
+#toolbox .tb-speedrow {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+#toolbox .tb-speedrow .osbtn { min-width: 28px; padding: 0 3px; }
+
+/* ---- time window ---------------------------------------------------------- */
+
+#timewindow {
+  left: 148px;
+  top: 26px;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 4px 8px;
+  background: linear-gradient(rgba(24, 30, 46, 0.96), rgba(12, 15, 24, 0.96));
+  border: 1px solid #4a5b70;
+  border-top: 2px solid #7ed1ff;
+  user-select: none;
+}
+
+#timewindow .tw-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 6px;
+  border-right: 1px solid #2c3444;
+}
+
+#timewindow .tw-cell:last-child { border-right: none; }
+
+#timewindow .tw-label {
+  color: #83d2ff;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#timewindow .tw-watchwrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#timewindow .tw-clock {
+  font-size: 15px;
+  color: #f4f8fc;
+}
+
+#timewindow .tw-stars {
+  color: #ffda46;
+  font-size: 14px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+#timewindow .tw-date {
+  color: #e5eef6;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#timewindow .tw-date.weekend { color: #ff9b9b; }
+
+#timewindow .tw-value {
+  color: #f4f8fc;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#timewindow .tw-stats {
+  color: #aac3d7;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+#timewindow .tw-speedrow { display: flex; gap: 3px; align-items: center; }
+
+#timewindow .tw-speedrow .osbtn { min-width: 28px; }
+
+#timewindow .tw-status {
+  font-size: 10px;
+  color: #0e1622;
+  background: #8fd2ff;
+  padding: 1px 6px;
+  align-self: center;
+  white-space: nowrap;
+}
+
+#timewindow .tw-msgcell { min-width: 200px; }
+
+#timewindow .tw-tooltip {
+  color: #2a3038;
+  background: #e8f0f8;
+  font-size: 11px;
+  padding: 0 4px;
+  min-height: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+#timewindow .tw-message {
+  color: #d96060;
+  background: #e8f0f8;
+  font-size: 11px;
+  padding: 0 4px;
+  min-height: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+  transition: opacity 0.5s linear;
+}
+
+/* ---- inspector ------------------------------------------------------------ */
+
+#inspector { left: 220px; top: 60px; width: 236px; }
+
+#inspector .insp-content {
+  font-size: 11px;
+  white-space: pre-wrap;
+  color: #dce2ea;
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+#inspector .insp-evalbar {
+  height: 8px;
+  background: #10131a;
+  border: 1px solid #2a2f3a;
+  margin: 4px 0;
+}
+
+#inspector .insp-evalbar > div { height: 100%; background: #63c8ff; }
+
+#inspector .insp-buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* ---- elevator dialog ------------------------------------------------------ */
+
+#elevatordlg { left: 240px; top: 60px; width: 220px; }
+
+#elevatordlg .elev-header {
+  font-size: 11px;
+  color: #dce2ea;
+  white-space: pre-wrap;
+  padding: 2px 0 4px;
+}
+
+#elevatordlg .elev-mode-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+#elevatordlg .elev-tab {
+  flex: 1;
+  font-size: 10px;
+  height: 20px;
+  padding: 0 2px;
+  background: #3a404d;
+  border-color: #555d6e #22262e #22262e #555d6e;
+}
+
+#elevatordlg .elev-tab.active {
+  background: #63c8ff;
+  color: #0d1622;
+  font-weight: bold;
+}
+
+#elevatordlg .elev-quick-btns {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+#elevatordlg .elev-quick {
+  flex: 1;
+  font-size: 9px;
+  height: 18px;
+  padding: 0 1px;
+}
+
+#elevatordlg .elev-floors {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+#elevatordlg .elev-floor {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 150px;
+  height: 18px;
+}
+
+#elevatordlg .elev-floor .on { color: #7ce29a; }
+#elevatordlg .elev-floor .off { color: #ff8f8f; }
+
+#elevatordlg .elev-cars-section {
+  background: #14171f;
+  border: 1px solid #2a303c;
+  padding: 4px;
+  margin-bottom: 6px;
+}
+
+#elevatordlg .elev-cars-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: #9cb1c9;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+#elevatordlg .elev-car-actions {
+  display: flex;
+  gap: 3px;
+}
+
+#elevatordlg .elev-car-actions .osbtn {
+  font-size: 9px;
+  height: 16px;
+  padding: 0 4px;
+}
+
+#elevatordlg .elev-cars-list {
+  max-height: 85px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#elevatordlg .elev-car-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #dce2ea;
+  gap: 4px;
+  background: #1e232e;
+  padding: 1px 3px;
+}
+
+#elevatordlg .elev-home-label {
+  font-size: 9px;
+  color: #8fa0b5;
+}
+
+#elevatordlg .elev-home-select {
+  font-size: 9px;
+  background: #11141a;
+  color: #e5eef6;
+  border: 1px solid #3c4456;
+  height: 16px;
+}
+
+#elevatordlg .elev-buttons { display: flex; gap: 6px; margin-top: 6px; }
+
+/* ---- map window ----------------------------------------------------------- */
+
+#mapwindow { right: 24px; top: 40px; }
+
+/* Never let the minimap swallow narrow viewports (ISSUE-040 feedback). */
+#mapwindow canvas {
+  max-width: min(46vw, 260px);
+  height: auto;
+}
+
+#mapwindow .map-mode-btn {
+  font-size: 9px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: auto;
+  margin-right: 4px;
+}
+
+#mapwindow .map-min-btn {
+  font-size: 9px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  margin-right: 4px;
+}
+
+#mapwindow canvas {
+  display: block;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+/* ---- finance window ------------------------------------------------------- */
+
+#finwindow { left: 2px; top: 280px; width: 262px; }
+
+#finwindow .fin-content {
+  font-size: 12px;
+  color: #dce2ea;
+  max-height: 356px;
+  overflow-y: auto;
+}
+
+#finwindow .fin-section {
+  margin: 9px 0 3px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #7f93ab;
+}
+
+#finwindow .fin-section:first-child { margin-top: 0; }
+
+#finwindow .fin-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* The label yields; the number never wraps or truncates. */
+#finwindow .fin-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#finwindow .fin-value {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+#finwindow .fin-value.neg { color: #ff9d9d; }
+
+#finwindow .fin-row.fin-total .fin-value {
+  font-weight: bold;
+  color: #ffd66f;
+}
+
+#finwindow .fin-sub {
+  padding: 1px 0 3px;
+  font-size: 10px;
+  color: #8fa2bb;
+}
+
+/* ---- level-up modal ------------------------------------------------------- */
+
+#levelup {
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  z-index: 50;
+}
+
+#levelup .lu-heading {
+  color: #ffe678;
+  font-size: 14px;
+  margin: 6px 4px;
+}
+
+#levelup .lu-unlocks {
+  color: #dce2ea;
+  font-size: 11px;
+  margin: 6px 4px 10px;
+  white-space: pre-wrap;
+}
+
+#levelup .lu-buttons { display: flex; justify-content: center; margin-bottom: 6px; }
+
+/* ---- main menu ------------------------------------------------------------ */
+
+#mainmenu {
+  position: absolute;
+  inset: 0;
+  background: #10141c center / cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#mainmenu .mm-panel {
+  width: 320px;
+  background: rgba(20, 25, 35, 0.92);
+  border: 2px solid #63c8ff;
+  box-shadow: 0 0 24px rgba(99, 200, 255, 0.35);
+  padding: 18px 20px;
+  text-align: center;
+}
+
+#mainmenu h1 {
+  color: #ffda46;
+  font-size: 20px;
+  margin: 0 0 2px;
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+#mainmenu .mm-sub { color: #8fd2ff; font-size: 11px; margin-bottom: 14px; }
+
+#mainmenu .mm-editions {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 12px;
+}
+
+#mainmenu .mm-edition {
+  min-height: 28px;
+  color: #cdd9e5;
+  background: #1b2735;
+  border: 1px solid #426781;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+#mainmenu .mm-edition.selected {
+  color: #fff0ae;
+  border-color: #ffda46;
+  background: #334357;
+}
+
+#mainmenu .mm-edition:disabled {
+  color: #697889;
+  border-color: #34404d;
+  background: #171d24;
+  cursor: not-allowed;
+}
+
+#mainmenu .mm-edition.mm-edition-locked:not(:disabled) {
+  color: #8fa3b8;
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+#mainmenu .mm-ownership-status {
+  min-height: 30px;
+  margin: 0 0 7px;
+  color: #9fb4c8;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+#mainmenu .mm-panel .osbtn {
+  display: block;
+  width: 100%;
+  margin: 6px 0;
+  height: 26px;
+  font-size: 12px;
+}
+
+#mainmenu .mm-panel .osbtn:disabled {
+  color: #687889;
+  border-color: #3b4651;
+  background: #171c22;
+  cursor: not-allowed;
+}
+
+#mainmenu .mm-forget {
+  display: block;
+  margin: 0 auto 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #7d8ea3;
+  font: inherit;
+  font-size: 10px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#mainmenu .mm-forget:hover { color: #ffb0b0; }
+#mainmenu .mm-forget:disabled { color: #4a5563; cursor: wait; }
+#mainmenu .mm-forget[hidden] { display: none; }
+
+#mainmenu .mm-hint {
+  color: #7d8ea3;
+  font-size: 10px;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+/* ---- error overlay -------------------------------------------------------- */
+
+#erroverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  background: rgba(40, 0, 0, 0.85);
+  color: #ffb0b0;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 16px;
+  white-space: pre-wrap;
+  overflow: auto;
+  display: none;
+}
+
+/* ---- save / export dialog ------------------------------------------------ */
+
+#savedialog { left: 300px; top: 80px; width: 320px; z-index: 60; }
+
+#savedialog .save-filename { font-family: inherit; }
+
+/* ---- options dialog ------------------------------------------------------- */
+
+#optionsdialog { left: 260px; top: 80px; width: 280px; z-index: 110; }
+
+/* dirty-state asterisk next to the date (ISSUE-030) */
+#timewindow .tw-dirty {
+  color: #ffda46;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 3px;
+  line-height: 1;
+}
+
+/* scrollbars inside windows */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #1a1e28; }
+::-webkit-scrollbar-thumb { background: #4a5266; border: 1px solid #2a2f3a; }
+
+/* ==========================================================================
+   ISSUE-040 — mobile-friendly touch controls & responsive layout
+   ========================================================================== */
+
+/* ---- mobile page hygiene --------------------------------------------------- */
+
+html, body {
+  overscroll-behavior: none;
+}
+
+#app, #game {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  /* Belt-and-suspenders alongside the viewport's user-scalable=no: some
+     browsers (notably iOS Safari) still need touch-action:none on the
+     element itself to fully suppress native pinch-zoom/double-tap-zoom
+     over the canvas, on top of input.js's own preventDefault. */
+  touch-action: none;
+}
+
+/* Floating dialogs can never exceed the viewport while draggable. */
+.oswin {
+  max-width: calc(100vw - 12px);
+}
+
+/* ---- modal dialogs (Find & Search, Victory, VIP Review) ---------------------
+   These use class="oswin osmodal" plus a sibling ".osmodal-backdrop", but
+   unlike the other floating windows they're never dragged and never get an
+   explicit left/top from JS — .oswin's bare `position: absolute` with no
+   offsets left them pinned to (0,0), stacked under the menu bar. Center them
+   as fixed-position overlays instead, which also keeps them centered and
+   fully on-screen at any viewport size, phone or desktop. */
+.osmodal-backdrop {
+  position: fixed;
+  inset: 0;
+  /* Above #menubar's z-index:500 — a true modal must block the menu too. */
+  z-index: 550;
+}
+
+.osmodal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  z-index: 551;
+}
+
+/* ---- find & search dialog --------------------------------------------------
+   Layout lives here rather than in inline styles so the phone tier can reflow
+   it: the tab row used to overflow a 375px viewport and the results list was a
+   hard-coded 260px inside a 78vh sheet. */
+
+#find-dialog .find-tabs {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  /* Scroll the tabs instead of wrapping them onto a second row. */
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+#find-dialog .find-tab { flex: none; }
+
+#find-dialog #find-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid #5a667f;
+  border-radius: 3px;
+  background: #1a1e28;
+  color: #e3e9f2;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+#find-dialog #find-results-list {
+  height: 260px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 4px;
+}
+
+#find-dialog .find-result-item {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#find-dialog .find-result-item:hover,
+#find-dialog .find-result-item:active {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+#find-dialog .find-result-title { font-weight: bold; }
+#find-dialog .find-result-sub { font-size: 11px; color: #8fa2bb; }
+
+#find-dialog .find-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #8fa2bb;
+}
+
+/* ---- zoom controls (phone tier) --------------------------------------------
+   Hidden by default: desktop has PageUp/PageDown and a mouse wheel, so the
+   cluster would only be clutter there. On touch, pinch is the only zoom and
+   nothing can reset the framing at all. */
+
+#zoomcontrols {
+  display: none;
+  position: fixed;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 95;
+}
+
+#zoomcontrols .osbtn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+/* Unsaved-changes dot. The HUD's `.tw-dirty` asterisk is hidden on the phone
+   tier, and .menubar-hamburger only renders there, so this is phone-only by
+   construction. Driven by MenuBar.setDirty() from the UI frame loop. */
+.menubar-hamburger.has-unsaved::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd66f;
+  box-shadow: 0 0 0 1px #242936;
+}
+
+/* ---- phone toast layer ------------------------------------------------------
+   `#timewindow .tw-msgcell` is display:none on both phone tiers, which hides
+   the only notification surface in the game. timewindow.js mirrors the same
+   MessageQueue into #toast; it stays hidden on desktop, where the HUD message
+   line is visible (and also carries the renderer's hover-name traffic, which
+   would make a toast very noisy with a mouse). */
+
+#toast {
+  display: none;
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  margin: 0 auto;
+  max-width: 420px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(18, 22, 30, 0.94);
+  border: 1px solid #5a667f;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  color: #e3e9f2;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  /* Below .osmodal-backdrop (550) so a modal still covers it; well above the
+     toolbox drawer (96) that it floats over. */
+  z-index: 540;
+  /* Never swallow a tap meant for the canvas underneath. */
+  pointer-events: none;
+  transition: opacity 0.5s linear;
+}
+
+/* ---- safe-area insets (notched devices) ------------------------------------ */
+
+#menubar {
+  padding-left: max(6px, env(safe-area-inset-left));
+  padding-right: max(6px, env(safe-area-inset-right));
+  padding-top: max(0px, env(safe-area-inset-top));
+}
+
+#mapwindow { right: max(24px, calc(env(safe-area-inset-right) + 8px)); }
+
+#finwindow { left: max(2px, env(safe-area-inset-left)); }
+
+/* ---- toolbox drawer chrome ---------------------------------------------------
+   The collapse header only exists on narrow screens (added by toolbox.js). */
+
+#toolbox .tb-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1px 2px 4px;
+  user-select: none;
+}
+
+#toolbox .tb-title {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #9fb4c8;
+  /* Must be able to shrink, or a long tool label pushes the collapse button
+     off the end of the header row. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Armed-tool readout (toolbox.js _updateHeaderLabel). Reads as a value rather
+   than a section heading, so it drops the heading letter-spacing and takes the
+   same amber as the palette's price labels. */
+#toolbox .tb-title.tb-title-tool {
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #ffd66f;
+}
+
+#toolbox .tb-collapse {
+  min-width: 24px;
+  height: 18px;
+  font-size: 10px;
+  padding: 0 5px;
+}
+
+/* Pause/resume lives in the header so it survives collapsing the drawer — the
+   speed row itself is inside .tb-body and collapses away with the palette. */
+#toolbox .tb-pause {
+  min-width: 30px;
+  height: 22px;
+  margin-left: auto;
+  margin-right: 4px;
+  font-size: 11px;
+  padding: 0 6px;
+  flex: none;
+}
+
+#toolbox.collapsed .tb-body { display: none; }
+#toolbox.collapsed .tb-header { border-bottom: none; }
+
+@media (pointer: coarse) {
+  /* Roomier touch targets across the panel chrome. */
+  .osbtn { min-height: 30px; }
+  /* The dialog close button is the standout offender at a literal 14x14px
+     — the hardest thing in the whole UI to land a thumb on. */
+  .oswin-title .oswin-x {
+    width: 22px;
+    height: 22px;
+    line-height: 20px;
+    font-size: 12px;
+  }
+  ::-webkit-scrollbar { width: 14px; height: 14px; }
+
+  #toolbox { touch-action: manipulation; }
+
+  /* The palette cells and the three tool buttons are the most-tapped controls
+     in the game and the smallest — 38px and a literal 26x26. The bulldozer is
+     one of those 26px buttons, and demolition is instant, unconfirmed and has
+     no undo anywhere, so it is the worst thing in the UI to mis-tap. */
+  #toolbox .tb-toolbtn {
+    width: 44px;
+    height: 44px;
+  }
+  #toolbox .tb-item {
+    width: 44px;
+    padding: 5px 1px 2px;
+  }
+  #toolbox .tb-grid { grid-template-columns: repeat(3, 44px); }
+  #toolbox .tb-pause { min-height: 30px; min-width: 40px; }
+
+  /* Price labels sit inside a 44px cell now, so they can afford a legible size. */
+  #toolbox .tb-item .tb-price { font-size: 10px; }
+
+  /* Per-car home-floor pickers are native selects, not .osbtn, so the
+     min-height above misses them. */
+  #elevatordlg .elev-home-select { min-height: 30px; }
+}
+
+/* ---- compact tablet layout -------------------------------------------------- */
+
+@media (max-width: 900px) {
+  /* Single-row strip that scrolls horizontally instead of stacking cells. */
+  #timewindow {
+    left: 148px;
+    right: auto;
+    max-width: calc(100vw - 160px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+  }
+  #timewindow .tw-msgcell { min-width: 0; }
+  #timewindow .tw-tooltip,
+  #timewindow .tw-message { max-width: 150px; }
+  /* Keep the default-open minimap clear of the HUD strip. */
+  #mapwindow { top: 96px; }
+}
+
+@media (max-width: 760px) {
+  #timewindow .tw-stats { display: none; }
+  #timewindow { max-width: calc(100vw - 160px); }
+
+  /* Collapse floating windows into sensible narrow-screen defaults. */
+  #inspector { left: 148px; top: 60px; width: min(236px, calc(100vw - 160px)); }
+  #elevatordlg { left: 148px; top: 60px; width: min(220px, calc(100vw - 160px)); }
+  #savedialog { left: 50%; top: 80px; transform: translateX(-50%); width: min(320px, calc(100vw - 24px)); }
+  #optionsdialog { left: 50%; top: 80px; transform: translateX(-50%); width: min(280px, calc(100vw - 24px)); }
+}
+
+/* ---- phone portrait: toolbox becomes a bottom drawer ------------------------ */
+
+@media (max-width: 480px) {
+  /* One consolidated top bar instead of a menu row stacked over a separate
+     HUD strip (mirrors the "Mobile Redesign" mockup — field feedback was
+     that collapsing the menu to a hamburger wasn't enough on its own, the
+     bar still read as two stacked boxes). #menubar shrinks to just the
+     hamburger; #timewindow sits flush to its right in the exact same row
+     via `left: calc(var(--menubar-w) + Npx)`, using the bar's live
+     measured width the same way --menubar-h already tracks its height
+     (menubar.js's ResizeObserver publishes both). */
+  #menubar {
+    width: auto;
+    right: auto;
+    height: 44px;
+    padding-top: env(safe-area-inset-top);
+  }
+  .menubar-menu { display: none; }
+  .menubar-hamburger { display: flex; }
+
+  /* Flush against the menu bar, same row, same chrome — no gap, no
+     separate border/gradient — so the two elements read as one bar. */
+  #timewindow {
+    left: calc(var(--menubar-w) + 4px);
+    top: 0;
+    right: auto;
+    height: 44px;
+    max-width: calc(100vw - var(--menubar-w) - 12px);
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 2px;
+    /* #menubar pads for the notch (and is content-box, so it ends up
+       44px + inset tall). Without the matching inset here the HUD half of the
+       merged bar slides under the status bar and the two halves sit at
+       different heights — defeating the "reads as one bar" intent. */
+    padding: env(safe-area-inset-top) 4px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: #242936;
+    border: none;
+    border-radius: 0 0 0 0;
+    box-shadow: none;
+  }
+  #timewindow .tw-cell { padding: 0 3px; flex: none; border-right-color: #384259; }
+  #timewindow .tw-clock { font-size: 13px; }
+  #timewindow .tw-watchwrap { gap: 3px; }
+  #timewindow .tw-label { display: none; } /* labels eat width; values are self-evident */
+  #timewindow .tw-msgcell { display: none; }
+  #timewindow .tw-stats { display: none; }
+  /* Rating and date are the least essential glance-info (vs. the clock and
+     fund) and together cost more width than everything else combined — on
+     the merged bar that pushed the fund total out past the visible edge,
+     needing a scroll just to see your own money. Drop them here; both stay
+     one tap away via the hamburger menu. */
+  #timewindow .tw-stars,
+  #timewindow .tw-date,
+  #timewindow .tw-dirty { display: none; }
+  /* Speed controls already live in the toolbox drawer on phones. */
+  #timewindow .tw-speedrow { display: none; }
+  /* 9px is below anything legible at arm's length; the chip has room for 11. */
+  #timewindow .tw-status { font-size: 11px; padding: 1px 4px; }
+
+  /* Sits just above the toolbox drawer, whose live height toolbox.js
+     publishes as --toolbox-h (fallback covers the first frame). */
+  #toast {
+    display: block;
+    bottom: calc(var(--toolbox-h, 120px) + max(6px, env(safe-area-inset-bottom)) + 10px);
+  }
+
+  /* Right edge, above the toast and the drawer — the strip the suppressed
+     canvas scrollbar used to occupy. */
+  #zoomcontrols {
+    display: flex;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(var(--toolbox-h, 120px) + max(6px, env(safe-area-inset-bottom)) + 56px);
+  }
+
+  /* Bottom drawer replacing the left rail palette. */
+  #toolbox {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: max(6px, env(safe-area-inset-bottom));
+    width: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 3px 6px 6px;
+    z-index: 96;
+  }
+  #toolbox .tb-header {
+    display: flex;
+  }
+  #toolbox:not(.collapsed) .tb-header { border-bottom: 1px solid #14161c; margin-bottom: 4px; }
+  #toolbox .tb-grid-wrap { overflow-x: auto; }
+  #toolbox .tb-grid { grid-template-columns: repeat(auto-fill, 44px); }
+
+  /* Now that the HUD strip lives *beside* the menu bar (one merged row)
+     instead of stacked below it, everything else just needs to clear that
+     single ~44px row — same +4px gap as the other phone sheets/panels. */
+  #mapwindow { right: 8px; top: calc(var(--menubar-h) + 4px); }
+
+  /* The 46vw/260px cap above is still a huge chunk of a phone screen
+     (~180-260px tall at typical widths). Shrink it to a small thumbnail
+     — it's a reference overview, not something that needs to fill a third
+     of the viewport (user feedback: "way too large" on mobile). */
+  #mapwindow canvas {
+    max-width: min(30vw, 130px);
+  }
+
+  /* Collapsed by default on phones (mapwindow.js sets .minimized at
+     construction) — a small pill instead of the full card, mirroring the
+     "Mobile Redesign" mockup's minimap FAB. Tapping the title bar (or the
+     ▾/▸ button) expands it back to the full card above. */
+  #mapwindow.minimized {
+    width: auto;
+  }
+  #mapwindow.minimized canvas,
+  #mapwindow.minimized .map-mode-btn,
+  #mapwindow.minimized .oswin-x {
+    display: none;
+  }
+  #mapwindow.minimized .oswin-title {
+    cursor: pointer;
+  }
+
+  /* ---- dialogs become bottom sheets, not tiny floating windows -----------
+     A 220-320px window pinned near the top of a 6-inch screen is fiddly to
+     read and drag; a sheet anchored to the thumb-reachable bottom edge,
+     full width, is the native mobile pattern (mirrors the "Mobile Redesign"
+     mockup). Overrides the desktop/tablet left+top positioning above and
+     the #savedialog/#optionsdialog centering from the 760px tier. */
+  #inspector,
+  #elevatordlg,
+  #finwindow,
+  #savedialog,
+  #optionsdialog,
+  #find-dialog,
+  #menu-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    transform: none;
+    width: auto;
+    /* Not `none`: find-dialog sets an inline `style.width:460px` in JS
+       (dialogs.js) which otherwise wins over this rule's `width:auto` and
+       overflows a phone viewport — max-width still clamps the used width
+       even against an inline style, so keep an explicit 100% cap here. */
+    max-width: 100%;
+    /* .oswin carries a 1px border and nothing sets border-box globally, so
+       max-width:100% resolved to a 375px content box + 2px of border and the
+       sheet overflowed the viewport horizontally. */
+    box-sizing: border-box;
+    /* .oswin's 0.94 alpha reads fine as a small window floating over the
+       canvas, but a full-width sheet sits directly on top of the toolbox
+       drawer, whose palette and price labels then show through the content. */
+    background: #181c24;
+    max-height: 78vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    /* Above .osmodal-backdrop (550) too, since #find-dialog carries one. */
+    z-index: 560;
+  }
+  #inspector > .oswin-title,
+  #elevatordlg > .oswin-title,
+  #finwindow > .oswin-title,
+  #savedialog > .oswin-title,
+  #optionsdialog > .oswin-title,
+  #find-dialog > .oswin-titlebar,
+  #menu-sheet > .oswin-title {
+    position: relative;
+    padding-top: 14px;
+    border-radius: 16px 16px 0 0;
+  }
+  #inspector > .oswin-title::before,
+  #elevatordlg > .oswin-title::before,
+  #finwindow > .oswin-title::before,
+  #savedialog > .oswin-title::before,
+  #optionsdialog > .oswin-title::before,
+  #find-dialog > .oswin-titlebar::before,
+  #menu-sheet > .oswin-title::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: #4a5266;
+  }
+
+  /* Up to 30 floors as a scrolling stack of thin full-width rows is unusable
+     with a thumb. Lay them out as a chip grid instead: ~5 per row, 44px tall,
+     with the floor number over its state. The state keeps a text label rather
+     than relying on the colour alone. */
+  #elevatordlg .elev-floors {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 4px;
+    max-height: 40vh;
+  }
+  #elevatordlg .elev-floor {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    min-width: 0;
+    height: 44px;
+    font-size: 12px;
+    line-height: 1.1;
+  }
+  #elevatordlg .elev-floor .on,
+  #elevatordlg .elev-floor .off { font-size: 9px; }
+
+  #elevatordlg .elev-header { font-size: 12px; }
+
+  /* The sheet's own 78vh cap decides the height; the list flexes into it
+     instead of insisting on 260px. */
+  #find-dialog .oswin-body { min-height: 0; }
+  #find-dialog #find-results-list {
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 140px;
+    max-height: 46vh;
+  }
+  #find-dialog .find-result-item { padding: 10px 8px; }
+
+  /* ---- hamburger menu sheet content ---------------------------------- */
+  /* Rating/date/pop — dropped from the merged phone bar to leave room for
+     the fund total (see #timewindow above) — surface here instead. */
+  #menu-sheet .ms-stats {
+    padding: 0 8px 8px;
+    font-size: 11px;
+    color: #9fb4c8;
+    letter-spacing: 0.5px;
+  }
+  #menu-sheet .ms-body {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 4px 8px;
+  }
+  #menu-sheet .ms-section {
+    padding: 10px 8px 2px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: #7f93ab;
+  }
+  #menu-sheet .ms-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #e3e9f2;
+    font-family: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  #menu-sheet .ms-item:hover,
+  #menu-sheet .ms-item:active {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  #menu-sheet .ms-item-shortcut {
+    font-size: 11px;
+    color: #63788f;
+  }
+}
+
+/* ---- landscape phones: keep HUD out of mid-air ------------------------------ */
+
+@media (orientation: landscape) and (max-height: 500px) {
+  #timewindow { left: 148px; max-width: calc(100vw - 300px); }
+  #timewindow .tw-msgcell { display: none; }
+
+  #toolbox { max-height: 44vh; }
+  #toolbox .tb-body { max-height: calc(44vh - 26px); overflow-y: auto; }
+
+  /* The toolbox is the left rail in landscape, not a bottom drawer — anchor to
+     the bottom edge and clear the rail instead of tracking --toolbox-h. */
+  #toast {
+    display: block;
+    left: 156px;
+    /* Clear the zoom cluster, which is 3 x 44px plus gaps on the right edge. */
+    right: max(160px, calc(env(safe-area-inset-right) + 160px));
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  /* Landscape has the vertical room for the cluster on the right edge. */
+  #zoomcontrols {
+    display: flex;
+    flex-direction: row;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
