@@ -26,11 +26,15 @@ function clamp01(v) {
 }
 
 // Camera state that pins state.anchorWorld under curMid with zoom scaled by
-// curDist/state.dist0 and clamped. state: { zoom0, dist0, canvasW, canvasH,
+// state.dist0/curDist and clamped. state: { zoom0, dist0, canvasW, canvasH,
 // anchorWorld } (anchorWorld is renderer.screenToWorld of the pinch start
 // midpoint); all positions are CSS px.
 export function pinchTarget(state, curDist, curMid, minZoom = 1 / 64, maxZoom = 64) {
-  const ratio = state.dist0 > 0 ? curDist / state.dist0 : 1;
+  // `zoom` is view-size / canvas-size, so it runs *backwards*: a smaller value
+  // is closer in. Spreading the fingers therefore has to divide, not multiply
+  // — the tower grows under fingers that move apart, as it does in every other
+  // touch app. Multiplying (the original) made spreading push the tower away.
+  const ratio = state.dist0 > 0 && curDist > 0 ? state.dist0 / curDist : 1;
   let zoom = state.zoom0 * ratio;
   if (!Number.isFinite(zoom)) zoom = state.zoom0;
   zoom = Math.max(minZoom, Math.min(maxZoom, zoom));

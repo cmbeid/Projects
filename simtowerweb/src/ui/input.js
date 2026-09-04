@@ -19,7 +19,7 @@
 // Wheel still pans (±40·zoom; Shift → horizontal), keys keep their old
 // behavior. game.keys tracks physical Shift/Ctrl via ./modifiers.js.
 
-import { wheelPan, arrowPan, zoomIn, zoomOut, clampPOI } from "../render/camera.js";
+import { wheelPan, arrowPan, zoomIn, zoomOut, clampPOI, maxUsefulZoom, ZOOM_MIN } from "../render/camera.js";
 import { ensureModifierKeys, resolveModifierKeys, setPhysicalModifier } from "./modifiers.js";
 import { panWorldOffset, pinchMetrics, pinchTarget, TAP_SLOP_PX } from "./gestures.js";
 
@@ -114,7 +114,10 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     const pts = [...touches.values()];
     if (pts.length < 2 || !pinch) return;
     const m = pinchMetrics(pts[0], pts[1]);
-    const t = pinchTarget(pinch, m.dist, m.mid);
+    // Same ceiling the keyboard and the on-screen buttons use — pinchTarget's
+    // own defaults are ZOOM_MIN/ZOOM_MAX, which let a pinch sail past the point
+    // where the tower is still on screen.
+    const t = pinchTarget(pinch, m.dist, m.mid, ZOOM_MIN, maxUsefulZoom(game));
     game.zoom = t.zoom;
     game.poi.x = t.poi.x;
     game.poi.y = t.poi.y;

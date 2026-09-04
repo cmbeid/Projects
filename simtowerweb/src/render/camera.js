@@ -9,6 +9,24 @@
 export const ZOOM_MIN = 1 / 64;
 export const ZOOM_MAX = 64;
 
+// The world the camera can ever show: floor -1 up to the 12-floor-per-unit
+// ceiling the POI clamp uses. Everything above and below this is void.
+export const WORLD_BOTTOM = -360;
+export const WORLD_TOP = 360 * 12;
+export const WORLD_HEIGHT = WORLD_TOP - WORLD_BOTTOM; // 4680 world px
+
+// Furthest-out zoom that still shows something. Past the point where the whole
+// world height fits the viewport there is nothing further to reveal, and the
+// POI clamp below actively breaks: halfH grows past half the world, so its
+// lower bound overtakes its upper one, Math.max wins, and the camera is pinned
+// somewhere the tower is not. ZOOM_MAX (64) is ~11x beyond that on a phone,
+// which is what made pinching out able to lose the tower entirely.
+export function maxUsefulZoom(game) {
+  const h = game?.app?.window?.height || 768;
+  if (!(h > 0)) return ZOOM_MAX;
+  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, WORLD_HEIGHT / h));
+}
+
 export function clampPOI(game) {
   const halfH = game.app.window.height * 0.5 * game.zoom;
   game.poi.y = Math.max(Math.min(game.poi.y, 360 * 12 - halfH), -360 + halfH);
@@ -40,10 +58,11 @@ export function zoomIn(game, factor = 2) {
   return game.zoom;
 }
 
-// PageDown: zoom out (double). Guarded at ZOOM_MAX.
+// PageDown: zoom out (double). Guarded at the furthest useful zoom rather than
+// ZOOM_MAX, and clamped rather than refused so a press near the limit still
+// takes you to it instead of doing nothing.
 export function zoomOut(game, factor = 2) {
-  const z = game.zoom * factor;
-  if (z <= ZOOM_MAX) game.zoom = z;
+  game.zoom = Math.min(game.zoom * factor, maxUsefulZoom(game));
   clampPOI(game);
   return game.zoom;
 }
