@@ -10,7 +10,7 @@
 // Phone-tier only: ui.css leaves #zoomcontrols display:none everywhere else,
 // where the keyboard already covers this.
 
-import { ZOOM_MIN, ZOOM_MAX, zoomIn, zoomOut, clampPOI } from "../render/camera.js";
+import { ZOOM_MIN, maxUsefulZoom, zoomIn, zoomOut, clampPOI } from "../render/camera.js";
 import { towerBounds } from "./format.js";
 
 // Leave a little air around the tower rather than framing it edge to edge.
@@ -56,7 +56,7 @@ export class ZoomControls {
     const worldW = Math.max(1, (b.maxX - b.minX) * 8);
     const worldH = Math.max(1, (b.maxY - b.minY) * 36);
     const zoom = Math.max(worldW / win.width, worldH / win.height) * FIT_MARGIN;
-    g.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
+    g.zoom = Math.max(ZOOM_MIN, Math.min(maxUsefulZoom(g), zoom));
     g.centerViewportOnTile((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2);
     clampPOI(g);
     return g.zoom;
