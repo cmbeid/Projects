@@ -9,6 +9,7 @@ nothing at the root to install.
 | [`alchemy-forge/`](alchemy-forge/) | An element-crafting puzzle game for the phone. 495 elements to find; installs and plays offline when served over HTTPS. |
 | [`starseed/`](starseed/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
 | [`storied/`](storied/) | A phone-first reader for branching stories, driven entirely by JSON content in `storied/public/content/`. Seven demo stories ship on the shelf; a story can also be imported straight from a local file or folder, and a story already opened once stays readable with the network off. |
+| [`vertical-empire/`](vertical-empire/) | A portrait-first tower builder in the SimTower idiom. A look-and-feel spike rather than a game: the renderer, the grid and the day/night palette cycle, with no simulation behind them. Ships its own placeholder art; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, on their own device. |
 
 ## Working on one
 
@@ -35,6 +36,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | `alchemy-forge/` | http://s3.cmbeid.com/alchemy-forge/index.html |
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 | `storied/` | http://s3.cmbeid.com/storied/index.html |
+| `vertical-empire/` | http://s3.cmbeid.com/vertical-empire/index.html |
 
 ## Adding another
 
