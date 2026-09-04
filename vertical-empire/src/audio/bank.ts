@@ -14,10 +14,11 @@
  * no noise until you tap it is right, and one that throws on the first frame
  * is not.
  *
- * Four event sources share this — placing, bulldozing, lifts arriving, stars
- * being earned — and the clips run to five seconds. Left alone that stacks:
- * a double tap plays a four-second sound twice a beat apart, and a tower of
- * lifts becomes a rattle. Hence the guard and the exclusive channel below.
+ * Several sources share this — placing, a refused placement, bulldozing, lifts
+ * arriving, stars being earned, a film in the cinema, and an ambient layer — and
+ * the clips run to five seconds. Left alone that stacks: a double tap plays a
+ * four-second sound twice a beat apart, and a tower of lifts becomes a rattle.
+ * Hence the guard, the named channels, and the second gain below.
  */
 
 /**
@@ -32,6 +33,15 @@ const RETRIGGER_MS = 80;
 
 /** Everything sits under this, so a five-second room ambience does not shout. */
 const VOLUME = 0.55;
+
+/**
+ * And the ambient layer sits under *that*.
+ *
+ * Birds, bells and weather are scenery: they are meant to be noticed only if you
+ * stop and listen for them. At the same level as a build sound they would be
+ * competing with the thing the player just did.
+ */
+const AMBIENT_VOLUME = 0.2;
 
 type ContextConstructor = new () => AudioContext;
 
@@ -62,13 +72,24 @@ export interface Bank {
    */
   play(id: number | undefined): void;
   /**
-   * Like `play`, but on a channel of its own that holds one sound at a time.
+   * Like `play`, but on a named channel that holds one sound at a time.
    *
-   * For the lift: its machine-room clip runs five seconds and a busy tower
-   * arrives somewhere every second or so, which layered would be a drone rather
-   * than a sound. Starting one stops the last.
+   * For the lift: a busy tower arrives somewhere every second or so, and layered
+   * arrival chimes are a drone rather than a sound. Starting one stops the last.
+   *
+   * The channel name is what keeps the long clips out of each other's way. A
+   * single shared exclusive slot would have a lift arrival cut off a film in the
+   * cinema, which is not what "one at a time" was ever meant to mean.
    */
-  playExclusive(id: number | undefined): void;
+  playExclusive(id: number | undefined, channel?: string): void;
+  /**
+   * Plays on the ambient channel, under everything else.
+   *
+   * Its own gain rather than its own volume argument, so the whole layer can be
+   * turned down in one place — and so an ambient sound and an event sound that
+   * happen to be the same clip do not have to disagree about how loud they are.
+   */
+  playAmbient(id: number | undefined): void;
   /** Called from a real user gesture; without this nothing ever sounds. */
   unlock(): void;
 }
@@ -77,12 +98,14 @@ export function createBank(): Bank {
   const Constructor = contextConstructor();
   let context: AudioContext | undefined;
   let gain: GainNode | undefined;
+  let ambientGain: GainNode | undefined;
   let sounds = new Map<number, Uint8Array>();
   const decoded = new Map<number, AudioBuffer>();
   const decoding = new Set<number>();
   /** When each sound last started, for the re-trigger guard. */
   const startedAt = new Map<number, number>();
-  let exclusive: AudioBufferSourceNode | undefined;
+  /** The one sound currently held by each named channel. */
+  const exclusive = new Map<string, AudioBufferSourceNode>();
 
   const bank: Bank = {
     available: Constructor !== undefined,
@@ -102,6 +125,9 @@ export function createBank(): Bank {
         gain = context.createGain();
         gain.gain.value = VOLUME;
         gain.connect(context.destination);
+        ambientGain = context.createGain();
+        ambientGain.gain.value = AMBIENT_VOLUME;
+        ambientGain.connect(context.destination);
       }
       // Created before a gesture, or suspended by the tab going to the
       // background. Resuming a running context is harmless.
@@ -109,16 +135,21 @@ export function createBank(): Bank {
     },
 
     play(id) {
-      start(id, false);
+      start(id, undefined, false);
     },
 
-    playExclusive(id) {
-      start(id, true);
+    playExclusive(id, channel = 'default') {
+      start(id, channel, false);
+    },
+
+    playAmbient(id) {
+      start(id, 'ambient', true);
     },
   };
 
-  function start(id: number | undefined, alone: boolean): void {
+  function start(id: number | undefined, channel: string | undefined, quiet: boolean): void {
     if (id === undefined || bank.muted || !context || !gain) return;
+    const output = quiet ? (ambientGain ?? gain) : gain;
 
     const buffer = decoded.get(id);
     if (buffer) {
@@ -129,18 +160,18 @@ export function createBank(): Bank {
 
       const source = context.createBufferSource();
       source.buffer = buffer;
-      source.connect(gain);
-      if (alone) {
+      source.connect(output);
+      if (channel !== undefined) {
         // `stop` on a node that already finished throws in some engines, and a
         // sound ending on its own is the common case rather than an error.
         try {
-          exclusive?.stop();
+          exclusive.get(channel)?.stop();
         } catch {
           /* already finished */
         }
-        exclusive = source;
+        exclusive.set(channel, source);
         source.addEventListener?.('ended', () => {
-          if (exclusive === source) exclusive = undefined;
+          if (exclusive.get(channel) === source) exclusive.delete(channel);
         });
       }
       source.start();
@@ -160,7 +191,7 @@ export function createBank(): Bank {
         decoded.set(id, result);
         // Play it now: this is the first tap of this kind, and staying silent
         // for it would read as the sound being missing rather than late.
-        start(id, alone);
+        start(id, channel, quiet);
       })
       .catch(() => {
         // Not audio the browser understands. Forget it rather than retrying

@@ -16,7 +16,7 @@ import {
 } from '../src/world/grid.js';
 import { DEMO_LEFT, Tower, demoTower } from '../src/world/tower.js';
 import { facility } from '../src/world/facilities.js';
-import { TOLERANCE, carAtFloor, carLevel } from '../src/world/lift.js';
+import { TOLERANCE, carLevel, carStop } from '../src/world/lift.js';
 
 describe('the grid', () => {
   it('keeps SimTower’s measurements', () => {
@@ -192,36 +192,36 @@ describe('where a lift car is', () => {
 
   it('parks a bank too short to travel', () => {
     expect(carLevel({ level: GROUND_LEVEL, span: 1 }, 0, 12_345)).toBe(GROUND_LEVEL);
-    expect(carAtFloor({ level: GROUND_LEVEL, span: 1 }, 0, 12_345)).toBeUndefined();
   });
 
-  it('reports a floor only when the car is actually at one', () => {
-    let arrivals = 0;
+  it('rings only where the car actually stops', () => {
+    // Proximity to a floor would report every floor of every trip — dozens in
+    // this window, and about four a second in a real tower, which is a smoke
+    // alarm rather than a lift. A triangle car only ever stands still at the
+    // two ends of its travel, so that is what an arrival is.
+    let stops = 0;
     let previous: number | undefined;
-    let between = 0;
+    const seen = new Set<number>();
 
-    // Sampled at roughly a frame apart, which is how `main.ts` reads it.
     for (let elapsed = 0; elapsed < 30_000; elapsed += 16) {
-      const floor = carAtFloor(bank, 0, elapsed);
-      if (floor === undefined) between += 1;
-      else if (floor !== previous) arrivals += 1;
-      previous = floor;
-
-      if (floor !== undefined) {
-        // A reported floor is a real floor of this bank.
-        expect(Number.isInteger(floor)).toBe(true);
-        expect(floor).toBeGreaterThanOrEqual(bank.level);
-        expect(floor).toBeLessThanOrEqual(bank.level + bank.span - 1);
+      const floor = carStop(bank, 0, elapsed);
+      if (floor !== undefined && floor !== previous) {
+        stops += 1;
+        seen.add(floor);
       }
+      previous = floor;
     }
 
-    // The point of the tolerance: most of a trip is spent between floors, so
-    // rounding the level would report an arrival on almost every frame.
-    expect(between).toBeGreaterThan(0);
-    // Two round trips over ten floors, arriving at each end and passing the
-    // eight between: a couple of dozen arrivals, not thousands.
-    expect(arrivals).toBeGreaterThan(10);
-    expect(arrivals).toBeLessThan(120);
+    // Two round trips in thirty seconds is four stops, give or take where the
+    // window falls — nothing like the dozens the tolerance alone reports.
+    expect(stops).toBeGreaterThan(1);
+    expect(stops).toBeLessThan(10);
+    // And only ever the top and the bottom, never a floor it passed.
+    expect([...seen].sort((a, b) => a - b)).toEqual([bank.level, bank.level + bank.span - 1]);
+  });
+
+  it('has nothing to ring for a bank too short to travel', () => {
+    expect(carStop({ level: GROUND_LEVEL, span: 1 }, 0, 12_345)).toBeUndefined();
   });
 
   it('agrees with the position the scene draws', () => {
@@ -229,7 +229,7 @@ describe('where a lift car is', () => {
     // agree today and drift the first time one is tuned, and a chime that plays
     // where the car visibly is not is worse than no chime.
     for (let elapsed = 0; elapsed < 20_000; elapsed += 97) {
-      const floor = carAtFloor(bank, 0, elapsed);
+      const floor = carStop(bank, 0, elapsed);
       if (floor === undefined) continue;
       expect(Math.abs(carLevel(bank, 0, elapsed) - floor)).toBeLessThanOrEqual(TOLERANCE);
     }

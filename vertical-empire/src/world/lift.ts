@@ -51,23 +51,37 @@ export function carLevel(
 }
 
 /**
- * The floor a car is currently at, or `undefined` while it is between floors.
+ * How close to a floor counts as being at it.
  *
- * This is the arrival detector. Rounding the fractional level would report a
- * floor for the whole time the car is nearer to it than to its neighbours,
- * which at these speeds is most of the trip — so "at a floor" has to mean
- * *close* to one, and `TOLERANCE` is what close means. Caller compares against
- * the previous frame's answer to turn that into an event.
+ * The cars move fast enough that rounding the fractional level would call the
+ * car "at" whichever floor it happened to be nearest, which for most of a trip
+ * is a floor it is passing at speed.
  */
 export const TOLERANCE = 0.12;
 
-export function carAtFloor(
+/**
+ * The floor a car has actually *stopped* at, or `undefined` while it is moving.
+ *
+ * This was first written as "near a floor", which is a different question and
+ * the wrong one. A triangle-wave car is never stationary except at the two
+ * turning points of its travel: everything in between it *passes* at speed, so
+ * proximity reports an arrival at every floor of every trip — measured against
+ * the demo tower in a browser, about four a second. Invisible as a picture, and
+ * as a chime a smoke alarm.
+ *
+ * So an arrival is a turning point. That is also what the original does: a car
+ * runs to the end of its call queue and opens its doors there.
+ */
+export function carStop(
   bank: { level: number; span: number },
   index: number,
   elapsed: number,
 ): number | undefined {
   if (bank.span < 2) return undefined;
   const level = carLevel(bank, index, elapsed);
-  const nearest = Math.round(level);
-  return Math.abs(level - nearest) <= TOLERANCE ? nearest : undefined;
+  const bottom = bank.level;
+  const top = bank.level + bank.span - 1;
+  if (level - bottom <= TOLERANCE) return bottom;
+  if (top - level <= TOLERANCE) return top;
+  return undefined;
 }

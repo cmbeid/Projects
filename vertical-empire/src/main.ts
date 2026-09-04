@@ -33,8 +33,9 @@ import {
 import { demoTower } from './world/tower.js';
 import { buildShell, type Tool } from './ui/shell.js';
 import { createBank } from './audio/bank.js';
-import { EVENT_SOUNDS, FACILITY_SOUNDS } from './assets/slice.js';
-import { carAtFloor } from './world/lift.js';
+import { CINEMA_REEL, EVENT_SOUNDS, FACILITY_SOUNDS } from './assets/slice.js';
+import { pickAmbient } from './audio/ambience.js';
+import { carStop } from './world/lift.js';
 import { attachGestures } from './ui/input.js';
 
 /** One in-game day per this many real milliseconds. Fast enough to see. */
@@ -140,6 +141,7 @@ function frame(now: number): void {
   shell.setClock(`${clockText(hour)} · ${camera.scale}×`);
   paintRating(hour);
   listen(now);
+  breathe(now, hour);
   if (statusUntil !== 0 && now > statusUntil) {
     shell.setStatus('');
     statusUntil = 0;
@@ -158,7 +160,7 @@ function frame(now: number): void {
  * times a second.
  */
 let heardStars = -1;
-/** The floor each lift bank was last seen at, by placement index. */
+/** The floor each lift bank was last seen stopped at, by placement index. */
 const heardFloors = new Map<number, number>();
 
 function listen(now: number): void {
@@ -174,7 +176,7 @@ function listen(now: number): void {
   tower.placements.forEach((placement, index) => {
     if (placement.id !== 'elevator') return;
 
-    const floor = carAtFloor(placement, index, now);
+    const floor = carStop(placement, index, now);
     const previous = heardFloors.get(index);
     if (floor !== undefined) heardFloors.set(index, floor);
     else heardFloors.delete(index);
@@ -185,8 +187,31 @@ function listen(now: number): void {
     const width = facility(placement.id).width;
     if (placement.segment > right || placement.segment + width < left) return;
 
-    bank.playExclusive(EVENT_SOUNDS.lift);
+    bank.playExclusive(EVENT_SOUNDS.lift, 'lift');
   });
+}
+
+/**
+ * Roughly how long between ambient one-shots, in *real* milliseconds.
+ *
+ * Real, not game: a day is 90 seconds here, so an hour is 3.75 and anything
+ * hung off the hour would ring the church bells sixteen times a minute. Jittered
+ * by up to half again, because a bird exactly every fourteen seconds is a
+ * metronome rather than a tower.
+ */
+const AMBIENT_MS = 14_000;
+
+let nextAmbient = 0;
+
+function breathe(now: number, hour: number): void {
+  if (now < nextAmbient) return;
+  // The first frame lands here with nextAmbient at 0, which would open the game
+  // with a thunderclap. Schedule instead, and let the second turn play.
+  const first = nextAmbient === 0;
+  nextAmbient = now + AMBIENT_MS * (1 + Math.random() * 0.5);
+  if (first || document.hidden) return;
+
+  bank.playAmbient(pickAmbient(hour, { populated: tower.placements.length > 0 }, Math.random()));
 }
 
 // --- the rating badge -------------------------------------------------------
@@ -274,6 +299,13 @@ gestures.onTap((cssX, cssY) => {
   }
   if (tool.kind !== 'build') {
     const found = tower.at(segment, level);
+    // Tapping a cinema plays a film. The original keeps fifteen snatches of one
+    // and picks between them, and playing the same one every time would be a
+    // worse imitation than playing none — so this picks too. Its own channel, so
+    // a lift arriving does not cut the film off.
+    if (found?.id === 'cinema') {
+      bank.playExclusive(CINEMA_REEL[Math.floor(Math.random() * CINEMA_REEL.length)], 'reel');
+    }
     flash(found ? `${facility(found.id).label} · floor ${floorLabel(level)}` : `Floor ${floorLabel(level)}`);
     return;
   }
@@ -287,16 +319,16 @@ gestures.onTap((cssX, cssY) => {
 
   const blocked = tower.blockedBy(tool.id, left, base, span);
   if (blocked) {
+    // The game has a sound for exactly this, and it is the one label in the
+    // whole set that named its own event: "cant place building item there".
+    bank.play(EVENT_SOUNDS.blocked);
     flash(blocked === 'occupied' ? 'Something is already there' : 'Outside the lot', 'warn');
     return;
   }
   tower.place(tool.id, left, base, span);
-  // The game's own sound for what was just built. Its resource shares the ID of
-  // the facility's bitmaps — that is what the 0x40 slot table buys — and a
-  // facility with no slot, or a copy of the game missing that sound, simply
-  // makes no noise.
-  // Its own sound if the file has one at its slot — only four facilities do —
-  // and the shared build sound otherwise. Both may be absent, which is silence.
+  // Its own sound where one has been identified — four from the slot table's
+  // arithmetic, two more from listening — and the shared build sound otherwise.
+  // A copy of the game missing either resource simply makes no noise.
   bank.play(FACILITY_SOUNDS[tool.id] ?? EVENT_SOUNDS.place);
   flash(`${kind.label} · floor ${floorLabel(level)}`);
 });

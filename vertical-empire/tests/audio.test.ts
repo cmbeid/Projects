@@ -14,6 +14,9 @@ import { buildWave } from './fixtures.js';
 function fakeAudio(options: { decodes?: boolean } = {}) {
   const started: AudioBuffer[] = [];
   const stopped: AudioBuffer[] = [];
+  /** Which gain each started source was routed through, in order. */
+  const routes: GainNode[] = [];
+  const built: GainNode[] = [];
   const pending: (() => void)[] = [];
   let resumed = 0;
   let seconds = 0;
@@ -34,15 +37,23 @@ function fakeAudio(options: { decodes?: boolean } = {}) {
 
     createGain(): GainNode {
       gains += 1;
-      return { gain: { value: 1 }, connect: () => undefined } as unknown as GainNode;
+      const node = { gain: { value: 1 }, connect: () => undefined } as unknown as GainNode;
+      built.push(node);
+      return node;
     }
 
     createBufferSource(): AudioBufferSourceNode {
+      let output: GainNode | undefined;
       const node = {
         buffer: null as AudioBuffer | null,
-        connect: () => undefined,
+        connect: (to: GainNode) => {
+          output = to;
+        },
         addEventListener: () => undefined,
-        start: () => started.push(node.buffer as AudioBuffer),
+        start: () => {
+          started.push(node.buffer as AudioBuffer);
+          routes.push(output as GainNode);
+        },
         stop: () => stopped.push(node.buffer as AudioBuffer),
       };
       return node as unknown as AudioBufferSourceNode;
@@ -63,6 +74,8 @@ function fakeAudio(options: { decodes?: boolean } = {}) {
   return {
     started,
     stopped,
+    routes,
+    built,
     get resumed() {
       return resumed;
     },
@@ -235,14 +248,55 @@ describe('the sound bank', () => {
     expect(audio.stopped).toHaveLength(1);
   });
 
-  it('puts everything through one gain, built once', () => {
+  it('keeps one exclusive sound per channel, and lets the channels coexist', async () => {
+    const audio = fakeAudio();
+    const bank = createBank();
+    bank.load(new Map([[0x9771, buildWave(100)], [0xa329, buildWave(500)]]));
+    bank.unlock();
+
+    // A lift arrival and a film in the cinema are both long, and both want to
+    // hold one clip. A single shared exclusive slot would have the lift cut off
+    // the film, which is not what "one at a time" was meant to mean.
+    bank.playExclusive(0x9771, 'lift');
+    await audio.settle();
+    bank.playExclusive(0xa329, 'reel');
+    await audio.settle();
+    expect(audio.started).toHaveLength(2);
+    expect(audio.stopped).toHaveLength(0);
+
+    // Each channel still replaces its own.
+    audio.advance(500);
+    bank.playExclusive(0x9771, 'lift');
+    expect(audio.stopped).toHaveLength(1);
+    expect(audio.stopped[0]?.length).toBe(audio.started[0]?.length);
+  });
+
+  it('routes the ambient layer through its own quieter gain', async () => {
+    const audio = fakeAudio();
+    const bank = createBank();
+    bank.load(new Map([[0x9388, buildWave(100)], [0x9b59, buildWave(100)]]));
+    bank.unlock();
+
+    bank.playAmbient(0x9388);
+    bank.play(0x9b59);
+    await audio.settle();
+
+    expect(audio.started).toHaveLength(2);
+    // Two gains, two destinations: birdsong must not arrive at the same level as
+    // the sound of the thing the player just built.
+    const [ambient, events] = audio.routes;
+    expect(ambient).not.toBe(events);
+    expect(ambient?.gain.value).toBeLessThan(events?.gain.value ?? 0);
+  });
+
+  it('puts everything through gains built once', () => {
     const audio = fakeAudio();
     const bank = createBank();
     bank.unlock();
     bank.unlock();
     // Unlock fires on the first tap and again whenever the tab wakes; building
-    // a second context each time would leak one per resume.
-    expect(audio.gains).toBe(1);
+    // a second pair each time would leak two per resume.
+    expect(audio.gains).toBe(2);
     expect(audio.resumed).toBe(2);
   });
 

@@ -361,28 +361,93 @@ export function soundGroup(id: number): { slot?: number; offset?: number; bank?:
  * escalator was in here at 0x8aa8 on the strength of its art: it is a sprite the
  * atlas carries and not a thing the player can build, so its sound could never
  * have been asked for.
+ *
+ * Entries now come from two places, and the difference matters because they fail
+ * differently. An arithmetic entry is wrong only if the stride is wrong, which a
+ * test catches. An ear entry is wrong if somebody misheard, which nothing
+ * catches — so each one says what it rests on.
  */
 export const FACILITY_SOUNDS: Readonly<Record<string, number>> = {
+  // Arithmetic: the sound sits at the facility's own slot.
   restaurant: 0x8568,
   office: 0x85a8,
   condo: 0x8628,
   shop: 0x8668,
+
+  // Ear. Slot 8 holds an engine revving and a horn, and parking is the only
+  // thing in the game with cars in it — but this is a borrowing, not an
+  // identification. Parking's *art* is at 0x8ee8, slot 41, so slot 8 belongs to
+  // some facility we have not found, and finding it may take this sound back.
+  parking: 0x86a8,
+
+  // Ear, and the weakest entry here. 0x9b58 opens the construction bank, ahead
+  // of build, refusal and demolish, and was heard as "elevator c…" — which reads
+  // as the lift's own build sound sitting with the other build sounds. If it
+  // turns out to be a car or a chime instead, this is the line to delete.
+  elevator: 0x9b58,
 };
 
 /**
  * Sounds for things that happen to the tower rather than to one facility.
  *
- * Only `lift` is filled in, and only because the arithmetic identifies it:
- * 0x88e8 is slot 17, the lift machinery, whose bitmaps sit right beside the
- * shaft's. The rest wait for the listening pass — a build sound guessed at from
- * a duration is exactly the kind of plausible-looking mistake that put a city on
- * the ground floor, and an unfilled entry is silence, which is honest.
+ * Every one of these came from listening; none could have been derived. The
+ * useful discovery is that the 0x9b58 bank is the **construction bank** —
+ * build, "you cannot put that there", demolish, in that order, one after
+ * another — which is the sort of grouping the 0x40 arithmetic cannot see at all.
  *
- * `place` is the fallback for the nine facilities with no sound of their own.
+ * `lift` is worth its own note. Slot 17 (0x88e8) is the lift machinery and the
+ * arithmetic named it without anyone listening, which is how it was wired first.
+ * Listening found the 0x9770 bank: doors opening, ding-then-doors, going up. A
+ * car reaching a floor is the ding, so the ear beat the arithmetic here — the
+ * derivation was sound and the answer was still second best.
+ *
+ * `place` is the fallback for facilities with no sound of their own.
  */
-export const EVENT_SOUNDS: Readonly<Partial<Record<'place' | 'bulldoze' | 'lift' | 'star', number>>> = {
-  lift: 0x88e8,
+export const EVENT_SOUNDS: Readonly<
+  Partial<Record<'place' | 'blocked' | 'bulldoze' | 'lift' | 'star', number>>
+> = {
+  place: 0x9b59,
+  blocked: 0x9b5a,
+  bulldoze: 0x9b5b,
+  lift: 0x9771,
+  star: 0xa710,
 };
+
+/**
+ * The cinema's reel: fifteen unrelated snatches of film, played at random.
+ *
+ * The original plays one when you click a movie theatre, and playing the same
+ * one every time would be a worse imitation than playing none. They are
+ * contiguous from 0xa329 — note that the bank *base* 0xa328 holds no resource,
+ * so this bank starts one past its own base, which none of the others do.
+ */
+export const CINEMA_REEL: readonly number[] = range(0xa329, 0xa337);
+
+/**
+ * The ambient layer, by time of day.
+ *
+ * These are the sounds the tower has no event for: birds, bells, weather, a
+ * crowd. Nothing in the game asks for them and nothing here simulates what would
+ * — they are chosen by the clock, which the palette already follows, so dawn
+ * sounds like dawn.
+ *
+ * `crowd` is kept separate because it is the one pool that would be a lie in an
+ * empty lot. The rest can play over bare ground quite happily.
+ */
+export const AMBIENCE = {
+  /** 05:00–09:00. Two birds, a crow, and a second bird from the other bank. */
+  dawn: [0x9388, 0x9389, 0x938a, 0xa71c],
+  /** 09:00–18:00. Church bells, which at 3.75s to the game hour cannot be hourly. */
+  day: [0x938c],
+  /** 18:00–21:00. */
+  dusk: [0x938a, 0x938c],
+  /** 21:00–05:00. Crickets. */
+  night: [0xa71b],
+  /** Any hour, rarely. */
+  weather: [0x938d],
+  /** Any daylight hour, and only once the tower has something in it. */
+  crowd: [0x9f40, 0x9f41],
+} as const satisfies Readonly<Record<string, readonly number[]>>;
 
 export interface ExtractedSprite {
   key: string;
@@ -407,7 +472,7 @@ export interface Extraction {
    *
    * Taken wholesale rather than catalogued. A sound needs no cutting, no
    * measuring and no identification to be stored correctly — the only question
-   * is which one to play, and `SOUND_SLOTS` answers that by ID. So there is
+   * is which one to play, and the tables above answer that by ID. So there is
    * nothing here to get wrong, which is a pleasant change.
    */
   sounds: Map<number, Uint8Array>;

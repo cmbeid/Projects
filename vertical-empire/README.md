@@ -353,6 +353,50 @@ chime" gets agreed with, and an anchored listener is a worse instrument than an
 unanchored one — the same reason `--period` reports its measurement rather than
 its conclusion.
 
+#### What the listening pass found
+
+All 58 are labelled. Three findings changed the code rather than just filling it
+in.
+
+**The ear beat the arithmetic on the lift.** Slot 17 (`0x88e8`) is the lift
+machinery, the arithmetic said so without anyone listening, and that is what was
+wired for an arrival. Bank `0x9770` turned out to hold the real lift set — doors
+opening, **ding then doors** (`0x9771`), going up — and a car reaching a floor is
+the ding. The derivation was sound and the answer was still second best, which is
+the useful shape of the mistake: a correct method can be pointed at the wrong
+question.
+
+**Bank `0x9b58` is the construction bank**, and no amount of arithmetic would
+have shown it: build (`0x9b59`), *you cannot put that there* (`0x9b5a`), demolish
+(`0x9b5b`), one after another. The middle one named its own event — it maps onto
+a branch of `main.ts` that until now only flashed a warning — and it is the
+strongest evidence for grouping in the banks at all.
+
+**Slot 8 is cars**, an engine revving and a horn. That was Phase 1's open lead: a
+slot with two sounds and no identified art. It is *still* open, because parking's
+art is at `0x8ee8`, slot 41 — so slot 8 belongs to some facility we have not
+found, and parking merely borrows the sound in the meantime. `FACILITY_SOUNDS`
+says which of its entries rest on arithmetic and which rest on an ear, because
+the two fail differently: a stride error is caught by a test, and a mishearing is
+caught by nothing.
+
+Two labels bear on the catalogue rather than on the audio. `0x8b28`, catalogued
+as the function room from its slot, was heard as a crowd in a ballroom — which
+agrees. `0x8ba8`, catalogued as the shopping arcade, was heard as a subway —
+which does not. One agreement and one disagreement are worth writing down with
+equal care; neither is wired, and the disagreement is a thread to pull.
+
+#### Identified, deliberately not wired
+
+Twenty-odd sounds are named and unused, listed here so nobody derives them twice:
+a phone, an explosion, a siren, a helicopter, cheering, funky and fantasy music
+and a voice saying thank you (`0xa711`–`0xa71f`); the title music (`0xce20`);
+second sounds for the restaurant and the condo (`0x8569`, `0x8629`); and the lift
+shaft's own ambience (`0x938b`). Most belong to events this clone does not
+simulate — fire, VIPs, the metro. They are available the moment something asks
+for them, and guessing at an event to hang them on would be the same mistake in a
+new place.
+
 #### The rest
 
 Three deliberate choices:
@@ -381,16 +425,39 @@ dropped, or the first placement of each kind would be silent and read as a
 missing sound rather than a late one. Bytes the browser rejects are forgotten
 rather than retried on every placement.
 
-Four things make a noise: placing a facility (its own sound where the slot has
-one, a shared build sound otherwise), bulldozing, a lift reaching a floor, and
-the tower earning a star. The bank puts them all through one gain, collapses the
-same sound started twice within 80ms into one event, and gives the lift a channel
-of its own that holds a single clip — its machine-room sound runs five seconds
-and a busy tower arrives somewhere every second, which layered is a drone rather
-than a sound.
+Six things make a noise: placing a facility (its own sound where one has been
+identified, a shared build sound otherwise), a placement the tower refuses,
+bulldozing, a lift reaching a floor, the tower earning a star, and tapping a
+cinema — which plays one of fifteen snatches of film at random, because playing
+the same one every time would be a worse imitation than playing none.
+
+The bank collapses the same sound started twice within 80ms into one event, and
+holds one clip per **named channel**: the lift has one and the cinema has
+another. A single shared channel would have an arrival cut off a film, which is
+not what "one at a time" was ever meant to mean.
+
+#### The ambient layer
+
+Eight sounds are scenery — birds, crows, church bells, thunder, crickets, a
+crowd. Nothing in the game asks for them, so they are hung off the clock the
+palette already follows: `src/audio/ambience.ts` picks by hour, and dawn sounds
+like dawn without anything coordinating the two.
+
+Two details are load-bearing. The schedule is a **pure function of the hour and a
+roll**, with the roll passed in rather than drawn inside, so "crickets at 23:00,
+never a crowd in an empty lot" is an assertion a test can make. And the *timing*
+is in **real** seconds, roughly one one-shot every fourteen with jitter — a game
+day is 90 seconds, so an hour is 3.75, and church bells hung off the hour would
+ring sixteen times a minute. The layer has its own quieter gain, because scenery
+that competes with the sound of what you just built is not scenery.
 
 A lift arrival needs to know where a car is, which the renderer also needs, so
-`carLevel` lives in `src/world/lift.ts` and both ask it. Two copies of a triangle
+`carLevel` lives in `src/world/lift.ts` and both ask it. An *arrival* is the
+narrower question, and getting it wrong was invisible until it made a noise: the
+first version reported any floor the car was near, which on a triangle-wave car
+means every floor of every trip — about four a second in a real tower. A car
+that never stops has arrived nowhere, so `carStop` reports only the two turning
+points of its travel, which is also where the original's cars open their doors. Two copies of a triangle
 wave would agree today and drift the first time one was tuned, and a chime that
 plays where the car visibly is not is worse than no chime.
 
