@@ -160,7 +160,13 @@ export class Sky {
     }
 
     // Ambient sound scheduler (Sky.cpp:121-143).
-    this.soundCountdown -= dta;
+    // Drained in *real* seconds, not game-seconds. dta is dt scaled by game
+    // speed, so subtracting it made the gap shrink with the speed setting:
+    // ambience fired every ~30s at 1x but every ~8s at 4x, which during rain
+    // (when the cue is thunder, and in the community edition a synthesized
+    // noise burst) read as one sound repeating on a loop. Gated on the game
+    // actually running so a paused tower stays silent.
+    this.soundCountdown -= game.time.speed_animated > 0 ? dt : 0;
     if (this.soundCountdown < 0) {
       let duration = 0;
       const sound = (path) => {
@@ -175,12 +181,11 @@ export class Sky {
       } else if (time >= 20 || time < 1.5) {
         duration = sound("simtower/crickets");
       }
-      // Gap between ambient chirps/crickets/thunder, in speed-scaled seconds
-      // (dta already factors in game speed, so this stays a real-feeling
-      // gap regardless of 1x/2x/4x). The original +0.5/+10 range averaged
-      // out to a chirp every ~6 real seconds through the whole 8am-5pm
-      // window — constant enough that players heard it as background noise
-      // that never stopped. Widened so it reads as occasional ambience.
+      // Gap between ambient chirps/crickets/thunder, in real seconds. The
+      // original +0.5/+10 range averaged out to a chirp every ~6 seconds
+      // through the whole 8am-5pm window — constant enough that players heard
+      // it as background noise that never stopped. Widened so it reads as
+      // occasional ambience, and now genuinely speed-independent.
       this.soundCountdown += randd(duration + 20, duration + 60);
     }
 
