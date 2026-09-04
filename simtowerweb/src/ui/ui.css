@@ -1088,6 +1088,10 @@ html, body {
   font-size: 10px;
   letter-spacing: 1.5px;
   color: #9fb4c8;
+  /* Claims the row's free space rather than sizing to its text. The header is
+     justify-content: space-between, so a content-width title left ~120px of
+     dead gap in the middle while long labels ellipsed anyway. */
+  flex: 1 1 auto;
   /* Must be able to shrink, or a long tool label pushes the collapse button
      off the end of the header row. */
   min-width: 0;
@@ -1286,7 +1290,17 @@ html, body {
   }
   #toolbox .tb-header {
     display: flex;
+    /* This row is the phone's entire tool readout — the desktop's
+       .tw-msgcell is display:none here — so give it room to be read at a
+       glance rather than the 15px strip it inherited from the desktop
+       section heading. */
+    min-height: 26px;
+    padding: 2px 2px 5px;
   }
+  #toolbox .tb-title { font-size: 12px; }
+  /* Above the 12px floor the rest of the phone tier uses: this is the only
+     place the armed tool and its price appear on a phone. */
+  #toolbox .tb-title.tb-title-tool { font-size: 13px; }
   #toolbox:not(.collapsed) .tb-header { border-bottom: 1px solid #14161c; margin-bottom: 4px; }
   #toolbox .tb-grid-wrap { overflow-x: auto; }
   #toolbox .tb-grid { grid-template-columns: repeat(auto-fill, 44px); }
