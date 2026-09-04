@@ -17,6 +17,7 @@ on:
        - 'starseed/**'
        - 'storied/**'
        - 'fathomline/**'
+       - 'simtowerweb/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -49,6 +50,7 @@ jobs:
             starseed/package-lock.json
             storied/package-lock.json
             fathomline/package-lock.json
+            simtowerweb/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -118,6 +120,22 @@ jobs:
         run: npm run build
         working-directory: fathomline
 
+      - name: Install (simtowerweb)
+        run: npm ci
+        working-directory: simtowerweb
+
+      # Covers the formatters and, more usefully here, asserts that every
+      # sprite OPENSKY_SOURCES names is actually vendored. A missing one is
+      # otherwise a blank icon and a 404 that nothing surfaces until someone
+      # looks at a screenshot.
+      - name: Test (simtowerweb)
+        run: npm test
+        working-directory: simtowerweb
+
+      - name: Build (simtowerweb)
+        run: npm run build
+        working-directory: simtowerweb
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -135,6 +153,9 @@ jobs:
 
           mkdir -p _site/fathomline
           cp -r fathomline/dist/. _site/fathomline/
+
+          mkdir -p _site/simtowerweb
+          cp -r simtowerweb/dist/. _site/simtowerweb/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -194,6 +215,13 @@ jobs:
                     <span>
                       <span class="name">Fathomline</span>
                       <span class="desc">A casual idle fishing game. Early build — core loop and idle engine only so far.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./simtowerweb/">
+                    <span class="emoji" aria-hidden="true">🛗</span>
+                    <span>
+                      <span class="name">SimTowerWeb</span>
+                      <span class="desc">A playable SimTower remake — elevators, tenants, star ratings. Ships community art; point it at your own SIMTOWER.EXE for the original sprites.</span>
                     </span>
                   </a>
                 </div>

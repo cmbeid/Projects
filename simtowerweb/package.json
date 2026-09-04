@@ -1,0 +1,19 @@
+{
+  "name": "simtowerweb",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A browser-based SimTower remake that runs against your own game files.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sync-art": "bash scripts/sync-opensky-art.sh"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4"
+  }
+}
