@@ -311,19 +311,30 @@ export class ElevatorDialog {
     this.el.style.display = "none";
   }
 
+  // All ON / All OFF are absolute and ignore the WD/WE mode; Invert stays
+  // scoped to it. Running them through the mode was a trap: Elevator's weekend
+  // schedule falls back to the weekday one whenever unservicedFloorsWeekend is
+  // *empty*, so "All ON" in WE mode cleared the weekend set and thereby handed
+  // control straight back to the weekday set - a floor switched off there
+  // stayed off, and the player who had just pressed "All ON" was left with an
+  // elevator that still skipped it (and, if that floor was the lobby, one no
+  // tenant could board).
   _batchToggle(action) {
     const e = this.elevator;
     if (!e) return;
     const minY = e.position.y;
     const maxY = e.position.y + e.size.y;
     for (let floor = minY; floor < maxY; floor++) {
-      const isServed = this._isFloorServedInCurrentMode(floor);
-      if (action === "all-on" && !isServed) {
+      if (action === "invert") {
         this.game.toggleElevatorService(e, floor, this.mode);
-      } else if (action === "all-off" && isServed) {
-        this.game.toggleElevatorService(e, floor, this.mode);
-      } else if (action === "invert") {
-        this.game.toggleElevatorService(e, floor, this.mode);
+      } else if (action === "all-on") {
+        if (e.unservicedFloors.has(floor) || e.unservicedFloorsWeekend.has(floor)) {
+          this.game.setElevatorService(e, floor, true);
+        }
+      } else if (action === "all-off") {
+        if (!e.unservicedFloors.has(floor) || !e.unservicedFloorsWeekend.has(floor)) {
+          this.game.setElevatorService(e, floor, false);
+        }
       }
     }
     this._rebuildFloorButtons();

@@ -639,6 +639,21 @@ export class Game {
     this.poi.y = tileY * 36.0;
   }
 
+  // Absolute counterpart to toggleElevatorService: set one floor on or off in
+  // *both* schedules, so the result does not depend on which of the two the
+  // caller happened to be editing (see ElevatorDialog._batchToggle).
+  setElevatorService(e, floor, served) {
+    if (!e) return;
+    if (served) {
+      e.unservicedFloors.delete(floor);
+      e.unservicedFloorsWeekend.delete(floor);
+    } else {
+      e.unservicedFloors.add(floor);
+      e.unservicedFloorsWeekend.add(floor);
+    }
+    this._applyElevatorServiceChange(e, floor);
+  }
+
   toggleElevatorService(e, floor, mode = "all") {
     if (!e) return;
     if (mode === "we") {
@@ -659,10 +674,14 @@ export class Game {
       }
     }
 
+    this._applyElevatorServiceChange(e, floor);
+  }
+
+  _applyElevatorServiceChange(e, floor) {
     if (e.connectsFloor(floor)) {
-      this.gameMap.addNode({ x: e.position.x + e.size.x / 2, y: floor }, e);
+      this.gameMap.addNode({ x: e.position.x + Math.floor(e.size.x / 2), y: floor }, e);
     } else {
-      this.gameMap.removeNode({ x: e.position.x + e.size.x / 2, y: floor }, e);
+      this.gameMap.removeNode({ x: e.position.x + Math.floor(e.size.x / 2), y: floor }, e);
     }
     e.cleanQueues();
     this._markDirty();
