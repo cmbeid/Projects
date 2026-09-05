@@ -115,8 +115,22 @@ describe("zoom buttons and keys", () => {
 });
 
 describe("pan and tap helpers", () => {
-  it("inverts y so content tracks the finger", () => {
-    expect(panWorldOffset(10, 10, 2)).toEqual({ dx: 20, dy: -20 });
+  // The POI is what the camera looks at, so it moves against the drag for the
+  // tower to travel with it. An earlier version of this test asserted the
+  // opposite signs and called it "tracks the finger"; it did not — one-finger
+  // pan pushed the tower the wrong way, and disagreed with the two-finger
+  // pinch pan, which pins its anchor and so always tracked correctly.
+  it("moves the camera against the drag so content tracks the finger", () => {
+    expect(panWorldOffset(10, 10, 2)).toEqual({ dx: -20, dy: 20 });
+  });
+
+  it("scales with zoom, so a drag covers the same screen distance at any zoom", () => {
+    expect(panWorldOffset(10, 0, 1).dx).toBe(-10);
+    expect(panWorldOffset(10, 0, 4).dx).toBe(-40);
+  });
+
+  it("is zero for a stationary finger", () => {
+    expect(panWorldOffset(0, 0, 2)).toEqual({ dx: -0, dy: 0 });
   });
 
   it("measures a pinch span and midpoint", () => {
