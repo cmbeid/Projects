@@ -2,16 +2,20 @@
 // gesture layer in input.js (ISSUE-040). Headless-safe: no DOM access.
 //
 // Screen px (y down) map to world px (y up) at a 1:zoom ratio — see
-// renderer.computeView + screenToWorld. Keeping the content glued to a
-// dragging finger therefore means:
-//   poi.x += dxScreen * zoom ; poi.y -= dyScreen * zoom
-// Both signs follow from inverting screenToWorld for a fixed zoom.
+// renderer.computeView + screenToWorld.
+//
+// The POI is the point the camera looks at, so moving it moves the view and
+// the world appears to travel the *other* way. Dragging the tower along under
+// the finger therefore means moving the camera against the drag:
+//   poi.x -= dxScreen * zoom ; poi.y += dyScreen * zoom
+// Measured rather than derived: a +160,+120 px drag moves a fixed world point
+// +160,+120 px across the screen, so the tower stays under the finger exactly.
 
 // Drift tolerated (CSS px) before a tap becomes a drag/pan.
 export const TAP_SLOP_PX = 12;
 
 export function panWorldOffset(dxPx, dyPx, zoom) {
-  return { dx: dxPx * zoom, dy: -dyPx * zoom };
+  return { dx: -dxPx * zoom, dy: dyPx * zoom };
 }
 
 export function pinchMetrics(a, b) {
