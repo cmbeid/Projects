@@ -1,5 +1,5 @@
 /* OpenSkyWeb game UI (UI agent) — beveled pixel-art panels over the canvas.
-   Imported by src/main.js, so the build emits it as a hashed stylesheet. */
+   Loaded dynamically by src/main.js as <link href="/src/ui/ui.css">. */
 
 :root {
   /* Live size of #menubar, kept in sync by a ResizeObserver in menubar.js.
@@ -383,6 +383,9 @@
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  /* "Tool / Messages" is the only two-word label; without this it wraps to
+     three lines and drags the whole strip taller than the cells beside it. */
+  white-space: nowrap;
 }
 
 #timewindow .tw-watchwrap {
@@ -1181,7 +1184,13 @@ html, body {
     overflow-y: hidden;
     flex-wrap: nowrap;
   }
-  #timewindow .tw-msgcell { min-width: 0; }
+  /* The strip is `nowrap` + `overflow-x: auto` and every other cell is
+     `white-space: nowrap`, so the message cell is the only flex item that can
+     absorb the overflow — `min-width: 0` let it collapse to a few px and the
+     tool name and every message rendered as "C6". Scrolling is the
+     intended escape valve at this tier, so pin the cell instead of shrinking
+     it. */
+  #timewindow .tw-msgcell { min-width: 150px; flex: 0 0 auto; }
   #timewindow .tw-tooltip,
   #timewindow .tw-message { max-width: 150px; }
   /* Keep the default-open minimap clear of the HUD strip. */

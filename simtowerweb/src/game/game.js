@@ -644,6 +644,23 @@ export class Game {
     this.updateRoutes();
   }
 
+  // A shaft that reaches no floor the lobby can walk to is a total, silent
+  // failure: no tenant ever moves in and nothing on screen says why. The
+  // easiest way to build one is the bottom motor — `repositionMotor` puts the
+  // shaft floor at `y + 1` (the motor sits *below* the lowest served floor, as
+  // in the original), so dropping it on the lobby row yields a shaft starting
+  // at floor 1 that never stops at the lobby. Reachability, not geometry, is
+  // the real test — a sky-lobby shaft fed by an express is fine — so ask the
+  // pathfinder.
+  warnIfElevatorUnreachable(e) {
+    if (!e || !e.isElevator() || !this.mainLobby) return false;
+    if (!this.findRoute(this.mainLobby, e).empty()) return false;
+    this.ui.showMessage(
+      "This elevator cannot be reached from the lobby - drag its lower motor down one more floor.",
+    );
+    return true;
+  }
+
   // ------------------------------------------------------------- routes
   updateRoutes() {
     this.visualizeRoute.clear();
@@ -893,6 +910,7 @@ export class Game {
     }
     if (this.draggingElevator) {
       this.updateRoutes();
+      this.warnIfElevatorUnreachable(this.draggingElevator);
     }
     this.draggingElevator = null;
   }
