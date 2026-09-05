@@ -270,20 +270,32 @@ export class Renderer {
         );
         game.drawnSprites++;
       }
-    } else if (game.toolPrototype) {
+    } else if (game.toolPrototype && (!game.touchInput || game.ghostArmed)) {
+      // On touch the ghost only exists once a tap has parked it — before that
+      // there is no pointer to follow, and a box sitting at the last touched
+      // cell would read as something already placed. With a mouse it tracks
+      // the cursor as it always has.
       let height = game.toolPrototype.size.y;
       if (game.toolPrototype.icon === ICON.LOBBY || game.toolPrototype.icon === ICON.STAIRS) {
         height = game._toolHeightOverride || height;
       }
+      // A parked ghost is waiting to be confirmed, so it is drawn in the same
+      // amber the toolbox uses for prices and the armed-tool readout, with a
+      // heavier outline. A mouse's follow-the-cursor ghost stays white.
+      const armed = game.ghostArmed;
       draw.rect(
         game.toolPosition.x * 8,
         -(game.toolPosition.y + height) * 36,
         game.toolPrototype.size.x * 8,
         height * 36,
         {
-          fill: { r: 255, g: 255, b: 255, a: 48 },
-          outline: { r: 255, g: 255, b: 255, a: 255 },
-          outlineWidth: 1,
+          fill: armed
+            ? { r: 255, g: 214, b: 111, a: 56 }
+            : { r: 255, g: 255, b: 255, a: 48 },
+          outline: armed
+            ? { r: 255, g: 214, b: 111, a: 255 }
+            : { r: 255, g: 255, b: 255, a: 255 },
+          outlineWidth: armed ? 2 : 1,
         },
       );
       game.drawnSprites++;

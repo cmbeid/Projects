@@ -14,12 +14,6 @@ import { injectSaveHash, verifySaveHash } from "../core/savehash.js";
 import { LevelUp } from "./systems/levelup.js";
 import { findRampAt } from "./items/parkingramp.js";
 
-// Touch placement offset (ISSUE-040), in screen px. TOUCH_LIFT_PX is roughly a
-// fingertip's width, enough to put the ghost's footprint clear of the contact
-// patch; TOUCH_LIFT_MARGIN_PX is how close to the top of the viewport the lift
-// is allowed to push it before it starts giving the offset back.
-const TOUCH_LIFT_PX = 56;
-const TOUCH_LIFT_MARGIN_PX = 8;
 
 // icon enum (order matters — matches C++ Icon enum used by prototypes)
 export const ICON = {
@@ -107,11 +101,15 @@ export class Game {
     // held here until pointerup, so a second finger can turn it into a pinch
     // instead. { kind: "construct" | "bulldoze" }. Mouse presses never set it.
     this.pendingPress = null;
-    // ISSUE-040: set by the input layer from the pointer type of the press in
-    // progress. A fingertip covers the cell it is pointing at, so item ghosts
-    // are drawn above the contact point on touch (see placementLift). Mice
-    // have a visible hotspot and are left alone.
-    this.touchPlacement = false;
+    // ISSUE-040 touch placement. A fingertip covers the cell it points at, so
+    // touch does not build on contact: the first tap parks a ghost, dragging
+    // moves it, and a tap on the ghost commits it. ghostArmed is that parked
+    // state; ghostGrab keeps the ghost under the point it was grabbed by
+    // instead of snapping its centre to the finger. Set from the pointer type
+    // of the press in progress, so a hybrid laptop switches per gesture.
+    this.touchInput = false;
+    this.ghostArmed = false;
+    this.ghostGrab = null;
     this._batchCommitting = false;
     // ISSUE-040: touch has no Shift key to hold during a batch drag, so a
     // long-press at the drag's start (input.js) arms grid mode for that one
@@ -258,27 +256,8 @@ export class Game {
     if (this.app?.sound) this.app.sound.setAllPitch(1 + (this.time.speed_animated - 1) * 0.2);
   }
 
-  // World-px offset applied to an item ghost so it clears the finger holding
-  // it. Expressed in screen px and scaled by zoom, so the gap looks the same
-  // however far in or out the camera is.
-  //
-  // Clamped against the top of the viewport: lifting a ghost off the top of
-  // the screen would be worse than covering it with a finger, so near the top
-  // edge the lift shrinks and the ghost settles back under the fingertip.
-  placementLift() {
-    if (!this.touchPlacement) return 0;
-    const zoom = this.zoom || 1;
-    const viewTop = this.poi.y + ((this.app?.window?.height || 768) * 0.5) * zoom;
-    const headroom = viewTop - this.mouseWorld.y - TOUCH_LIFT_MARGIN_PX * zoom;
-    return Math.max(0, Math.min(TOUCH_LIFT_PX * zoom, headroom));
-  }
-
   updateToolPosition() {
-    // Only item tools are lifted. The bulldozer, the inspector and the
-    // elevator finger act on whatever is *under* the touch, so moving their
-    // reference point would make them act on the wrong thing.
-    const lift = this.selectedTool.startsWith("item-") ? this.placementLift() : 0;
-    const mp = lift > 0 ? { x: this.mouseWorld.x, y: this.mouseWorld.y + lift } : this.mouseWorld;
+    const mp = this.mouseWorld;
     const previousPrototype = this.toolPrototype;
     if (this.selectedTool.startsWith("item-")) {
       const proto = this.itemFactory.prototypesById[this.selectedTool.slice(5)];
@@ -323,6 +302,13 @@ export class Game {
             x: Math.round(mp.x / 8 - proto.size.x / 2.0),
             y: Math.round(mp.y / 36 - yHeightOffset / 2.0),
           };
+        }
+        // Dragging an armed ghost moves it by the same delta as the finger,
+        // rather than re-centring it on the fingertip: grab the box by its
+        // corner and it stays held by that corner.
+        if (this.ghostGrab) {
+          this.toolPosition.x += this.ghostGrab.dx;
+          this.toolPosition.y += this.ghostGrab.dy;
         }
         this._toolHeightOverride = height; // lobby or spiral stair height for preview
       }
@@ -609,6 +595,8 @@ export class Game {
     if (this.selectedTool !== tool) {
       // A tool change mid-drag invalidates the queued batch (ISSUE-039).
       this.cancelBatchDrag();
+      // A ghost belongs to the tool that parked it.
+      this.clearGhost();
       this.selectedTool = tool;
       // toolPrototype is derived in updateToolPosition(), which is otherwise
       // only driven by pointer and key events. On touch there is no pointer
@@ -691,7 +679,30 @@ export class Game {
   // ------------------------------------------------------- pointer input
   // Port of Game::handleEvent's MouseButtonPressed/Move/Release branches.
   // The UI layer calls these with normalized input; worldPos is in world px (y up).
+  // Is worldPos inside the footprint the ghost occupies at `at`? Padded by
+  // half a tile so the box can still be grabbed when the finger lands just
+  // outside it, which on a phone is most of the time.
+  pointerOverGhost(at, worldPos) {
+    const proto = this.toolPrototype;
+    if (!at || !proto) return false;
+    const height = this._toolHeightOverride || proto.size.y;
+    const padX = 4;
+    const padY = 18;
+    const left = at.x * 8 - padX;
+    const right = (at.x + proto.size.x) * 8 + padX;
+    const bottom = at.y * 36 - padY;
+    const top = (at.y + height) * 36 + padY;
+    return worldPos.x >= left && worldPos.x <= right && worldPos.y >= bottom && worldPos.y <= top;
+  }
+
+  clearGhost() {
+    this.ghostArmed = false;
+    this.ghostGrab = null;
+  }
+
   handlePointerDown({ worldPos, overUI, deferCommit = false }) {
+    // Captured before updateToolPosition moves the ghost to the new pointer.
+    const parkedGhost = this.ghostArmed ? { ...this.toolPosition } : null;
     this.mouseWorld = worldPos;
     this.updateToolPosition();
     if (overUI) return false;
@@ -702,14 +713,31 @@ export class Game {
     if (this.selectedTool.startsWith("item-") && this.toolPrototype) {
       // ISSUE-039: batch-capable tools start a preview-only drag and build on
       // pointerup; special-cased tools keep the classic instant click.
-      if (!this.startBatchDrag()) {
-        // ...except on touch, where "instant" means the first finger of a
-        // pinch builds before the second one lands. Batch tools were already
-        // safe here because their preview is cancelled when the pinch starts;
-        // this gives the single-click tools the same deferral.
-        if (deferCommit) this.pendingPress = { kind: "construct" };
-        else this.clickConstruct();
+      // Touch: park a ghost, drag it, tap it to build. Nothing is committed
+      // on contact, which also means the first finger of a pinch cannot build.
+      // Batch drag stays a mouse gesture — on touch the same press-and-drag is
+      // what moves the ghost, and the two cannot both own it.
+      if (deferCommit) {
+        if (parkedGhost && this.pointerOverGhost(parkedGhost, worldPos)) {
+          // Grabbed the parked ghost: keep it where it is, and remember the
+          // offset so dragging moves it rather than teleporting it.
+          this.ghostGrab = {
+            dx: parkedGhost.x - this.toolPosition.x,
+            dy: parkedGhost.y - this.toolPosition.y,
+          };
+          this.toolPosition = parkedGhost;
+          // Released without dragging, this is the confirming tap.
+          this.pendingPress = { kind: "ghostCommit" };
+        } else {
+          // First tap, or a tap somewhere else: (re)park the ghost here and
+          // let it be dragged straight away. Never builds.
+          this.ghostGrab = null;
+          this.ghostArmed = true;
+          this.pendingPress = null;
+        }
+        return true;
       }
+      if (!this.startBatchDrag()) this.clickConstruct();
       return true;
     }
 
@@ -848,8 +876,15 @@ export class Game {
       // the cell the placement ghost has been drawing under the finger — which
       // on touch, where the finger hides the target, is the more predictable
       // of the two.
-      if (pending.kind === "construct") this.clickConstruct();
-      else if (pending.kind === "bulldoze") this.bulldozeUnderCursor();
+      if (pending.kind === "ghostCommit") {
+        this.clickConstruct();
+        // Disarmed after building so a second tap in the same place cannot
+        // re-fire on the cell that is now occupied.
+        this.clearGhost();
+        return;
+      }
+      if (pending.kind === "bulldoze") this.bulldozeUnderCursor();
+      this.ghostGrab = null;
       return;
     }
     if (this.batchDrag) {
@@ -1487,6 +1522,8 @@ export class Game {
     this.draggingElevatorLower = false;
     this.batchDrag = null;
     this.pendingPress = null;
+    this.ghostArmed = false;
+    this.ghostGrab = null;
     this.toolPrototype = null;
     this.soundPlayTimes.clear();
     this.vipSystem.reset();
