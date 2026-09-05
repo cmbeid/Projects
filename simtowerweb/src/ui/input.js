@@ -189,6 +189,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     }
 
     // Hover path: mouse pointers (and uncaptured strays) over panels/canvas.
+    if (e.pointerType === "mouse") game.touchPlacement = false;
     syncKeys(e);
     if (!isCanvasTarget(e)) {
       // over UI panels — TGUI consumes these; ISSUE-039 cancels a pending drag
@@ -210,6 +211,10 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     if (e.target !== canvas) return;
 
     if (isTouchLike(e)) {
+      // Drives the item-ghost lift in Game.placementLift(). Set from the
+      // pointer that is actually being used rather than a media query, so a
+      // hybrid laptop switches behaviour per gesture instead of per device.
+      game.touchPlacement = true;
       const pos = relative(e);
       touches.set(e.pointerId, pos);
       try {
@@ -253,6 +258,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     }
 
     // Mouse: identical to the legacy behavior (press may act immediately).
+    game.touchPlacement = false;
     if (canvasPress(e)) {
       primaryId = e.pointerId;
       mode = "tool";
