@@ -14,6 +14,13 @@ import { injectSaveHash, verifySaveHash } from "../core/savehash.js";
 import { LevelUp } from "./systems/levelup.js";
 import { findRampAt } from "./items/parkingramp.js";
 
+// Touch placement offset (ISSUE-040), in screen px. TOUCH_LIFT_PX is roughly a
+// fingertip's width, enough to put the ghost's footprint clear of the contact
+// patch; TOUCH_LIFT_MARGIN_PX is how close to the top of the viewport the lift
+// is allowed to push it before it starts giving the offset back.
+const TOUCH_LIFT_PX = 56;
+const TOUCH_LIFT_MARGIN_PX = 8;
+
 // icon enum (order matters — matches C++ Icon enum used by prototypes)
 export const ICON = {
   FLOOR: 0,
@@ -100,6 +107,11 @@ export class Game {
     // held here until pointerup, so a second finger can turn it into a pinch
     // instead. { kind: "construct" | "bulldoze" }. Mouse presses never set it.
     this.pendingPress = null;
+    // ISSUE-040: set by the input layer from the pointer type of the press in
+    // progress. A fingertip covers the cell it is pointing at, so item ghosts
+    // are drawn above the contact point on touch (see placementLift). Mice
+    // have a visible hotspot and are left alone.
+    this.touchPlacement = false;
     this._batchCommitting = false;
     // ISSUE-040: touch has no Shift key to hold during a batch drag, so a
     // long-press at the drag's start (input.js) arms grid mode for that one
@@ -246,8 +258,27 @@ export class Game {
     if (this.app?.sound) this.app.sound.setAllPitch(1 + (this.time.speed_animated - 1) * 0.2);
   }
 
+  // World-px offset applied to an item ghost so it clears the finger holding
+  // it. Expressed in screen px and scaled by zoom, so the gap looks the same
+  // however far in or out the camera is.
+  //
+  // Clamped against the top of the viewport: lifting a ghost off the top of
+  // the screen would be worse than covering it with a finger, so near the top
+  // edge the lift shrinks and the ghost settles back under the fingertip.
+  placementLift() {
+    if (!this.touchPlacement) return 0;
+    const zoom = this.zoom || 1;
+    const viewTop = this.poi.y + ((this.app?.window?.height || 768) * 0.5) * zoom;
+    const headroom = viewTop - this.mouseWorld.y - TOUCH_LIFT_MARGIN_PX * zoom;
+    return Math.max(0, Math.min(TOUCH_LIFT_PX * zoom, headroom));
+  }
+
   updateToolPosition() {
-    const mp = this.mouseWorld;
+    // Only item tools are lifted. The bulldozer, the inspector and the
+    // elevator finger act on whatever is *under* the touch, so moving their
+    // reference point would make them act on the wrong thing.
+    const lift = this.selectedTool.startsWith("item-") ? this.placementLift() : 0;
+    const mp = lift > 0 ? { x: this.mouseWorld.x, y: this.mouseWorld.y + lift } : this.mouseWorld;
     const previousPrototype = this.toolPrototype;
     if (this.selectedTool.startsWith("item-")) {
       const proto = this.itemFactory.prototypesById[this.selectedTool.slice(5)];
