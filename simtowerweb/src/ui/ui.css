@@ -113,8 +113,14 @@
      player has so much as tapped once outranks a merely-static 95 and can
      paint over an open dropdown. Pick a ceiling far above anything a real
      session will reach (ISSUE-040 field feedback: menu unreachable behind
-     the HUD after using the toolbox once). */
-  z-index: 500;
+     the HUD after using the toolbox once).
+
+     That ceiling has to stay above the whole draggable band, not just above
+     its old base: draggable.js now starts at Z_BASE 600 and renormalises at
+     960 (it had to clear the phone sheet tier), so a static 500 put every
+     tapped panel *over* the menu again — the time strip is itself draggable,
+     so one tap on the HUD hid the dropdowns behind it. Sit above Z_MAX. */
+  z-index: 970;
   user-select: none;
 }
 
@@ -440,6 +446,16 @@
 }
 
 #timewindow .tw-msgcell { min-width: 200px; }
+
+/* The cell is the handle for the message log (timewindow.js), so it has to
+   look like one. The children are the only painted parts of the cell, so the
+   hover cue goes on them. */
+#timewindow .tw-msgcell-clickable { cursor: pointer; }
+#timewindow .tw-msgcell-clickable:hover .tw-tooltip,
+#timewindow .tw-msgcell-clickable:hover .tw-message {
+  background: #f7fbff;
+  outline: 1px solid #83d2ff;
+}
 
 #timewindow .tw-tooltip {
   color: #2a3038;
@@ -921,8 +937,8 @@ html, body {
 .osmodal-backdrop {
   position: fixed;
   inset: 0;
-  /* Above #menubar's z-index:500 — a true modal must block the menu too. */
-  z-index: 550;
+  /* Above #menubar (970) — a true modal must block the menu too. */
+  z-index: 980;
 }
 
 .osmodal {
@@ -933,7 +949,7 @@ html, body {
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 24px);
   overflow-y: auto;
-  z-index: 551;
+  z-index: 981;
 }
 
 /* ---- find & search dialog --------------------------------------------------
@@ -1056,7 +1072,7 @@ html, body {
   font-size: 12px;
   line-height: 1.35;
   text-align: center;
-  /* Below .osmodal-backdrop (550) so a modal still covers it; well above the
+  /* Below .osmodal-backdrop (980) so a modal still covers it; well above the
      toolbox drawer (96) that it floats over. */
   z-index: 540;
   /* Never swallow a tap meant for the canvas underneath. */
@@ -1380,8 +1396,8 @@ html, body {
     overflow-y: auto;
     border-radius: 16px 16px 0 0;
     padding-bottom: max(10px, env(safe-area-inset-bottom));
-    /* Above .osmodal-backdrop (550) too, since #find-dialog carries one. */
-    z-index: 560;
+    /* Above .osmodal-backdrop (980) too, since #find-dialog carries one. */
+    z-index: 985;
   }
   #inspector > .oswin-title,
   #elevatordlg > .oswin-title,
@@ -1522,3 +1538,70 @@ html, body {
   }
 }
 
+
+/* ---- message log ----------------------------------------------------------- */
+
+#messagelog {
+  /* Clear of the top bar and the open menu dropdowns rather than under them:
+     this window is opened *from* the HUD, so it would otherwise appear
+     half-hidden behind the thing that spawned it. */
+  left: 300px;
+  top: 130px;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+}
+
+#messagelog .ml-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#messagelog .ml-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  color: #dce4f0;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #2c3444;
+}
+
+#messagelog .ml-row:last-child { border-bottom: none; }
+
+#messagelog .ml-stamp {
+  color: #83d2ff;
+  font-size: 11px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+#messagelog .ml-text { flex: 1 1 auto; }
+
+#messagelog .ml-empty {
+  color: #8fa4bb;
+  font-size: 12px;
+  padding: 6px 0;
+  text-align: center;
+}
+
+#messagelog .ml-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 4px 6px 6px;
+}
+
+@media (max-width: 480px) {
+  #messagelog {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+  }
+  #messagelog .ml-list { max-height: 50vh; }
+}

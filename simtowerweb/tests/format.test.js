@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import {
   MESSAGE_DURATION,
   MessageQueue,
+  K_MAX_PENDING,
+  K_MAX_HISTORY,
   formatClock,
   formatCommaMoney,
   formatCompactMoney,
@@ -142,5 +144,42 @@ describe("towerBounds", () => {
     const b = towerBounds([at(0, -5), at(0, 20)]);
     expect(b.minY).toBe(-5);
     expect(b.maxY).toBe(21);
+  });
+});
+
+describe("MessageQueue history", () => {
+  it("records every message, including ones the queue drops", () => {
+    const q = new MessageQueue();
+    // K_MAX_PENDING is 3, so the 5th queued message evicts an earlier pending
+    // one from the visible rotation — the log must still have all of them.
+    for (const m of ["a", "b", "c", "d", "e"]) q.show(m);
+    expect(q.pending.length).toBe(K_MAX_PENDING);
+    expect(q.history.map((h) => h.text)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("stores the caller's stamp and defaults it to an empty string", () => {
+    const q = new MessageQueue();
+    q.show("stamped", "D1 Q1 Y1 09:00");
+    q.show("bare");
+    expect(q.history[0]).toEqual({ text: "stamped", stamp: "D1 Q1 Y1 09:00" });
+    expect(q.history[1]).toEqual({ text: "bare", stamp: "" });
+  });
+
+  it("caps the scrollback at K_MAX_HISTORY, keeping the newest", () => {
+    const q = new MessageQueue();
+    for (let i = 0; i < K_MAX_HISTORY + 20; i++) q.show("m" + i);
+    expect(q.history.length).toBe(K_MAX_HISTORY);
+    expect(q.history[0].text).toBe("m20");
+    expect(q.history[K_MAX_HISTORY - 1].text).toBe("m" + (K_MAX_HISTORY + 19));
+  });
+
+  it("keeps the scrollback when clear() expires the visible message", () => {
+    const q = new MessageQueue();
+    q.show("kept");
+    q.clear();
+    expect(q.current).toBe("");
+    expect(q.history.map((h) => h.text)).toEqual(["kept"]);
+    q.clearHistory();
+    expect(q.history).toEqual([]);
   });
 });
