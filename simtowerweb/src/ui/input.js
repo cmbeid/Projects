@@ -106,6 +106,8 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     // survive a second finger landing.
     game.cancelBatchDrag?.();
     game.cancelPendingPress?.();
+    // The ghost stays parked across a pinch — only the drag is abandoned.
+    if (game) game.ghostGrab = null;
     scrollbarDrag = null;
     mode = "pinch";
   };
@@ -132,8 +134,8 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     mode = "pan";
     if (!rest) return;
     primaryId = rest[0];
-    downPt = rest[1];
-    lastPt = rest[1];
+    downPt = { ...rest[1] };
+    lastPt = { ...rest[1] };
     panned = true;
   };
 
@@ -168,6 +170,14 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
         return;
       }
       if (mode === "tool") {
+        // Past the slop this is a drag, so the release repositions the ghost
+        // instead of confirming it. Cancelling here rather than on release
+        // keeps a long slow drag from committing just because it ended
+        // somewhere near where it began.
+        if (!panned && downPt && Math.hypot(pos.x - downPt.x, pos.y - downPt.y) > TAP_SLOP_PX) {
+          panned = true;
+          if (game.pendingPress?.kind === "ghostCommit") game.cancelPendingPress();
+        }
         const worldPos = renderer.screenToWorld(pos.x, pos.y);
         game.handlePointerMove({ worldPos, overUI: false });
         preventDefault(e);
@@ -189,7 +199,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     }
 
     // Hover path: mouse pointers (and uncaptured strays) over panels/canvas.
-    if (e.pointerType === "mouse") game.touchPlacement = false;
+    if (e.pointerType === "mouse") game.touchInput = false;
     syncKeys(e);
     if (!isCanvasTarget(e)) {
       // over UI panels — TGUI consumes these; ISSUE-039 cancels a pending drag
@@ -214,7 +224,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
       // Drives the item-ghost lift in Game.placementLift(). Set from the
       // pointer that is actually being used rather than a media query, so a
       // hybrid laptop switches behaviour per gesture instead of per device.
-      game.touchPlacement = true;
+      game.touchInput = true;
       const pos = relative(e);
       touches.set(e.pointerId, pos);
       try {
@@ -224,7 +234,10 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
         enterPinch();
       } else if (touches.size === 1) {
         primaryId = e.pointerId;
-        downPt = pos;
+        // Copied, not aliased. `pos` is the very object held in `touches`, and
+        // onPointerMove mutates that in place — so sharing it made downPt track
+        // the finger and every slop test below measure zero.
+        downPt = { ...pos };
         lastPt = null;
         panned = false;
         // deferCommit: the first finger of a pinch is indistinguishable from
@@ -258,7 +271,7 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
     }
 
     // Mouse: identical to the legacy behavior (press may act immediately).
-    game.touchPlacement = false;
+    game.touchInput = false;
     if (canvasPress(e)) {
       primaryId = e.pointerId;
       mode = "tool";
