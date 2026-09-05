@@ -373,12 +373,29 @@ export class Game {
       }
     }
 
-    this.gameMap.addNode(
-      { x: item.position.x + Math.floor(item.size.x / 2), y: item.position.y + item.prototype.entrance_offset },
-      item,
-    );
+    const nx = item.position.x + Math.floor(item.size.x / 2);
+    if (item.isElevator()) {
+      // GameMap.addNode() grows the whole shaft chain by recursion from the
+      // first node it is given, but only ever onto floors connectsFloor()
+      // accepts. Seeding it at `position.y` regardless of service therefore
+      // mints a boarding node on a floor the car will never stop at, and the
+      // pathfinder happily routes tenants through that phantom stop: they get
+      // a route on paper, never board, and the units read as "the elevator
+      // isn't working". Seed at the lowest floor the shaft actually serves.
+      const seed = this._lowestServicedFloor(item);
+      if (seed !== null) this.gameMap.addNode({ x: nx, y: seed }, item);
+    } else {
+      this.gameMap.addNode({ x: nx, y: item.position.y + item.prototype.entrance_offset }, item);
+    }
     this.decorations.updateCrane();
     if (item === this.metroStation) this.decorations.updateTracks();
+  }
+
+  _lowestServicedFloor(e) {
+    for (let y = e.position.y; y < e.position.y + e.size.y; y++) {
+      if (e.connectsFloor(y)) return y;
+    }
+    return null;
   }
 
   removeItem(item) {
@@ -413,10 +430,18 @@ export class Game {
     if (item === this.mainLobby) this.mainLobby = null;
     if (item === this.metroStation) this.metroStation = null;
 
-    this.gameMap.removeNode(
-      { x: item.position.x + Math.floor(item.size.x / 2), y: item.position.y + item.prototype.entrance_offset },
-      item,
-    );
+    const rx = item.position.x + Math.floor(item.size.x / 2);
+    if (item.isElevator()) {
+      // Mirror of the add above: removeNode() unlinks a single node, so
+      // demolishing a shaft that spans N floors used to strip only the one at
+      // `position.y` and leave the rest behind still advertising hasElevator -
+      // ghost stops for an elevator that no longer exists.
+      for (let y = item.position.y; y < item.position.y + item.size.y; y++) {
+        this.gameMap.removeNode({ x: rx, y }, item);
+      }
+    } else {
+      this.gameMap.removeNode({ x: rx, y: item.position.y + item.prototype.entrance_offset }, item);
+    }
     this.decorations.updateCrane();
     if (item.prototype.icon === ICON.METRO) this.decorations.updateTracks();
     item.destroy?.();
@@ -664,9 +689,15 @@ export class Game {
     if (!lobby) return true;
     const ex = e.position.x + Math.floor(e.size.x / 2);
 
-    // Fast path: a node on the lobby's own floor is reachable by definition -
-    // that floor is one contiguous walkable slab.
-    if (this.gameMap.findNode({ x: ex, y: lobby.position.y }, e)) return true;
+    // Fast path: a stop on the lobby's own floor is reachable by definition -
+    // that floor is one contiguous walkable slab. Test connectsFloor as well
+    // as the node, because addItem() mints a node at `position.y` whether or
+    // not the elevator stops there, so a shaft whose bottom floor is switched
+    // off still has one (see PORT NOTES) and the node alone says nothing.
+    const lobbyFloor = lobby.position.y;
+    if (e.connectsFloor(lobbyFloor) && this.gameMap.findNode({ x: ex, y: lobbyFloor }, e)) {
+      return true;
+    }
 
     const startNode = this.gameMap.findNode(
       { x: lobby.position.x + Math.floor(lobby.size.x / 2), y: lobby.position.y + lobby.prototype.exit_offset },
@@ -688,6 +719,7 @@ export class Game {
 
     // Two different mistakes deserve two different instructions.
     const lobbyFloor = this.mainLobby.position.y;
+
     const spansLobby =
       lobbyFloor >= e.position.y && lobbyFloor < e.position.y + e.size.y;
     this.ui.showMessage(
