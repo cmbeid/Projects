@@ -646,17 +646,56 @@ export class Game {
 
   // A shaft that reaches no floor the lobby can walk to is a total, silent
   // failure: no tenant ever moves in and nothing on screen says why. The
-  // easiest way to build one is the bottom motor — `repositionMotor` puts the
-  // shaft floor at `y + 1` (the motor sits *below* the lowest served floor, as
-  // in the original), so dropping it on the lobby row yields a shaft starting
-  // at floor 1 that never stops at the lobby. Reachability, not geometry, is
-  // the real test — a sky-lobby shaft fed by an express is fine — so ask the
-  // pathfinder.
+  // easiest way to build one is the bottom motor - `repositionMotor` puts the
+  // lowest served floor at `y + 1` (the motor sits *below* it, as in the
+  // original), so dropping it on the lobby row yields a shaft starting at
+  // floor 1 that never stops at the lobby.
+  //
+  // Reachability, not geometry, is the test: a sky-lobby shaft fed by an
+  // express is legitimately detached from the ground floor. But it has to be
+  // asked about a floor the elevator actually *serves* - findRoute() anchors
+  // an elevator destination at `position.y`, the very bottom of the shaft,
+  // and an unserviced bottom floor (a basement the player switched off, or
+  // one below the built slabs) has no MapNode at all. That reported every
+  // such elevator as unreachable while it was carrying tenants perfectly
+  // well, with advice to extend a motor that was already below the lobby.
+  elevatorReachableFromLobby(e) {
+    const lobby = this.mainLobby;
+    if (!lobby) return true;
+    const ex = e.position.x + Math.floor(e.size.x / 2);
+
+    // Fast path: a node on the lobby's own floor is reachable by definition -
+    // that floor is one contiguous walkable slab.
+    if (this.gameMap.findNode({ x: ex, y: lobby.position.y }, e)) return true;
+
+    const startNode = this.gameMap.findNode(
+      { x: lobby.position.x + Math.floor(lobby.size.x / 2), y: lobby.position.y + lobby.prototype.exit_offset },
+      lobby,
+    );
+    if (!startNode) return false;
+
+    for (let y = e.position.y; y < e.position.y + e.size.y; y++) {
+      const destNode = this.gameMap.findNode({ x: ex, y }, e);
+      if (!destNode) continue;
+      if (!this.pathFinder.findRoute(startNode, destNode, lobby, e).empty()) return true;
+    }
+    return false;
+  }
+
   warnIfElevatorUnreachable(e) {
     if (!e || !e.isElevator() || !this.mainLobby) return false;
-    if (!this.findRoute(this.mainLobby, e).empty()) return false;
+    if (this.elevatorReachableFromLobby(e)) return false;
+
+    // Two different mistakes deserve two different instructions.
+    const lobbyFloor = this.mainLobby.position.y;
+    const spansLobby =
+      lobbyFloor >= e.position.y && lobbyFloor < e.position.y + e.size.y;
     this.ui.showMessage(
-      "This elevator cannot be reached from the lobby - drag its lower motor down one more floor.",
+      spansLobby
+        ? "This elevator does not stop at floor " + lobbyFloor +
+          " - switch that floor back on in its Floors... panel."
+        : "This elevator cannot be reached from the lobby - extend it down to floor " +
+          lobbyFloor + ".",
     );
     return true;
   }
