@@ -1613,3 +1613,90 @@ export class OptionsDialog {
     this._save();
   }
 }
+
+
+// --------------------------------------------------------------------------
+// MessageLogDialog — scrollback for the HUD's transient message line.
+//
+// No C++ counterpart: the original only ever showed one message at a time and
+// let it expire. The queue drops anything past K_MAX_PENDING and fades the
+// rest after 4 s, so a player looking at the tower rather than the top bar
+// misses build rejections, promotions and event alerts outright. Opened by
+// clicking the "Tool / Messages" cell.
+// --------------------------------------------------------------------------
+
+export class MessageLogDialog {
+  constructor(game, container, messages) {
+    this.game = game;
+    this.messages = messages;
+
+    this.el = document.createElement("div");
+    this.el.id = "messagelog";
+    this.el.className = "oswin";
+    this.el.style.display = "none";
+    this.el.innerHTML =
+      '<div class="oswin-title"><span>Message Log</span>' +
+      '<button type="button" class="oswin-x" aria-label="Close">×</button></div>' +
+      '<div class="ml-list"></div>' +
+      '<div class="ml-buttons">' +
+      '<button type="button" class="osbtn ml-clear">Clear</button>' +
+      '<button type="button" class="osbtn ml-close">Close</button>' +
+      "</div>";
+    this.listEl = this.el.querySelector(".ml-list");
+    this.el.querySelector(".oswin-x").addEventListener("click", () => this.close());
+    this.el.querySelector(".ml-close").addEventListener("click", () => this.close());
+    this.el.querySelector(".ml-clear").addEventListener("click", () => {
+      this.messages.clearHistory();
+      this.refresh();
+    });
+    container.appendChild(this.el);
+    makeDraggable(this.el, this.el.querySelector(".oswin-title"));
+  }
+
+  get visible() {
+    return this.el.style.display !== "none";
+  }
+
+  refresh() {
+    const h = this.messages.history;
+    this.listEl.textContent = "";
+    if (h.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "ml-empty";
+      empty.textContent = "No messages yet.";
+      this.listEl.appendChild(empty);
+      return;
+    }
+    // Newest first: the reason for opening this is almost always "what did
+    // that say?" about the message that just vanished.
+    for (let i = h.length - 1; i >= 0; i--) {
+      const row = document.createElement("div");
+      row.className = "ml-row";
+      const stamp = document.createElement("span");
+      stamp.className = "ml-stamp";
+      stamp.textContent = h[i].stamp;
+      const text = document.createElement("span");
+      text.className = "ml-text";
+      text.textContent = h[i].text;
+      row.appendChild(stamp);
+      row.appendChild(text);
+      this.listEl.appendChild(row);
+    }
+  }
+
+  show() {
+    this.refresh();
+    this.el.style.display = "";
+    bringToFront(this.el);
+    this.listEl.scrollTop = 0;
+  }
+
+  toggle() {
+    if (this.visible) this.close();
+    else this.show();
+  }
+
+  close() {
+    this.el.style.display = "none";
+  }
+}

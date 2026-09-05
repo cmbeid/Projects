@@ -71,6 +71,14 @@ export class TimeWindow {
     this.message.className = "tw-message";
     this.message.style.opacity = "0";
     msgCell.appendChild(this.message);
+    // Messages fade after 4 s, so anything that arrives while the player is
+    // looking at the tower is lost. The cell is the obvious place to reach for
+    // them, so make it the handle for the scrollback.
+    msgCell.classList.add("tw-msgcell-clickable");
+    msgCell.title = "Open the message log";
+    msgCell.addEventListener("click", () => {
+      if (this.onOpenLog) this.onOpenLog();
+    });
     this.el.appendChild(msgCell);
 
     // FUND / POP / money stats
@@ -175,7 +183,8 @@ export class TimeWindow {
   // ---- game.ui hooks -------------------------------------------------------
 
   showMessage(msg) {
-    this.messages.show(msg);
+    const t = this.game.time;
+    this.messages.show(msg, formatDate(t).text + " " + formatClock(t.getHour()));
     this._renderMessage();
   }
 
