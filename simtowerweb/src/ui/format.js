@@ -139,6 +139,10 @@ export function toolTooltip(gameLike) {
 
 export const MESSAGE_DURATION = 4.0;
 export const K_MAX_PENDING = 3;
+// Messages fade after 4 s and the queue drops anything past K_MAX_PENDING, so
+// a burst (a promotion plus its unlocks, a fire plus its casualties) is gone
+// before it can be read. Keep a scrollback the player can open on demand.
+export const K_MAX_HISTORY = 100;
 
 export class MessageQueue {
   constructor(duration = MESSAGE_DURATION) {
@@ -146,9 +150,14 @@ export class MessageQueue {
     this.current = "";
     this.timer = 0;
     this.pending = [];
+    // Newest last. Entries are { text, stamp } — stamp is whatever the caller
+    // passes (this module stays DOM- and game-free), or "" when omitted.
+    this.history = [];
   }
 
-  show(msg) {
+  show(msg, stamp = "") {
+    this.history.push({ text: msg, stamp });
+    if (this.history.length > K_MAX_HISTORY) this.history.shift();
     if (this.timer > 0 && this.current) {
       this.pending.push(msg);
       if (this.pending.length > K_MAX_PENDING) this.pending.shift();
@@ -179,6 +188,12 @@ export class MessageQueue {
     this.current = "";
     this.timer = 0;
     this.pending.length = 0;
+  }
+
+  // The scrollback outlives the visible message; clearing it is a separate,
+  // explicit act (the log dialog's Clear button).
+  clearHistory() {
+    this.history.length = 0;
   }
 }
 

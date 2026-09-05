@@ -8,6 +8,7 @@ import { TimeWindow } from "./timewindow.js";
 import { MenuBar } from "./menubar.js";
 import {
   InspectorDialog, ElevatorDialog, MapWindow, FinanceWindow, LevelUpDialog, VictoryDialog, VipReviewDialog, FindDialog, SaveDialog, OptionsDialog,
+  MessageLogDialog,
 } from "./dialogs.js";
 import { wireInput } from "./input.js";
 import { ZoomControls } from "./zoomcontrols.js";
@@ -35,6 +36,8 @@ export function createUI(game, { container, renderer, sound, bitmaps } = {}) {
   const timeWindow = new TimeWindow(game, root, {
     onToggleMute: () => sound?.toggleMuted() ?? false,
   });
+  const messageLog = new MessageLogDialog(game, root, timeWindow.messages);
+  timeWindow.onOpenLog = () => messageLog.toggle();
   const toolbox = new Toolbox(game, root, { bitmaps });
   const zoomControls = new ZoomControls(game, root);
 
@@ -65,6 +68,7 @@ export function createUI(game, { container, renderer, sound, bitmaps } = {}) {
     menuBar?.closeAll?.();
     if (victoryDialog.visible) { victoryDialog.close(); return true; }
     if (vipReviewDialog.visible) { vipReviewDialog.close(); return true; }
+    if (messageLog.visible) { messageLog.close(); return true; }
     if (findDialog.visible) { findDialog.close(); return true; }
     if (saveDialog.visible) { saveDialog.close(); return true; }
     if (optionsDialog.visible) { optionsDialog.close(); return true; }
@@ -79,7 +83,12 @@ export function createUI(game, { container, renderer, sound, bitmaps } = {}) {
   // ---- game.ui hooks ---------------------------------------------------------
 
   game.ui = {
-    showMessage: (m) => timeWindow.showMessage(m),
+    showMessage: (m) => {
+      timeWindow.showMessage(m);
+      // Keep an open log live rather than making the player reopen it.
+      if (messageLog.visible) messageLog.refresh();
+    },
+    showMessageLog: () => messageLog.show(),
     updateFunds: () => timeWindow.updateFunds(),
     updateMoneyStats: () => timeWindow.updateMoneyStats(),
     updateRating: () => timeWindow.updateRating(),
