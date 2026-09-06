@@ -150,7 +150,7 @@ export class InspectorDialog {
     const item = this.item;
     if (!item) return;
     this.titleEl.textContent = item.prototype.name;
-    const text = describeItem(item, this.game.time.absolute);
+    const text = describeItem(item, this.game.time.absolute, this.game);
     if (text !== this._lastText) {
       this._lastText = text;
       this.contentEl.textContent = text;
