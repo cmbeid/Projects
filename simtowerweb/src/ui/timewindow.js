@@ -45,6 +45,15 @@ export class TimeWindow {
     this.stars = document.createElement("div");
     this.stars.className = "tw-stars";
     starCell.appendChild(this.stars);
+    // The advancement table is otherwise only visible as a transient "Next:"
+    // message fired in the narrow window where population is within 50 of the
+    // threshold. The star row is where a player looks to ask "how do I get the
+    // next one", so make it the handle for the answer.
+    starCell.classList.add("tw-starcell");
+    starCell.title = "What this tower needs for its next star";
+    starCell.addEventListener("click", () => {
+      if (this.onOpenRating) this.onOpenRating();
+    });
     this.el.appendChild(starCell);
 
     // date

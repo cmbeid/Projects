@@ -8,7 +8,7 @@ import { TimeWindow } from "./timewindow.js";
 import { MenuBar } from "./menubar.js";
 import {
   InspectorDialog, ElevatorDialog, MapWindow, FinanceWindow, LevelUpDialog, VictoryDialog, VipReviewDialog, FindDialog, SaveDialog, OptionsDialog,
-  MessageLogDialog,
+  MessageLogDialog, RatingDialog,
 } from "./dialogs.js";
 import { wireInput } from "./input.js";
 import { ZoomControls } from "./zoomcontrols.js";
@@ -38,6 +38,8 @@ export function createUI(game, { container, renderer, sound, bitmaps } = {}) {
   });
   const messageLog = new MessageLogDialog(game, root, timeWindow.messages);
   timeWindow.onOpenLog = () => messageLog.toggle();
+  const ratingDialog = new RatingDialog(game, root);
+  timeWindow.onOpenRating = () => ratingDialog.toggle();
   const toolbox = new Toolbox(game, root, { bitmaps });
   const zoomControls = new ZoomControls(game, root);
 
@@ -68,6 +70,7 @@ export function createUI(game, { container, renderer, sound, bitmaps } = {}) {
     menuBar?.closeAll?.();
     if (victoryDialog.visible) { victoryDialog.close(); return true; }
     if (vipReviewDialog.visible) { vipReviewDialog.close(); return true; }
+    if (ratingDialog.visible) { ratingDialog.close(); return true; }
     if (messageLog.visible) { messageLog.close(); return true; }
     if (findDialog.visible) { findDialog.close(); return true; }
     if (saveDialog.visible) { saveDialog.close(); return true; }
@@ -91,7 +94,10 @@ export function createUI(game, { container, renderer, sound, bitmaps } = {}) {
     showMessageLog: () => messageLog.show(),
     updateFunds: () => timeWindow.updateFunds(),
     updateMoneyStats: () => timeWindow.updateMoneyStats(),
-    updateRating: () => timeWindow.updateRating(),
+    updateRating: () => {
+      timeWindow.updateRating();
+      if (ratingDialog.visible) ratingDialog.refresh();
+    },
     updatePopulation: () => timeWindow.updatePopulation(),
     updateTime: () => timeWindow.updateTime(),
     updateTooltip: () => timeWindow.updateTooltip(),
