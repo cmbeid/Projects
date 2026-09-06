@@ -28,6 +28,30 @@ export const LevelUp = {
     if (next >= 1 && next < kAdvancement.length) return kAdvancement[next];
     return null;
   },
+  // Per-condition breakdown of meetsRequirements, for the rating dialog.
+  // Deliberately mirrors the *enforced* checks rather than req.summary, which
+  // is descriptive prose from the original and names things the code does not
+  // actually gate on (the 4-star summary mentions Hotel Suites and Recycling;
+  // meetsRequirements checks neither). DOM-free so it stays unit-testable.
+  requirementChecklist(req, population, counts, vipReviews) {
+    if (!req) return [];
+    const rows = [
+      {
+        label: "Population",
+        have: population,
+        need: req.population,
+        met: population >= req.population,
+      },
+    ];
+    const facility = (label, needed, have) => {
+      if (needed) rows.push({ label, have, need: 1, met: have > 0 });
+    };
+    facility("Security Office", req.needsSecurity, counts.securityOffices || 0);
+    facility("Medical Center", req.needsMedical, counts.medicalCenters || 0);
+    facility("Metro Station", req.needsMetro, counts.metroStations || 0);
+    facility("Favourable VIP review", req.needsVip, vipReviews || 0);
+    return rows;
+  },
   meetsRequirements(req, population, counts, vipReviews) {
     return (
       population >= req.population &&

@@ -6,7 +6,7 @@ import { ICON } from "../game/game.js";
 import { K_BASE_SPEED } from "../core/time.js";
 import { LevelUp } from "../game/systems/levelup.js";
 import {
-  describeItem, formatCommaMoney, incomeForType, towerBounds,
+  describeItem, formatCommaMoney, formatCommaNumber, incomeForType, towerBounds,
   FINANCE_DISPLAY_ORDER, FINANCE_DISPLAY_NAMES,
 } from "./format.js";
 import { makeDraggable, bringToFront } from "./draggable.js";
@@ -1700,6 +1700,112 @@ export class MessageLogDialog {
     this.el.style.display = "";
     bringToFront(this.el);
     this.listEl.scrollTop = 0;
+  }
+
+  toggle() {
+    if (this.visible) this.close();
+    else this.show();
+  }
+
+  close() {
+    this.el.style.display = "none";
+  }
+}
+
+
+// --------------------------------------------------------------------------
+// RatingDialog — what the tower still needs for its next star.
+//
+// No C++ counterpart: the original showed the star row as a readout only and
+// left the advancement table to the manual. The data is all here already
+// (LevelUp.advancementRequirements + the same counts meetsRequirements uses),
+// and the only place it surfaced was a transient "Next: ..." message fired in
+// the narrow window where population is within 50 of the threshold - easy to
+// miss entirely. Opened by clicking the star row.
+// --------------------------------------------------------------------------
+
+export class RatingDialog {
+  constructor(game, container) {
+    this.game = game;
+
+    this.el = document.createElement("div");
+    this.el.id = "ratingdlg";
+    this.el.className = "oswin";
+    this.el.style.display = "none";
+    this.el.innerHTML =
+      '<div class="oswin-title"><span>Tower Rating</span>' +
+      '<button type="button" class="oswin-x" aria-label="Close">×</button></div>' +
+      '<div class="rd-current"></div>' +
+      '<div class="rd-goal"></div>' +
+      '<div class="rd-list"></div>' +
+      '<div class="rd-buttons"><button type="button" class="osbtn rd-close">Close</button></div>';
+    this.currentEl = this.el.querySelector(".rd-current");
+    this.goalEl = this.el.querySelector(".rd-goal");
+    this.listEl = this.el.querySelector(".rd-list");
+    this.el.querySelector(".oswin-x").addEventListener("click", () => this.close());
+    this.el.querySelector(".rd-close").addEventListener("click", () => this.close());
+    container.appendChild(this.el);
+    makeDraggable(this.el, this.el.querySelector(".oswin-title"));
+  }
+
+  get visible() {
+    return this.el.style.display !== "none";
+  }
+
+  refresh() {
+    const g = this.game;
+    // rating is 0-based and runs 0..5, where 5 is TOWER - one rung *past* the
+    // five stars, so the star count has to clamp or repeat() throws.
+    const stars = Math.max(0, Math.min(g.rating + 1, 5));
+    const isTower = g.rating >= 5;
+    this.currentEl.textContent =
+      "★".repeat(stars) + "☆".repeat(5 - stars) +
+      (isTower ? "   TOWER" : "   " + stars + " of 5 stars");
+
+    const req = LevelUp.advancementRequirements(g.rating);
+    this.listEl.textContent = "";
+    if (!req) {
+      this.goalEl.textContent = "This tower has reached TOWER rating - the highest there is.";
+      return;
+    }
+    this.goalEl.textContent =
+      (stars >= 5 ? "To reach TOWER rating: " : "To reach " + (stars + 1) + " stars: ") + req.summary;
+
+    // evaluateAll() refreshes lastCounts; the dialog is opened rarely enough
+    // that paying for it here beats showing a stale tally.
+    g.judgeSystem.evaluateAll(g);
+    const rows = LevelUp.requirementChecklist(
+      req,
+      g.population,
+      g.judgeSystem.counts(),
+      g.vipSystem.positiveReviews(),
+    );
+    for (const r of rows) {
+      const row = document.createElement("div");
+      row.className = "rd-row" + (r.met ? " rd-met" : "");
+      const mark = document.createElement("span");
+      mark.className = "rd-mark";
+      mark.textContent = r.met ? "✓" : "✗";
+      const label = document.createElement("span");
+      label.className = "rd-label";
+      label.textContent = r.label;
+      const value = document.createElement("span");
+      value.className = "rd-value";
+      value.textContent =
+        r.need > 1
+          ? formatCommaNumber(r.have) + " / " + formatCommaNumber(r.need)
+          : r.met ? "built" : "none yet";
+      row.appendChild(mark);
+      row.appendChild(label);
+      row.appendChild(value);
+      this.listEl.appendChild(row);
+    }
+  }
+
+  show() {
+    this.refresh();
+    this.el.style.display = "";
+    bringToFront(this.el);
   }
 
   toggle() {

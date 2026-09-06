@@ -19,6 +19,12 @@ export function formatCommaMoney(amount) {
   return neg ? "-" + fmt : fmt;
 }
 
+// Thousands separators for a plain count (population, requirement targets).
+// formatCommaMoney prefixes a "$", which is wrong for people.
+export function formatCommaNumber(n) {
+  return Math.trunc(n).toLocaleString("en-US");
+}
+
 export function formatCompactMoney(amount) {
   const a = Math.abs(Math.trunc(amount));
   if (a >= 1000000) return "$" + Math.trunc(a / 1000000) + "M";
