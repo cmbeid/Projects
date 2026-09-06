@@ -295,10 +295,13 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
       if (game.batchDrag) game.cancelBatchDrag();
       game.cancelPendingPress?.();
       scrollbarDrag = null;
-      game.handlePointerUp();
+      game.handlePointerUp({ panned });
     } else {
       scrollbarDrag = null;
-      game.handlePointerUp();
+      // Whether the gesture ended up a pan decides if a deferred tool action
+      // fires: on touch the tools no longer claim the press, so a drag is a
+      // pan and only a tap builds, demolishes or inspects.
+      game.handlePointerUp({ panned });
     }
   };
 
