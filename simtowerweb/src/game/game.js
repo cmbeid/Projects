@@ -810,6 +810,24 @@ export class Game {
   // Is worldPos inside the footprint the ghost occupies at `at`? Padded by
   // half a tile so the box can still be grabbed when the finger lands just
   // outside it, which on a phone is most of the time.
+  // Topmost item at a world point, in the renderer's own draw order (floors,
+  // then layer 0, then layer 1 - last drawn wins), so a press and the frame
+  // agree about what is under the pointer.
+  pickItemAt(worldPos) {
+    let found = null;
+    const hit = (item) => {
+      if (item.containsPoint(worldPos)) found = item;
+    };
+    for (const item of this.itemsByType.get("floor") || []) hit(item);
+    for (let layer = 0; layer < 2; layer++) {
+      for (const item of this.items) {
+        if (item.layer !== layer) continue;
+        hit(item);
+      }
+    }
+    return found;
+  }
+
   pointerOverGhost(at, worldPos) {
     const proto = this.toolPrototype;
     if (!at || !proto) return false;
@@ -846,6 +864,15 @@ export class Game {
     this.updateToolPosition();
     this.ghostAt = parkedGhost;
     if (overUI) return false;
+
+    // itemBelowCursor is normally a by-product of rendering, so it describes
+    // the *previous* frame's pointer. A mouse hovers before it clicks, so by
+    // then it is fresh; a finger just arrives. The first touch on an elevator
+    // motor was therefore tested against whatever the last frame had under the
+    // cursor, fell through to a pan, and the motor only answered a second
+    // press - which reads as a new shaft that will not resize. Recompute from
+    // the pointer actually in hand.
+    this.itemBelowCursor = this.pickItemAt(worldPos);
 
     // Emergency events take priority over all other click actions.
     if (this.eventSystem.isActive() && this.eventSystem.handleClick(this.toolPosition)) return true;
