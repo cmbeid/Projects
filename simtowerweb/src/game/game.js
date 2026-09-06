@@ -993,10 +993,24 @@ export class Game {
       // on touch, where the finger hides the target, is the more predictable
       // of the two.
       if (pending.kind === "ghostCommit") {
-        this.clickConstruct();
-        // Disarmed after building so a second tap in the same place cannot
-        // re-fire on the cell that is now occupied.
-        this.clearGhost();
+        const at = { ...this.toolPosition };
+        const proto = this.toolPrototype;
+        const built = this.clickConstruct();
+        // Laying a row of hotel rooms one at a time is tap-park-tap-place per
+        // unit; step the ghost one footprint along instead so every tap after
+        // the first places another. Same tool set the mouse can batch-drag -
+        // elevators, lobbies, floors, stairs and the metro are placed
+        // deliberately one at a time and must not chain.
+        if (built && proto && this._isBatchDraggable(proto)) {
+          this.ghostArmed = true;
+          this.ghostGrab = null;
+          this.toolPosition = { x: at.x + proto.size.x, y: at.y };
+          this._toolHeightOverride = null;
+        } else {
+          // Disarmed after building so a second tap in the same place cannot
+          // re-fire on the cell that is now occupied.
+          this.clearGhost();
+        }
         return;
       }
       if (pending.kind === "bulldoze") this.bulldozeUnderCursor();
@@ -1234,7 +1248,7 @@ export class Game {
         }
       }
     }
-    if (handled) return;
+    if (handled) return true; // elevator shaft extended
 
     let constructionBlocked = false;
     let blockReason = "";
@@ -1610,11 +1624,12 @@ export class Game {
         this.updateRoutes();
         this.playOnce("simtower/construction/normal");
       }
-    } else {
-      this.playOnce("simtower/construction/impossible");
-      // During ISSUE-039 batch commits the drag summary reports the block.
-      if (!this._batchCommitting) this.ui.showMessage("Cannot place item there. " + blockReason + ".");
+      return true;
     }
+    this.playOnce("simtower/construction/impossible");
+    // During ISSUE-039 batch commits the drag summary reports the block.
+    if (!this._batchCommitting) this.ui.showMessage("Cannot place item there. " + blockReason + ".");
+    return false;
   }
 
   // ------------------------------------------------------------- seeding
