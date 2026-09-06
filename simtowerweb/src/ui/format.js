@@ -105,12 +105,15 @@ export function formatAutosaveResumeLabel(meta) {
   return `Resume — ${parts.join(" · ")}`;
 }
 
+// Labels the *actual* multipliers from Game.SPEED_MULTIPLIERS. These used to
+// read 1x/2x/4x while the game ran 1x/4x/12x, so the two fast modes were
+// understated by 2x and 3x - a player picking "4x" got twelve.
 export function speedLabel(mode) {
   switch (mode) {
     case 0: return "Paused";
     case 1: return "Speed 1x";
-    case 2: return "Speed 2x";
-    case 3: return "Speed 4x";
+    case 2: return "Speed 4x";
+    case 3: return "Speed 12x";
     default: return "";
   }
 }
