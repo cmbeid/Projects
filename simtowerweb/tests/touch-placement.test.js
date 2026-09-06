@@ -253,3 +253,56 @@ describe("pickItemAt", () => {
     );
   });
 });
+
+// On touch no tool claims the press any more: a drag is a pan, and only a tap
+// runs the tool. Claiming it meant that with the palette armed - which on a
+// phone it nearly always is - one-finger panning was impossible without first
+// switching to the hand tool, so the lobby and basements were unreachable.
+describe("a pan drops the deferred tool action", () => {
+  const ctx = (pending) => ({
+    pendingPress: pending,
+    ghostGrab: null,
+    ghostArmed: false,
+    ghostAt: null,
+    toolPosition: { x: 0, y: 0 },
+    toolPrototype: null,
+    batchDrag: null,
+    draggingElevator: null,
+    clearGhost: Game.prototype.clearGhost,
+    _isBatchDraggable: Game.prototype._isBatchDraggable,
+    inspectTarget: Game.prototype.inspectTarget,
+    clickConstruct: () => {
+      throw new Error("must not build on a pan");
+    },
+    bulldozeUnderCursor: () => {
+      throw new Error("must not demolish on a pan");
+    },
+  });
+
+  it("does not build, demolish or park when the gesture panned", () => {
+    for (const pending of [
+      { kind: "ghostCommit" },
+      { kind: "bulldoze" },
+      { kind: "park", at: { x: 9, y: 9 } },
+    ]) {
+      const c = ctx(pending);
+      expect(() => Game.prototype.handlePointerUp.call(c, { panned: true })).not.toThrow();
+      expect(c.pendingPress).toBeNull();
+      expect(c.ghostArmed).toBe(false);
+    }
+  });
+
+  it("parks on a tap, at the cell the press was on", () => {
+    const c = ctx({ kind: "park", at: { x: 12, y: 4 } });
+    Game.prototype.handlePointerUp.call(c, { panned: false });
+    expect(c.ghostArmed).toBe(true);
+    expect(c.ghostAt).toEqual({ x: 12, y: 4 });
+    expect(c.toolPosition).toEqual({ x: 12, y: 4 });
+  });
+
+  it("defaults to treating the gesture as a tap", () => {
+    const c = ctx({ kind: "park", at: { x: 3, y: 1 } });
+    Game.prototype.handlePointerUp.call(c);
+    expect(c.ghostArmed).toBe(true);
+  });
+});

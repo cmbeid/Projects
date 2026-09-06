@@ -77,6 +77,13 @@ export class Toolbox {
       this._resizeObserver = new ResizeObserver(() => this._publishHeight());
       this._resizeObserver.observe(this.el);
     }
+    // The drawer's own box does not change on rotation, but the viewport it is
+    // measured against does - and the camera inset is derived from both.
+    if (typeof window !== "undefined") {
+      this._onViewportResize = () => this._publishHeight();
+      window.addEventListener("resize", this._onViewportResize);
+      window.addEventListener("orientationchange", this._onViewportResize);
+    }
 
     this.reload();
   }
@@ -84,6 +91,10 @@ export class Toolbox {
   destroy() {
     this._clearHold();
     this._resizeObserver?.disconnect();
+    if (typeof window !== "undefined" && this._onViewportResize) {
+      window.removeEventListener("resize", this._onViewportResize);
+      window.removeEventListener("orientationchange", this._onViewportResize);
+    }
     if (typeof document !== "undefined") {
       document.removeEventListener("pointermove", this._onDocPointerMove);
       document.removeEventListener("pointerup", this._onDocPointerUp);
@@ -238,6 +249,28 @@ export class Toolbox {
   _publishHeight() {
     if (typeof document === "undefined" || !this.el) return;
     document.documentElement.style.setProperty("--toolbox-h", `${this.el.offsetHeight}px`);
+    this._publishViewportInset();
+  }
+
+  // The phone tier turns this panel into a full-width drawer painted over the
+  // canvas, hiding the bottom of what the renderer draws - which is where the
+  // lobby and the basements are. The camera clamp needs to know, or those
+  // floors can never be panned into the visible strip.
+  //
+  // Measured rather than keyed off a media query, so the landscape left rail
+  // (bottom-anchored but narrow) and the desktop floating window (neither)
+  // both correctly report nothing.
+  _publishViewportInset() {
+    if (!this.game || typeof window === "undefined") return;
+    const r = this.el.getBoundingClientRect();
+    if (r.height === 0) return; // not laid out yet
+    // "A drawer across the bottom", not "touching the last pixel": the phone
+    // tier leaves a safe-area gap under it, so an exact bottom-edge test read
+    // as not-anchored and published nothing.
+    const inLowerHalf = r.top >= window.innerHeight * 0.5;
+    const spansWidth = r.width >= window.innerWidth * 0.6;
+    this.game.viewportInsetBottom =
+      inLowerHalf && spansWidth ? Math.max(0, window.innerHeight - r.top) : 0;
   }
 
   // ISSUE-040: narrow screens collapse the palette to its header strip.

@@ -13,6 +13,7 @@ import { XMLPrinter, parseXML, intAttr, doubleAttr, boolAttr, childrenNamed, fir
 import { injectSaveHash, verifySaveHash } from "../core/savehash.js";
 import { LevelUp } from "./systems/levelup.js";
 import { findRampAt } from "./items/parkingramp.js";
+import { clampPOI } from "../render/camera.js";
 
 
 // icon enum (order matters — matches C++ Icon enum used by prototypes)
@@ -93,6 +94,9 @@ export class Game {
     this.lastSpeedMode = 1; // shared pause-toggle memory (see togglePause)
     this.statusMode = STATUS_MODE.NORMAL;
 
+    // CSS px of the canvas's bottom edge covered by an overlaying panel (the
+    // phone toolbox drawer). Published by the UI; see clampPOI.
+    this.viewportInsetBottom = 0;
     this.zoom = 0.5;
     this.zoomStep = 2;
     this.poi = { x: 0, y: 200 };
@@ -256,10 +260,9 @@ export class Game {
       }
     }
 
-    // constrain POI
-    const halfW = ((this.app?.window?.width || 800) * 0.5) * this.zoom;
-    const halfH = ((this.app?.window?.height || 600) * 0.5) * this.zoom;
-    this.poi.y = Math.max(Math.min(this.poi.y, 360 * 12 - halfH), -360 + halfH);
+    // constrain POI (shared with the input layer so the two cannot disagree
+    // about the bottom-drawer inset)
+    clampPOI(this);
 
     // current tool position
     this.updateToolPosition();
@@ -897,12 +900,15 @@ export class Game {
           // Released without dragging, this is the confirming tap.
           this.pendingPress = { kind: "ghostCommit" };
         } else {
-          // First tap, or a tap somewhere else: (re)park the ghost here and
-          // let it be dragged straight away. Never builds.
+          // Not on the ghost, so this gesture is not about the ghost. Do not
+          // claim it: on a phone the tool palette is almost always armed, and
+          // claiming every press left one-finger panning impossible unless the
+          // player first switched to the hand tool - which is how the lobby
+          // and the basements became unreachable in portrait. Park on release
+          // instead, and only if the gesture stayed a tap.
           this.ghostGrab = null;
-          this.ghostArmed = true;
-          this.ghostAt = { ...this.toolPosition };
-          this.pendingPress = null;
+          this.pendingPress = { kind: "park", at: { ...this.toolPosition } };
+          return false;
         }
         return true;
       }
@@ -915,9 +921,13 @@ export class Game {
       // the gesture layer can treat the press as a pan rather than a tool.
       if (!this.itemBelowCursor) return false;
       // Demolition is instant and there is no undo anywhere, which makes it
-      // the worst thing to fire off the first finger of a pinch.
-      if (deferCommit) this.pendingPress = { kind: "bulldoze" };
-      else this.bulldozeUnderCursor();
+      // the worst thing to fire off the first finger of a pinch. On touch it
+      // also must not claim the gesture, or the bulldozer cannot pan either.
+      if (deferCommit) {
+        this.pendingPress = { kind: "bulldoze" };
+        return false;
+      }
+      this.bulldozeUnderCursor();
       return true;
     }
 
@@ -950,19 +960,33 @@ export class Game {
 
     if (this.selectedTool === "inspector") {
       const person = this.findPersonAt(this.mouseWorld.x, this.mouseWorld.y);
-      if (person) {
-        this.visualizeRoute.clear();
-        this.ui.showInspectorForPerson(person);
-        return true;
+      const target = person || this.itemBelowCursor;
+      if (!target) return false;
+      // Same rule as the other tools on touch: opening a panel is a tap, so
+      // leave the gesture free to be a pan and act on release instead.
+      if (deferCommit) {
+        this.pendingPress = { kind: "inspect", person: person || null, item: person ? null : this.itemBelowCursor };
+        return false;
       }
-      if (this.itemBelowCursor) {
-        this.itemBelowCursor.updateRoutes();
-        this.visualizeRoute.copyFrom(this.itemBelowCursor.lobbyRoute);
-        this.ui.showInspectorForItem(this.itemBelowCursor);
-        return true;
-      }
+      this.inspectTarget(person, person ? null : this.itemBelowCursor);
+      return true;
     }
 
+    return false;
+  }
+
+  inspectTarget(person, item) {
+    if (person) {
+      this.visualizeRoute.clear();
+      this.ui.showInspectorForPerson(person);
+      return true;
+    }
+    if (item) {
+      item.updateRoutes();
+      this.visualizeRoute.copyFrom(item.lobbyRoute);
+      this.ui.showInspectorForItem(item);
+      return true;
+    }
     return false;
   }
 
@@ -1036,13 +1060,33 @@ export class Game {
     this.pendingPress = null;
   }
 
-  handlePointerUp() {
+  handlePointerUp({ panned = false } = {}) {
     const pending = this.pendingPress;
     this.pendingPress = null;
     // The grab offset belongs to the gesture that is ending, whatever it did.
     // Leaving it set was what made the next tap nudge the ghost.
     this.ghostGrab = null;
+    // A gesture that turned into a pan was never a tap: the deferred tool
+    // action is dropped rather than fired wherever the finger came to rest.
+    if (pending && panned) {
+      if (this.draggingElevator) {
+        this.updateRoutes();
+        this.warnIfElevatorUnreachable(this.draggingElevator);
+      }
+      this.draggingElevator = null;
+      return;
+    }
     if (pending) {
+      if (pending.kind === "park") {
+        this.ghostArmed = true;
+        this.ghostAt = { ...pending.at };
+        this.toolPosition = { ...pending.at };
+        return;
+      }
+      if (pending.kind === "inspect") {
+        this.inspectTarget(pending.person, pending.item);
+        return;
+      }
       // Builds where the finger ended, not where it started. A "tool" gesture
       // keeps feeding pointermove into updateToolPosition, so this is exactly
       // the cell the placement ghost has been drawing under the finger — which

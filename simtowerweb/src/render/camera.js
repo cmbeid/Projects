@@ -27,9 +27,27 @@ export function maxUsefulZoom(game) {
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, WORLD_HEIGHT / h));
 }
 
+// How much of the canvas's bottom edge is hidden under a panel, in world px.
+// The phone tier's toolbox is a full-width drawer painted *over* the canvas, so
+// the lowest 40% of what the renderer draws is behind it. Clamping to the
+// canvas alone therefore parked the lobby and the basements permanently under
+// the drawer with no way to pan to them; the camera has to be allowed that much
+// further down so they can rise into the strip that is actually visible.
+function bottomInsetWorld(game) {
+  const px = game?.viewportInsetBottom || 0;
+  return px > 0 ? px * game.zoom : 0;
+}
+
 export function clampPOI(game) {
-  const halfH = game.app.window.height * 0.5 * game.zoom;
-  game.poi.y = Math.max(Math.min(game.poi.y, 360 * 12 - halfH), -360 + halfH);
+  const h = game?.app?.window?.height || 600;
+  const halfH = h * 0.5 * game.zoom;
+  const inset = bottomInsetWorld(game);
+  const lower = WORLD_BOTTOM + halfH - inset;
+  const upper = WORLD_TOP - halfH;
+  // A viewport taller than the world (or a huge inset) inverts the two; keep
+  // the upper bound authoritative so the camera cannot be pinned below the
+  // world floor.
+  game.poi.y = Math.max(Math.min(game.poi.y, upper), Math.min(lower, upper));
   return game.poi;
 }
 
