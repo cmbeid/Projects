@@ -158,3 +158,52 @@ describe("parked ghost survives the per-frame update", () => {
     expect(c.ghostAt).toEqual({ x: 20, y: 3 });
   });
 });
+
+// A drag that repositions the ghost ends without a commit, so it used to leave
+// ghostGrab set. updateToolPosition() then folded that stale offset into the
+// "raw cell under the finger" that the *next* press measures its own offset
+// against, and the confirming tap slid the ghost sideways by exactly the
+// previous drag's offset before building there.
+describe("the grab offset does not outlive its gesture", () => {
+  const ctx = (over = {}) => ({
+    pendingPress: null,
+    ghostGrab: { dx: -2, dy: 0 },
+    ghostArmed: true,
+    ghostAt: { x: 211, y: 3 },
+    toolPosition: { x: 211, y: 3 },
+    toolPrototype: null,
+    batchDrag: null,
+    draggingElevator: null,
+    clearGhost: Game.prototype.clearGhost,
+    _isBatchDraggable: Game.prototype._isBatchDraggable,
+    clickConstruct: () => true,
+    ...over,
+  });
+
+  it("clears it when the gesture ended without a pending press", () => {
+    const c = ctx();
+    Game.prototype.handlePointerUp.call(c);
+    expect(c.ghostGrab).toBeNull();
+    // The ghost itself stays put — a repositioning drag must not disarm it.
+    expect(c.ghostArmed).toBe(true);
+    expect(c.toolPosition).toEqual({ x: 211, y: 3 });
+  });
+
+  it("clears it after a commit too", () => {
+    const c = ctx({
+      pendingPress: { kind: "ghostCommit" },
+      toolPrototype: { id: "hotel_single", icon: ICON.HOTEL, size: { x: 4, y: 1 } },
+    });
+    Game.prototype.handlePointerUp.call(c);
+    expect(c.ghostGrab).toBeNull();
+  });
+
+  it("clears it after a bulldoze", () => {
+    const c = ctx({
+      pendingPress: { kind: "bulldoze" },
+      bulldozeUnderCursor: () => true,
+    });
+    Game.prototype.handlePointerUp.call(c);
+    expect(c.ghostGrab).toBeNull();
+  });
+});
