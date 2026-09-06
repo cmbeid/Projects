@@ -4,7 +4,7 @@
 // can never be confirmed on a phone, too loose and a tap meant to reposition
 // builds instead — with no undo anywhere in the codebase.
 import { describe, expect, it } from "vitest";
-import { Game } from "../src/game/game.js";
+import { Game, ICON } from "../src/game/game.js";
 
 const over = Game.prototype.pointerOverGhost;
 
@@ -61,5 +61,60 @@ describe("clearGhost", () => {
     Game.prototype.clearGhost.call(g);
     expect(g.ghostArmed).toBe(false);
     expect(g.ghostGrab).toBe(null);
+  });
+});
+
+// Laying a row of hotel rooms used to be tap-park + tap-place for every unit.
+// A successful touch build now steps the ghost one footprint along and leaves
+// it armed, so each further tap places the next one.
+describe("ghost auto-advance", () => {
+  const ctx = (proto, built) => ({
+    pendingPress: { kind: "ghostCommit" },
+    toolPosition: { x: 20, y: 2 },
+    toolPrototype: proto,
+    _toolHeightOverride: 7,
+    ghostArmed: true,
+    ghostGrab: { dx: 0, dy: 0 },
+    batchDrag: null,
+    draggingElevator: null,
+    clickConstruct: () => built,
+    _isBatchDraggable: Game.prototype._isBatchDraggable,
+    clearGhost: Game.prototype.clearGhost,
+  });
+  const room = { id: "hotel_single", icon: ICON.HOTEL, size: { x: 4, y: 1 } };
+
+  it("steps one footprint along and stays armed after a build", () => {
+    const c = ctx(room, true);
+    Game.prototype.handlePointerUp.call(c);
+    expect(c.ghostArmed).toBe(true);
+    expect(c.toolPosition).toEqual({ x: 24, y: 2 });
+    // The lobby/spiral-stair height preview must not leak onto the next unit.
+    expect(c._toolHeightOverride).toBeNull();
+    expect(c.ghostGrab).toBeNull();
+  });
+
+  it("disarms when the build was refused, so a tap cannot re-fire", () => {
+    const c = ctx(room, false);
+    Game.prototype.handlePointerUp.call(c);
+    expect(c.ghostArmed).toBe(false);
+    expect(c.toolPosition).toEqual({ x: 20, y: 2 });
+  });
+
+  it("never chains the tools the mouse cannot batch-drag", () => {
+    // Same exclusion list as the mouse gesture: elevators, ramps, and the
+    // lobby / floor / metro / stairs icons are placed deliberately, one at a
+    // time, and must not lay a row from a stray second tap.
+    for (const proto of [
+      { id: "elevator-standard", icon: ICON.ELEVATOR, size: { x: 4, y: 1 } },
+      { id: "parkingramp", icon: ICON.PARKING, size: { x: 4, y: 1 } },
+      { id: "lobby", icon: ICON.LOBBY, size: { x: 4, y: 1 } },
+      { id: "floor", icon: ICON.FLOOR, size: { x: 8, y: 1 } },
+      { id: "stairs", icon: ICON.STAIRS, size: { x: 4, y: 2 } },
+      { id: "metro", icon: ICON.METRO, size: { x: 8, y: 1 } },
+    ]) {
+      const c = ctx(proto, true);
+      Game.prototype.handlePointerUp.call(c);
+      expect(c.ghostArmed, proto.id).toBe(false);
+    }
   });
 });
