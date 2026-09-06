@@ -178,8 +178,16 @@ export function wireInput(game, renderer, { onToggleMap, onToggleFinance, onTogg
           panned = true;
           if (game.pendingPress?.kind === "ghostCommit") game.cancelPendingPress();
         }
-        const worldPos = renderer.screenToWorld(pos.x, pos.y);
-        game.handlePointerMove({ worldPos, overUI: false });
+        // Below the slop a touch is still a tap, and feeding it through would
+        // drag the ghost: no finger holds perfectly still, and a few px is a
+        // whole tile once the view is zoomed out, so the confirming tap built
+        // a cell to the side of the box the player was aiming at. The mouse
+        // keeps every move - a cursor really is where the user put it, and
+        // ISSUE-039's batch preview wants them all.
+        if (panned || e.pointerType === "mouse") {
+          const worldPos = renderer.screenToWorld(pos.x, pos.y);
+          game.handlePointerMove({ worldPos, overUI: false });
+        }
         preventDefault(e);
         return;
       }

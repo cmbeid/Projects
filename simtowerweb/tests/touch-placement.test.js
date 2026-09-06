@@ -88,6 +88,10 @@ describe("ghost auto-advance", () => {
     Game.prototype.handlePointerUp.call(c);
     expect(c.ghostArmed).toBe(true);
     expect(c.toolPosition).toEqual({ x: 24, y: 2 });
+    // ghostAt is what makes the step survive: Game.advance() runs
+    // updateToolPosition() every frame, and without a parked position to pin
+    // to it drags the ghost straight back under the last finger position.
+    expect(c.ghostAt).toEqual({ x: 24, y: 2 });
     // The lobby/spiral-stair height preview must not leak onto the next unit.
     expect(c._toolHeightOverride).toBeNull();
     expect(c.ghostGrab).toBeNull();
@@ -116,5 +120,41 @@ describe("ghost auto-advance", () => {
       Game.prototype.handlePointerUp.call(c);
       expect(c.ghostArmed, proto.id).toBe(false);
     }
+  });
+});
+
+// The step only survives because updateToolPosition() pins a parked ghost to
+// ghostAt. Game.advance() calls it every frame, so anything that recomputed
+// the position from the pointer would undo the step before the next tap - the
+// gesture appeared to work only in a test where the render loop was stopped.
+describe("parked ghost survives the per-frame update", () => {
+  const base = () => ({
+    mouseWorld: { x: 160, y: 90 },          // finger left behind at tile ~18
+    selectedTool: "item-hotel_single",
+    itemFactory: { prototypesById: { hotel_single: { id: "hotel_single", icon: ICON.HOTEL, size: { x: 4, y: 1 } } } },
+    toolPrototype: null,
+    toolPosition: { x: 0, y: 0 },
+    keys: {},
+    itemsByType: new Map(),
+    ui: { updateTooltip() {} },
+  });
+
+  it("keeps a parked ghost where it was left", () => {
+    const c = { ...base(), ghostArmed: true, ghostGrab: null, ghostAt: { x: 24, y: 2 } };
+    Game.prototype.updateToolPosition.call(c);
+    expect(c.toolPosition).toEqual({ x: 24, y: 2 });
+  });
+
+  it("follows the pointer when there is no parked ghost", () => {
+    const c = { ...base(), ghostArmed: false, ghostGrab: null, ghostAt: null };
+    Game.prototype.updateToolPosition.call(c);
+    expect(c.toolPosition).toEqual({ x: 18, y: 2 });
+  });
+
+  it("tracks the drag, and remembers where the drag left it", () => {
+    const c = { ...base(), ghostArmed: true, ghostGrab: { dx: 2, dy: 1 }, ghostAt: { x: 24, y: 2 } };
+    Game.prototype.updateToolPosition.call(c);
+    expect(c.toolPosition).toEqual({ x: 20, y: 3 });
+    expect(c.ghostAt).toEqual({ x: 20, y: 3 });
   });
 });

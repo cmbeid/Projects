@@ -119,6 +119,9 @@ export class Game {
     this.touchInput = false;
     this.ghostArmed = false;
     this.ghostGrab = null;
+    // Where a parked ghost sits, independent of the pointer (see
+    // updateToolPosition). null whenever no ghost is parked.
+    this.ghostAt = null;
     this._batchCommitting = false;
     // ISSUE-040: touch has no Shift key to hold during a batch drag, so a
     // long-press at the drag's start (input.js) arms grid mode for that one
@@ -318,6 +321,15 @@ export class Game {
         if (this.ghostGrab) {
           this.toolPosition.x += this.ghostGrab.dx;
           this.toolPosition.y += this.ghostGrab.dy;
+          this.ghostAt = { x: this.toolPosition.x, y: this.toolPosition.y };
+        } else if (this.ghostArmed && this.ghostAt) {
+          // Game.advance() calls this every frame, so a parked ghost that is
+          // not being dragged would be yanked back under the last known finger
+          // position on the very next frame. That silently undid the
+          // post-build step along - the row-laying gesture only ever worked
+          // with the render loop stopped.
+          this.toolPosition.x = this.ghostAt.x;
+          this.toolPosition.y = this.ghostAt.y;
         }
         this._toolHeightOverride = height; // lobby or spiral stair height for preview
       }
@@ -814,13 +826,21 @@ export class Game {
   clearGhost() {
     this.ghostArmed = false;
     this.ghostGrab = null;
+    this.ghostAt = null;
   }
 
   handlePointerDown({ worldPos, overUI, deferCommit = false }) {
     // Captured before updateToolPosition moves the ghost to the new pointer.
     const parkedGhost = this.ghostArmed ? { ...this.toolPosition } : null;
     this.mouseWorld = worldPos;
+    // updateToolPosition() pins an armed ghost to ghostAt, but the grab offset
+    // below has to be measured against the raw cell under the finger - pinned,
+    // it always came out zero and the ghost snapped to the pointer on the next
+    // frame, building a tile off. Unpin for this one call, then restore; the
+    // branches below set ghostAt themselves.
+    this.ghostAt = null;
     this.updateToolPosition();
+    this.ghostAt = parkedGhost;
     if (overUI) return false;
 
     // Emergency events take priority over all other click actions.
@@ -842,6 +862,7 @@ export class Game {
             dy: parkedGhost.y - this.toolPosition.y,
           };
           this.toolPosition = parkedGhost;
+          this.ghostAt = { ...parkedGhost };
           // Released without dragging, this is the confirming tap.
           this.pendingPress = { kind: "ghostCommit" };
         } else {
@@ -849,6 +870,7 @@ export class Game {
           // let it be dragged straight away. Never builds.
           this.ghostGrab = null;
           this.ghostArmed = true;
+          this.ghostAt = { ...this.toolPosition };
           this.pendingPress = null;
         }
         return true;
@@ -1005,6 +1027,7 @@ export class Game {
           this.ghostArmed = true;
           this.ghostGrab = null;
           this.toolPosition = { x: at.x + proto.size.x, y: at.y };
+          this.ghostAt = { ...this.toolPosition };
           this._toolHeightOverride = null;
         } else {
           // Disarmed after building so a second tap in the same place cannot
@@ -1656,6 +1679,7 @@ export class Game {
     this.pendingPress = null;
     this.ghostArmed = false;
     this.ghostGrab = null;
+    this.ghostAt = null;
     this.toolPrototype = null;
     this.soundPlayTimes.clear();
     this.vipSystem.reset();
