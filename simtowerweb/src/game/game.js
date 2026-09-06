@@ -833,12 +833,16 @@ export class Game {
     // Captured before updateToolPosition moves the ghost to the new pointer.
     const parkedGhost = this.ghostArmed ? { ...this.toolPosition } : null;
     this.mouseWorld = worldPos;
-    // updateToolPosition() pins an armed ghost to ghostAt, but the grab offset
-    // below has to be measured against the raw cell under the finger - pinned,
-    // it always came out zero and the ghost snapped to the pointer on the next
-    // frame, building a tile off. Unpin for this one call, then restore; the
-    // branches below set ghostAt themselves.
+    // updateToolPosition() pins an armed ghost to ghostAt and offsets it by
+    // ghostGrab, but the grab offset below has to be measured against the raw
+    // cell under the finger. Clear both for this one call, then restore.
+    // ghostGrab in particular must not survive into a new gesture: a drag that
+    // repositions the ghost ends without a commit, so nothing used to clear
+    // it, and the next tap measured its offset against a position that already
+    // had the old one folded in - the confirming tap slid the ghost sideways
+    // by exactly the previous drag's grab offset and built it there.
     this.ghostAt = null;
+    this.ghostGrab = null;
     this.updateToolPosition();
     this.ghostAt = parkedGhost;
     if (overUI) return false;
@@ -1008,6 +1012,9 @@ export class Game {
   handlePointerUp() {
     const pending = this.pendingPress;
     this.pendingPress = null;
+    // The grab offset belongs to the gesture that is ending, whatever it did.
+    // Leaving it set was what made the next tap nudge the ghost.
+    this.ghostGrab = null;
     if (pending) {
       // Builds where the finger ended, not where it started. A "tool" gesture
       // keeps feeding pointermove into updateToolPosition, so this is exactly
