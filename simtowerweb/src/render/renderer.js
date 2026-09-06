@@ -398,7 +398,16 @@ export class Renderer {
     const ctx = this.ctx;
     const img = this.bitmaps ? this.bitmaps.image(key) : null;
     if (!img) return;
-    const rect = srcRect || { x: 0, y: 0, w: img.naturalWidth, h: img.naturalHeight };
+    // Composed sheets are HTMLCanvasElements, which have width/height but no
+    // naturalWidth/naturalHeight - so a sprite left with textureRect null (the
+    // "whole texture" case, e.g. HousekeepingCenter) measured undefined x
+    // undefined and drew nothing at all.
+    const rect = srcRect || {
+      x: 0,
+      y: 0,
+      w: img.naturalWidth || img.width,
+      h: img.naturalHeight || img.height,
+    };
     const ox = opts.origin ? opts.origin.x : 0;
     const oy = opts.origin ? opts.origin.y : 0;
     const x0 = x - ox;
