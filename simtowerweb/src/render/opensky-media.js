@@ -825,7 +825,11 @@ export function composePartyhall(s) {
 }
 
 export function composeHousekeeping(s) {
-  return halve(need(s, "housekeeping-day"));
+  // HousekeepingCenter draws this sheet directly at its native size, so it has
+  // to come out at the 120x24 of SIMTOWER.EXE resource 0x87A8 - the same
+  // contract composeSecurity and composeMedical honour with their own
+  // stretchCell. Without it this one came out 60x18.
+  return stretchCell(halve(need(s, "housekeeping-day")), 120, 24);
 }
 
 export function composeSecurity(s) {
