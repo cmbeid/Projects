@@ -51,9 +51,14 @@ function noopUI() {
   return ui;
 }
 
-// Real-time multiplier per speed mode (mode 0 = paused). Exported so the UI
-// labels the buttons with the speed they actually apply.
-export const SPEED_MULTIPLIERS = [0, 1, 4, 12];
+// Real-time multiplier per speed mode (mode 0 = paused), 1:1 with
+// Game::setSpeedMode (Game.cpp:921-933): 0 / 1 / 2 / 4.
+//
+// This port had [0, 1, 4, 12] with no note explaining the deviation, which ran
+// the top speed 3x faster than the original: with kBaseSpeed at 1/192
+// game-days per real second, a 12-day year went by in 3m12s instead of 9m36s.
+// Exported so the button labels derive from one source.
+export const SPEED_MULTIPLIERS = [0, 1, 2, 4];
 
 export class Game {
   constructor(app) {
@@ -607,10 +612,6 @@ export class Game {
     if (sm < 0 || sm > 3) throw new Error("invalid speed mode " + sm);
     if (this.speedMode !== sm) {
       this.speedMode = sm;
-      // The four modes run at 0x / 1x / 4x / 12x. K_BASE_SPEED is 1/192
-      // game-days per real second, so a day takes 192s, 48s or 16s and the
-      // 12-day year takes 38m24s, 9m36s or 3m12s. The buttons used to be
-      // labelled 1x/2x/4x, which understated the top two by 2x and 3x.
       const speed = SPEED_MULTIPLIERS[sm];
       this.time.speed = speed;
       this.ui.updateSpeed();

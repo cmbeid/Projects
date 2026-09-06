@@ -215,7 +215,7 @@ export class Toolbox {
       b.type = "button";
       b.className = "osbtn";
       b.textContent = SPEED_BUTTONS[i];
-      b.title = ["Pause (0)", "Speed 1x (1)", "Speed 4x (2)", "Speed 12x (3)"][i];
+      b.title = ["Pause (0)", "Speed 1x (1)", "Speed 2x (2)", "Speed 4x (3)"][i];
       b.addEventListener("click", () => this._onSpeedPress(i));
       speedRow.appendChild(b);
       this.speedBtns.push(b);

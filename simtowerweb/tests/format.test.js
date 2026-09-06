@@ -84,11 +84,10 @@ describe("tool labels", () => {
   });
 
   it("labels every speed mode", () => {
-    // These used to read 1x/2x/4x while SPEED_MULTIPLIERS ran 1x/4x/12x, so
-    // this test pinned the wrong labels. Derive them from the multipliers
-    // instead, so the two cannot drift apart again.
-    expect([0, 1, 2, 3].map(speedLabel)).toEqual(["Paused", "Speed 1x", "Speed 4x", "Speed 12x"]);
-    expect(SPEED_MULTIPLIERS).toEqual([0, 1, 4, 12]);
+    // Pinned against the C++ (Game.cpp:921-933), not just against each other:
+    // this port shipped [0, 1, 4, 12], running the top speed 3x too fast.
+    expect([0, 1, 2, 3].map(speedLabel)).toEqual(["Paused", "Speed 1x", "Speed 2x", "Speed 4x"]);
+    expect(SPEED_MULTIPLIERS).toEqual([0, 1, 2, 4]);
     for (let mode = 1; mode <= 3; mode++) {
       expect(speedLabel(mode)).toBe("Speed " + SPEED_MULTIPLIERS[mode] + "x");
     }
