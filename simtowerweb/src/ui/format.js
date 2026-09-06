@@ -390,7 +390,7 @@ const PERSON_TYPE_NAMES = ["Man", "Salesman", "Woman", "Child", "Woman", "Housek
 const PERSON_STATE_NAMES = ["wandering", "home", "commuting", "working", "at lunch", "shopping", "returning", "resting", "idle"];
 const ROOM_STATES = ["clean", "occupied", "dirty"];
 
-export function describeItem(item, nowAbs) {
+export function describeItem(item, nowAbs, game) {
   const lines = [];
   lines.push(item.prototype.name);
   lines.push("Floor " + item.position.y + ", x=" + item.position.x +
@@ -411,7 +411,20 @@ export function describeItem(item, nowAbs) {
   lines.push("Evaluation:  " + Math.trunc(item.evaluation) + "/100");
   if (item.population) lines.push("Population: " + item.population);
   lines.push("Occupants:   " + item.people.size);
-  if (item.lobbyRoute && !item.lobbyRoute.empty()) {
+  // Item.updateRoutes() only computes lobbyRoute for non-transport items above
+  // floor 0 - it clears it for everything else. Printing an empty route as
+  // "(unreachable)" therefore libelled every elevator, stair and escalator in
+  // the tower, and every item on the lobby floor, as broken. Say which case
+  // this is instead, and for elevators ask the reachability check directly.
+  if (item.canHaulPeople()) {
+    if (item.isElevator() && game && typeof game.elevatorReachableFromLobby === "function") {
+      lines.push(
+        "From lobby:  " + (game.elevatorReachableFromLobby(item) ? "reachable" : "NOT reachable"),
+      );
+    }
+  } else if (item.position.y === 0) {
+    lines.push("Route score: n/a (lobby floor)");
+  } else if (item.lobbyRoute && !item.lobbyRoute.empty()) {
     lines.push("Route score: " + item.lobbyRoute.score() + " (reachable)");
   } else {
     lines.push("Route score: (unreachable)");
@@ -431,9 +444,24 @@ export function describeItem(item, nowAbs) {
     lines.push("Elevator");
     lines.push("Cars:        " + (item.cars ? item.cars.length : 0));
     lines.push("Queues:      " + (item.queues ? item.queues.length : 0));
-    lines.push("Serviced fl: " + item.size.y);
+    // Was `item.size.y`, i.e. the shaft *height* - it claimed every floor was
+    // serviced no matter how many were switched off. Count the real stops.
+    let serviced = 0;
+    for (let y = item.position.y; y < item.position.y + item.size.y; y++) {
+      if (item.connectsFloor(y)) serviced++;
+    }
+    lines.push("Serviced fl: " + serviced + " of " + item.size.y);
     lines.push("Unserviced:  " + (item.unservicedFloors ? item.unservicedFloors.size : 0));
     lines.push("Waiting:     " + waiting);
+    // The question a player actually has about a quiet shaft is whether the
+    // pathfinder ever picks it, which nothing else on this panel answers.
+    if (game && game.items) {
+      let routed = 0;
+      for (const other of game.items) {
+        if (other.lobbyRoute && other.lobbyRoute.nodes.some((n) => n.item === item)) routed++;
+      }
+      lines.push("Routed to:   " + routed + " tenants");
+    }
   }
 
   if (item.people.size > 0) {
