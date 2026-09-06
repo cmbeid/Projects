@@ -207,3 +207,49 @@ describe("the grab offset does not outlive its gesture", () => {
     expect(c.ghostGrab).toBeNull();
   });
 });
+
+// itemBelowCursor is a by-product of rendering, so it describes the *previous*
+// frame's pointer. A mouse hovers before it clicks; a finger just arrives, so
+// the first press on an elevator motor (or a bulldoze target) was tested
+// against whatever the last frame happened to have under the cursor.
+describe("pickItemAt", () => {
+  const item = (id, layer, rect) => ({
+    prototype: { id },
+    layer,
+    containsPoint: (p) =>
+      p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h,
+  });
+  const floor = item("floor", 0, { x: 0, y: 0, w: 400, h: 36 });
+  const office = item("office", 0, { x: 80, y: 0, w: 72, h: 24 });
+  const shaft = item("elevator-standard", 1, { x: 80, y: 0, w: 32, h: 36 });
+
+  const ctx = (items) => ({
+    items,
+    itemsByType: new Map([["floor", [floor]]]),
+  });
+
+  it("returns the topmost item, matching the renderer's draw order", () => {
+    // Layer 1 draws last, so the shaft wins over the office it overlaps.
+    const c = ctx([floor, office, shaft]);
+    expect(Game.prototype.pickItemAt.call(c, { x: 96, y: 12 }).prototype.id).toBe(
+      "elevator-standard",
+    );
+  });
+
+  it("falls back through the layers when nothing above matches", () => {
+    const c = ctx([floor, office, shaft]);
+    expect(Game.prototype.pickItemAt.call(c, { x: 200, y: 12 }).prototype.id).toBe("floor");
+  });
+
+  it("returns null off every item", () => {
+    const c = ctx([floor, office, shaft]);
+    expect(Game.prototype.pickItemAt.call(c, { x: 900, y: 900 })).toBeNull();
+  });
+
+  it("does not need a floor bucket", () => {
+    const c = { items: [shaft], itemsByType: new Map() };
+    expect(Game.prototype.pickItemAt.call(c, { x: 96, y: 12 }).prototype.id).toBe(
+      "elevator-standard",
+    );
+  });
+});
