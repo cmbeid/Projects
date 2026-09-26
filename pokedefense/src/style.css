@@ -246,7 +246,7 @@ img.pix, canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; 
 .coach {
   position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); width: min(92%, 380px); z-index: 3;
   background: #fffbe8; color: #2a2410; border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 700;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4); display: flex; gap: 10px; align-items: center; pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4); display: flex; gap: 10px; align-items: center;
 }
 .coach img, .coach canvas { width: 36px; height: 36px; flex: 0 0 auto; }
 
@@ -394,3 +394,9 @@ img.pix, canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; 
 
 .fullscreen-icon { width: 20px; height: 20px; fill: currentColor; display: block; }
 .title .fullscreen-button { position: absolute; top: calc(12px + var(--safe-top)); right: calc(12px + var(--safe-right)); width: 44px; }
+
+.coach span { flex: 1; }
+.coach-close {
+  flex: 0 0 auto; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.08); color: #2a2410; font-size: 16px; font-weight: 900; padding: 0;
+}

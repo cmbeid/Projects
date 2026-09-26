@@ -18,6 +18,13 @@ describe('save', () => {
     expect(loadProgress(store).bp).toBe(123);
   });
 
+  it('shows tips until they are turned off', () => {
+    const store = memory();
+    expect(loadProgress(store).hints).toBe(true);
+    saveProgress({ ...freshProgress(), hints: false }, store);
+    expect(loadProgress(store).hints).toBe(false);
+  });
+
   it('survives garbage', () => {
     const store = memory();
     store.setItem('pokedefense.save.v1', '{"bp":"lots","team":["nope"],"results":{"mt-moon":{"normal":9}}');

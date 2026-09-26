@@ -45,6 +45,8 @@ export interface Progress {
   volumes: Volumes;
   muted: boolean;
   haptics: boolean;
+  /** Show the tutorial coach and the tips under the shop. */
+  hints: boolean;
   tutorialDone: boolean;
 }
 
@@ -62,7 +64,7 @@ export function freshProgress(): Progress {
   return {
     results: {}, caught: [], shinies: [], seen: [], bp: 0, items, balls, heldOwned: [], held: {},
     trainer: { ...NO_TRAINER }, team: ['charmander', 'squirtle', 'bulbasaur', 'pidgey'],
-    volumes: { ...DEFAULT_VOLUMES }, muted: false, haptics: true, tutorialDone: false,
+    volumes: { ...DEFAULT_VOLUMES }, muted: false, haptics: true, hints: true, tutorialDone: false,
   };
 }
 
@@ -134,6 +136,7 @@ export function loadProgress(store: Store | null = defaultStore()): Progress {
     },
     muted: raw.muted === true,
     haptics: raw.haptics !== false,
+    hints: raw.hints !== false,
     tutorialDone: raw.tutorialDone === true,
   };
 }

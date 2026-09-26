@@ -503,6 +503,7 @@ export function startBattle(opts: BattleOptions): void {
       h('span.stripe', { style: `background:${TYPE_COLOURS[l.type]}` }),
       newThisBattle.has(id) ? h('span.new', {}, 'NEW') : null);
     });
+    if (!getProgress().hints) return h('div', {}, h('div.shop', {}, ...cards));
     const hint = mode.kind === 'place'
       ? h('div.hint', {}, `${line(mode.lineId).role}. ${line(mode.lineId).placement === 'path' ? 'Goes on the path itself.' : line(mode.lineId).placement === 'any' ? 'Can swim.' : ''} Tap a tile${matchMedia('(pointer: coarse)').matches ? ' twice' : ''} to place.`)
       : h('div.hint', {}, 'Choose a Pokémon, then tap the map to place it.');
@@ -610,7 +611,7 @@ export function startBattle(opts: BattleOptions): void {
     setTimeout(() => el.remove(), 2500);
   }
 
-  const tutorial = !start.tutorialDone && map.id === MAPS[0]!.id;
+  const tutorial = start.hints && !start.tutorialDone && map.id === MAPS[0]!.id;
   let coachStep = tutorial ? 0 : -1;
   let coachShownAt = 0;
   function renderCoach(): void {
@@ -642,7 +643,19 @@ export function startBattle(opts: BattleOptions): void {
     const text = steps[coachStep]![0];
     if (coach.dataset.text !== text) {
       coach.dataset.text = text;
-      coach.replaceChildren(thumb(25, 36, { animate: true }), h('span', {}, text));
+      const hide = h('button.coach-close', {
+        'aria-label': 'Hide tips',
+        title: 'Hide tips',
+        onclick: () => {
+          sfx.click();
+          coachStep = -1;
+          coach.style.display = 'none';
+          setProgress({ ...getProgress(), hints: false, tutorialDone: true });
+          renderDock(true);
+          toast('Tips hidden. Turn them back on in Settings.');
+        },
+      }, '✕');
+      coach.replaceChildren(thumb(25, 36, { animate: true }), h('span', {}, text), hide);
     }
     coach.style.display = performance.now() - coachShownAt > 300 ? '' : 'none';
   }
