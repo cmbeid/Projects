@@ -100,10 +100,11 @@ button.big { font-size: 24px; padding: 16px 56px; }
   height: 100%;
   filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.25));
 }
-.title-mon.left { left: 0; animation: bob 2.4s ease-in-out infinite; }
-.title-mon.right { right: 0; transform: scaleX(-1); animation: bob-flip 2.8s ease-in-out infinite; }
-@keyframes bob { 50% { transform: translateY(-8px) rotate(-4deg); } }
-@keyframes bob-flip { 0%, 100% { transform: scaleX(-1); } 50% { transform: scaleX(-1) translateY(-6px) rotate(3deg); } }
+/* Pikachu's artwork looks left; mirror it so it faces Meowth across the screen. */
+.title-mon.left { left: 0; transform: scaleX(-1); animation: bob-flip 2.4s ease-in-out infinite; }
+.title-mon.right { right: 0; animation: bob 2.8s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-6px) rotate(3deg); } }
+@keyframes bob-flip { 0%, 100% { transform: scaleX(-1); } 50% { transform: scaleX(-1) translateY(-8px) rotate(-4deg); } }
 
 .logo {
   margin: 0;

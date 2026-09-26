@@ -230,7 +230,7 @@ export class Renderer {
   private drawLoaded(key: LauncherKey, aim: AimState): void {
     const def = LAUNCHERS[key];
     const at = this.pouch(aim);
-    drawSprite(this.ctx, def.dex, at.x, at.y, def.radius, 0, def.color);
+    drawSprite(this.ctx, def.dex, at.x, at.y, def.radius, 0, def.color, def.facing, 'right');
   }
 
   private drawQueue(game: Game, now: number): void {
@@ -240,7 +240,7 @@ export class Renderer {
       // Waiting Pokémon hop now and then, like birds on the grass.
       const hop = Math.max(0, Math.sin(now / 260 + i * 1.7)) ** 8 * 14;
       const r = def.radius * 0.85;
-      drawSprite(this.ctx, def.dex, x, GROUND_Y - r - hop, r, 0, def.color);
+      drawSprite(this.ctx, def.dex, x, GROUND_Y - r - hop, r, 0, def.color, def.facing, 'right');
     });
   }
 
@@ -337,7 +337,7 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.save();
     if (e.hitFlash > 0) ctx.globalAlpha = 0.55 + 0.45 * Math.cos(now / 30);
-    drawSprite(ctx, e.target.dex, x, y, e.radius, e.body.angle, '#9b59b6', true);
+    drawSprite(ctx, e.target.dex, x, y, e.radius, e.body.angle, '#9b59b6', e.target.facing, 'left');
     ctx.restore();
 
     // A health pip once it has been hurt, so near-misses feel like progress.
@@ -354,7 +354,7 @@ export class Renderer {
   private drawProjectile(e: Entity): void {
     if (!e.launcher) return;
     const { x, y } = e.body.position;
-    drawSprite(this.ctx, e.launcher.dex, x, y, e.radius, e.body.angle, e.launcher.color);
+    drawSprite(this.ctx, e.launcher.dex, x, y, e.radius, e.body.angle, e.launcher.color, e.launcher.facing, 'right');
   }
 }
 
