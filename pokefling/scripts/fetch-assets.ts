@@ -1,7 +1,11 @@
 /**
- * Downloads the Pokémon artwork and cries the game uses from PokeAPI into
- * `public/sprites/` and `public/cries/`. The result is committed, so this
- * only needs re-running when the roster in `src/data/roster.ts` changes.
+ * Downloads the Pokémon artwork, cries and item icons the game uses from
+ * PokeAPI into `public/sprites/`, `public/cries/` and `public/items/`. The
+ * result is committed, so this only needs re-running when the roster in
+ * `src/data/roster.ts` changes.
+ *
+ * The official artwork is 475 px square — far more than a Pokémon ever covers
+ * on screen — so each is box-filtered down to 192 px, a fifth of the bytes.
  *
  * The cries are served as `.ogg`, which older iOS Safari cannot play — and a
  * few, Pikachu's among them, are really MP3s under that name. Each is decoded
@@ -14,12 +18,16 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { OggVorbisDecoder } from '@wasm-audio-decoders/ogg-vorbis';
 import { MPEGDecoder } from 'mpg123-decoder';
-import { spriteDexes } from '../src/data/roster';
+import { PNG } from 'pngjs';
+import { cryDexes, ITEM_ICONS, spriteArts } from '../src/data/roster';
 
 const SPRITES = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
+const ITEMS = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items';
 const CRIES = 'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest';
 /** Plenty for a cry, and half the size of 44.1 kHz. */
 const CRY_RATE = 22_050;
+/** Sprite edge in pixels: a boss at full zoom on a 3× screen, and no more. */
+const SPRITE_SIZE = 192;
 
 async function download(url: string): Promise<Uint8Array> {
   const response = await fetch(url);
@@ -65,6 +73,44 @@ function toMono(channels: Float32Array[], from: number, rate: number): Float32Ar
   return out;
 }
 
+/**
+ * Shrink a square RGBA image to `size` × `size` by averaging each output
+ * pixel's source area, weighting colour by alpha so transparent edges do not
+ * bleed dark fringes into the outline.
+ */
+function downscale(png: PNG, size: number): Uint8Array {
+  const out = new PNG({ width: size, height: size });
+  const sx = png.width / size;
+  const sy = png.height / size;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let r = 0, g = 0, b = 0, a = 0, n = 0;
+      for (let yy = Math.floor(y * sy); yy < Math.min(png.height, Math.ceil((y + 1) * sy)); yy += 1) {
+        for (let xx = Math.floor(x * sx); xx < Math.min(png.width, Math.ceil((x + 1) * sx)); xx += 1) {
+          const i = (yy * png.width + xx) * 4;
+          const alpha = png.data[i + 3]!;
+          r += png.data[i]! * alpha;
+          g += png.data[i + 1]! * alpha;
+          b += png.data[i + 2]! * alpha;
+          a += alpha;
+          n += 1;
+        }
+      }
+      const o = (y * size + x) * 4;
+      out.data[o] = a ? Math.round(r / a) : 0;
+      out.data[o + 1] = a ? Math.round(g / a) : 0;
+      out.data[o + 2] = a ? Math.round(b / a) : 0;
+      out.data[o + 3] = n ? Math.round(a / n) : 0;
+    }
+  }
+  return PNG.sync.write(out, { colorType: 6 });
+}
+
+function spriteSource(art: string): string {
+  const [dex, variant] = art.split('-');
+  return variant === 'shiny' ? `${SPRITES}/shiny/${dex}.png` : `${SPRITES}/${dex}.png`;
+}
+
 /** 16-bit PCM mono WAV. */
 function encodeWav(samples: Float32Array, rate: number): Uint8Array {
   const bytes = new Uint8Array(44 + samples.length * 2);
@@ -90,21 +136,29 @@ function encodeWav(samples: Float32Array, rate: number): Uint8Array {
 }
 
 async function main(): Promise<void> {
-  await mkdir('public/sprites', { recursive: true });
-  await mkdir('public/cries', { recursive: true });
-  for (const dex of spriteDexes()) {
-    const sprite = await download(`${SPRITES}/${dex}.png`);
-    await writeFile(`public/sprites/${dex}.png`, sprite);
+  for (const dir of ['public/sprites', 'public/cries', 'public/items']) await mkdir(dir, { recursive: true });
 
-    const ogg = await download(`${CRIES}/${dex}.ogg`);
-    const audio = await decodeCry(ogg);
+  for (const art of spriteArts()) {
+    const png = PNG.sync.read(Buffer.from(await download(spriteSource(art))));
+    const small = downscale(png, SPRITE_SIZE);
+    await writeFile(`public/sprites/${art}.png`, small);
+    console.log(`  sprite ${art.padEnd(10)} ${(small.length / 1024).toFixed(0)} KB`);
+  }
+
+  for (const dex of cryDexes()) {
+    const audio = await decodeCry(await download(`${CRIES}/${dex}.ogg`));
     if (audio.samplesDecoded === 0) throw new Error(`#${dex}: cry decoded to nothing`);
     const wav = encodeWav(toMono(audio.channelData, audio.sampleRate, CRY_RATE), CRY_RATE);
     await writeFile(`public/cries/${dex}.wav`, wav);
-
     const seconds = (audio.samplesDecoded / audio.sampleRate).toFixed(2);
-    console.log(`  #${String(dex).padEnd(4)} sprite ${(sprite.length / 1024).toFixed(0)} KB, cry ${seconds} s ${(wav.length / 1024).toFixed(0)} KB`);
+    console.log(`  cry    #${String(dex).padEnd(8)} ${seconds} s, ${(wav.length / 1024).toFixed(0)} KB`);
   }
+
+  // Item icons are 30 px pixel art already; kept exactly as they are.
+  for (const icon of ITEM_ICONS) {
+    await writeFile(`public/items/${icon}.png`, await download(`${ITEMS}/${icon}.png`));
+  }
+  console.log(`  items  ${ITEM_ICONS.join(', ')}`);
 }
 
 main().catch((error: unknown) => {

@@ -27,6 +27,7 @@ export const MATERIAL_COLORS: Readonly<Record<Material, { fill: string; edge: st
   wood: { fill: '#c98b4a', edge: '#7a4d22' },
   ice: { fill: '#b8e6ff', edge: '#5fb4e0' },
   stone: { fill: '#9aa0a8', edge: '#5d636b' },
+  tnt: { fill: '#c8372d', edge: '#6e1a14' },
 };
 
 const GRAVITY = 0.0009;
@@ -79,6 +80,19 @@ export class Effects {
         break;
       case 'ability':
         this.add('ring', event.x, event.y, { life: 300, size: 50, color: LAUNCHERS[event.key].color });
+        break;
+      case 'splash':
+        for (let i = 0; i < 12; i += 1) {
+          this.add('debris', event.x + rand(-12, 12), event.y, {
+            vx: rand(-0.15, 0.15), vy: rand(-0.5, -0.2), life: rand(500, 800), size: rand(4, 8), color: '#9fd3ff',
+          });
+        }
+        break;
+      case 'pickup':
+        this.add('ring', event.x, event.y, { life: 500, size: 60, color: '#ffe066' });
+        for (let i = 0; i < 6; i += 1) {
+          this.add('spark', event.x + rand(-25, 25), event.y + rand(-25, 25), { life: rand(400, 700), size: rand(10, 18), color: '#ffe066' });
+        }
         break;
       case 'bonus':
         this.add('spark', event.x, event.y, { life: 600, size: 30, color: '#ffe066' });

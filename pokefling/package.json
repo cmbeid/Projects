@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "fetch-assets": "tsx scripts/fetch-assets.ts",
     "fetch-sprites": "npm run fetch-assets",
+    "fetch-music": "tsx scripts/fetch-music.ts",
     "verify": "tsx scripts/verify-ui.ts",
     "playtest": "tsx scripts/playtest.ts"
   },
@@ -22,9 +23,11 @@
   "devDependencies": {
     "@types/matter-js": "^0.20.2",
     "@types/node": "^26.2.0",
+    "@types/pngjs": "^6.0.5",
     "@wasm-audio-decoders/ogg-vorbis": "^0.1.20",
     "mpg123-decoder": "^1.0.3",
     "playwright": "^1.62.1",
+    "pngjs": "^7.0.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.7",

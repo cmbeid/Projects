@@ -2,30 +2,14 @@
  * Draws a game onto the canvas. Reads the simulation; never changes it.
  */
 import type { Entity, Game } from '../game/game';
+import { AREAS } from '../data/areas';
 import { LAUNCHERS, type LauncherKey } from '../data/roster';
 import { launchVelocity, trajectory, type Vec } from '../game/sling';
 import { GROUND_Y, SLING, WORLD_BOTTOM } from '../game/world';
 import type { Camera } from './camera';
 import { Effects, MATERIAL_COLORS } from './effects';
-import { drawSprite } from './sprites';
-
-interface Theme {
-  skyTop: string;
-  skyBottom: string;
-  far: string;
-  near: string;
-  grass: string;
-  dirt: string;
-  rock: string;
-  stars: boolean;
-}
-
-/** One per world: Viridian Forest, Mt. Moon, the Rocket Hideout. */
-const THEMES: readonly Theme[] = [
-  { skyTop: '#5ab8f5', skyBottom: '#d8f1ff', far: '#9fd49a', near: '#6fbf62', grass: '#58b94a', dirt: '#8a5a2f', rock: '#7d6a55', stars: false },
-  { skyTop: '#2a2350', skyBottom: '#8a6fb3', far: '#5b5478', near: '#433d5e', grass: '#6b7a8f', dirt: '#4a4458', rock: '#5c566c', stars: true },
-  { skyTop: '#1a0f1f', skyBottom: '#a8434a', far: '#3b2a3d', near: '#261a28', grass: '#5a4a52', dirt: '#2e2530', rock: '#433843', stars: true },
-];
+import { drawItemIcon, drawSprite } from './sprites';
+import { drawBackdrop, THEMES, type Theme } from './themes';
 
 export interface AimState {
   /** Pouch offset from the sling while dragging, else null. */
@@ -53,15 +37,19 @@ export class Renderer {
 
   draw(game: Game, camera: Camera, aim: AimState, now: number): void {
     const { ctx } = this;
-    const theme = THEMES[game.level.world] ?? THEMES[0]!;
+    const theme = THEMES[AREAS[game.level.area]?.theme ?? 'forest'];
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.drawBackdrop(theme, camera, now);
+    drawBackdrop(ctx, theme, camera, now);
 
-    // From here on, world coordinates.
+    // From here on, world coordinates — shaken, briefly, by an earthquake.
+    const shake = game.quakeTime > 0 ? (game.quakeTime / 1200) * 7 : 0;
+    const dx = shake ? Math.sin(now / 17) * shake : 0;
+    const dy = shake ? Math.cos(now / 23) * shake : 0;
     const s = camera.scale * this.dpr;
-    ctx.setTransform(s, 0, 0, s, -camera.x * s, (camera.height - WORLD_BOTTOM * camera.scale) * this.dpr);
+    ctx.setTransform(s, 0, 0, s, (-camera.x * camera.scale + dx) * this.dpr, (camera.height - WORLD_BOTTOM * camera.scale + dy) * this.dpr);
 
-    this.drawGround(theme, camera);
+    this.drawGround(theme, camera, game, now);
+    if (game.level.ceiling !== undefined) this.drawCeiling(theme, camera, game.level.ceiling);
     this.drawTrail(game.lastTrail, 0.45);
     this.drawTrail(game.trail, 0.9);
     this.drawQueue(game, now);
@@ -74,69 +62,17 @@ export class Renderer {
       if (e.kind === 'block') this.drawBlock(e);
       else if (e.kind === 'target') this.drawTarget(e, now);
       else if (e.kind === 'projectile') this.drawProjectile(e);
+      else if (e.kind === 'pickup') this.drawPickup(e, now);
     }
 
-    if (game.phase === 'aiming' && game.loaded) this.drawLoaded(game.loaded, aim);
-    this.drawSlingFront(aim, game.phase === 'aiming' && game.loaded !== null);
+    if (game.phase === 'aiming' && game.loaded) this.drawLoaded(game, game.loaded, aim, now);
+    this.drawSlingFront(game, aim, game.phase === 'aiming' && game.loaded !== null);
     this.effects.draw(ctx);
   }
 
   // --- scenery ----------------------------------------------------------
 
-  private drawBackdrop(theme: Theme, camera: Camera, now: number): void {
-    const { ctx } = this;
-    const w = camera.width;
-    const h = camera.height;
-    const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, theme.skyTop);
-    sky.addColorStop(1, theme.skyBottom);
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, h);
-
-    if (theme.stars) {
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      for (let i = 0; i < 60; i += 1) {
-        const x = ((i * 137.5 + camera.x * 0.05) % (w + 40) + w + 40) % (w + 40) - 20;
-        const y = (i * 71.3) % (h * 0.6);
-        const twinkle = 0.6 + 0.4 * Math.sin(now / 500 + i);
-        ctx.globalAlpha = twinkle;
-        ctx.fillRect(x, y, 2, 2);
-      }
-      ctx.globalAlpha = 1;
-    } else {
-      // A couple of slow clouds.
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      for (let i = 0; i < 4; i += 1) {
-        const span = w + 300;
-        const x = (((i * 420 - camera.x * 0.15 * camera.scale + now * 0.006) % span) + span) % span - 150;
-        const y = h * (0.12 + 0.08 * (i % 3));
-        cloud(ctx, x, y, 28 + (i % 2) * 10);
-      }
-    }
-
-    // Two parallax ridges, in screen space, anchored to the ground line.
-    const groundScreen = camera.toScreen({ x: 0, y: GROUND_Y }).y;
-    this.ridge(theme.far, groundScreen, camera, 0.2, 150, 0.004);
-    this.ridge(theme.near, groundScreen, camera, 0.45, 90, 0.007);
-  }
-
-  private ridge(color: string, base: number, camera: Camera, parallax: number, height: number, freq: number): void {
-    const { ctx } = this;
-    const offset = camera.x * camera.scale * parallax;
-    const hh = height * Math.max(camera.scale, 0.5);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(0, base + 2);
-    for (let x = 0; x <= camera.width + 20; x += 20) {
-      const u = (x + offset) * freq / Math.max(camera.scale, 0.3);
-      ctx.lineTo(x, base - hh * (0.55 + 0.3 * Math.sin(u) + 0.15 * Math.sin(u * 2.7 + 1)));
-    }
-    ctx.lineTo(camera.width + 20, base + 2);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  private drawGround(theme: Theme, camera: Camera): void {
+  private drawGround(theme: Theme, camera: Camera, game: Game, now: number): void {
     const { ctx } = this;
     const left = camera.x - 50;
     const right = camera.x + camera.visibleWidth() + 50;
@@ -146,17 +82,69 @@ export class Renderer {
     ctx.fillRect(left, GROUND_Y, right - left, 12);
     ctx.fillStyle = 'rgba(0,0,0,0.12)';
     ctx.fillRect(left, GROUND_Y + 12, right - left, 4);
+
+    for (const [x0, x1] of game.level.water ?? []) {
+      ctx.fillStyle = theme.water;
+      ctx.fillRect(x0, GROUND_Y + 4, x1 - x0, WORLD_BOTTOM - GROUND_Y + 400);
+      // Darker where it gets deep, and a moving surface.
+      ctx.fillStyle = 'rgba(0, 20, 60, 0.3)';
+      ctx.fillRect(x0, GROUND_Y + 40, x1 - x0, WORLD_BOTTOM - GROUND_Y + 400);
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let x = x0; x <= x1; x += 10) ctx.lineTo(x, GROUND_Y + 6 + Math.sin(x / 25 + now / 300) * 3);
+      ctx.stroke();
+    }
+  }
+
+  private drawCeiling(theme: Theme, camera: Camera, y: number): void {
+    const { ctx } = this;
+    const left = camera.x - 50;
+    const right = camera.x + camera.visibleWidth() + 50;
+    ctx.fillStyle = theme.rock;
+    ctx.fillRect(left, y - 2000, right - left, 2000);
+    // Strata, so the roof reads as rock rather than a flat band.
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    for (let k = 1; k <= 6; k += 1) ctx.fillRect(left, y - k * 45 - (k % 2) * 12, right - left, 8 + (k % 3) * 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(left, y - 10, right - left, 10);
+    // A short fringe of rock teeth, so the roof reads as rock, not a line.
+    ctx.fillStyle = theme.rock;
+    for (let x = Math.floor(left / 40) * 40; x < right; x += 40) {
+      const len = 6 + (Math.abs(x * 7919) % 11);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 20, y);
+      ctx.lineTo(x + 10, y + len);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   private drawTerrain(e: Entity, theme: Theme): void {
     const { ctx } = this;
     const { x, y } = e.body.position;
+    const onGround = y + e.h / 2 >= GROUND_Y - 0.5;
     ctx.fillStyle = theme.rock;
-    roundRect(ctx, x - e.w / 2, y - e.h / 2, e.w, e.h + 10, 14);
+    roundRect(ctx, x - e.w / 2, y - e.h / 2, e.w, e.h + (onGround ? 10 : 0), onGround ? 12 : 8);
     ctx.fill();
     ctx.fillStyle = theme.grass;
-    roundRect(ctx, x - e.w / 2, y - e.h / 2, e.w, 12, 6);
+    roundRect(ctx, x - e.w / 2, y - e.h / 2, e.w, Math.min(12, e.h), 6);
     ctx.fill();
+  }
+
+  private drawPickup(e: Entity, now: number): void {
+    const { x, y } = e.body.position;
+    const bob = Math.sin(now / 300) * 4;
+    const { ctx } = this;
+    const glow = ctx.createRadialGradient(x, y + bob, 4, x, y + bob, 30);
+    glow.addColorStop(0, 'rgba(255, 240, 150, 0.8)');
+    glow.addColorStop(1, 'rgba(255, 240, 150, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y + bob, 30, 0, Math.PI * 2);
+    ctx.fill();
+    drawItemIcon(ctx, 'poke-ball', x, y + bob, 40);
   }
 
   // --- the sling --------------------------------------------------------
@@ -178,12 +166,12 @@ export class Renderer {
     if (aim.pull) this.band(SLING.x + 18, SLING.y - 4, this.pouch(aim));
   }
 
-  private drawSlingFront(aim: AimState, loaded: boolean): void {
+  private drawSlingFront(game: Game, aim: AimState, loaded: boolean): void {
     const { ctx } = this;
     const pouch = this.pouch(aim);
     if (aim.pull) {
       this.band(SLING.x - 12, SLING.y - 2, pouch);
-      this.aimPreview(aim.pull);
+      this.aimPreview(aim.pull, game.launchScale, game.fullArc);
     } else if (loaded) {
       // Resting bands, slack between the arms.
       ctx.strokeStyle = '#4a1f14';
@@ -213,24 +201,34 @@ export class Renderer {
     ctx.stroke();
   }
 
-  private aimPreview(pull: Vec): void {
+  /** The first part of the flight path — or, with Scope Lens, all of it. */
+  private aimPreview(pull: Vec, scale: number, full: boolean): void {
     const { ctx } = this;
     const start = { x: SLING.x + pull.x, y: SLING.y + pull.y };
-    const dots = trajectory(start, launchVelocity(pull), 48, 4);
+    const v = launchVelocity(pull);
+    const dots = trajectory(start, { x: v.x * scale, y: v.y * scale }, full ? 200 : 48, 4)
+      .filter((p) => p.y < GROUND_Y);
     dots.forEach((p, i) => {
-      ctx.globalAlpha = 0.9 * (1 - i / dots.length);
-      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = full ? 0.85 : 0.9 * (1 - i / dots.length);
+      ctx.fillStyle = full ? '#ffe066' : '#ffffff';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 5 - i * 0.25, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, full ? 4 : 5 - i * 0.25, 0, Math.PI * 2);
       ctx.fill();
     });
     ctx.globalAlpha = 1;
   }
 
-  private drawLoaded(key: LauncherKey, aim: AimState): void {
+  private drawLoaded(game: Game, key: LauncherKey, aim: AimState, now: number): void {
     const def = LAUNCHERS[key];
     const at = this.pouch(aim);
-    drawSprite(this.ctx, def.dex, at.x, at.y, def.radius, 0, def.color, def.facing, 'right');
+    drawSprite(this.ctx, def.art, at.x, at.y, def.radius, 0, def.color, def.facing, 'right');
+    // Boosts from the bag hover over the Pokémon they apply to.
+    const boosts = [game.boost.attack ? 'x-attack' : '', game.boost.speed ? 'x-speed' : ''].filter(Boolean);
+    boosts.forEach((icon, i) => {
+      const bob = Math.sin(now / 250 + i) * 3;
+      const x = at.x + (i - (boosts.length - 1) / 2) * 30;
+      drawItemIcon(this.ctx, icon, x, at.y - def.radius - 24 + bob, 28);
+    });
   }
 
   private drawQueue(game: Game, now: number): void {
@@ -240,7 +238,7 @@ export class Renderer {
       // Waiting Pokémon hop now and then, like birds on the grass.
       const hop = Math.max(0, Math.sin(now / 260 + i * 1.7)) ** 8 * 14;
       const r = def.radius * 0.85;
-      drawSprite(this.ctx, def.dex, x, GROUND_Y - r - hop, r, 0, def.color, def.facing, 'right');
+      drawSprite(this.ctx, def.art, x, GROUND_Y - r - hop, r, 0, def.color, def.facing, 'right');
     });
   }
 
@@ -261,6 +259,10 @@ export class Renderer {
   private drawBlock(e: Entity): void {
     const { ctx } = this;
     if (!e.material) return;
+    if (e.shape === 'ball') {
+      this.drawBoulder(e);
+      return;
+    }
     const { fill, edge } = MATERIAL_COLORS[e.material];
     const { x, y } = e.body.position;
     const w = e.w;
@@ -289,6 +291,14 @@ export class Renderer {
       ctx.moveTo(-w / 2 + 4, h / 2 - 6);
       ctx.lineTo(-w / 2 + Math.min(w, h) * 0.6, -h / 2 + 4);
       ctx.stroke();
+    } else if (e.material === 'tnt') {
+      // A lightning bolt: this one goes bang.
+      const k = Math.min(w, h) / 34;
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      for (const [px, py] of [[2, -12], [-7, 2], [0, 2], [-3, 12], [7, -3], [0, -3]] as const) ctx.lineTo(px * k, py * k);
+      ctx.closePath();
+      ctx.fill();
     } else {
       ctx.fillStyle = 'rgba(0,0,0,0.15)';
       for (let i = 0; i < 5; i += 1) {
@@ -308,6 +318,39 @@ export class Renderer {
     if (e.hitFlash > 0) {
       ctx.fillStyle = `rgba(255,255,255,${(e.hitFlash / 220) * 0.6})`;
       ctx.fillRect(-w / 2, -h / 2, w, h);
+    }
+    ctx.restore();
+  }
+
+  private drawBoulder(e: Entity): void {
+    const { ctx } = this;
+    const { fill, edge } = MATERIAL_COLORS[e.material!];
+    const { x, y } = e.body.position;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(e.body.angle);
+    const g = ctx.createRadialGradient(-e.radius * 0.3, -e.radius * 0.3, 2, 0, 0, e.radius);
+    g.addColorStop(0, '#c4c8ce');
+    g.addColorStop(1, fill);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // A fissure, so it visibly rolls.
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-e.radius * 0.5, -e.radius * 0.2);
+    ctx.lineTo(e.radius * 0.1, e.radius * 0.1);
+    ctx.lineTo(e.radius * 0.2, e.radius * 0.6);
+    ctx.stroke();
+    if (e.hitFlash > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${(e.hitFlash / 220) * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -337,7 +380,7 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.save();
     if (e.hitFlash > 0) ctx.globalAlpha = 0.55 + 0.45 * Math.cos(now / 30);
-    drawSprite(ctx, e.target.dex, x, y, e.radius, e.body.angle, '#9b59b6', e.target.facing, 'left');
+    drawSprite(ctx, e.target.art, x, y, e.radius, e.body.angle, '#9b59b6', e.target.facing, 'left');
     ctx.restore();
 
     // A health pip once it has been hurt, so near-misses feel like progress.
@@ -354,19 +397,22 @@ export class Renderer {
   private drawProjectile(e: Entity): void {
     if (!e.launcher) return;
     const { x, y } = e.body.position;
-    drawSprite(this.ctx, e.launcher.dex, x, y, e.radius, e.body.angle, e.launcher.color, e.launcher.facing, 'right');
+    const { ctx } = this;
+    ctx.save();
+    // A ghost in Phantom Force is only half there.
+    if (e.phasing) ctx.globalAlpha = 0.45;
+    if (e.power > 1) {
+      ctx.fillStyle = 'rgba(255, 80, 60, 0.35)';
+      ctx.beginPath();
+      ctx.arc(x, y, e.radius * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    drawSprite(ctx, e.launcher.art, x, y, e.radius, e.body.angle, e.launcher.color, e.launcher.facing, 'right');
+    ctx.restore();
   }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
-}
-
-function cloud(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.arc(x + r, y - r * 0.4, r * 0.9, 0, Math.PI * 2);
-  ctx.arc(x + r * 2, y, r * 0.8, 0, Math.PI * 2);
-  ctx.fill();
 }

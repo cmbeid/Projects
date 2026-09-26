@@ -9,7 +9,7 @@ nothing at the root to install.
 | [`alchemy-forge/`](alchemy-forge/) | An element-crafting puzzle game for the phone. 495 elements to find; installs and plays offline when served over HTTPS. |
 | [`starseed/`](starseed/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
 | [`storied/`](storied/) | A phone-first reader for branching stories, driven entirely by JSON content in `storied/public/content/`. Seven demo stories ship on the shelf; a story can also be imported straight from a local file or folder, and a story already opened once stays readable with the network off. |
-| [`pokefling/`](pokefling/) | An Angry Birds–style slingshot physics game for the phone, themed on Pokémon. Twelve levels in three worlds, with art from PokeAPI's sprites repo. |
+| [`pokefling/`](pokefling/) | An Angry Birds–style slingshot physics game for the phone, themed on Pokémon. Sixty levels in ten Kanto and Johto locations, items, and Pokémon Crystal's music played by a Game Boy–style synth. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
 ## Working on one
