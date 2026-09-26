@@ -7,10 +7,11 @@ import { LEVEL_ORDER, levelsInArea, type LevelDef } from '../data/levels';
 import { ITEMS, itemUrl, spriteUrl, TARGETS, type ItemKey } from '../data/roster';
 import { isUnlocked, totalStars, type Progress, type Volumes } from '../state/save';
 import { h, starsRow } from './dom';
+import { fullscreenButton } from './fullscreen';
 
 export function titleScreen(
   progress: Progress,
-  actions: { play(): void; toggleMute(): void; settings(): void },
+  actions: { play(): void; toggleMute(): void; settings(): void; click(): void },
 ): HTMLElement {
   const mute = h('button.icon-button', {
     'aria-label': progress.muted ? 'Unmute' : 'Mute',
@@ -26,7 +27,7 @@ export function titleScreen(
     h('p.tagline', {}, 'Pull back. Let go. Knock them out.'),
     h('button.primary.big', { onclick: actions.play }, 'Play'),
     h('p.total-stars', {}, `★ ${totalStars(progress, LEVEL_ORDER)} / ${LEVEL_ORDER.length * 3}`),
-    h('div.corner', {}, gear, mute),
+    h('div.corner', {}, fullscreenButton('icon-button', actions.click), gear, mute),
   );
 }
 

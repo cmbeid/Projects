@@ -87,6 +87,10 @@ function showTitle(): void {
       showTitle();
     },
     settings: click(() => openSettings(() => undefined)),
+    click: () => {
+      unlock();
+      sfx.click();
+    },
   }));
 }
 

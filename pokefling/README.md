@@ -33,6 +33,10 @@ Best in landscape; portrait works too, with the camera panning further.
 - **The bag** (the Poké Ball by the pause button) holds items, used while aiming.
 - **Settings** (⚙️ on the title screen, or in the pause menu) has separate
   volumes for music, Pokémon cries and sound effects.
+- **Full screen** (the corners button on the title screen and by the score)
+  hides the browser's bars. It is left out where the browser does not
+  allow it — iPhone Safari only lets videos go full screen; there, *Add to
+  Home Screen* is the way to lose the address bar.
 
 | Pokémon | Move |
 | --- | --- |
