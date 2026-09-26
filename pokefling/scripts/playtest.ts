@@ -26,8 +26,12 @@ import { MAX_PULL } from '../src/game/world';
 interface Shot {
   angle: number;
   power: number;
-  /** Ms after launch to use the ability, or null for never. */
-  abilityAt: number | null;
+  /**
+   * Ms after launch to use the ability, 'inside' to use it once Gengar has
+   * been drifting through a block for a moment (as a player would), or null
+   * for never.
+   */
+  abilityAt: number | 'inside' | null;
 }
 
 interface Result {
@@ -45,16 +49,23 @@ const ANGLES = [-10, 0, 10, 20, 30, 40, 50, 60, 70].map((d) => d * DEG);
 const POWERS = [0.6, 0.75, 0.9, 1];
 const ABILITY_TIMES = [null, 350, 700, 1100];
 const FRAME = 1000 / 60;
+/** How long Gengar has been inside something before the bot taps, like a player reacting. */
+const INSIDE_DELAY = 200;
 
 function fire(game: Game, shot: Shot): void {
   // Pulling back and down fires up and forward.
   const pull = { x: -Math.cos(shot.angle) * MAX_PULL * shot.power, y: Math.sin(shot.angle) * MAX_PULL * shot.power };
   game.launch(pull);
   let t = 0;
+  let insideFor = 0;
   while (game.phase === 'flying' || game.phase === 'settling') {
     game.update(FRAME);
     t += FRAME;
-    if (shot.abilityAt !== null && t >= shot.abilityAt) game.useAbility();
+    if (shot.abilityAt === 'inside') {
+      const ghost = game.abilityTarget;
+      insideFor = ghost?.inside ? insideFor + FRAME : 0;
+      if (insideFor >= INSIDE_DELAY) game.useAbility();
+    } else if (shot.abilityAt !== null && t >= shot.abilityAt) game.useAbility();
     if (t > 30_000) break;
   }
 }
@@ -96,7 +107,8 @@ function play(level: LevelDef): Result {
 
     for (const angle of ANGLES) {
       for (const power of POWERS) {
-        for (const abilityAt of hasAbility ? ABILITY_TIMES : [null]) attempt({ angle, power, abilityAt });
+        const times = !hasAbility ? [null] : LAUNCHERS[game.loaded].ability === 'phase' ? [...ABILITY_TIMES, 'inside' as const] : ABILITY_TIMES;
+        for (const abilityAt of times) attempt({ angle, power, abilityAt });
       }
     }
     tried.sort((x, y) => (better(x.game, y.game) ? -1 : better(y.game, x.game) ? 1 : 0));

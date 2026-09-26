@@ -16,7 +16,7 @@ import { PICKUP_POINTS, UNUSED_LAUNCHER_BONUS } from './scoring';
 import { launchVelocity, type Vec } from './sling';
 import { GROUND_Y, KILL_MARGIN, MIN_PULL, SLING, WORLD_BOTTOM } from './world';
 
-const { Bodies, Body, Composite, Engine, Events, Sleeping } = Matter;
+const { Bodies, Body, Composite, Engine, Events, Query, Sleeping } = Matter;
 
 /** Two physics steps per frame: fast shots stay out of thin planks. */
 export const STEP_MS = 1000 / 120;
@@ -34,6 +34,13 @@ const FUSE_MS = 1500;
 /** X Attack multiplies the damage a shot deals; X Speed its launch speed. */
 export const X_ATTACK_POWER = 2;
 export const X_SPEED_BOOST = 1.25;
+/**
+ * Gengar inside a block slows to this speed (per 1/60 s) and stops falling,
+ * so there is time to tap for Phantom Force while it is where it will hurt.
+ */
+export const PHASE_DRIFT_SPEED = 1.5;
+/** How much of its speed Gengar keeps per physics step while inside a block. */
+const PHASE_DRAG = 0.8;
 /** Thickness of a cave roof, above its underside. */
 const CEILING_DEPTH = 600;
 
@@ -67,6 +74,10 @@ export interface Entity {
   power: number;
   /** Projectiles only: passing through blocks (Gengar's Phantom Force). */
   phasing: boolean;
+  /** Phasing projectiles only: inside a block right now, drifting slowly. */
+  inside: boolean;
+  /** Phasing projectiles only: its velocity as it went in, given back as it comes out. */
+  entryVelocity?: Vec;
   /** Floating targets only: where it hovers. */
   readonly home?: Vec;
   /** Set when something fell into water, so it is not scored as a plain break. */
@@ -364,7 +375,7 @@ export class Game {
     const entity: Entity = {
       id: this.nextId++, kind, body,
       w: extra.w ?? 0, h: extra.h ?? 0, radius: extra.radius ?? 0,
-      hp, maxHp: hp, hitFlash: 0, dead: false, hasHit: false, power: 1, phasing: false,
+      hp, maxHp: hp, hitFlash: 0, dead: false, hasHit: false, power: 1, phasing: false, inside: false,
       ...(extra.material ? { material: extra.material } : {}),
       ...(extra.shape ? { shape: extra.shape } : {}),
       ...(extra.target ? { target: extra.target } : {}),
@@ -392,6 +403,8 @@ export class Game {
   /** Gengar leaves Phantom Force: solid again, with a burst that hurts what it is inside. */
   private materialize(ghost: Entity): void {
     ghost.phasing = false;
+    ghost.inside = false;
+    delete ghost.entryVelocity;
     ghost.body.collisionFilter.mask = EVERYTHING;
     const v = Body.getVelocity(ghost.body);
     Body.setVelocity(ghost.body, { x: v.x * 0.6, y: v.y * 0.6 });
@@ -419,6 +432,7 @@ export class Game {
 
   private step(): void {
     this.hover();
+    this.drift();
     Engine.update(this.engine, STEP_MS);
     this.time += STEP_MS;
     this.phaseTime += STEP_MS;
@@ -447,6 +461,36 @@ export class Game {
 
     if (this.phase === 'flying') this.stepFlying();
     else if (this.phase === 'settling') this.stepSettling();
+  }
+
+  /**
+   * Gengar passing through a block slows to a drift and stops falling, so the
+   * player can see it is inside and has time to tap. Out the other side, it
+   * picks up the speed and direction it went in with, as though time had
+   * paused — so it can still pass a wall to reach what hides behind it.
+   */
+  private drift(): void {
+    const g = this.engine.gravity;
+    for (const ghost of this.projectiles) {
+      if (!ghost.phasing || ghost.dead) continue;
+      const blocks: Matter.Body[] = [];
+      for (const e of this.entities.values()) if (e.kind === 'block' && !e.dead) blocks.push(e.body);
+      ghost.inside = Query.collides(ghost.body, blocks).length > 0;
+      const body = ghost.body;
+      if (!ghost.inside) {
+        if (ghost.entryVelocity) Body.setVelocity(body, ghost.entryVelocity);
+        delete ghost.entryVelocity;
+        continue;
+      }
+      ghost.entryVelocity ??= Body.getVelocity(body);
+      body.force.y -= body.mass * g.y * g.scale;
+      const v = Body.getVelocity(body);
+      const speed = Math.hypot(v.x, v.y);
+      if (speed > PHASE_DRIFT_SPEED) {
+        const k = Math.max(PHASE_DRAG, PHASE_DRIFT_SPEED / speed);
+        Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+      }
+    }
   }
 
   /** Floating targets: cancel gravity and spring back towards home. */

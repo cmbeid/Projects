@@ -283,7 +283,9 @@ export class PlayScreen {
     const targets = `${this.game.targetsLeft} left`;
     if (this.targetsEl.textContent !== targets) this.targetsEl.textContent = targets;
 
-    const ability = this.game.abilityTarget?.launcher?.abilityLabel ?? '';
+    const target = this.game.abilityTarget;
+    // Gengar inside something is the moment for Phantom Force: say so.
+    const ability = target?.inside ? 'Tap now: Phantom Force!' : target?.launcher?.abilityLabel ?? '';
     if (ability && this.hintEl.textContent !== ability) {
       this.hintEl.textContent = ability;
       this.hintEl.classList.add('show');

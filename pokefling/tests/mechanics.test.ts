@@ -3,7 +3,7 @@ import Matter from 'matter-js';
 import { Build, G } from '../src/data/levels/build';
 import type { LevelDef } from '../src/data/levels/types';
 import type { LauncherKey } from '../src/data/roster';
-import { Game, STEP_MS, X_SPEED_BOOST } from '../src/game/game';
+import { Game, PHASE_DRIFT_SPEED, STEP_MS, X_SPEED_BOOST } from '../src/game/game';
 import { SLING } from '../src/game/world';
 
 function level(setup: (b: Build) => void, launchers: LauncherKey[] = ['pikachu', 'pikachu']): LevelDef {
@@ -136,24 +136,54 @@ describe('Pidgeot', () => {
 });
 
 describe('Gengar', () => {
-  it('passes through blocks until tapped, then hits what it is inside', () => {
-    const game = new Game(level((b) => {
-      b.wall(700, G, 'stone', 12);
-      b.target('rattata', 1500, G);
-    }, ['gengar']));
+  const wall = () => new Game(level((b) => {
+    b.wall(700, G, 'stone', 12);
+    b.target('rattata', 1500, G);
+  }, ['gengar']));
+
+  it('drifts slowly through a block, not falling, long enough to tap', () => {
+    const game = wall();
     settle(game);
     game.launch({ x: -100, y: 0 });
-    // Straight through the wall, which does not move.
-    run(game, 700);
     const ghost = game.projectiles[0]!;
+    let insideMs = 0;
+    let entered: number | null = null;
+    let maxSpeedInside = 0;
+    let drop = 0;
+    for (let t = 0; t < 3000 && ghost.body.position.x < 760; t += STEP_MS) {
+      game.update(STEP_MS);
+      if (!ghost.inside) continue;
+      insideMs += STEP_MS;
+      entered ??= ghost.body.position.y;
+      drop = Math.max(drop, ghost.body.position.y - entered);
+      if (insideMs > 150) maxSpeedInside = Math.max(maxSpeedInside, Matter.Body.getSpeed(ghost.body));
+    }
+    // It comes out the other side...
     expect(ghost.body.position.x).toBeGreaterThan(760);
+    // ...having spent a good part of a second inside, at a crawl, barely sinking.
+    expect(insideMs).toBeGreaterThan(500);
+    expect(maxSpeedInside).toBeLessThanOrEqual(PHASE_DRIFT_SPEED + 0.01);
+    expect(drop).toBeLessThan(15);
+    // Out the far side, it flies on as fast as it went in, rather than dropping.
+    const speedOut = Matter.Body.getSpeed(ghost.body);
+    expect(speedOut).toBeGreaterThan(15);
+    // The wall itself was never touched.
     expect(blocks(game).every((e) => Math.abs(e.body.position.x - 700) < 1)).toBe(true);
+  });
 
-    // Put it back inside the wall and bring it out of Phantom Force.
-    Matter.Body.setPosition(ghost.body, { x: 700, y: G - 100 });
+  it('bursts out of Phantom Force where it is, hurting the block around it', () => {
+    const game = wall();
+    settle(game);
+    game.launch({ x: -100, y: 0 });
+    const ghost = game.projectiles[0]!;
+    for (let t = 0; t < 3000 && !ghost.inside; t += STEP_MS) game.update(STEP_MS);
+    run(game, 150);
+    expect(ghost.inside).toBe(true);
+    expect(game.abilityTarget).toBe(ghost);
     expect(game.useAbility()).toBe(true);
     run(game, 50);
     expect(ghost.phasing).toBe(false);
+    expect(ghost.inside).toBe(false);
     expect(blocks(game).some((e) => e.hp < e.maxHp)).toBe(true);
   });
 });
