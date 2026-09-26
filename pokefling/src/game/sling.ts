@@ -25,6 +25,19 @@ export function launchVelocity(pull: Vec): Vec {
 }
 
 /**
+ * Where a shot comes down to `groundY`, ignoring drag and collisions. For
+ * steering the camera towards what the player is aiming at.
+ */
+export function landingX(start: Vec, velocity: Vec, groundY: number, maxSteps = 600): number {
+  let x = start.x;
+  for (let n = 1; n <= maxSteps; n += 1) {
+    x = start.x + velocity.x * n;
+    if (start.y + velocity.y * n + 0.5 * GRAVITY_PER_STEP * (n * n + n / 2) >= groundY) return x;
+  }
+  return x;
+}
+
+/**
  * Points along the flight path, one every `every` 1/60 s steps, ignoring drag
  * and collisions. Matches the simulation exactly until the first hit: Matter
  * integrates with Verlet, whose only error under constant gravity is the extra

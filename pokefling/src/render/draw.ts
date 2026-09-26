@@ -11,6 +11,9 @@ import { Effects, MATERIAL_COLORS } from './effects';
 import { drawItemIcon, drawSprite } from './sprites';
 import { drawBackdrop, THEMES, type Theme } from './themes';
 
+/** How far ahead, in 1/60 s steps, the aiming arc is drawn without Scope Lens. */
+export const AIM_ARC_STEPS = 48;
+
 export interface AimState {
   /** Pouch offset from the sling while dragging, else null. */
   pull: Vec | null;
@@ -66,7 +69,7 @@ export class Renderer {
     }
 
     if (game.phase === 'aiming' && game.loaded) this.drawLoaded(game, game.loaded, aim, now);
-    this.drawSlingFront(game, aim, game.phase === 'aiming' && game.loaded !== null);
+    this.drawSlingFront(game, camera, aim, game.phase === 'aiming' && game.loaded !== null);
     this.effects.draw(ctx);
   }
 
@@ -166,12 +169,12 @@ export class Renderer {
     if (aim.pull) this.band(SLING.x + 18, SLING.y - 4, this.pouch(aim));
   }
 
-  private drawSlingFront(game: Game, aim: AimState, loaded: boolean): void {
+  private drawSlingFront(game: Game, camera: Camera, aim: AimState, loaded: boolean): void {
     const { ctx } = this;
     const pouch = this.pouch(aim);
     if (aim.pull) {
       this.band(SLING.x - 12, SLING.y - 2, pouch);
-      this.aimPreview(aim.pull, game.launchScale, game.fullArc);
+      this.aimPreview(aim.pull, game.launchScale, game.fullArc, camera);
     } else if (loaded) {
       // Resting bands, slack between the arms.
       ctx.strokeStyle = '#4a1f14';
@@ -201,13 +204,19 @@ export class Renderer {
     ctx.stroke();
   }
 
-  /** The first part of the flight path — or, with Scope Lens, all of it. */
-  private aimPreview(pull: Vec, scale: number, full: boolean): void {
+  /**
+   * A stretch of the flight path — or, with Scope Lens, all of it. Normally
+   * the stretch starts at the sling; when the camera has panned ahead of the
+   * sling to show what is being aimed at, it starts where the path comes on
+   * screen instead, so the aim can still be seen.
+   */
+  private aimPreview(pull: Vec, scale: number, full: boolean, camera: Camera): void {
     const { ctx } = this;
     const start = { x: SLING.x + pull.x, y: SLING.y + pull.y };
     const v = launchVelocity(pull);
-    const dots = trajectory(start, { x: v.x * scale, y: v.y * scale }, full ? 200 : 48, 4)
-      .filter((p) => p.y < GROUND_Y);
+    const path = trajectory(start, { x: v.x * scale, y: v.y * scale }, 400, 4).filter((p) => p.y < GROUND_Y);
+    const onScreen = Math.max(0, path.findIndex((p) => p.x > camera.x + 20 / camera.scale));
+    const dots = full ? path.slice(0, 50) : path.slice(onScreen, onScreen + AIM_ARC_STEPS / 4);
     dots.forEach((p, i) => {
       ctx.globalAlpha = full ? 0.85 : 0.9 * (1 - i / dots.length);
       ctx.fillStyle = full ? '#ffe066' : '#ffffff';

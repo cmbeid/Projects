@@ -10,10 +10,10 @@ import { BOSS_WIN_TRACK, WIN_TRACK, type TrackId } from '../data/music';
 import { ITEM_KEYS, ITEMS, itemUrl, LAUNCHERS, TARGETS, type ItemKey } from '../data/roster';
 import { Game, type GameEvent } from '../game/game';
 import { starsFor } from '../game/scoring';
-import { clampPull, type Vec } from '../game/sling';
-import { SLING } from '../game/world';
+import { clampPull, landingX, launchVelocity, type Vec } from '../game/sling';
+import { GROUND_Y, MIN_PULL, SLING } from '../game/world';
 import { Camera } from '../render/camera';
-import { Renderer, type AimState } from '../render/draw';
+import { AIM_ARC_STEPS, Renderer, type AimState } from '../render/draw';
 import { h } from './dom';
 
 export interface Outcome {
@@ -68,6 +68,8 @@ export class PlayScreen {
   private gesture: Gesture = 'none';
   private readonly pointers = new Map<number, Vec>();
   private panX = 0;
+  /** Where the aiming drag started: on screen, as a pull, and at what zoom. */
+  private grab: { screen: Vec; pull: Vec; scale: number } | null = null;
   private pinchDistance = 0;
 
   constructor(private level: LevelDef, private readonly callbacks: PlayCallbacks) {
@@ -127,6 +129,8 @@ export class PlayScreen {
     this.level = level;
     this.game = new Game(level);
     this.aim.pull = null;
+    this.grab = null;
+    this.camera.aimAt(null);
     this.renderer.effects.clear();
     this.camera.reset(level.width);
     this.paused = false;
@@ -138,6 +142,8 @@ export class PlayScreen {
     if (this.paused || this.game.phase === 'won' || this.game.phase === 'lost') return;
     this.paused = true;
     this.aim.pull = null;
+    this.grab = null;
+    this.camera.aimAt(null);
     this.gesture = 'none';
     this.closeBag();
     this.callbacks.onPause();
@@ -316,6 +322,8 @@ export class PlayScreen {
     if (this.pointers.size === 2) {
       // A second finger turns whatever was happening into a pinch.
       this.aim.pull = null;
+      this.grab = null;
+      this.camera.aimAt(null);
       this.gesture = 'pinch';
       this.pinchDistance = this.spread();
       return;
@@ -328,7 +336,8 @@ export class PlayScreen {
     if (game.phase === 'aiming' && game.loaded && Math.hypot(p.x - pouch.x, p.y - pouch.y) < grab) {
       this.gesture = 'aim';
       this.aim.pull = clampPull(camera.toWorld(p));
-      if (camera.mode === 'manual') camera.aim();
+      this.grab = { screen: p, pull: this.aim.pull, scale: camera.scale };
+      camera.aim();
       sfx.stretch();
       return;
     }
@@ -345,8 +354,15 @@ export class PlayScreen {
     const p = this.point(e);
     this.pointers.set(e.pointerId, p);
 
-    if (this.gesture === 'aim') {
-      this.aim.pull = clampPull(this.camera.toWorld(p));
+    if (this.gesture === 'aim' && this.grab) {
+      // Measured as a drag on screen at the zoom it started at, so the camera
+      // panning and zooming ahead does not move the aim.
+      const { screen, pull, scale } = this.grab;
+      this.aim.pull = clampPull({
+        x: SLING.x + pull.x + (p.x - screen.x) / scale,
+        y: SLING.y + pull.y + (p.y - screen.y) / scale,
+      });
+      this.lookAhead();
     } else if (this.gesture === 'pan') {
       this.camera.pan(p.x - this.panX);
       this.panX = p.x;
@@ -362,6 +378,8 @@ export class PlayScreen {
     if (this.gesture === 'aim') {
       const pull = this.aim.pull;
       this.aim.pull = null;
+      this.grab = null;
+      this.camera.aimAt(null);
       if (!cancelled && pull && this.game.launch(pull)) {
         const shot = this.game.projectiles[0];
         if (shot) this.camera.startFollow(shot.body.position);
@@ -372,6 +390,24 @@ export class PlayScreen {
       this.gesture = 'pan';
       this.panX = [...this.pointers.values()][0]?.x ?? 0;
     }
+  }
+
+  /** Point the camera at where the current pull would land. */
+  private lookAhead(): void {
+    const pull = this.aim.pull;
+    if (!pull || Math.hypot(pull.x, pull.y) < MIN_PULL) {
+      this.camera.aimAt(null);
+      return;
+    }
+    const v = launchVelocity(pull);
+    const scale = this.game.launchScale;
+    const start = { x: SLING.x + pull.x, y: SLING.y + pull.y };
+    const velocity = { x: v.x * scale, y: v.y * scale };
+    const land = Math.min(landingX(start, velocity, GROUND_Y), this.level.width);
+    // The aiming arc fades out towards its tip, so keep its middle — the
+    // part that can still be seen — in view as well as the landing point.
+    const middle = start.x + velocity.x * (this.game.fullArc ? 0 : AIM_ARC_STEPS / 2);
+    this.camera.aimAt({ from: Math.min(middle, land), to: land });
   }
 
   private spread(): number {
