@@ -252,8 +252,10 @@ button.big { font-size: 24px; padding: 16px 56px; }
 .hud-hint {
   position: absolute;
   left: 50%;
-  bottom: max(18px, env(safe-area-inset-bottom));
-  transform: translate(-50%, 20px);
+  /* Just under the top bar: the bottom of the screen is where the action is. */
+  top: calc(max(10px, env(safe-area-inset-top)) + 58px);
+  transform: translate(-50%, -12px);
+  max-width: calc(100% - 24px);
   padding: 8px 16px;
   border-radius: 999px;
   background: rgba(27, 42, 74, 0.85);

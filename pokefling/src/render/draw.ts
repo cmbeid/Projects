@@ -410,6 +410,17 @@ export class Renderer {
     ctx.save();
     // A ghost in Phantom Force is only half there.
     if (e.phasing) ctx.globalAlpha = 0.45;
+    if (e.inside) {
+      // A pulsing purple glow while it drifts through a block.
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 90);
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.35 * pulse;
+      ctx.fillStyle = '#9b5de5';
+      ctx.beginPath();
+      ctx.arc(x, y, e.radius * (1.5 + 0.3 * pulse), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     if (e.power > 1) {
       ctx.fillStyle = 'rgba(255, 80, 60, 0.35)';
       ctx.beginPath();

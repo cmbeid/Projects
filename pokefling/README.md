@@ -44,7 +44,7 @@ Best in landscape; portrait works too, with the camera panning further.
 | Jolteon | **Quick Attack** — a burst of speed in the direction it is flying |
 | Staryu | **Swift** — splits into three |
 | Snorlax | **Body Slam** — heavy anyway, and drops straight down |
-| Gengar | **Phantom Force** — passes through blocks until you tap, then bursts out |
+| Gengar | **Phantom Force** — passes through blocks, slowing to a glowing drift while inside one; tap then to burst out and damage it |
 | Voltorb | **Self-Destruct** — explodes; goes off on its own shortly after landing |
 | Pidgeot | **Gust** — whips round and flies back, for targets hiding behind walls |
 

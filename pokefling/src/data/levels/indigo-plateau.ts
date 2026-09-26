@@ -15,8 +15,8 @@ function victoryRoad(): LevelDef {
   b.target('machamp', 1450, G);
   b.ball(1300, G, 'stone', 50);
   b.hover('crobat', 1300, 330);
-  return b.done(AREA, 1, { name: 'Victory Road', width: 1800, par: 2, reward: 'x-attack',
-    launchers: ['snorlax', 'gengar', 'jolteon'] });
+  return b.done(AREA, 1, { name: 'Victory Road', width: 1800, par: 3, reward: 'x-attack',
+    launchers: ['snorlax', 'gengar', 'jolteon', 'snorlax'] });
 }
 
 function willsRoom(): LevelDef {
