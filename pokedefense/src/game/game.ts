@@ -21,7 +21,7 @@ import { buildPath, type PathGeom, pointAt } from './path';
 import { makeRng, pickWeighted, type Rng } from './rng';
 import { stageIndex, type TowerStats, towerStats } from './stats';
 import {
-  bountyScale, buildWave, DIFFICULTIES, type DifficultyKey, hpScale, type Spawn, waveBonus, waveCount,
+  bountyScale, buildWave, DIFFICULTIES, type DifficultyKey, hpScale, isBossWave, type Spawn, waveBonus, waveCount,
 } from './waves';
 
 export const STEP = 1 / 60;
@@ -162,8 +162,17 @@ export type GameEvent =
   | { kind: 'catch'; dex: number; shiny: boolean; success: boolean; x: number; y: number }
   | { kind: 'powerup'; key: PowerupKey; x: number; y: number }
   | { kind: 'money'; amount: number; x: number; y: number }
+  | { kind: 'bossFailed'; wave: number }
   | { kind: 'won' }
   | { kind: 'lost' };
+
+/** Everything a retry rewinds. Catches and the Pokédex are kept. */
+interface Checkpoint {
+  wave: number;
+  state: Pick<Game, 't' | 'money' | 'lives' | 'wave' | 'cleared' | 'pending' | 'openWaves' | 'enemies' | 'towers' | 'buffs' | 'cooldowns' | 'items' | 'balls'> & {
+    log: Omit<Game['log'], 'caught' | 'seen'>;
+  };
+}
 
 export interface BattleSetup {
   map: MapDef;
@@ -208,7 +217,18 @@ export interface Game {
   balls: Record<BallKey, number>;
   held: Readonly<Record<string, string>>;
   trainer: TrainerLevels;
-  status: 'playing' | 'won' | 'lost';
+  /**
+   * `retry`: a gym leader's Pokémon got through (or the lives ran out before
+   * it fell). The battle waits for `retryWave`, which rewinds to the start of
+   * that wave, or for the player to give up.
+   */
+  status: 'playing' | 'won' | 'lost' | 'retry';
+  /** Saved as a boss wave starts, so a failed one can be tried again. */
+  checkpoint: Checkpoint | null;
+  /** A boss reached the end of the path during the checkpointed wave. */
+  bossLeaked: boolean;
+  /** Times the current boss wave has been retried. */
+  retries: number;
   autoWave: boolean;
   autoAt: number | null;
   /** What happened, for the results screen and the save. */
@@ -262,6 +282,9 @@ export function newGame(setup: BattleSetup): Game {
     held: setup.held,
     trainer: { ...NO_TRAINER, ...trainer },
     status: 'playing',
+    checkpoint: null,
+    bossLeaked: false,
+    retries: 0,
     autoWave: false,
     autoAt: null,
     log: { kills: 0, leaked: 0, caught: [], seen: new Set(), found: [], used: [], ballsUsed: [], earned: 0 },
@@ -426,6 +449,17 @@ export function earlyBonus(g: Game): number {
 
 export function startWave(g: Game): boolean {
   if (!hasNextWave(g)) return false;
+  if (!g.map.endless && isBossWave(g.map, g.wave + 1)) {
+    const { caught: _caught, seen: _seen, ...log } = g.log;
+    g.checkpoint = {
+      wave: g.wave + 1,
+      state: structuredClone({
+        t: g.t, money: g.money, lives: g.lives, wave: g.wave, cleared: g.cleared, pending: g.pending, openWaves: g.openWaves,
+        enemies: g.enemies, towers: g.towers, buffs: g.buffs, cooldowns: g.cooldowns, items: g.items, balls: g.balls, log,
+      }),
+    };
+    g.bossLeaked = false;
+  }
   const early = earlyBonus(g);
   g.money += early;
   g.wave += 1;
@@ -467,7 +501,7 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     lead: Boolean(spawn.lead),
     rare: Boolean(spawn.rare),
     // The last boss of a map costs half your lives; the Elite Four a quarter.
-    lives: boss ? (boss === g.map.boss ? 10 : 5) : spawn.lead ? 3 : 1,
+    lives: boss ? (boss.dex === g.map.boss.dex ? 10 : 5) : spawn.lead ? 3 : 1,
     born: g.t,
     abilities: (boss?.abilities ?? sp.abilities).map((ability) => ({ ability, next: g.t + ('every' in ability ? ability.every * (0.5 + 0.5 * g.rng()) : 0) })),
     healed: false,
@@ -1015,6 +1049,7 @@ function updateEnemies(g: Game, dt: number): void {
       e.alive = false;
       g.lives = Math.max(0, g.lives - e.lives);
       g.log.leaked += 1;
+      if (e.boss && g.checkpoint) g.bossLeaked = true;
       emit(g, { kind: 'leak', dex: e.dex, lives: e.lives });
     }
   }
@@ -1040,6 +1075,10 @@ function clearWaves(g: Game): void {
     if (g.enemies.some((e) => e.alive && e.wave === wave)) continue;
     g.openWaves.delete(wave);
     g.cleared += 1;
+    if (g.checkpoint?.wave === wave) {
+      g.checkpoint = null;
+      g.retries = 0;
+    }
     let bonus = waveBonus(g.map.tier, wave);
     for (const t of g.towers) {
       bonus += Math.round(t.stats.effects.income * (1 + 0.15 * (g.map.tier - 1)));
@@ -1087,6 +1126,11 @@ export function step(g: Game, dt = STEP): void {
 
   clearWaves(g);
 
+  if (g.checkpoint && g.openWaves.has(g.checkpoint.wave) && (g.bossLeaked || g.lives <= 0)) {
+    g.status = 'retry';
+    emit(g, { kind: 'bossFailed', wave: g.checkpoint.wave });
+    return;
+  }
   if (g.lives <= 0) {
     g.status = 'lost';
     emit(g, { kind: 'lost' });
@@ -1097,10 +1141,35 @@ export function step(g: Game, dt = STEP): void {
     emit(g, { kind: 'won' });
     return;
   }
-  if (g.autoWave && g.openWaves.size === 0 && hasNextWave(g) && g.wave > 0) {
+  // After a retry the player calls the boss wave themselves, when they're ready.
+  const retrying = g.checkpoint !== null && g.wave < g.checkpoint.wave;
+  if (g.autoWave && !retrying && g.openWaves.size === 0 && hasNextWave(g) && g.wave > 0) {
     g.autoAt ??= g.t + 2;
     if (g.t >= g.autoAt) startWave(g);
   }
+}
+
+/**
+ * Rewind a failed boss wave to just before it started: towers, ₽, lives and
+ * items as they were, the boss wave not yet called. The player can rearrange
+ * their team and call it again.
+ */
+export function retryWave(g: Game): boolean {
+  if (g.status !== 'retry' || !g.checkpoint) return false;
+  const saved = structuredClone(g.checkpoint.state);
+  const { log, ...rest } = saved;
+  Object.assign(g, rest);
+  g.log = { ...g.log, ...log };
+  // structuredClone copies the shared data too; point back at the originals.
+  for (const t of g.towers) t.line = line(t.line.id);
+  for (const e of g.enemies) e.sp = species(e.dex);
+  g.projectiles = [];
+  g.drops = [];
+  g.bossLeaked = false;
+  g.autoAt = null;
+  g.retries += 1;
+  g.status = 'playing';
+  return true;
 }
 
 /** 1–3 stars for a win, by lives kept. */

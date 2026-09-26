@@ -3,7 +3,7 @@ import { NO_TRAINER } from '../src/data/items';
 import { mapDef, MAPS } from '../src/data/maps';
 import { playOut } from '../src/game/bot';
 import {
-  canPlace, catchChance, chooseMove, type Game, levelUp, newGame, placeTower, sellTower, sellValue, startWave, step,
+  canPlace, catchChance, retryWave, chooseMove, type Game, levelUp, newGame, placeTower, sellTower, sellValue, startWave, step,
   throwBall, type Tower, usePowerup,
 } from '../src/game/game';
 import { buildPath, pointAt } from '../src/game/path';
@@ -190,6 +190,44 @@ describe('battle', () => {
     expect(usePowerup(g, 'x-attack')).toBe('cooldown');
     expect(g.items['x-attack']).toBe(1);
     expect(usePowerup(g, 'full-restore')).toBe('unused');
+  });
+
+  it('makes you retry a gym leader wave you fail', () => {
+    const g = game();
+    g.money = 10_000;
+    // Skip to the boss wave, with one tower that can't stop Onix.
+    g.wave = g.totalWaves - 1;
+    g.cleared = g.totalWaves - 1;
+    const t = placeTower(g, 'pidgey', 3, 1) as Tower;
+    const money = g.money;
+    startWave(g);
+    for (let i = 0; i < 60 * 300 && g.status === 'playing'; i += 1) step(g);
+    expect(g.status).toBe('retry');
+    expect(g.events.some((e) => e.kind === 'bossFailed')).toBe(true);
+
+    expect(retryWave(g)).toBe(true);
+    expect(g.status).toBe('playing');
+    expect(g.wave).toBe(g.totalWaves - 1);
+    expect(g.money).toBe(money);
+    expect(g.lives).toBe(g.maxLives);
+    expect(g.enemies).toHaveLength(0);
+    expect(g.towers.map((x) => x.id)).toEqual([t.id]);
+    expect(g.towers[0]!.line).toBe(line('pidgey'));
+
+    // Better prepared, the retried wave can be won.
+    for (const [x, y] of [[2, 2], [2, 4], [3, 4], [2, 5], [0, 8], [2, 8], [2, 9], [3, 9]] as const) placeTower(g, 'squirtle', x, y);
+    for (const tw of g.towers) for (let i = 0; i < 5; i += 1) levelUp(g, tw.id);
+    startWave(g);
+    for (let i = 0; i < 60 * 300 && g.status === 'playing'; i += 1) step(g);
+    expect(g.status).toBe('won');
+  });
+
+  it('still ends the battle when lives run out on an ordinary wave', () => {
+    const g = game();
+    g.lives = 1;
+    startWave(g);
+    for (let i = 0; i < 60 * 120 && g.status === 'playing'; i += 1) step(g);
+    expect(g.status).toBe('lost');
   });
 
   it('can be won by the bot on the first map', () => {

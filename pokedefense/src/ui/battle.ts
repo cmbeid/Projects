@@ -17,7 +17,7 @@ import { TYPE_COLOURS } from '../data/types';
 import {
   buffLeft, canPlace, catchChance, chooseMove, dropAt, earlyBonus, type Enemy, type Game, hasNextWave, levelUp, moveCost,
   needsBranch, newGame, pickUp, placeCost, placeTower, powerupReady, sellTower, sellValue, setTarget, starsFor, startWave,
-  STEP, step, TARGET_MODES, type TargetMode, throwBall, type Tower, towerAt, upgradeCost, usePowerup,
+  retryWave, STEP, step, TARGET_MODES, type TargetMode, throwBall, type Tower, towerAt, upgradeCost, usePowerup,
 } from '../game/game';
 import { stageIndex, towerStats } from '../game/stats';
 import { type DifficultyKey, wavePreview } from '../game/waves';
@@ -694,6 +694,8 @@ export function startBattle(opts: BattleOptions): void {
       } else if (e.kind === 'pickup') {
         toast(`Found ${e.item in BALLS ? BALLS[e.item as BallKey].name : POWERUPS[e.item as PowerupKey].name}!`);
         renderRail();
+      } else if (e.kind === 'bossFailed') {
+        bossFailed();
       } else if (e.kind === 'won' || e.kind === 'lost') {
         finish();
       }
@@ -725,6 +727,41 @@ export function startBattle(opts: BattleOptions): void {
     });
     setProgress(result.progress);
     return result;
+  }
+
+  /** A gym leader's Pokémon got through: rewind to the start of its wave and try again. */
+  function bossFailed(): void {
+    const boss = map.extraBosses?.find((b) => b.wave === g.checkpoint?.wave);
+    const trainer = boss?.trainer ?? map.leader;
+    const dex = boss?.boss.dex ?? map.boss.dex;
+    selected = null;
+    setMode({ kind: 'idle' });
+    setTimeout(() => {
+      const close = modal(
+        h('div', {},
+          h('div', { style: 'display:flex;justify-content:center' }, thumb(dex, 96, { animate: true })),
+          h('h2', {}, `${trainer}'s ${species(dex).name} was too strong!`),
+          h('p.muted', { style: 'margin:0;text-align:center;font-size:14px' },
+            'You have to beat it to move on. The wave starts over with your towers, ₽, lives and items as they were — change your team around first if you like, then call the wave again.'),
+          g.retries > 0 ? h('div', { style: 'text-align:center;font-size:12px' }, h('span.chip', {}, `Attempt ${g.retries + 2}`)) : null,
+          button('btn.primary', '↻ Try the wave again', () => {
+            close();
+            retryWave(g);
+            resetEffects();
+            bossMusic = false;
+            playMusic(map.track);
+            renderRail();
+            renderDock(true);
+            banner(`Try again: ${trainer}`, 'Get ready, then call the wave', true);
+          }),
+          button('btn.ghost', 'Give up', () => {
+            close();
+            quit(false);
+          }),
+        ),
+        { dismissable: false },
+      );
+    }, 700);
   }
 
   function quit(restart: boolean): void {
