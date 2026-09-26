@@ -14,6 +14,11 @@ const READABLE_SCALE = 0.38;
  */
 const PORTRAIT_WIDTH = 560;
 
+/** World units kept clear beyond the aiming range, either side. */
+const LOOK_MARGIN = 60;
+/** While aiming ahead, the camera zooms out to at most this fraction of its usual scale. */
+const LOOK_ZOOM_OUT = 0.6;
+
 export type CameraMode = 'intro' | 'aim' | 'follow' | 'manual';
 
 /**
@@ -32,6 +37,10 @@ export class Camera {
 
   private levelWidth = 1000;
   private follow: Vec | null = null;
+  /** While aiming: the stretch of world x to show — the aiming arc's tip to where the shot lands. */
+  private aimTarget: { from: number; to: number } | null = null;
+  /** After a launch from off-screen: hold still until the shot comes into view. */
+  private holdFor = 0;
   private introTime = 0;
 
   resize(width: number, height: number): void {
@@ -56,6 +65,11 @@ export class Camera {
   }
 
   targetScale(): number {
+    return this.aimScale() ?? this.usualScale();
+  }
+
+  /** The automatic scale with the player's pinch zoom applied. */
+  private usualScale(): number {
     const base = this.baseScale();
     const min = Math.min(base, this.width / (this.levelWidth + 80));
     return Math.min(Math.max(base * this.zoom, min), this.height / 300);
@@ -66,10 +80,25 @@ export class Camera {
     this.follow = null;
   }
 
+  /**
+   * While the sling is drawn, pan — and if need be zoom out a little — to
+   * show from the tip of the aiming arc (`from`) to where the shot would land
+   * (`to`), so a narrow screen shows what is being aimed at. The sling may
+   * slide off the left edge; the pull follows the finger, not the pouch.
+   * Null lets go.
+   */
+  aimAt(range: { from: number; to: number } | null): void {
+    this.aimTarget = range;
+  }
+
   /** Follow a shot. Takes over from manual panning: a launch always wants watching. */
   startFollow(point: Vec): void {
     this.mode = 'follow';
     this.follow = point;
+    this.aimTarget = null;
+    // If the camera had panned ahead while aiming, wait for the shot to fly
+    // into view rather than swinging back to the sling and out again.
+    this.holdFor = 1500;
   }
 
   track(point: Vec): void {
@@ -103,9 +132,18 @@ export class Camera {
       this.x += (target - this.x) * (1 - Math.exp(-dtMs / 320));
       return;
     }
-    if (this.mode === 'aim') target = this.aimX();
-    else if (this.mode === 'follow' && this.follow) target = this.follow.x - this.visibleWidth() * 0.45;
-    else return;
+    if (this.mode === 'aim') {
+      target = this.aimX();
+      // Put the landing point near the right edge, never showing less than usual.
+      if (this.aimTarget) target = Math.max(target, this.aimTarget.to + LOOK_MARGIN - this.visibleWidth());
+    } else if (this.mode === 'follow' && this.follow) {
+      target = this.follow.x - this.visibleWidth() * 0.45;
+      if (this.holdFor > 0) {
+        this.holdFor -= dtMs;
+        if (target < this.x) target = this.x;
+        else this.holdFor = 0;
+      }
+    } else return;
     this.x += (this.clampX(target) - this.x) * k;
   }
 
@@ -119,6 +157,18 @@ export class Camera {
 
   toWorld(p: Vec): Vec {
     return { x: this.x + p.x / this.scale, y: WORLD_BOTTOM - (this.height - p.y) / this.scale };
+  }
+
+  /**
+   * The scale for aiming at `aimTarget`: zoomed out just enough to fit the
+   * arc's tip and the landing point, but no further than LOOK_ZOOM_OUT of
+   * the usual scale. Null when not aiming ahead.
+   */
+  private aimScale(): number | null {
+    if (this.mode !== 'aim' || !this.aimTarget) return null;
+    const base = this.usualScale();
+    const span = this.aimTarget.to - this.aimTarget.from + 2 * LOOK_MARGIN;
+    return Math.min(base, Math.max(base * LOOK_ZOOM_OUT, this.width / span));
   }
 
   private aimX(): number {
