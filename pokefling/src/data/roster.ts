@@ -2,8 +2,8 @@
  * Who gets flung, and who gets flung at.
  *
  * `dex` is the National Pokédex number, which is also the file name under
- * `public/sprites/` — `scripts/fetch-sprites.ts` reads this list to know what
- * to download.
+ * `public/sprites/` and `public/cries/` — `scripts/fetch-assets.ts` reads this
+ * list to know what to download.
  */
 
 export type Ability = 'none' | 'dash' | 'explode' | 'slam' | 'split';
@@ -86,4 +86,8 @@ export function spriteDexes(): number[] {
 
 export function spriteUrl(dex: number): string {
   return `sprites/${dex}.png`;
+}
+
+export function cryUrl(dex: number): string {
+  return `cries/${dex}.wav`;
 }

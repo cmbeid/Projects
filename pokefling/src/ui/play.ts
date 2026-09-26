@@ -2,8 +2,9 @@
  * The in-level screen: canvas, HUD, touch input and the frame loop. It owns
  * one `Game` at a time and reports the outcome through `onFinish`.
  */
-import { sfx, unlock } from '../audio';
+import { cry, sfx, unlock } from '../audio';
 import type { LevelDef } from '../data/levels';
+import { LAUNCHERS, TARGETS } from '../data/roster';
 import { Game, type GameEvent } from '../game/game';
 import { starsFor } from '../game/scoring';
 import { clampPull, type Vec } from '../game/sling';
@@ -145,6 +146,7 @@ export class PlayScreen {
     switch (event.type) {
       case 'launch':
         sfx.launch();
+        cry(LAUNCHERS[event.key].dex);
         break;
       case 'impact':
         sfx.thud(event.strength);
@@ -153,7 +155,8 @@ export class PlayScreen {
         sfx.crack();
         break;
       case 'faint':
-        sfx.faint();
+        // Lower and slower, the way a fainting cry sounds in the games.
+        if (!cry(TARGETS[event.kind].dex, { rate: 0.8 })) sfx.faint();
         break;
       case 'explode':
         sfx.boom();

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "fetch-sprites": "tsx scripts/fetch-sprites.ts",
+    "fetch-assets": "tsx scripts/fetch-assets.ts",
+    "fetch-sprites": "npm run fetch-assets",
     "verify": "tsx scripts/verify-ui.ts",
     "playtest": "tsx scripts/playtest.ts"
   },
@@ -21,6 +22,8 @@
   "devDependencies": {
     "@types/matter-js": "^0.20.2",
     "@types/node": "^26.2.0",
+    "@wasm-audio-decoders/ogg-vorbis": "^0.1.20",
+    "mpg123-decoder": "^1.0.3",
     "playwright": "^1.62.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
