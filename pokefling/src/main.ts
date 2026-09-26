@@ -1,7 +1,8 @@
 import './style.css';
 
-import { setMuted, sfx, unlock } from './audio';
+import { loadCries, setMuted, sfx, unlock } from './audio';
 import { LEVELS, type LevelDef } from './data/levels';
+import { spriteDexes } from './data/roster';
 import { loadSprites } from './render/sprites';
 import { loadProgress, recordWin, saveProgress, type Progress } from './state/save';
 import { PlayScreen, type Outcome } from './ui/play';
@@ -110,4 +111,5 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') play?.pause();
 });
 
+loadCries(spriteDexes());
 void loadSprites().then(showTitle);

@@ -77,14 +77,22 @@ because it is slow.
 `verify` needs `npm run preview` running. Where the Chromium Playwright pins is
 not installed, point `CHROMIUM_PATH` at one that is.
 
-## Art
+## Art and sound
 
 Pokémon artwork is the official artwork from
-[PokeAPI's sprites repository](https://github.com/PokeAPI/sprites), committed
-under `public/sprites/`. `npm run fetch-sprites` downloads it again from the
-roster in `src/data/roster.ts` — run it after adding a Pokémon. Pokémon and
-its artwork are © Nintendo / Creatures / GAME FREAK; they are used here for a
-personal, non-commercial project.
+[PokeAPI's sprites repository](https://github.com/PokeAPI/sprites), and each
+Pokémon's cry — played when it is flung, and lower and slower when a target
+faints — is its latest cry from [PokeAPI's cries repository](https://github.com/PokeAPI/cries).
+Both are committed, under `public/sprites/` and `public/cries/`.
 
-Everything else — blocks, scenery, particles and sound effects — is drawn or
-synthesised in code.
+`npm run fetch-assets` downloads them again from the roster in
+`src/data/roster.ts` — run it after adding a Pokémon. PokeAPI serves the cries
+as `.ogg`, which older iOS Safari cannot play (and some, like Pikachu's, are
+really MP3s under that name), so the script decodes each one by its actual
+format and rewrites it as a small mono WAV.
+
+Pokémon, its artwork and its cries are © Nintendo / Creatures / GAME FREAK;
+they are used here for a personal, non-commercial project.
+
+Everything else — blocks, scenery, particles and the other sound effects — is
+drawn or synthesised in code.
