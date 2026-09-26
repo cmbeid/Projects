@@ -8,6 +8,13 @@
 
 export type Ability = 'none' | 'dash' | 'explode' | 'slam' | 'split';
 
+/**
+ * Which way the official artwork looks. It varies from Pokémon to Pokémon, so
+ * the renderer needs it to turn launchers toward the targets and targets
+ * toward the sling. `front` art is never mirrored.
+ */
+export type Facing = 'left' | 'right' | 'front';
+
 export interface LauncherDef {
   readonly key: LauncherKey;
   readonly name: string;
@@ -21,6 +28,7 @@ export interface LauncherDef {
   readonly abilityLabel: string;
   /** Used for the placeholder when the sprite has not loaded, and for trails. */
   readonly color: string;
+  readonly facing: Facing;
 }
 
 export type LauncherKey = 'pikachu' | 'jolteon' | 'voltorb' | 'snorlax' | 'staryu';
@@ -28,23 +36,23 @@ export type LauncherKey = 'pikachu' | 'jolteon' | 'voltorb' | 'snorlax' | 'stary
 export const LAUNCHERS: Readonly<Record<LauncherKey, LauncherDef>> = {
   pikachu: {
     key: 'pikachu', name: 'Pikachu', dex: 25, radius: 22, density: 0.004, restitution: 0.3,
-    ability: 'none', abilityLabel: '', color: '#f7d02c',
+    ability: 'none', abilityLabel: '', color: '#f7d02c', facing: 'left',
   },
   jolteon: {
     key: 'jolteon', name: 'Jolteon', dex: 135, radius: 21, density: 0.004, restitution: 0.25,
-    ability: 'dash', abilityLabel: 'Tap: Quick Attack', color: '#f2c94c',
+    ability: 'dash', abilityLabel: 'Tap: Quick Attack', color: '#f2c94c', facing: 'left',
   },
   voltorb: {
     key: 'voltorb', name: 'Voltorb', dex: 100, radius: 22, density: 0.005, restitution: 0.35,
-    ability: 'explode', abilityLabel: 'Tap: Self-Destruct', color: '#e74c3c',
+    ability: 'explode', abilityLabel: 'Tap: Self-Destruct', color: '#e74c3c', facing: 'right',
   },
   snorlax: {
     key: 'snorlax', name: 'Snorlax', dex: 143, radius: 30, density: 0.009, restitution: 0.1,
-    ability: 'slam', abilityLabel: 'Tap: Body Slam', color: '#2f6f8f',
+    ability: 'slam', abilityLabel: 'Tap: Body Slam', color: '#2f6f8f', facing: 'front',
   },
   staryu: {
     key: 'staryu', name: 'Staryu', dex: 120, radius: 19, density: 0.004, restitution: 0.35,
-    ability: 'split', abilityLabel: 'Tap: Swift', color: '#c8894a',
+    ability: 'split', abilityLabel: 'Tap: Swift', color: '#c8894a', facing: 'front',
   },
 };
 
@@ -58,15 +66,16 @@ export interface TargetDef {
   readonly points: number;
   /** Hovers in place instead of resting on something. */
   readonly floats: boolean;
+  readonly facing: Facing;
 }
 
 export type TargetKey = 'meowth' | 'ekans' | 'koffing' | 'grimer';
 
 export const TARGETS: Readonly<Record<TargetKey, TargetDef>> = {
-  meowth: { key: 'meowth', name: 'Meowth', dex: 52, radius: 20, hp: 20, points: 5000, floats: false },
-  ekans: { key: 'ekans', name: 'Ekans', dex: 23, radius: 20, hp: 28, points: 5000, floats: false },
-  koffing: { key: 'koffing', name: 'Koffing', dex: 109, radius: 22, hp: 16, points: 7000, floats: true },
-  grimer: { key: 'grimer', name: 'Grimer', dex: 88, radius: 28, hp: 60, points: 10000, floats: false },
+  meowth: { key: 'meowth', name: 'Meowth', dex: 52, radius: 20, hp: 20, points: 5000, floats: false, facing: 'front' },
+  ekans: { key: 'ekans', name: 'Ekans', dex: 23, radius: 20, hp: 28, points: 5000, floats: false, facing: 'left' },
+  koffing: { key: 'koffing', name: 'Koffing', dex: 109, radius: 22, hp: 16, points: 7000, floats: true, facing: 'front' },
+  grimer: { key: 'grimer', name: 'Grimer', dex: 88, radius: 28, hp: 60, points: 10000, floats: false, facing: 'left' },
 };
 
 /** Every sprite the game draws, by Pokédex number. */

@@ -1,4 +1,4 @@
-import { spriteDexes, spriteUrl } from '../data/roster';
+import { spriteDexes, spriteUrl, type Facing } from '../data/roster';
 
 const images = new Map<number, HTMLImageElement>();
 
@@ -40,7 +40,9 @@ export function drawSprite(
   radius: number,
   angle: number,
   fallback: string,
-  flip = false,
+  /** Which way the artwork looks, and which way it should look on screen. */
+  facing: Facing,
+  face: 'left' | 'right',
 ): void {
   ctx.save();
   ctx.translate(x, y);
@@ -48,7 +50,7 @@ export function drawSprite(
   const img = images.get(dex);
   if (img) {
     const size = radius * SPRITE_OVERSIZE;
-    if (flip) ctx.scale(-1, 1);
+    if (facing !== 'front' && facing !== face) ctx.scale(-1, 1);
     ctx.drawImage(img, -size / 2, -size / 2, size, size);
   } else {
     ctx.fillStyle = fallback;
