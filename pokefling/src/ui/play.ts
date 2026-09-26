@@ -15,6 +15,7 @@ import { GROUND_Y, MIN_PULL, SLING } from '../game/world';
 import { Camera } from '../render/camera';
 import { AIM_ARC_STEPS, Renderer, type AimState } from '../render/draw';
 import { h } from './dom';
+import { fullscreenButton } from './fullscreen';
 
 export interface Outcome {
   won: boolean;
@@ -86,7 +87,8 @@ export class PlayScreen {
     this.el = h('div.play',
       {},
       this.canvas,
-      h('div.hud', {}, pause, this.bagButton, title, h('div.hud-right', {}, this.scoreEl, this.targetsEl)),
+      h('div.hud', {}, pause, this.bagButton, title, fullscreenButton('hud-button', () => sfx.click()),
+        h('div.hud-right', {}, this.scoreEl, this.targetsEl)),
       this.bagTray,
       this.hintEl,
     );
