@@ -112,24 +112,45 @@ function getInstruments(ac: AudioContext): Instruments {
   return instruments;
 }
 
+/** Fade in and out over this long, so no note starts or stops with a click. */
+const EDGE = 0.003;
+
+/** A point on a gain curve: ramp linearly to `value` by `time`. */
+export type EnvelopePoint = [time: number, value: number];
+
 /**
- * Shape a gain like the hardware envelope: start at `volume`/15 and step one
- * level every `fade`/64 s — down, or up when fade is negative — until the
- * note ends.
+ * The gain curve for one note, shaped like the hardware envelope: start at
+ * `volume`/15 of `level` and step one level every `fade`/64 s — down, or up
+ * when fade is negative — until the note ends.
+ *
+ * Every point is a ramp from the one before, starting from silence and
+ * ending in it, so the curve never jumps: a jump in gain is heard as a pop.
  */
-function envelope(gain: AudioParam, t: number, end: number, volume: number, fade: number, level: number): void {
+export function envelopePoints(t: number, end: number, volume: number, fade: number, level: number): EnvelopePoint[] {
   const start = (volume / 15) * level;
-  gain.setValueAtTime(start, t);
-  if (fade > 0 && volume > 0) {
-    const reachZero = t + (volume * fade) / 64;
-    if (reachZero < end) gain.linearRampToValueAtTime(0, reachZero);
-    else gain.linearRampToValueAtTime(start * (1 - (end - t) / (reachZero - t)), end);
-  } else if (fade < 0 && volume < 15) {
-    const reachFull = t + ((15 - volume) * -fade) / 64;
-    gain.linearRampToValueAtTime(reachFull < end ? level : start + (level - start) * ((end - t) / (reachFull - t)), Math.min(end, reachFull));
-  }
-  gain.setValueAtTime(gain.value, end);
-  gain.linearRampToValueAtTime(0, end + 0.004);
+  const attack = Math.min(t + EDGE, end);
+  /** The envelope's value at time `x`, ignoring the attack and release. */
+  const at = (x: number): number => {
+    if (fade > 0) return start * Math.max(0, 1 - (x - t) / ((volume * fade) / 64 || Infinity));
+    if (fade < 0) return Math.min(level, start + (level - start) * ((x - t) / (((15 - volume) * -fade) / 64 || Infinity)));
+    return start;
+  };
+  const points: EnvelopePoint[] = [[t, 0], [attack, at(attack)]];
+  // The envelope's own corner — where it reaches silence or full — if the note lasts that long.
+  const corner = fade > 0 ? t + (volume * fade) / 64 : fade < 0 ? t + ((15 - volume) * -fade) / 64 : Infinity;
+  if (corner > attack && corner < end) points.push([corner, at(corner)]);
+  points.push([end, at(end)], [end + EDGE, 0]);
+  return points;
+}
+
+function applyEnvelope(gain: AudioParam, points: EnvelopePoint[]): void {
+  const [first, ...rest] = points;
+  gain.setValueAtTime(first![1], first![0]);
+  for (const [time, value] of rest) gain.linearRampToValueAtTime(value, time);
+}
+
+function envelope(gain: AudioParam, t: number, end: number, volume: number, fade: number, level: number): void {
+  applyEnvelope(gain, envelopePoints(t, end, volume, fade, level));
 }
 
 // --- playback --------------------------------------------------------------
@@ -190,7 +211,7 @@ function scheduleNote(p: Playing, kind: 'pulse' | 'wave' | 'noise', note: PulseN
       const stepEnd = last ? end : Math.min(end, t + frames / fps);
       envelope(stepGain.gain, t, stepEnd, volume, fade, LEVEL.noise);
       s.start(t);
-      s.stop(stepEnd + 0.01);
+      s.stop(stepEnd + EDGE + 0.005);
       src = s;
       t = stepEnd;
     });
@@ -214,13 +235,12 @@ function scheduleNote(p: Playing, kind: 'pulse' | 'wave' | 'noise', note: PulseN
     }
     if (wave) osc.setPeriodicWave(wave);
     const loudness = [0, 1, 0.5, 0.25][level] ?? 0;
-    gain.gain.setValueAtTime(loudness * LEVEL.wave, at);
-    gain.gain.setValueAtTime(loudness * LEVEL.wave, end);
-    gain.gain.linearRampToValueAtTime(0, end + 0.004);
+    // The wave channel has no envelope: a flat level, faded in and out.
+    applyEnvelope(gain.gain, envelopePoints(at, end, 15, 0, loudness * LEVEL.wave));
   }
   osc.connect(gain);
   osc.start(at);
-  osc.stop(end + 0.01);
+  osc.stop(end + EDGE + 0.005);
   osc.onended = () => gain.disconnect();
 }
 

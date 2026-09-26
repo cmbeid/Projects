@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { convertSong, hzFor, parseAsm, periodFor, type PulseNote, type Song } from '../scripts/music/parse';
 import { TRACKS } from '../src/data/music';
+import { envelopePoints } from '../src/audio/music';
 
 const NO_DRUMS = { drumkits: {}, waves: [[...Array(32).keys()].map((i) => i % 16)] };
 
@@ -154,5 +155,42 @@ describe('committed music', () => {
         for (const n of ch.notes) expect(track.drums[n[2] as string]).toBeDefined();
       }
     }
+  });
+});
+
+describe('note envelopes', () => {
+  const LEVEL = 0.1;
+  const cases = [
+    ['a steady note', 10, 0],
+    ['a note that fades out before it ends', 12, 1],
+    ['a note that fades out slowly', 12, 7],
+    ['a note that swells', 4, -2],
+    ['a silent note', 0, 3],
+    ['a full-volume swell (nothing to swell to)', 15, -3],
+  ] as const;
+
+  it.each(cases)('%s starts and ends in silence and never jumps', (_name, volume, fade) => {
+    for (const duration of [0.001, 0.05, 0.4, 2]) {
+      const points = envelopePoints(1, 1 + duration, volume, fade, LEVEL);
+      // Silence at both ends: no note may start or stop with a click.
+      expect(points[0]).toEqual([1, 0]);
+      expect(points[points.length - 1]![1]).toBe(0);
+      for (let i = 1; i < points.length; i += 1) {
+        // Only ramps between points, forward in time: nothing to jump.
+        expect(points[i]![0]).toBeGreaterThanOrEqual(points[i - 1]![0]);
+        // Never louder than the channel's full level. The pop came from the
+        // release briefly jumping to a fresh gain node's default of 1.0.
+        expect(points[i]![1]).toBeGreaterThanOrEqual(0);
+        expect(points[i]![1]).toBeLessThanOrEqual(LEVEL + 1e-9);
+      }
+    }
+  });
+
+  it('follows the hardware envelope: a fade of 1 loses a level every 1/64 s', () => {
+    const points = envelopePoints(0, 1, 8, 1, LEVEL);
+    // Starts at 8/15, reaches silence after 8/64 s, and stays there.
+    expect(points[1]![1]).toBeCloseTo((8 / 15) * LEVEL * (1 - 0.003 / (8 / 64)), 6);
+    expect(points).toContainEqual([8 / 64, 0]);
+    expect(points[points.length - 2]).toEqual([1, 0]);
   });
 });
