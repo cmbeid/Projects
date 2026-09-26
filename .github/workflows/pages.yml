@@ -19,6 +19,7 @@ on:
        - 'fathomline/**'
        - 'simtowerweb/**'
        - 'pokefling/**'
+       - 'pokedefense/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -53,6 +54,7 @@ jobs:
             fathomline/package-lock.json
             simtowerweb/package-lock.json
             pokefling/package-lock.json
+            pokedefense/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -152,6 +154,20 @@ jobs:
         run: npm run build
         working-directory: pokefling
 
+      - name: Install (pokedefense)
+        run: npm ci
+        working-directory: pokedefense
+
+      # Includes the bot clearing the first map, and a check that every
+      # Pokémon has its sprite sheet and cry.
+      - name: Test (pokedefense)
+        run: npm test
+        working-directory: pokedefense
+
+      - name: Build (pokedefense)
+        run: npm run build
+        working-directory: pokedefense
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -175,6 +191,9 @@ jobs:
 
           mkdir -p _site/pokefling
           cp -r pokefling/dist/. _site/pokefling/
+
+          mkdir -p _site/pokedefense
+          cp -r pokedefense/dist/. _site/pokedefense/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -248,6 +267,13 @@ jobs:
                     <span>
                       <span class="name">PokéFling</span>
                       <span class="desc">Fling Pokémon from a slingshot through sixty levels of Kanto and Johto. Best in landscape.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./pokedefense/">
+                    <span class="emoji" aria-hidden="true">🛡️</span>
+                    <span>
+                      <span class="name">PokéDefense</span>
+                      <span class="desc">Tower defense through Kanto: evolve your Pokémon, catch wild ones, beat the Elite Four.</span>
                     </span>
                   </a>
                 </div>

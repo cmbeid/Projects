@@ -187,31 +187,63 @@ function hiss(duration: number, volume: number, cutoff: number): void {
   src.stop(t + duration);
 }
 
+function seq(notes: readonly (readonly [freq: number, at: number, dur: number])[], type: OscillatorType, volume: number): void {
+  for (const [f, at, dur] of notes) tone(f, f, dur, type, volume, at);
+}
+
 export const sfx = {
-  stretch: () => tone(180, 240, 0.12, 'triangle', 0.08),
-  launch: () => {
-    hiss(0.25, 0.15, 2500);
-    tone(300, 900, 0.18, 'sine', 0.06);
+  fire: () => { hiss(0.18, 0.12, 1400); tone(220, 120, 0.15, 'sawtooth', 0.025); },
+  water: () => tone(500, 1100, 0.1, 'sine', 0.06),
+  electric: () => { tone(1400, 700, 0.08, 'square', 0.03); hiss(0.08, 0.08, 6000); },
+  grass: () => tone(700, 500, 0.08, 'triangle', 0.06),
+  ice: () => { tone(1800, 2400, 0.07, 'triangle', 0.04); tone(2600, 2000, 0.07, 'sine', 0.03, 0.03); },
+  fighting: () => { tone(160, 60, 0.08, 'sine', 0.25); hiss(0.05, 0.12, 2500); },
+  poison: () => { tone(300, 450, 0.06, 'sine', 0.06); tone(350, 520, 0.06, 'sine', 0.05, 0.05); },
+  ground: () => { tone(90, 40, 0.25, 'sine', 0.3); hiss(0.2, 0.15, 400); },
+  flying: () => hiss(0.12, 0.1, 3500),
+  psychic: () => tone(600, 900, 0.18, 'sine', 0.05),
+  bug: () => tone(320, 300, 0.09, 'sawtooth', 0.025),
+  rock: () => { tone(140, 70, 0.14, 'square', 0.05); hiss(0.1, 0.12, 900); },
+  ghost: () => tone(700, 250, 0.22, 'sine', 0.05),
+  dragon: () => { tone(110, 90, 0.25, 'sawtooth', 0.05); tone(165, 130, 0.25, 'sawtooth', 0.035); },
+  dark: () => tone(260, 130, 0.12, 'sawtooth', 0.04),
+  steel: () => { tone(1200, 1150, 0.12, 'square', 0.025); tone(1800, 1750, 0.1, 'square', 0.015); },
+  fairy: () => seq([[1568, 0, 0.08], [2093, 0.05, 0.1]], 'sine', 0.04),
+  normal: () => tone(420, 260, 0.06, 'square', 0.03),
+  superEffective: () => tone(900, 1300, 0.06, 'square', 0.03),
+  faint: () => tone(500, 180, 0.2, 'square', 0.035),
+  bossFaint: () => { hiss(0.8, 0.4, 700); tone(120, 40, 0.8, 'sine', 0.35); },
+  leak: () => seq([[440, 0, 0.12], [330, 0.12, 0.2]], 'square', 0.08),
+  waveStart: () => seq([[523, 0, 0.1], [784, 0.1, 0.18]], 'square', 0.05),
+  bossStart: () => seq([[196, 0, 0.25], [185, 0.25, 0.25], [175, 0.5, 0.5]], 'sawtooth', 0.07),
+  waveClear: () => seq([[659, 0, 0.08], [784, 0.08, 0.08], [1047, 0.16, 0.2]], 'square', 0.05),
+  place: () => seq([[392, 0, 0.06], [587, 0.06, 0.1]], 'square', 0.05),
+  sell: () => seq([[1319, 0, 0.06], [1047, 0.06, 0.1]], 'square', 0.04),
+  coin: () => seq([[1976, 0, 0.05], [2637, 0.05, 0.12]], 'square', 0.03),
+  levelUp: () => seq([[523, 0, 0.07], [659, 0.07, 0.07], [784, 0.14, 0.07], [1047, 0.21, 0.14]], 'square', 0.05),
+  /** The evolution jingle: a rising trill that holds, then resolves. */
+  evolve: () => {
+    const notes: [number, number, number][] = [];
+    for (let i = 0; i < 10; i += 1) notes.push([i % 2 ? 784 : 988 + i * 20, i * 0.11, 0.1]);
+    notes.push([1047, 1.15, 0.12], [1319, 1.27, 0.12], [1568, 1.39, 0.3]);
+    seq(notes, 'square', 0.045);
   },
-  thud: (strength: number) => tone(120, 50, 0.12, 'sine', Math.min(0.35, strength / 40)),
-  crack: () => hiss(0.18, 0.3, 1800),
-  faint: () => {
-    tone(600, 200, 0.25, 'square', 0.06);
-    hiss(0.3, 0.12, 900);
-  },
-  boom: () => {
-    hiss(0.7, 0.6, 700);
-    tone(90, 30, 0.6, 'sine', 0.4);
-  },
-  ability: () => tone(500, 1400, 0.15, 'sawtooth', 0.06),
-  item: () => [660, 880, 1320].forEach((f, i) => tone(f, f, 0.1, 'square', 0.05, i * 0.07)),
-  pickup: () => [988, 1319, 1976].forEach((f, i) => tone(f, f, 0.12, 'square', 0.06, i * 0.08)),
-  quake: () => {
-    hiss(1.1, 0.5, 300);
-    tone(60, 30, 1, 'sine', 0.4);
-  },
-  lose: () => [392, 330, 262].forEach((f, i) => tone(f, f * 0.97, 0.3, 'triangle', 0.1, i * 0.18)),
-  click: () => tone(800, 600, 0.05, 'square', 0.04),
+  move: () => seq([[784, 0, 0.1], [988, 0.1, 0.1], [1175, 0.2, 0.1], [1568, 0.3, 0.3]], 'triangle', 0.08),
+  throw: () => { hiss(0.25, 0.1, 3000); tone(400, 900, 0.25, 'sine', 0.04); },
+  shake: () => tone(300, 200, 0.06, 'square', 0.07),
+  caught: () => seq([[523, 0, 0.1], [659, 0.1, 0.1], [784, 0.2, 0.1], [1047, 0.3, 0.1], [784, 0.42, 0.08], [1047, 0.52, 0.35]], 'square', 0.06),
+  breakFree: () => { hiss(0.12, 0.2, 2000); tone(600, 300, 0.12, 'square', 0.05); },
+  powerup: () => seq([[660, 0, 0.1], [880, 0.07, 0.1], [1320, 0.14, 0.14]], 'square', 0.05),
+  thunder: () => { hiss(0.6, 0.5, 5000); tone(80, 30, 0.6, 'sawtooth', 0.2); },
+  quake: () => { hiss(1.1, 0.5, 300); tone(60, 30, 1, 'sine', 0.4); },
+  stun: () => { tone(1500, 900, 0.18, 'square', 0.04); hiss(0.18, 0.12, 5000); },
+  teleport: () => tone(400, 1600, 0.14, 'sine', 0.05),
+  shiny: () => seq([[2093, 0, 0.08], [2637, 0.08, 0.08], [3136, 0.16, 0.14]], 'sine', 0.05),
+  pickup: () => seq([[988, 0, 0.08], [1319, 0.08, 0.08], [1976, 0.16, 0.14]], 'square', 0.05),
+  deny: () => tone(200, 160, 0.12, 'square', 0.05),
+  win: () => seq([[523, 0, 0.12], [659, 0.12, 0.12], [784, 0.24, 0.12], [1047, 0.36, 0.4]], 'square', 0.07),
+  lose: () => seq([[392, 0, 0.3], [330, 0.18, 0.3], [262, 0.36, 0.5]], 'triangle', 0.1),
+  click: () => tone(800, 600, 0.04, 'square', 0.03),
   /** A short blip at the effects volume, for previewing the slider. */
   preview: () => tone(880, 880, 0.08, 'square', 0.06),
 };

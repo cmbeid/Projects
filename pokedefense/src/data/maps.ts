@@ -75,7 +75,7 @@ export interface MapDef {
   miniBoss: { wave: number; dex: number; hp: number }[];
   boss: BossDef;
   /** More bosses before the last wave (the Elite Four). */
-  extraBosses?: { wave: number; boss: BossDef }[];
+  extraBosses?: { wave: number; trainer: string; boss: BossDef }[];
   twist: string;
   endless?: boolean;
   /** Badge awarded (1–8) for clearing it. */
@@ -376,10 +376,10 @@ export const MAPS: readonly MapDef[] = [
     ],
     miniBoss: [],
     extraBosses: [
-      { wave: 10, boss: { dex: 131, hp: 45, abilities: [{ kind: 'stun', every: 8, radius: 2, duration: 2 }], escort: [87, 91, 124] } },
-      { wave: 15, boss: { dex: 68, hp: 55, armor: 0.3, abilities: [{ kind: 'dash', every: 6, factor: 2, duration: 1.2 }], escort: [95, 106, 107] } },
-      { wave: 20, boss: { dex: 94, hp: 60, abilities: [{ kind: 'vanish', every: 7, duration: 3 }, { kind: 'teleport', every: 6, tiles: 2 }], escort: [93, 42, 24] } },
-      { wave: 25, boss: { dex: 149, hp: 85, armor: 0.3, abilities: [{ kind: 'shield', every: 8, duration: 2 }, { kind: 'dash', every: 7, factor: 2, duration: 1 }], escort: [130, 142, 148] } },
+      { wave: 10, trainer: 'Lorelei', boss: { dex: 131, hp: 45, abilities: [{ kind: 'stun', every: 8, radius: 2, duration: 2 }], escort: [87, 91, 124] } },
+      { wave: 15, trainer: 'Bruno', boss: { dex: 68, hp: 55, armor: 0.3, abilities: [{ kind: 'dash', every: 6, factor: 2, duration: 1.2 }], escort: [95, 106, 107] } },
+      { wave: 20, trainer: 'Agatha', boss: { dex: 94, hp: 60, abilities: [{ kind: 'vanish', every: 7, duration: 3 }, { kind: 'teleport', every: 6, tiles: 2 }], escort: [93, 42, 24] } },
+      { wave: 25, trainer: 'Lance', boss: { dex: 149, hp: 85, armor: 0.3, abilities: [{ kind: 'shield', every: 8, duration: 2 }, { kind: 'dash', every: 7, factor: 2, duration: 1 }], escort: [130, 142, 148] } },
     ],
     boss: { dex: 6, hp: 130, armor: 0.2, speed: 0.9, abilities: [{ kind: 'dash', every: 7, factor: 2, duration: 1 }, { kind: 'heal', fraction: 0.3 }, { kind: 'stun', every: 9, radius: 2, duration: 2 }], escort: [18, 65, 112, 103, 130] },
   },
