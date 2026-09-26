@@ -1,29 +1,44 @@
-import { spriteDexes, spriteUrl, type Facing } from '../data/roster';
+import { itemUrl, spriteUrl, type Facing } from '../data/roster';
 
-const images = new Map<number, HTMLImageElement>();
+/** Loaded images by URL. A URL that failed stays absent, and draws a fallback. */
+const images = new Map<string, HTMLImageElement>();
+const pending = new Map<string, Promise<void>>();
 
-/** Start every sprite loading. Resolves when each has loaded or failed. */
-export function loadSprites(): Promise<void> {
-  return Promise.all(
-    spriteDexes().map(
-      (dex) =>
-        new Promise<void>((resolve) => {
-          const img = new Image();
-          img.decoding = 'async';
-          img.onload = () => {
-            images.set(dex, img);
-            resolve();
-          };
-          // A missing sprite falls back to a coloured disc; not worth failing over.
-          img.onerror = () => resolve();
-          img.src = spriteUrl(dex);
-        }),
-    ),
-  ).then(() => undefined);
+function loadImage(url: string): Promise<void> {
+  const known = pending.get(url);
+  if (known) return known;
+  const promise = new Promise<void>((resolve) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      images.set(url, img);
+      resolve();
+    };
+    // A missing image falls back to a coloured disc; not worth failing over.
+    img.onerror = () => resolve();
+    img.src = url;
+  });
+  pending.set(url, promise);
+  return promise;
 }
 
-export function spriteImage(dex: number): HTMLImageElement | undefined {
-  return images.get(dex);
+/** Load these sprites (by `art`), once each. Resolves when all have loaded or failed. */
+export function loadSprites(arts: readonly string[]): Promise<void> {
+  return Promise.all(arts.map((art) => loadImage(spriteUrl(art)))).then(() => undefined);
+}
+
+export function loadItemIcons(icons: readonly string[]): Promise<void> {
+  return Promise.all(icons.map((icon) => loadImage(itemUrl(icon)))).then(() => undefined);
+}
+
+/** Draw a pixel-art item icon centred on (x, y), `size` wide, kept crisp. */
+export function drawItemIcon(ctx: CanvasRenderingContext2D, icon: string, x: number, y: number, size: number): void {
+  const img = images.get(itemUrl(icon));
+  if (!img) return;
+  const smoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
+  ctx.imageSmoothingEnabled = smoothing;
 }
 
 /**
@@ -34,7 +49,7 @@ export const SPRITE_OVERSIZE = 3.1;
 
 export function drawSprite(
   ctx: CanvasRenderingContext2D,
-  dex: number,
+  art: string,
   x: number,
   y: number,
   radius: number,
@@ -47,7 +62,7 @@ export function drawSprite(
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
-  const img = images.get(dex);
+  const img = images.get(spriteUrl(art));
   if (img) {
     const size = radius * SPRITE_OVERSIZE;
     if (facing !== 'front' && facing !== face) ctx.scale(-1, 1);

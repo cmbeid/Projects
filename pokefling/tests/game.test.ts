@@ -65,7 +65,7 @@ describe('Game', () => {
 });
 
 describe('every level', () => {
-  it.each(LEVELS.map((level) => [level.id, level] as const))('level %i stands up on its own', (_id, level) => {
+  it.each(LEVELS.map((level) => [level.id, level] as const))('%s stands up on its own', (_id, level) => {
     const game = new Game(level);
     const before = new Map([...game.entities.values()].map((e) => [e.id, { ...e.body.position, angle: e.body.angle }]));
     for (let t = 0; t < 6000; t += 50) game.update(50);
@@ -76,7 +76,8 @@ describe('every level', () => {
       const was = before.get(e.id)!;
       const moved = Math.hypot(e.body.position.x - was.x, e.body.position.y - was.y);
       const label = `${e.kind} ${e.material ?? e.target?.key ?? ''} at ${Math.round(was.x)},${Math.round(was.y)}`;
-      expect(moved, label).toBeLessThan(6);
+      // Hovering Pokémon bob up and down by design; everything else should be still.
+      expect(moved, label).toBeLessThan(e.home ? 10 : 6);
       if (e.kind !== 'target') expect(Math.abs(e.body.angle - was.angle), label).toBeLessThan(0.05);
     }
   });

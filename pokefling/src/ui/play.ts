@@ -3,8 +3,11 @@
  * one `Game` at a time and reports the outcome through `onFinish`.
  */
 import { cry, sfx, unlock } from '../audio';
+import { playMusic, stopMusic } from '../audio/music';
+import { AREAS } from '../data/areas';
 import type { LevelDef } from '../data/levels';
-import { LAUNCHERS, TARGETS } from '../data/roster';
+import { BOSS_WIN_TRACK, WIN_TRACK, type TrackId } from '../data/music';
+import { ITEM_KEYS, ITEMS, itemUrl, LAUNCHERS, TARGETS, type ItemKey } from '../data/roster';
 import { Game, type GameEvent } from '../game/game';
 import { starsFor } from '../game/scoring';
 import { clampPull, type Vec } from '../game/sling';
@@ -17,11 +20,23 @@ export interface Outcome {
   won: boolean;
   score: number;
   stars: 0 | 1 | 2 | 3;
+  /** The level's hidden item, if something knocked into it. */
+  collected: ItemKey | null;
 }
 
 export interface PlayCallbacks {
   onFinish(outcome: Outcome): void;
   onPause(): void;
+  /** How many of an item the player has. */
+  bagCount(item: ItemKey): number;
+  /** Take one out of the bag: the game has just used it. */
+  spendItem(item: ItemKey): void;
+}
+
+/** The music for a level: its own, the area's boss track, or the area's. */
+export function levelTrack(level: LevelDef): TrackId {
+  const area = AREAS[level.area]!;
+  return level.music ?? (level.index === 6 && area.bossMusic ? area.bossMusic : area.music);
 }
 
 /** How close to the pouch, in screen pixels, a press has to land to grab it. */
@@ -42,6 +57,8 @@ export class PlayScreen {
   private readonly scoreEl = h('span.hud-score', {}, '0');
   private readonly targetsEl = h('span.hud-targets');
   private readonly hintEl = h('div.hud-hint');
+  private readonly bagButton: HTMLButtonElement;
+  private readonly bagTray = h('div.bag-tray', { role: 'menu', 'aria-label': 'Bag' });
 
   private paused = false;
   private frame = 0;
@@ -59,11 +76,16 @@ export class PlayScreen {
     this.game = new Game(level);
 
     const pause = h('button.hud-button', { 'aria-label': 'Pause', onclick: () => this.pause() }, 'Ⅱ');
-    const title = h('div.hud-level', {}, h('b', {}, `${level.id}`), ` ${level.name}`);
+    const area = AREAS[level.area]!;
+    const title = h('div.hud-level', {}, h('b', {}, `${area.name} ${level.index}`), h('span', {}, level.name));
+    this.bagButton = h('button.hud-button.bag-button', { 'aria-label': 'Bag', onclick: () => this.toggleBag() },
+      h('img', { src: itemUrl('poke-ball'), alt: '' }));
+    this.bagTray.hidden = true;
     this.el = h('div.play',
       {},
       this.canvas,
-      h('div.hud', {}, pause, title, h('div.hud-right', {}, this.scoreEl, this.targetsEl)),
+      h('div.hud', {}, pause, this.bagButton, title, h('div.hud-right', {}, this.scoreEl, this.targetsEl)),
+      this.bagTray,
       this.hintEl,
     );
 
@@ -82,7 +104,11 @@ export class PlayScreen {
     this.camera.reset(this.level.width);
     this.last = performance.now();
     this.frame = requestAnimationFrame((t) => this.tick(t));
-    if (window.innerHeight > window.innerWidth) this.flashHint('Turn sideways for a wider view', 3000);
+    playMusic(levelTrack(this.level));
+    const area = AREAS[this.level.area]!;
+    const intro = this.level.index === 1 && area.introduces ? LAUNCHERS[area.introduces] : null;
+    if (intro) this.flashHint(`New: ${intro.name} — ${intro.abilityLabel.replace('Tap: ', 'tap in flight for ')}`, 4000);
+    else if (window.innerHeight > window.innerWidth) this.flashHint('Turn sideways for a wider view', 3000);
   }
 
   stop(): void {
@@ -104,6 +130,8 @@ export class PlayScreen {
     this.renderer.effects.clear();
     this.camera.reset(level.width);
     this.paused = false;
+    this.closeBag();
+    playMusic(levelTrack(level));
   }
 
   pause(): void {
@@ -111,6 +139,7 @@ export class PlayScreen {
     this.paused = true;
     this.aim.pull = null;
     this.gesture = 'none';
+    this.closeBag();
     this.callbacks.onPause();
   }
 
@@ -167,12 +196,29 @@ export class PlayScreen {
       case 'loaded':
         this.camera.aim();
         break;
+      case 'splash':
+        sfx.crack();
+        break;
+      case 'pickup':
+        sfx.pickup();
+        this.flashHint(`Found ${ITEMS[event.item].name}!`, 2200);
+        break;
+      case 'item':
+        if (event.item === 'tm-ground') sfx.quake();
+        else sfx.item();
+        this.flashHint(`${ITEMS[event.item].name}! ${ITEMS[event.item].blurb}`, 2400);
+        break;
       case 'won':
       case 'lost': {
         const won = event.type === 'won';
+        this.closeBag();
+        if (won) playMusic(this.level.index === 6 ? BOSS_WIN_TRACK : WIN_TRACK);
+        else stopMusic();
         this.finishTimer = window.setTimeout(() => {
-          (won ? sfx.win : sfx.lose)();
-          this.callbacks.onFinish({ won, score: this.game.score, stars: starsFor(this.level, this.game.score, won) });
+          if (!won) sfx.lose();
+          this.callbacks.onFinish({
+            won, score: this.game.score, stars: starsFor(this.level, this.game.score, won), collected: this.game.collected,
+          });
         }, RESULT_DELAY_MS);
         break;
       }
@@ -181,7 +227,49 @@ export class PlayScreen {
     }
   }
 
+  // --- the bag ----------------------------------------------------------
+
+  private toggleBag(): void {
+    unlock();
+    if (!this.bagTray.hidden) {
+      this.closeBag();
+      return;
+    }
+    if (this.game.phase !== 'aiming') {
+      this.flashHint('Use items while aiming', 1600);
+      return;
+    }
+    sfx.click();
+    this.bagTray.replaceChildren(...ITEM_KEYS.map((key) => {
+      const count = this.callbacks.bagCount(key);
+      const usable = count > 0 && this.game.canUseItem(key);
+      const used = this.game.usedItems.has(key);
+      return h('button.bag-item', {
+        role: 'menuitem',
+        disabled: !usable,
+        'data-item': key,
+        onclick: () => this.useItem(key),
+      },
+      h('img', { src: itemUrl(key), alt: '' }),
+      h('span.bag-name', {}, ITEMS[key].name),
+      h('span.bag-blurb', {}, used ? 'Used this level' : ITEMS[key].blurb),
+      h('span.bag-count', {}, `×${count}`));
+    }));
+    this.bagTray.hidden = false;
+  }
+
+  private closeBag(): void {
+    this.bagTray.hidden = true;
+  }
+
+  private useItem(key: ItemKey): void {
+    if (this.callbacks.bagCount(key) <= 0) return;
+    if (this.game.useItem(key)) this.callbacks.spendItem(key);
+    this.closeBag();
+  }
+
   private updateHud(): void {
+    this.bagButton.classList.toggle('dim', this.game.phase !== 'aiming');
     const score = this.game.score.toLocaleString('en-US');
     if (this.scoreEl.textContent !== score) this.scoreEl.textContent = score;
     const targets = `${this.game.targetsLeft} left`;
@@ -216,6 +304,10 @@ export class PlayScreen {
   private onDown(e: PointerEvent): void {
     unlock();
     if (this.paused) return;
+    if (!this.bagTray.hidden) {
+      this.closeBag();
+      return;
+    }
     e.preventDefault();
     this.canvas.setPointerCapture(e.pointerId);
     const p = this.point(e);
