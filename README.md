@@ -10,6 +10,7 @@ nothing at the root to install.
 | [`starseed/`](starseed/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
 | [`storied/`](storied/) | A phone-first reader for branching stories, driven entirely by JSON content in `storied/public/content/`. Seven demo stories ship on the shelf; a story can also be imported straight from a local file or folder, and a story already opened once stays readable with the network off. |
 | [`pokefling/`](pokefling/) | An Angry Birds–style slingshot physics game for the phone, themed on Pokémon. Sixty levels in ten Kanto and Johto locations, items, and Pokémon Crystal's music played by a Game Boy–style synth. |
+| [`pokedefense/`](pokedefense/) | A Pokémon tower defense game, portrait-first for the phone. Nine Kanto maps plus an endless cave, 24 evolving tower lines, catching, items, and Pokémon Crystal's music. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
 ## Working on one
@@ -38,7 +39,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 | `storied/` | http://s3.cmbeid.com/storied/index.html |
 
-`simtowerweb/` and `pokefling/` have no S3 workflow — they publish to Pages only.
+`simtowerweb/`, `pokefling/` and `pokedefense/` have no S3 workflow — they publish to Pages only.
 
 ### GitHub Pages
 
@@ -53,6 +54,7 @@ them to publish.
 | `storied/` | https://cmbeid.github.io/Projects/storied/ |
 | `simtowerweb/` | https://cmbeid.github.io/Projects/simtowerweb/ |
 | `pokefling/` | https://cmbeid.github.io/Projects/pokefling/ |
+| `pokedefense/` | https://cmbeid.github.io/Projects/pokedefense/ |
 
 Pages serves from a subdirectory, so a project published there has to resolve
 its own assets relatively — `base: './'` in the Vite config, and no
