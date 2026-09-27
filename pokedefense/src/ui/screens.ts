@@ -424,10 +424,12 @@ export function settingsScreen(back: () => void): void {
       slider('Sound effects', 'sfx'),
       toggle('Mute everything', p.muted, (v) => setProgress({ ...getProgress(), muted: v })),
       toggle('Vibration', p.haptics, (v) => setProgress({ ...getProgress(), haptics: v })),
+      // Turning tips back on replays the tutorial next time on the first map.
+      toggle('Tips and tutorial', p.hints, (v) => setProgress({ ...getProgress(), hints: v, tutorialDone: v ? false : getProgress().tutorialDone })),
       h('div.card', {},
         h('div', { style: 'font-weight:700;margin-bottom:6px' }, 'How to play'),
         h('div.credits', {},
-          'Place Pokémon beside the path to stop wild Pokémon reaching the end. Each one that gets through costs lives — a boss costs ten. ',
+          'Place Pokémon beside the path to stop wild Pokémon reaching the end. Each one that gets through costs lives. If a Gym Leader’s Pokémon gets through, that wave starts over until you beat it. ',
           'Tap a tower to level it up; at set levels it evolves, and at the top level it learns one of two signature moves. ',
           'Type matchups matter: Water beats Fire, Electric can’t touch Ground, Ground can’t reach flyers. Psychic and Ghost towers can see invisible Pokémon. ',
           'Weaken a wild Pokémon, then throw a Poké Ball to catch it — some towers can only be had this way. ',

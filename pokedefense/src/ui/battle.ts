@@ -17,7 +17,7 @@ import { TYPE_COLOURS } from '../data/types';
 import {
   buffLeft, canPlace, catchChance, chooseMove, dropAt, earlyBonus, type Enemy, type Game, hasNextWave, levelUp, moveCost,
   needsBranch, newGame, pickUp, placeCost, placeTower, powerupReady, sellTower, sellValue, setTarget, starsFor, startWave,
-  STEP, step, TARGET_MODES, type TargetMode, throwBall, type Tower, towerAt, upgradeCost, usePowerup,
+  retryWave, STEP, step, TARGET_MODES, type TargetMode, throwBall, type Tower, towerAt, upgradeCost, usePowerup,
 } from '../game/game';
 import { stageIndex, towerStats } from '../game/stats';
 import { type DifficultyKey, wavePreview } from '../game/waves';
@@ -106,10 +106,10 @@ export function startBattle(opts: BattleOptions): void {
   const waveBar = h('div.wave-bar', {}, waveBtn, preview);
   const bossBar = h('div.boss-bar', { style: 'display:none' });
   const coach = h('div.coach', { style: 'display:none' });
-  const stage = h('main.stage', {}, canvas, bossBar, coach, waveBar);
+  const stage = h('main.stage', {}, canvas, bossBar, coach);
   const rail = h('aside.rail');
   const dock = h('footer.dock');
-  const root = h('div.battle', {}, hud, stage, rail, dock);
+  const root = h('div.battle', {}, hud, stage, waveBar, rail, dock);
 
   let mode: Mode = { kind: 'idle' };
   let selected: number | null = null;
@@ -136,6 +136,29 @@ export function startBattle(opts: BattleOptions): void {
   };
   const observer = new ResizeObserver(resize);
   observer.observe(stage);
+
+  /**
+   * Phones stack everything under the map. When the map at full height would
+   * leave room beside it, the controls move into that room instead: one side
+   * column, or with plenty of room, a column either side.
+   */
+  const arrange = (): void => {
+    const r = root.getBoundingClientRect();
+    const mapWidth = ((r.height - 20) * COLS) / ROWS;
+    const spare = r.width - mapWidth - 20;
+    const mode = spare >= 560 ? 'split' : spare >= 300 ? 'side' : 'stack';
+    root.classList.toggle('side', mode === 'side');
+    root.classList.toggle('split', mode === 'split');
+    if (mode === 'split') {
+      const left = Math.round(Math.min(380, Math.max(230, spare * 0.42)));
+      root.style.setProperty('--left', `${left}px`);
+      root.style.setProperty('--side', `${Math.round(Math.min(520, spare - left))}px`);
+    } else if (mode === 'side') {
+      root.style.setProperty('--side', `${Math.round(Math.min(480, spare))}px`);
+    }
+  };
+  const rootObserver = new ResizeObserver(arrange);
+  rootObserver.observe(root);
 
   // --- input -------------------------------------------------------------------------
   const toTile = (ev: PointerEvent): { x: number; y: number } => {
@@ -503,6 +526,7 @@ export function startBattle(opts: BattleOptions): void {
       h('span.stripe', { style: `background:${TYPE_COLOURS[l.type]}` }),
       newThisBattle.has(id) ? h('span.new', {}, 'NEW') : null);
     });
+    if (!getProgress().hints) return h('div', {}, h('div.shop', {}, ...cards));
     const hint = mode.kind === 'place'
       ? h('div.hint', {}, `${line(mode.lineId).role}. ${line(mode.lineId).placement === 'path' ? 'Goes on the path itself.' : line(mode.lineId).placement === 'any' ? 'Can swim.' : ''} Tap a tile${matchMedia('(pointer: coarse)').matches ? ' twice' : ''} to place.`)
       : h('div.hint', {}, 'Choose a Pokémon, then tap the map to place it.');
@@ -610,7 +634,7 @@ export function startBattle(opts: BattleOptions): void {
     setTimeout(() => el.remove(), 2500);
   }
 
-  const tutorial = !start.tutorialDone && map.id === MAPS[0]!.id;
+  const tutorial = start.hints && !start.tutorialDone && map.id === MAPS[0]!.id;
   let coachStep = tutorial ? 0 : -1;
   let coachShownAt = 0;
   function renderCoach(): void {
@@ -642,7 +666,19 @@ export function startBattle(opts: BattleOptions): void {
     const text = steps[coachStep]![0];
     if (coach.dataset.text !== text) {
       coach.dataset.text = text;
-      coach.replaceChildren(thumb(25, 36, { animate: true }), h('span', {}, text));
+      const hide = h('button.coach-close', {
+        'aria-label': 'Hide tips',
+        title: 'Hide tips',
+        onclick: () => {
+          sfx.click();
+          coachStep = -1;
+          coach.style.display = 'none';
+          setProgress({ ...getProgress(), hints: false, tutorialDone: true });
+          renderDock(true);
+          toast('Tips hidden. Turn them back on in Settings.');
+        },
+      }, '✕');
+      coach.replaceChildren(thumb(25, 36, { animate: true }), h('span', {}, text), hide);
     }
     coach.style.display = performance.now() - coachShownAt > 300 ? '' : 'none';
   }
@@ -681,6 +717,8 @@ export function startBattle(opts: BattleOptions): void {
       } else if (e.kind === 'pickup') {
         toast(`Found ${e.item in BALLS ? BALLS[e.item as BallKey].name : POWERUPS[e.item as PowerupKey].name}!`);
         renderRail();
+      } else if (e.kind === 'bossFailed') {
+        bossFailed();
       } else if (e.kind === 'won' || e.kind === 'lost') {
         finish();
       }
@@ -712,6 +750,41 @@ export function startBattle(opts: BattleOptions): void {
     });
     setProgress(result.progress);
     return result;
+  }
+
+  /** A gym leader's Pokémon got through: rewind to the start of its wave and try again. */
+  function bossFailed(): void {
+    const boss = map.extraBosses?.find((b) => b.wave === g.checkpoint?.wave);
+    const trainer = boss?.trainer ?? map.leader;
+    const dex = boss?.boss.dex ?? map.boss.dex;
+    selected = null;
+    setMode({ kind: 'idle' });
+    setTimeout(() => {
+      const close = modal(
+        h('div', {},
+          h('div', { style: 'display:flex;justify-content:center' }, thumb(dex, 96, { animate: true })),
+          h('h2', {}, `${trainer}'s ${species(dex).name} was too strong!`),
+          h('p.muted', { style: 'margin:0;text-align:center;font-size:14px' },
+            'You have to beat it to move on. The wave starts over with your towers, ₽, lives and items as they were — change your team around first if you like, then call the wave again.'),
+          g.retries > 0 ? h('div', { style: 'text-align:center;font-size:12px' }, h('span.chip', {}, `Attempt ${g.retries + 2}`)) : null,
+          button('btn.primary', '↻ Try the wave again', () => {
+            close();
+            retryWave(g);
+            resetEffects();
+            bossMusic = false;
+            playMusic(map.track);
+            renderRail();
+            renderDock(true);
+            banner(`Try again: ${trainer}`, 'Get ready, then call the wave', true);
+          }),
+          button('btn.ghost', 'Give up', () => {
+            close();
+            quit(false);
+          }),
+        ),
+        { dismissable: false },
+      );
+    }, 700);
   }
 
   function quit(restart: boolean): void {
@@ -845,6 +918,7 @@ export function startBattle(opts: BattleOptions): void {
   mount(root, () => {
     cancelAnimationFrame(raf);
     observer.disconnect();
+    rootObserver.disconnect();
     window.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVisibility);
   });
