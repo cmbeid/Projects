@@ -13,7 +13,7 @@
 import {
   BALLS, type BallKey, DROP_CHANCE, DROPS, NO_TRAINER, POWERUPS, type PowerupKey, type TrainerLevels,
 } from '../data/items';
-import { COLS, type MapDef, pathTiles, ROWS, terrainAt } from '../data/maps';
+import { BUILDABLE, COLS, type MapDef, pathTiles, ROWS, terrainAt } from '../data/maps';
 import { type Ability, species, type Species } from '../data/species';
 import { type AttackKind, type Effects, levelCost, line, MAX_LEVEL, type TowerLine } from '../data/towers';
 import { effectiveness, type PokeType } from '../data/types';
@@ -351,7 +351,7 @@ export function canPlace(g: Game, lineId: string, x: number, y: number): PlaceEr
   const l = line(lineId);
   const onPath = g.pathSet.has(`${x},${y}`);
   const terrain = terrainAt(g.map, x, y);
-  const land = !onPath && (terrain === 'grass' || terrain === 'flowers' || terrain === 'floor' || terrain === 'ledge');
+  const land = !onPath && BUILDABLE.has(terrain);
   const water = !onPath && terrain === 'water';
   const ok =
     l.placement === 'path' ? onPath && !isWarpPad(g, x, y)

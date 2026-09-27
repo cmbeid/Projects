@@ -6,6 +6,7 @@
  * Stats are for level 1; `src/game/stats.ts` applies level, evolution, move,
  * held item and buffs.
  */
+import type { RegionId } from './regions';
 import type { PokeType } from './types';
 
 export const MAX_LEVEL = 6;
@@ -114,7 +115,12 @@ export interface Branch {
   effects: Partial<Effects>;
 }
 
-export type Unlock = { kind: 'start' } | { kind: 'badge'; badge: number } | { kind: 'catch' };
+export type Unlock =
+  | { kind: 'start' }
+  /** Given by the region's professor on arrival. */
+  | { kind: 'region'; region: RegionId }
+  | { kind: 'badge'; badge: number }
+  | { kind: 'catch' };
 
 export interface TowerLine {
   id: string;
