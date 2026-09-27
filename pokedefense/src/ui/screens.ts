@@ -8,7 +8,8 @@ import {
   BALL_KEYS, BALLS, HELD_ITEMS, POWERUP_KEYS, POWERUPS, TRAINER, TRAINER_KEYS, type TrainerKey,
 } from '../data/items';
 import { COLS, MAPS, type MapDef, ROWS } from '../data/maps';
-import { MART_TRACK, TEAM_TRACK, TITLE_TRACK, WORLD_TRACK } from '../data/music';
+import { MART_TRACK, TITLE_TRACK } from '../data/music';
+import { previousRegion, REGION_IDS, REGIONS, type RegionId } from '../data/regions';
 import { SPECIES, species } from '../data/species';
 import { LINES, lineForDex, type TowerLine } from '../data/towers';
 import { TYPE_COLOURS } from '../data/types';
@@ -17,12 +18,14 @@ import { renderGround } from '../render/tiles';
 import { badgeImg, icon, thumb } from '../render/thumbs';
 import { drawPokemon, loadSheets } from '../render/sprites';
 import {
-  badges, cleared, freshProgress, lineUnlocked, mapUnlocked, type Progress, TEAM_SIZE, totalStars, unlockedLines,
+  badges, cleared, freshProgress, lineUnlocked, mapUnlocked, type Progress, regionMaps, regionUnlocked, TEAM_SIZE, unlockedLines,
 } from '../state/save';
 import { button, getProgress, modal, mount, setProgress, toast } from './app';
 import { startBattle } from './battle';
 import { h } from './dom';
 import { fullscreenButton } from './fullscreen';
+
+export const WEATHER_ICON = { rain: '🌧️', sun: '☀️', sand: '🏜️', hail: '🌨️' } as const;
 
 function topbar(title: string, back?: () => void, ...extra: (Node | null)[]): HTMLElement {
   return h('header.topbar', {},
@@ -65,7 +68,7 @@ export function titleScreen(): void {
   }, { once: true });
 
   // A parade of Pokémon marching across the bottom of the title.
-  const walkers = [4, 7, 1, 25, 133, 143, 94, 149, 6, 9, 3, 151, 150];
+  const walkers = [4, 7, 1, 25, 155, 158, 152, 252, 255, 258, 133, 143, 94, 249, 149, 6, 157, 260, 384, 151, 150];
   void loadSheets(walkers);
   const ctx = parade.getContext('2d')!;
   let raf = 0;
@@ -104,11 +107,18 @@ function mapThumb(map: MapDef): HTMLCanvasElement {
   return c;
 }
 
+/** The region the world map is showing; defaults to the newest one open. */
+let shownRegion: RegionId | null = null;
+
 export function worldScreen(): void {
   const p = getProgress();
+  const open = REGION_IDS.filter((id) => regionUnlocked(p, id));
+  const regionId = shownRegion && open.includes(shownRegion) ? shownRegion : open[open.length - 1]!;
+  const region = REGIONS[regionId];
   const earned = badges(p);
-  const cards = MAPS.map((map) => {
-    const open = mapUnlocked(p, map);
+  const maps = regionMaps(regionId);
+  const cards = maps.map((map) => {
+    const unlocked = mapUnlocked(p, map);
     const r = p.results[map.id];
     const side = h('div.side', {},
       map.badge ? badgeImg(map.badge, `pix badge${earned.includes(map.badge) ? '' : ' dim'}`) : h('span', { style: 'font-size:26px' }, map.endless ? '♾️' : '🏆'),
@@ -116,8 +126,8 @@ export function worldScreen(): void {
       !map.endless && r?.normal ? h('span', { style: 'font-size:11px' }, h('span.muted', {}, 'Hard '), starText(r.hard)) : null,
     );
     return h('button.map-card', {
-      className: `map-card${open ? '' : ' locked'}`,
-      disabled: !open,
+      className: `map-card${unlocked ? '' : ' locked'}`,
+      disabled: !unlocked,
       onclick: () => {
         unlock();
         sfx.click();
@@ -126,16 +136,30 @@ export function worldScreen(): void {
     },
     h('div.thumb', {}, mapThumb(map)),
     h('div', {},
-      h('div.name', {}, open ? map.name : `🔒 ${map.name}`),
-      h('div.sub', {}, `${map.region} · ${map.endless ? 'endless waves' : `${map.waves} waves`} · ${map.leader}`),
-      h('div.twist', {}, open ? map.twist : map.endless ? 'Earn all eight badges to enter.' : 'Clear the map before it to unlock.')),
+      h('div.name', {}, unlocked ? map.name : `🔒 ${map.name}`, map.weather ? ` ${WEATHER_ICON[map.weather]}` : ''),
+      h('div.sub', {}, `${map.area} · ${map.endless ? 'endless waves' : `${map.waves} waves`} · ${map.leader}`),
+      h('div.twist', {}, unlocked ? map.twist : map.endless ? `Become Champion of ${region.name} to enter.` : 'Clear the map before it to unlock.')),
     side);
   });
-  const badgeRow = h('div.badges-row', {}, ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => badgeImg(n, `pix${earned.includes(n) ? '' : ' dim'}`)));
+
+  const tabs = h('div.tabs.regions', {}, ...REGION_IDS.map((id) => {
+    const isOpen = open.includes(id);
+    return button(`btn.small${id === regionId ? '.on' : ''}`, isOpen ? REGIONS[id].name : `🔒 ${REGIONS[id].name}`, () => {
+      if (!isOpen) {
+        toast(`Become Champion of ${REGIONS[previousRegion(id)!].name} to travel to ${REGIONS[id].name}.`);
+        return;
+      }
+      shownRegion = id;
+      worldScreen();
+    });
+  }));
+  const regionStars = maps.reduce((sum, m) => sum + (p.results[m.id]?.normal ?? 0) + (p.results[m.id]?.hard ?? 0), 0);
+  const badgeRow = h('div.badges-row', {}, ...region.badges.map((n) => badgeImg(n, `pix${earned.includes(n) ? '' : ' dim'}`)));
   const el = h('div.screen', {},
-    topbar('Kanto', titleScreen, bpChip(p)),
+    topbar(region.name, titleScreen, bpChip(p)),
     h('div.scroll', {}, h('div.content', {},
-      h('div.card.row', { style: 'justify-content:space-between;flex-wrap:wrap' }, badgeRow, h('span.chip', {}, `★ ${totalStars(p)} / ${(MAPS.length - 1) * 6}`)),
+      tabs,
+      h('div.card.row', { style: 'justify-content:space-between;flex-wrap:wrap' }, badgeRow, h('span.chip', {}, `★ ${regionStars} / ${(maps.length - 1) * 6}`)),
       h('div.maps', {}, ...cards))),
     h('nav.nav', {},
       button('btn', h('span', {}, icon('poke-ball', 26), h('div', {}, 'Pokédex')), () => dexScreen(worldScreen)),
@@ -145,7 +169,30 @@ export function worldScreen(): void {
     ),
   );
   mount(el);
-  playMusic(WORLD_TRACK);
+  playMusic(region.worldTrack);
+  if (!p.greeted.includes(regionId)) welcome(regionId);
+}
+
+/** Arriving in a new region: its professor hands over the three starters. */
+function welcome(id: RegionId): void {
+  const region = REGIONS[id];
+  const lines = region.starters.map((lineId) => LINES.find((l) => l.id === lineId)!);
+  const dexes = lines.map((l) => l.stages[0]!.dex);
+  void loadSheets(dexes);
+  loadCries(dexes);
+  dexes.forEach((dex, i) => setTimeout(() => cry(dex, { volume: 0.5 }), 500 + i * 900));
+  const close = modal(h('div', {},
+    h('h2', {}, `Welcome to ${region.name}!`),
+    h('p.muted', { style: 'margin:0;text-align:center' }, `${region.professor} has three Pokémon for you. All of them join your roster — and your team, if there’s room:`),
+    h('div.caught-row', {}, ...lines.map((l) => h('div.mon', {}, thumb(l.stages[0]!.dex, 72, { animate: true }), l.name))),
+    button('btn.primary', 'Thanks, Professor!', () => {
+      const cur = getProgress();
+      // Put the new starters straight onto the team, as far as there is room.
+      const team = [...new Set([...cur.team, ...region.starters])].slice(0, TEAM_SIZE);
+      setProgress({ ...cur, greeted: [...cur.greeted, id], team });
+      close();
+    }),
+  ), { dismissable: false });
 }
 
 // --- team select -----------------------------------------------------------------------------
@@ -230,7 +277,7 @@ export function teamScreen(map: MapDef): void {
     topbar(map.name, worldScreen, bpChip(p)),
     h('div.scroll', {}, h('div.content', {},
       h('div.card', {},
-        h('div', { style: 'font-weight:800' }, `${map.region} — ${map.endless ? 'endless' : `${map.waves} waves`}, ${map.endless ? 'Mewtwo lurks within' : `then ${map.leader}`}`),
+        h('div', { style: 'font-weight:800' }, `${map.area} — ${map.endless ? 'endless' : `${map.waves} waves`}, ${map.endless ? `${map.leader} lurks within` : `then ${map.leader}`}`),
         h('div.muted', { style: 'font-size:13px;margin-top:4px' }, map.twist),
         map.endless ? null : h('div.row', { style: 'margin-top:10px' }, h('span.muted', { style: 'font-size:13px' }, 'Difficulty'), diffSeg)),
       h('div.section-title', {}, 'Wild Pokémon here'),
@@ -246,7 +293,7 @@ export function teamScreen(map: MapDef): void {
   );
   render();
   mount(el);
-  playMusic(TEAM_TRACK);
+  playMusic(REGIONS[map.regionId].teamTrack);
 }
 
 // --- mart ------------------------------------------------------------------------------------------

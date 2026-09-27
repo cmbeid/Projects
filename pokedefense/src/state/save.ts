@@ -10,6 +10,7 @@ import {
   BALL_KEYS, type BallKey, HELD_BY_KEY, NO_TRAINER, POWERUP_KEYS, type PowerupKey, TRAINER_KEYS, type TrainerLevels,
 } from '../data/items';
 import { MAPS, type MapDef } from '../data/maps';
+import { previousRegion, REGIONS, type RegionId } from '../data/regions';
 import { LINES, lineForDex, type TowerLine } from '../data/towers';
 import type { DifficultyKey } from '../game/waves';
 
@@ -48,6 +49,8 @@ export interface Progress {
   /** Show the tutorial coach and the tips under the shop. */
   hints: boolean;
   tutorialDone: boolean;
+  /** Regions whose professor has already handed over the starters. */
+  greeted: RegionId[];
 }
 
 export const DEFAULT_VOLUMES: Volumes = { sfx: 70, cries: 60, music: 45 };
@@ -64,7 +67,7 @@ export function freshProgress(): Progress {
   return {
     results: {}, caught: [], shinies: [], seen: [], bp: 0, items, balls, heldOwned: [], held: {},
     trainer: { ...NO_TRAINER }, team: ['charmander', 'squirtle', 'bulbasaur', 'pidgey'],
-    volumes: { ...DEFAULT_VOLUMES }, muted: false, haptics: true, hints: true, tutorialDone: false,
+    volumes: { ...DEFAULT_VOLUMES }, muted: false, haptics: true, hints: true, tutorialDone: false, greeted: ['kanto'],
   };
 }
 
@@ -138,6 +141,7 @@ export function loadProgress(store: Store | null = defaultStore()): Progress {
     haptics: raw.haptics !== false,
     hints: raw.hints !== false,
     tutorialDone: raw.tutorialDone === true,
+    greeted: Array.isArray(raw.greeted) ? strs(raw.greeted).filter((r): r is RegionId => r in REGIONS) : ['kanto'],
   };
 }
 
@@ -160,14 +164,31 @@ export function cleared(p: Progress, map: MapDef): boolean {
   return Boolean(r && (r.normal > 0 || r.hard > 0));
 }
 
+/** Kanto is always open; each later region opens once the one before has a Champion. */
+export function regionUnlocked(p: Progress, id: RegionId): boolean {
+  const prev = previousRegion(id);
+  if (!prev) return true;
+  const league = MAPS.find((m) => m.id === REGIONS[prev].league);
+  return Boolean(league && cleared(p, league));
+}
+
+export function regionMaps(id: RegionId): MapDef[] {
+  return MAPS.filter((m) => m.regionId === id);
+}
+
+/** In order within a region; the endless map once its League is won. */
 export function mapUnlocked(p: Progress, map: MapDef): boolean {
-  const i = MAPS.indexOf(map);
-  if (map.endless) return MAPS.filter((m) => !m.endless).every((m) => cleared(p, m));
-  return i === 0 || cleared(p, MAPS[i - 1]!);
+  if (!regionUnlocked(p, map.regionId)) return false;
+  const league = MAPS.find((m) => m.id === REGIONS[map.regionId].league)!;
+  if (map.endless) return cleared(p, league);
+  const campaign = regionMaps(map.regionId).filter((m) => !m.endless);
+  const i = campaign.indexOf(map);
+  return i === 0 || cleared(p, campaign[i - 1]!);
 }
 
 export function lineUnlocked(p: Progress, l: TowerLine): boolean {
   if (l.unlock.kind === 'start') return true;
+  if (l.unlock.kind === 'region' && regionUnlocked(p, l.unlock.region)) return true;
   if (l.unlock.kind === 'badge' && badges(p).includes(l.unlock.badge)) return true;
   return p.caught.some((dex) => lineForDex(dex)?.id === l.id);
 }

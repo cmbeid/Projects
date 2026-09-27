@@ -21,6 +21,7 @@ export interface Spawn {
   boss?: BossDef;
   lead?: boolean;
   rare?: boolean;
+  shiny?: boolean;
 }
 
 export interface Difficulty {
@@ -107,7 +108,7 @@ export function buildWave(map: MapDef, wave: number): Spawn[] {
   const endlessMini = map.endless && wave % 10 === 5;
   if (mini || endlessMini) {
     const dex = mini?.dex ?? pickWeighted(rng, eligible, (p) => p.weight).dex;
-    spawns.push({ at: t + 1, dex, path: 0, hp: mini?.hp ?? species(dex).hp * 5, lead: true });
+    spawns.push({ at: t + 1, dex, path: 0, hp: mini?.hp ?? species(dex).hp * 5, lead: true, ...(mini?.shiny ? { shiny: true } : {}) });
   }
 
   if (boss) {
@@ -115,6 +116,10 @@ export function buildWave(map: MapDef, wave: number): Spawn[] {
       spawns.push({ at: t + 1 + i * 1.2, dex, path: i % map.paths.length, hp: species(dex).hp * 1.5 });
     });
     spawns.push({ at: t + 3 + boss.escort.length * 1.2, dex: boss.dex, path: 0, hp: boss.hp, boss });
+    // Tate & Liza: two bosses at once, on the other path if there is one.
+    if (boss.partner) {
+      spawns.push({ at: t + 3.6 + boss.escort.length * 1.2, dex: boss.partner.dex, path: 1 % map.paths.length, hp: boss.partner.hp, boss: boss.partner });
+    }
   }
 
   return spawns.sort((a, b) => a.at - b.at);

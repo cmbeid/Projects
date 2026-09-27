@@ -12,6 +12,7 @@ export const NO_EFFECTS: Effects = {
   splash: 0, chain: 0, burn: 0, poison: 0, slow: 0, sleep: 0, paralyse: 0, confuse: 0, flinch: 0,
   crit: 0, knockback: 0, pierceArmour: 0, weaken: 0, ohko: 0, payDay: 0, antiAir: 0,
   auraDamage: 0, auraRate: 0, income: 0, wish: 0, rewind: 0, hex: 0, random: 0,
+  lifeEvery: 0, accelerate: 0, chip: 0,
 };
 
 export interface TowerStats {
@@ -80,7 +81,7 @@ export function towerStats(line: TowerLine, setup: TowerSetup): TowerStats {
     branchIdx = line.stages.length;
   }
 
-  let groundOnly = Boolean(line.groundOnly);
+  let groundOnly = Boolean(line.groundOnly) && !line.stages.slice(0, stage + 1).some((s) => s.airborne);
   const move = level >= MAX_LEVEL && setup.move !== null ? line.moves[setup.move] : undefined;
   if (move) {
     type = move.type ?? type;

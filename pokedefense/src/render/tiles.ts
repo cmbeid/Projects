@@ -35,6 +35,25 @@ const PALETTES: Record<Theme, Palette> = {
   gym: { ground: '#d4bc92', groundDot: '#e0caa2', groundDark: '#b89e74', path: '#9a6e44', pathEdge: '#6a4a2a', pathDot: '#aa7e54', water: '#3a78c8', waterLight: '#7ab0ea', block: '#5a4632', blockLight: '#7a664e', blockDark: '#3a2c1e', accent: '#58a858' },
   plateau: { ground: '#6a9a4a', groundDot: '#80b05a', groundDark: '#547e3a', path: '#c4ac7c', pathEdge: '#94804e', pathDot: '#b09a6a', water: '#3a78c8', waterLight: '#7ab0ea', block: '#7a7068', blockLight: '#9e948a', blockDark: '#524a44', accent: '#f8e070' },
   deepcave: { ground: '#3c3c5a', groundDot: '#4a4a6a', groundDark: '#2c2c46', path: '#6e6e8e', pathEdge: '#48486a', pathDot: '#7e7e9e', water: '#24487a', waterLight: '#4a78b0', block: '#26263a', blockLight: '#3e3e58', blockDark: '#181826', accent: '#b070f0' },
+  bamboo: { ground: '#a47a4a', groundDot: '#b88c58', groundDark: '#7e5a34', path: '#5c3c6c', pathEdge: '#3a2448', pathDot: '#6e4c80', water: '#3a78c8', waterLight: '#7ab0ea', block: '#5a9a3a', blockLight: '#8ac85a', blockDark: '#3a6a24', accent: '#f8d048' },
+  darkforest: { ground: '#2f6a36', groundDot: '#3e7e44', groundDark: '#22502a', path: '#8c7c56', pathEdge: '#5c4e34', pathDot: '#7c6c48', water: '#2e5a8a', waterLight: '#5a8aba', block: '#1a4222', blockLight: '#2e5e34', blockDark: '#0e2a14', accent: '#e8f070' },
+  city: { ground: '#b8bac4', groundDot: '#caccd4', groundDark: '#9a9ca8', path: '#5e606a', pathEdge: '#3e4048', pathDot: '#f0e068', water: '#3a78c8', waterLight: '#7ab0ea', block: '#c8704a', blockLight: '#e89068', blockDark: '#8a4a30', accent: '#f8d048' },
+  ash: { ground: '#5c4c44', groundDot: '#6e5c52', groundDark: '#443630', path: '#9c8c7c', pathEdge: '#6c5c4e', pathDot: '#8a7a6a', water: '#e06a28', waterLight: '#f8b048', block: '#3a2a22', blockLight: '#5a443a', blockDark: '#221812', accent: '#f87838' },
+  cliffs: { ground: '#7cb452', groundDot: '#94c864', groundDark: '#5e9240', path: '#e2d49c', pathEdge: '#b4a470', pathDot: '#d0c088', water: '#2a6cc0', waterLight: '#78b0ec', block: '#8a7a6a', blockLight: '#aa9a8a', blockDark: '#5e5044', accent: '#f8f0d0' },
+  lighthouse: { ground: '#d6cebe', groundDot: '#e4ddd0', groundDark: '#b4ac9c', path: '#b0443a', pathEdge: '#7a2a24', pathDot: '#c45a50', water: '#2a6cc0', waterLight: '#78b0ec', block: '#8c8c9c', blockLight: '#acacbc', blockDark: '#5e5e6c', accent: '#f8e070' },
+  icecave: { ground: '#c4dcee', groundDot: '#e2f0fa', groundDark: '#a0bcd4', path: '#88acd0', pathEdge: '#5e84aa', pathDot: '#a8c8e4', water: '#3a6cb0', waterLight: '#8ab8e8', block: '#6a8cb4', blockLight: '#9cc0e0', blockDark: '#445e84', accent: '#ffffff' },
+  dragonden: { ground: '#3c4c6c', groundDot: '#4a5c7e', groundDark: '#2c3a56', path: '#6c7c9a', pathEdge: '#48587a', pathDot: '#7c8caa', water: '#2656a6', waterLight: '#5a8ad6', block: '#262e46', blockLight: '#3a4460', blockDark: '#161c2e', accent: '#88a8f8' },
+  mountain: { ground: '#8c8c90', groundDot: '#e8ecf0', groundDark: '#6c6c72', path: '#b4ac9e', pathEdge: '#847c70', pathDot: '#a49c8e', water: '#3a6cb0', waterLight: '#8ab8e8', block: '#5a5a62', blockLight: '#e0e4ea', blockDark: '#3a3a40', accent: '#ffffff' },
+  woods: { ground: '#3c8a3c', groundDot: '#4ea04a', groundDark: '#2c6e2e', path: '#b8985e', pathEdge: '#8a6e40', pathDot: '#a8884e', water: '#2e70b8', waterLight: '#6aa8e0', block: '#1c5a28', blockLight: '#2e7a38', blockDark: '#103a18', accent: '#f8c8e0' },
+  granite: { ground: '#8a7a68', groundDot: '#9c8c7a', groundDark: '#6c5e4e', path: '#aa9a7c', pathEdge: '#7c6c52', pathDot: '#9a8a6c', water: '#2e5e96', waterLight: '#5e8ec6', block: '#5a4a3e', blockLight: '#7a6a5a', blockDark: '#3a2e26', accent: '#c8b8f8' },
+  powerplant: { ground: '#a4a6b6', groundDot: '#b8bac8', groundDark: '#848698', path: '#d8bc40', pathEdge: '#a08a24', pathDot: '#e8d060', water: '#3a78c8', waterLight: '#7ab0ea', block: '#484a5a', blockLight: '#686a7c', blockDark: '#2e303c', accent: '#f8e048' },
+  ashen: { ground: '#8c8a82', groundDot: '#a09e96', groundDark: '#6e6c66', path: '#c6b690', pathEdge: '#968866', pathDot: '#b4a680', water: '#e05a1a', waterLight: '#f8a838', block: '#4e4a44', blockLight: '#6e6a62', blockDark: '#32302c', accent: '#f8d048' },
+  dojo: { ground: '#c89e6c', groundDot: '#d8b07e', groundDark: '#a47e52', path: '#8a5634', pathEdge: '#5e3820', pathDot: '#9c6844', water: '#3a78c8', waterLight: '#7ab0ea', block: '#5a3e2c', blockLight: '#7a5a44', blockDark: '#3a2618', accent: '#f8f0d0' },
+  rainroute: { ground: '#3a8446', groundDot: '#4a9a56', groundDark: '#2a6a36', path: '#968664', pathEdge: '#6a5c42', pathDot: '#867656', water: '#2e6ab4', waterLight: '#6ea2dc', block: '#1e5a2c', blockLight: '#2e7a3a', blockDark: '#123c1c', accent: '#b8e0ff' },
+  space: { ground: '#ced2de', groundDot: '#e0e4ee', groundDark: '#aab0c0', path: '#3a3c6c', pathEdge: '#24264a', pathDot: '#f8f8a8', water: '#3a78c8', waterLight: '#7ab0ea', block: '#6a6c88', blockLight: '#8c8eaa', blockDark: '#4a4c64', accent: '#f878c8' },
+  sootopolis: { ground: '#dcd4bc', groundDot: '#ece6d2', groundDark: '#bcb49c', path: '#b8a886', pathEdge: '#8a7c60', pathDot: '#a89878', water: '#2456b4', waterLight: '#5a8ee4', block: '#8a8478', blockLight: '#aaa498', blockDark: '#625e54', accent: '#88d8f8' },
+  league: { ground: '#74a45c', groundDot: '#88b86c', groundDark: '#5c8a48', path: '#d2c292', pathEdge: '#a29264', pathDot: '#c2b282', water: '#2e70b8', waterLight: '#6aa8e0', block: '#8c847a', blockLight: '#aca49a', blockDark: '#645e56', accent: '#f8e070' },
+  sky: { ground: '#8a9a78', groundDot: '#9cac8a', groundDark: '#6c7c5c', path: '#b0b690', pathEdge: '#808666', pathDot: '#a0a680', water: '#58a8e8', waterLight: '#b8e0ff', block: '#566454', blockLight: '#768474', blockDark: '#3a4638', accent: '#78f878' },
 };
 
 export function palette(theme: Theme): Palette {
@@ -50,12 +69,27 @@ function px(ctx: Ctx, x: number, y: number, w: number, h: number, colour: string
 
 function ground(ctx: Ctx, p: Palette, theme: Theme, ox: number, oy: number, rng: () => number, kind: Terrain): void {
   px(ctx, ox, oy, 16, 16, p.ground);
-  if (theme === 'ship' || theme === 'office' || theme === 'gym') {
+  if (kind === 'sand') {
+    px(ctx, ox, oy, 16, 16, '#e4d49c');
+    for (let i = 0; i < 6; i += 1) px(ctx, ox + Math.floor(rng() * 15), oy + Math.floor(rng() * 15), 1, 1, '#c8b47c');
+    px(ctx, ox + 2 + Math.floor(rng() * 8), oy + 5 + Math.floor(rng() * 6), 5, 1, '#f0e4b4');
+    return;
+  }
+  if (kind === 'ice') {
+    px(ctx, ox, oy, 16, 16, '#cce6f6');
+    px(ctx, ox + 2, oy + 3, 6, 1, '#ffffff');
+    px(ctx, ox + 8, oy + 10, 5, 1, '#ffffff');
+    px(ctx, ox + 1, oy + 15, 16, 1, '#a8c8e0');
+    return;
+  }
+  const planks = theme === 'ship' || theme === 'bamboo' || theme === 'dojo';
+  const tiles = theme === 'office' || theme === 'city' || theme === 'lighthouse' || theme === 'powerplant' || theme === 'space' || theme === 'sootopolis' || theme === 'sky';
+  if (planks || tiles || theme === 'gym') {
     // Planks, floor tiles or gym mats.
-    if (theme === 'ship') {
+    if (planks) {
       for (let y = 0; y < 16; y += 4) px(ctx, ox, oy + y, 16, 1, p.groundDark);
       px(ctx, ox + ((oy / 16) % 2 ? 5 : 11), oy, 1, 16, p.groundDark);
-    } else if (theme === 'office') {
+    } else if (tiles) {
       px(ctx, ox, oy, 16, 1, p.groundDark);
       px(ctx, ox, oy, 1, 16, p.groundDark);
       px(ctx, ox + 1, oy + 1, 6, 1, p.groundDot);
@@ -65,7 +99,7 @@ function ground(ctx: Ctx, p: Palette, theme: Theme, ox: number, oy: number, rng:
     }
   } else {
     for (let i = 0; i < 7; i += 1) px(ctx, ox + Math.floor(rng() * 15), oy + Math.floor(rng() * 15), 2, 1, i % 3 ? p.groundDot : p.groundDark);
-    if (theme === 'forest' || theme === 'garden' || theme === 'plateau') {
+    if (theme === 'forest' || theme === 'garden' || theme === 'plateau' || theme === 'woods' || theme === 'rainroute' || theme === 'cliffs' || theme === 'league' || theme === 'darkforest') {
       // Tufts of grass.
       for (let i = 0; i < 2; i += 1) {
         const x = ox + 2 + Math.floor(rng() * 11);
@@ -139,6 +173,14 @@ function blocker(ctx: Ctx, p: Palette, theme: Theme, kind: Terrain, ox: number, 
     }
   } else if (kind === 'lava') {
     water(ctx, p, ox, oy, rng, true);
+  } else if (kind === 'bamboo') {
+    // Stalks of bamboo — or, indoors, Sprout Tower's great swaying pillar.
+    for (const x of [1, 6, 11]) {
+      px(ctx, ox + x, oy, 4, 16, p.block);
+      px(ctx, ox + x, oy, 1, 16, p.blockLight);
+      px(ctx, ox + x, oy + 5, 4, 1, p.blockDark);
+      px(ctx, ox + x, oy + 12, 4, 1, p.blockDark);
+    }
   }
 }
 
@@ -175,10 +217,12 @@ export function renderGround(map: MapDef): HTMLCanvasElement {
       const kind = terrainAt(map, x, y);
       if (onPath.has(`${x},${y}`)) {
         const here = (dx: number, dy: number): boolean => onPath.has(`${x + dx},${y + dy}`) || (isPath(x + dx, y + dy) && !(x + dx >= 0 && y + dy >= 0 && x + dx < COLS && y + dy < ROWS));
-        pathTile(ctx, p, ox, oy, rng, { n: here(0, -1), s: here(0, 1), e: here(1, 0), w: here(-1, 0) });
+        const open = { n: here(0, -1), s: here(0, 1), e: here(1, 0), w: here(-1, 0) };
+        // Ice stays ice under the path: it is what makes enemies slide.
+        pathTile(ctx, kind === 'ice' ? { ...p, path: '#a8d0ec', pathDot: '#ffffff', pathEdge: '#78a4c8' } : p, ox, oy, rng, open);
       } else if (kind === 'water') {
         water(ctx, p, ox, oy, rng, false);
-      } else if (kind === 'tree' || kind === 'rock' || kind === 'grave' || kind === 'wall' || kind === 'lava') {
+      } else if (kind === 'tree' || kind === 'rock' || kind === 'grave' || kind === 'wall' || kind === 'lava' || kind === 'bamboo') {
         if (kind !== 'wall' && kind !== 'lava') ground(ctx, p, map.theme, ox, oy, rng, 'grass');
         blocker(ctx, p, map.theme, kind, ox, oy, rng);
       } else {

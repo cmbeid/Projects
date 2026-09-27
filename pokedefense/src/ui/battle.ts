@@ -10,7 +10,7 @@ import { sfx, unlock } from '../audio/index';
 import { playMusic, preloadMusic } from '../audio/music';
 import { BALL_KEYS, BALLS, type BallKey, POWERUP_KEYS, POWERUPS, type PowerupKey } from '../data/items';
 import { COLS, type MapDef, mapDef, MAPS, ROWS, terrainAt } from '../data/maps';
-import { CHAMPION_TRACK, WIN_TRACK } from '../data/music';
+import { REGIONS } from '../data/regions';
 import { species } from '../data/species';
 import { line, lineDexes, lineForDex, MAX_LEVEL, type TowerLine } from '../data/towers';
 import { TYPE_COLOURS } from '../data/types';
@@ -91,7 +91,8 @@ export function startBattle(opts: BattleOptions): void {
   }
   void loadSheets(dexes);
   loadCries([...dexes]);
-  preloadMusic([map.track, map.bossTrack, WIN_TRACK]);
+  const region = REGIONS[map.regionId];
+  preloadMusic([map.track, map.bossTrack, ...(map.finalTrack ? [map.finalTrack] : []), region.winTrack]);
   playMusic(map.track);
 
   // --- elements ---------------------------------------------------------------
@@ -138,7 +139,8 @@ export function startBattle(opts: BattleOptions): void {
   let raf = 0;
   let tile = 32;
   let dpr = 1;
-  let bossMusic = false;
+  /** The boss track playing, if any. */
+  let bossMusic: string | null = null;
 
   // --- layout ---------------------------------------------------------------------
   const resize = (): void => {
@@ -638,14 +640,16 @@ export function startBattle(opts: BattleOptions): void {
     if (!boss) {
       bossBar.style.display = 'none';
       if (bossMusic) {
-        bossMusic = false;
+        bossMusic = null;
         playMusic(map.track);
       }
       return;
     }
-    if (!bossMusic) {
-      bossMusic = true;
-      playMusic(map.bossTrack);
+    // A Champion gets their own theme.
+    const want = boss.dex === map.boss.dex && map.finalTrack ? map.finalTrack : map.bossTrack;
+    if (bossMusic !== want) {
+      bossMusic = want;
+      playMusic(want);
     }
     bossBar.style.display = '';
     const pct = Math.max(0, (boss.hp / boss.maxHp) * 100);
@@ -798,7 +802,7 @@ export function startBattle(opts: BattleOptions): void {
             close();
             retryWave(g);
             resetEffects();
-            bossMusic = false;
+            bossMusic = null;
             playMusic(map.track);
             renderRail();
             renderDock(true);
@@ -829,7 +833,7 @@ export function startBattle(opts: BattleOptions): void {
     const hadBadges = MAPS.filter((m) => m.badge && getProgress().results[m.id] && (getProgress().results[m.id]!.normal || getProgress().results[m.id]!.hard)).length;
     const { bp, newLines } = record(won);
     const stars = won ? starsFor(g) : 0;
-    if (won) playMusic(map.id === 'indigo-plateau' ? CHAMPION_TRACK : WIN_TRACK);
+    if (won) playMusic(map.id === region.league ? region.championTrack : region.winTrack);
     else if (!map.endless) playMusic(map.track);
     const earnedBadge = won && map.badge && MAPS.filter((m) => m.badge && getProgress().results[m.id] && (getProgress().results[m.id]!.normal || getProgress().results[m.id]!.hard)).length > hadBadges;
 

@@ -10,7 +10,7 @@ import { species } from '../data/species';
 import { line, MAX_LEVEL } from '../data/towers';
 import { effectiveness } from '../data/types';
 import {
-  canPlace, chooseMove, type Game, hasNextWave, levelUp, moveCost, needsBranch, placeCost, placeTower, startWave, step,
+  canPlace, chooseMove, type Game, hasNextWave, levelUp, moveCost, needsBranch, placeCost, placeTower, retryWave, startWave, step,
   upgradeCost,
 } from './game';
 
@@ -24,12 +24,13 @@ function coverage(g: Game, x: number, y: number, range: number): number {
   return n;
 }
 
-/** How well a line suits this map's wild Pokémon, 0–2ish. */
+/** How well a line suits this map's wild Pokémon and its bosses, 0–2ish. Bosses count twice over. */
 function suitability(g: Game, lineId: string): number {
   const l = line(lineId);
+  const bosses = [g.map.boss, ...(g.map.extraBosses ?? []).map((b) => b.boss)].map((b) => ({ dex: b.dex, weight: 2 }));
   let total = 0;
   let weight = 0;
-  for (const p of g.map.pool) {
+  for (const p of [...g.map.pool, ...bosses]) {
     const sp = species(p.dex);
     let eff = effectiveness(l.type, sp.types);
     if (l.groundOnly && sp.traits.includes('flying')) eff = 0;
@@ -42,7 +43,8 @@ function suitability(g: Game, lineId: string): number {
 
 export function botTurn(g: Game): void {
   // Keep a detector if anything invisible is coming.
-  const invisible = g.map.pool.some((p) => species(p.dex).traits.includes('invisible'));
+  const bosses = [g.map.boss, ...(g.map.extraBosses ?? []).map((b) => b.boss)];
+  const invisible = [...g.map.pool, ...bosses].some((p) => species(p.dex).traits.includes('invisible'));
   const team = [...g.team];
   for (let guard = 0; guard < 20; guard += 1) {
     const best = [...g.towers]
@@ -85,18 +87,27 @@ export function botTurn(g: Game): void {
   }
 }
 
-/** Play a whole battle. Returns lives left (0 = lost) and waves cleared. */
-export function playOut(g: Game, maxSeconds = 3600): { lives: number; cleared: number } {
+/**
+ * Play a whole battle. A failed gym-leader wave is retried up to `retries`
+ * times, as a player would. Returns lives left (0 = lost), waves cleared
+ * and how many retries it took.
+ */
+export function playOut(g: Game, maxSeconds = 3600, retries = 2): { lives: number; cleared: number; retries: number } {
   let nextThink = 0;
-  while (g.status === 'playing' && g.t < maxSeconds) {
-    if (g.t >= nextThink) {
-      botTurn(g);
-      nextThink = g.t + 0.5;
-      if (g.openWaves.size === 0 && hasNextWave(g)) startWave(g);
+  for (;;) {
+    while (g.status === 'playing' && g.t < maxSeconds) {
+      if (g.t >= nextThink) {
+        botTurn(g);
+        nextThink = g.t + 0.5;
+        if (g.openWaves.size === 0 && hasNextWave(g)) startWave(g);
+      }
+      step(g);
+      g.events.length = 0;
+      if (g.map.endless && g.cleared >= 40) break;
     }
-    step(g);
-    g.events.length = 0;
-    if (g.map.endless && g.cleared >= 40) break;
+    if (g.status !== 'retry' || g.retries >= retries) break;
+    retryWave(g);
+    nextThink = g.t;
   }
-  return { lives: g.lives, cleared: g.cleared };
+  return { lives: g.lives, cleared: g.cleared, retries: g.retries };
 }

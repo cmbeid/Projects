@@ -13,7 +13,7 @@
 import {
   BALLS, type BallKey, DROP_CHANCE, DROPS, NO_TRAINER, POWERUPS, type PowerupKey, type TrainerLevels,
 } from '../data/items';
-import { COLS, type MapDef, pathTiles, ROWS, terrainAt } from '../data/maps';
+import { BUILDABLE, COLS, type MapDef, pathTiles, ROWS, terrainAt, type Weather } from '../data/maps';
 import { type Ability, species, type Species } from '../data/species';
 import { type AttackKind, type Effects, levelCost, line, MAX_LEVEL, type TowerLine } from '../data/towers';
 import { effectiveness, type PokeType } from '../data/types';
@@ -119,6 +119,8 @@ export interface Tower {
   lastShot: number;
   /** The wave count when it was placed: selling it before the next wave refunds everything. */
   placedAt: number;
+  /** Waves it has been on the field for, for Speed Boost. */
+  wavesFought: number;
   stats: TowerStats;
 }
 
@@ -168,6 +170,7 @@ export type GameEvent =
   | { kind: 'catch'; dex: number; shiny: boolean; success: boolean; x: number; y: number }
   | { kind: 'powerup'; key: PowerupKey; x: number; y: number }
   | { kind: 'money'; amount: number; x: number; y: number }
+  | { kind: 'life'; x: number; y: number }
   | { kind: 'bossFailed'; wave: number }
   | { kind: 'won' }
   | { kind: 'lost' };
@@ -200,6 +203,8 @@ export interface Game {
   team: string[];
   rng: Rng;
   paths: PathGeom[];
+  /** Path tiles laid over ice: enemies slide over them faster. */
+  iceSet: Set<string>;
   pathSet: Set<string>;
   t: number;
   money: number;
@@ -266,6 +271,7 @@ export function newGame(setup: BattleSetup): Game {
     rng: makeRng(setup.seed),
     paths: map.paths.map((_, i) => buildPath(map, i)),
     pathSet: pathTiles(map),
+    iceSet: new Set([...pathTiles(map)].filter((k) => { const [x, y] = k.split(',').map(Number) as [number, number]; return terrainAt(map, x, y) === 'ice'; })),
     t: 0,
     money: Math.round(map.startMoney * diff.money * (1 + trainer.wallet * 0.1)),
     lives: maxLives,
@@ -351,7 +357,7 @@ export function canPlace(g: Game, lineId: string, x: number, y: number): PlaceEr
   const l = line(lineId);
   const onPath = g.pathSet.has(`${x},${y}`);
   const terrain = terrainAt(g.map, x, y);
-  const land = !onPath && (terrain === 'grass' || terrain === 'flowers' || terrain === 'floor' || terrain === 'ledge');
+  const land = !onPath && BUILDABLE.has(terrain);
   const water = !onPath && terrain === 'water';
   const ok =
     l.placement === 'path' ? onPath && !isWarpPad(g, x, y)
@@ -376,7 +382,7 @@ export function placeTower(g: Game, lineId: string, x: number, y: number): Tower
   const base = { line: l, level: 1, branch: null, move: null, x, y };
   const tower: Tower = {
     id: g.nextId++, ...base, target: 'first', cooldown: 0, xp: 0, invested: cost, kills: 0, damageDone: 0,
-    stunnedUntil: 0, facing: x < COLS / 2 ? 1 : -1, lastShot: -1, placedAt: g.wave, stats: setupFor(g, base),
+    stunnedUntil: 0, facing: x < COLS / 2 ? 1 : -1, lastShot: -1, placedAt: g.wave, wavesFought: 0, stats: setupFor(g, base),
   };
   g.towers.push(tower);
   emit(g, { kind: 'place', id: tower.id, dex: tower.stats.dex, x: x + 0.5, y: y + 0.5 });
@@ -483,7 +489,7 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
   const sp = species(spawn.dex);
   const diff = DIFFICULTIES[g.difficulty];
   const tier = g.map.endless ? g.map.tier + Math.floor(wave / 15) : g.map.tier;
-  const maxHp = Math.round(spawn.hp * hpScale(tier, wave) * diff.hp);
+  const maxHp = Math.round(spawn.hp * hpScale(tier, wave) * diff.hp * (g.map.hpMul ?? 1));
   const boss = spawn.boss;
   const path = g.paths[spawn.path] ?? g.paths[0]!;
   const pos = pointAt(path, dist);
@@ -491,7 +497,7 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     id: g.nextId++,
     dex: sp.dex,
     sp,
-    shiny: shinyAllowed && !boss && g.rng() < SHINY_CHANCE,
+    shiny: Boolean(spawn.shiny) || (shinyAllowed && !boss && g.rng() < SHINY_CHANCE),
     wave,
     path: spawn.path,
     dist,
@@ -507,7 +513,7 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     lead: Boolean(spawn.lead),
     rare: Boolean(spawn.rare),
     // The last boss of a map costs half your lives; the Elite Four a quarter.
-    lives: boss ? (boss.dex === g.map.boss.dex ? 10 : 5) : spawn.lead ? 3 : 1,
+    lives: boss ? (boss.dex === g.map.boss.dex || boss.dex === g.map.boss.partner?.dex ? 10 : 5) : spawn.lead ? 3 : 1,
     born: g.t,
     abilities: (boss?.abilities ?? sp.abilities).map((ability) => ({ ability, next: g.t + ('every' in ability ? ability.every * (0.5 + 0.5 * g.rng()) : 0) })),
     healed: false,
@@ -665,7 +671,34 @@ const NO_HIT: Hit = {
   splash: 0, chain: 0, burn: 0, poison: 0, slow: 0, sleep: 0, paralyse: 0, confuse: 0, flinch: 0,
   crit: 0, knockback: 0, pierceArmour: 0, weaken: 0, ohko: 0, payDay: 0, antiAir: 0,
   auraDamage: 0, auraRate: 0, income: 0, wish: 0, rewind: 0, hex: 0, random: 0,
+  lifeEvery: 0, accelerate: 0, chip: 0,
 };
+
+/** Enemies slide this much faster over icy path. */
+export const ICE_SLIDE = 1.6;
+
+/** Rain powers up Water and damps Fire; harsh sun does the opposite. */
+export function weatherBoost(weather: Weather | undefined, type: PokeType): number {
+  if (weather === 'rain') return type === 'water' ? 1.3 : type === 'fire' ? 0.7 : 1;
+  if (weather === 'sun') return type === 'fire' ? 1.3 : type === 'water' ? 0.7 : 1;
+  return 1;
+}
+
+const SAND_PROOF: readonly PokeType[] = ['rock', 'ground', 'steel'];
+
+/** Fraction of max HP a second an enemy loses to sandstorm or hail, from the weather and from Sand Stream towers. */
+function chipFraction(g: Game, e: Enemy): number {
+  let f = 0;
+  const types = e.sp.types;
+  if (g.map.weather === 'sand' && !types.some((t) => SAND_PROOF.includes(t))) f += 0.01;
+  if (g.map.weather === 'hail' && !types.includes('ice')) f += 0.01;
+  if (!types.some((t) => SAND_PROOF.includes(t))) {
+    for (const t of g.towers) {
+      if (t.stats.effects.chip > 0 && Math.hypot(t.x + 0.5 - e.x, t.y + 0.5 - e.y) <= t.stats.range) f += t.stats.effects.chip;
+    }
+  }
+  return f;
+}
 
 function hasStatus(g: Game, e: Enemy): boolean {
   const s = e.status;
@@ -685,7 +718,7 @@ function damageEnemy(g: Game, e: Enemy, raw: number, type: PokeType, tower: Towe
     return 0;
   }
   const crit = fx.crit > 0 && g.rng() < fx.crit;
-  let dmg = raw * eff * (crit ? 2 : 1);
+  let dmg = raw * eff * (crit ? 2 : 1) * weatherBoost(g.map.weather, type);
   if (e.status.weakenUntil > g.t) dmg *= 1.25;
   if (fx.hex && hasStatus(g, e)) dmg *= 2;
   if (fx.antiAir && e.sp.traits.includes('flying')) dmg *= 1 + fx.antiAir;
@@ -751,6 +784,11 @@ function faint(g: Game, e: Enemy, tower: Tower | null): void {
   if (tower) {
     tower.kills += 1;
     tower.xp += bounty;
+    const every = Math.round(tower.stats.effects.lifeEvery);
+    if (every > 0 && tower.kills % every === 0 && g.lives < g.maxLives) {
+      g.lives += 1;
+      emit(g, { kind: 'life', x: tower.x + 0.5, y: tower.y });
+    }
   }
   emit(g, { kind: 'faint', id: e.id, x: e.x, y: e.y, dex: e.dex, bounty, boss: e.boss });
 
@@ -958,6 +996,7 @@ function useAbility(g: Game, e: Enemy, ab: Ability): void {
       e.status.vanishUntil = g.t + ab.duration;
       break;
     case 'heal':
+    case 'truant':
       break;
   }
   emit(g, { kind: 'ability', ability: ab.kind, x: e.x, y: e.y, radius: ab.kind === 'stun' ? ab.radius : 0 });
@@ -1009,6 +1048,7 @@ function updateEnemies(g: Game, dt: number): void {
       let dot = 0;
       if (s.burnUntil > g.t) dot += s.burnDps;
       if (s.poisonUntil > g.t) dot += s.poisonDps;
+      dot += chipFraction(g, e) * e.maxHp * (e.boss ? 0.25 : 1);
       if (dot > 0) {
         e.hp -= dot * dt;
         if (e.hp <= 0) {
@@ -1021,6 +1061,7 @@ function updateEnemies(g: Game, dt: number): void {
 
     for (const slot of e.abilities) {
       const ab = slot.ability;
+      if (ab.kind === 'truant') continue;
       if (ab.kind === 'heal') {
         if (!e.healed && e.hp < e.maxHp / 2) {
           e.healed = true;
@@ -1036,6 +1077,9 @@ function updateEnemies(g: Game, dt: number): void {
     if (e.sp.evolve && !e.boss && !e.lead && g.t - e.born >= e.sp.evolve.after) evolveEnemy(g, e, e.sp.evolve.dex);
 
     let speed = e.speed;
+    const truant = e.abilities.find((a) => a.ability.kind === 'truant')?.ability;
+    if (truant && 'every' in truant && Math.floor((g.t - e.born) / truant.every) % 2 === 1) speed = 0;
+    if (g.iceSet.size && !e.sp.traits.includes('flying') && g.iceSet.has(`${Math.floor(e.x)},${Math.floor(e.y)}`)) speed *= ICE_SLIDE;
     if (s.sleepUntil > g.t || s.flinchUntil > g.t) speed = 0;
     else {
       if (s.paraUntil > g.t) speed *= Math.sin(g.t * 9) > 0 ? 0.6 : 0.05;
@@ -1087,6 +1131,7 @@ function clearWaves(g: Game): void {
     }
     let bonus = waveBonus(g.map.tier, wave);
     for (const t of g.towers) {
+      t.wavesFought += 1;
       bonus += Math.round(t.stats.effects.income * (1 + 0.15 * (g.map.tier - 1)));
       if (t.stats.effects.wish) g.lives = Math.min(g.maxLives, g.lives + t.stats.effects.wish);
     }
@@ -1123,20 +1168,23 @@ export function step(g: Game, dt = STEP): void {
       continue;
     }
     fire(g, tower, target, xAttack * (1 + (a?.damage ?? 0)));
-    tower.cooldown += 1 / tower.stats.rate;
+    const boost = 1 + tower.stats.effects.accelerate * Math.min(10, tower.wavesFought);
+    tower.cooldown += 1 / (tower.stats.rate * boost);
   }
 
   updateProjectiles(g, dt);
   g.enemies = g.enemies.filter((e) => e.alive);
   g.drops = g.drops.filter((d) => d.until > g.t);
 
-  clearWaves(g);
-
+  // Checked before clearing waves: a boss that leaks as the last of its wave
+  // would otherwise count as a cleared wave.
   if (g.checkpoint && g.openWaves.has(g.checkpoint.wave) && (g.bossLeaked || g.lives <= 0)) {
     g.status = 'retry';
     emit(g, { kind: 'bossFailed', wave: g.checkpoint.wave });
     return;
   }
+
+  clearWaves(g);
   if (g.lives <= 0) {
     g.status = 'lost';
     emit(g, { kind: 'lost' });

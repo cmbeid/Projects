@@ -19,7 +19,7 @@ describe('assets', () => {
 
   it('has every item icon, badge and music track', () => {
     for (const icon of ITEM_ICONS) expect(existsSync(`public/items/${icon}.png`), icon).toBe(true);
-    for (let b = 1; b <= 8; b += 1) expect(existsSync(`public/badges/${b}.png`)).toBe(true);
+    for (let b = 1; b <= 24; b += 1) expect(existsSync(`public/badges/${b}.png`)).toBe(true);
     for (const t of TRACKS) expect(existsSync(`public/music/${t}.json`), t).toBe(true);
   });
 });

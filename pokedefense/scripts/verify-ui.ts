@@ -114,8 +114,59 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await browser.close();
 }
 
+/**
+ * Johto and Hoenn, from a save that has cleared everything up to Mt. Chimney:
+ * the professor's welcome, the region tabs, and a battle in each new region,
+ * Hoenn's with its weather showing.
+ */
+async function regions(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
+  console.log(`${name} regions (${viewport.width}×${viewport.height})`);
+  const browser = await chromium.launch(EXECUTABLE ? { executablePath: EXECUTABLE } : {});
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  const cleared = [
+    'viridian-forest', 'mt-moon', 'ss-anne', 'celadon', 'pokemon-tower', 'silph-co', 'cinnabar', 'viridian-gym', 'indigo-plateau',
+    'sprout-tower', 'ilex-forest', 'goldenrod', 'burned-tower', 'cianwood', 'olivine-lighthouse', 'lake-of-rage', 'dragons-den', 'johto-league',
+    'petalburg-woods', 'granite-cave', 'new-mauville',
+  ];
+  await page.addInitScript((ids: string[]) => {
+    const results = Object.fromEntries(ids.map((id) => [id, { normal: 3, hard: 0, best: 0 }]));
+    localStorage.setItem('pokedefense.save.v1', JSON.stringify({ results, greeted: ['kanto', 'johto'], tutorialDone: true, bp: 500 }));
+  }, cleared);
+  await page.goto(URL);
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.waitForSelector('.modal');
+  await page.waitForTimeout(700);
+  check((await page.locator('.modal h2').textContent()) === 'Welcome to Hoenn!', 'Professor Birch welcomes you to Hoenn');
+  await page.screenshot({ path: `${OUT}/${name}-7-welcome.png` });
+  await page.getByRole('button', { name: /Thanks, Professor/ }).click();
+  check(await page.locator('.tabs.regions button').count() === 3, 'three region tabs');
+  await page.screenshot({ path: `${OUT}/${name}-8-hoenn.png` });
+
+  for (const [tab, mapName, shot] of [['Johto', 'Sprout Tower', '9-johto-battle'], ['Hoenn', 'Mt. Chimney', '10-hoenn-battle']] as const) {
+    await page.locator('.tabs.regions button', { hasText: tab }).click();
+    await page.locator('.map-card', { hasText: mapName }).click();
+    await page.getByRole('button', { name: /Battle!/ }).click();
+    await page.waitForSelector('canvas.map');
+    await page.locator('.wave-btn').click();
+    await page.waitForTimeout(4000);
+    await page.screenshot({ path: `${OUT}/${name}-${shot}.png` });
+    const map = await page.evaluate(() => (window as unknown as { __battle: { map: { id: string } } }).__battle.map.id);
+    check(map === (tab === 'Johto' ? 'sprout-tower' : 'mt-chimney'), `${tab}: ${mapName} battle running`);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.getByRole('button', { name: 'Give up' }).click();
+    await page.waitForSelector('.map-card');
+  }
+  check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
+  await browser.close();
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT, { recursive: true });
+  await regions('phone', { width: 390, height: 844 }, true);
+  await regions('desktop', { width: 1440, height: 900 }, false);
   await run('phone', { width: 390, height: 844 }, true);
   await run('tablet', { width: 820, height: 1180 }, true);
   await run('desktop', { width: 1440, height: 900 }, false);
