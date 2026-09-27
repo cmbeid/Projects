@@ -39,10 +39,10 @@ npm run build && npm run preview   # the built game, at http://localhost:4173/
 - **Power-ups:** Rare Candy, X Attack, X Speed, Max Repel, Poké Flute, Full
   Restore, TM Thunderbolt, TM Earthquake, Silph Scope, Amulet Coin. Fainted
   Pokémon sometimes drop items; tap them before they fade.
-- **Gym Leaders:** a map ends with its leader's ace (the Indigo Plateau also has the Elite Four). If that Pokémon gets through, or your lives run out during its wave, the wave starts over with your towers, ₽, lives and items as they were when it began. You can rearrange first, and retry as often as it takes. Catches made during a failed attempt are kept.
-- **Waves:** call the next wave early for bonus ₽. 1×/2×/3× speed. Auto-waves in the pause menu.
+- **Gym Leaders:** bosses have far more HP than anything else, so they walk at half speed. A map ends with its leader's ace (the Indigo Plateau also has the Elite Four). If that Pokémon gets through, or your lives run out during its wave, the wave starts over with your towers, ₽, lives and items as they were when it began. You can rearrange first, and retry as often as it takes. Catches made during a failed attempt are kept.
+- **Waves:** call the next wave early for bonus ₽. Speeds: pause, 1×, 2×, 3× and 5×; you can still place and upgrade towers while paused. Auto-waves are in the ☰ menu.
 - **Keyboard:** 1–8 pick a tower, Space next wave, F speed, U level up, S sell,
-  B ball, Esc cancel / pause.
+  B ball, P pause, Esc cancel / menu.
 
 Winning earns stars (by lives kept), a badge, and **BP** to spend in the
 **Poké Mart**: power-ups, Poké/Great/Ultra/Master Balls, **held items** given

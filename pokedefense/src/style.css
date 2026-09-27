@@ -210,6 +210,17 @@ img.pix, canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; 
 .hud .wave { color: #cfe0ff; }
 .hud .btn { min-height: 38px; }
 .hud .speed { min-width: 46px; font-weight: 900; }
+.hud .speed.paused { background: var(--yellow); color: #2a2000; }
+.hud .speeds { display: none; }
+.speeds button { min-width: 42px; padding: 6px 8px; }
+.speeds button.on { background: var(--yellow); color: #2a2000; }
+.paused-tag {
+  display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3; pointer-events: none;
+  background: rgba(10,14,28,0.9); border: 1px solid var(--yellow); color: var(--yellow); border-radius: 999px;
+  padding: 5px 14px; font-size: 13px; font-weight: 800; white-space: nowrap;
+}
+.stage.frozen .paused-tag { display: block; }
+.stage.frozen canvas.map { filter: saturate(0.7) brightness(0.9); }
 
 .stage { grid-area: stage; position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; overflow: hidden; }
 .stage canvas.map { display: block; touch-action: none; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 0 0 2px rgba(255,255,255,0.05); }
@@ -391,6 +402,9 @@ img.pix, canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; 
   padding: calc(12px + var(--safe-top)) 14px 12px;
 }
 .battle.side .hud .chip, .battle.split .hud .chip { font-size: 17px; }
+.battle.side .hud .speed, .battle.split .hud .speed { display: none; }
+.battle.side .hud .speeds, .battle.split .hud .speeds { display: inline-flex; order: 10; flex: 1 1 100%; }
+.battle.side .hud .speeds button, .battle.split .hud .speeds button { flex: 1; }
 .battle.side .wave-bar, .battle.split .wave-bar {
   grid-area: wave; align-self: auto; margin: 0; padding: 12px 14px; flex-direction: column; align-items: stretch;
   border-bottom: 1px solid var(--line);

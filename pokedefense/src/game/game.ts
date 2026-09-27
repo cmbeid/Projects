@@ -28,6 +28,12 @@ export const STEP = 1 / 60;
 export const BASE_LIVES = 20;
 /** Chance that any one wild Pokémon is shiny. */
 export const SHINY_CHANCE = 1 / 128;
+/**
+ * Bosses and mid-map leads lumber: their HP is many times anyone else's, and
+ * at full speed they'd cross the map before most towers get a proper go at them.
+ */
+export const BOSS_SPEED = 0.5;
+export const LEAD_SPEED = 0.75;
 
 export type TargetMode = 'first' | 'last' | 'strong' | 'close';
 export const TARGET_MODES: readonly TargetMode[] = ['first', 'last', 'strong', 'close'];
@@ -494,7 +500,7 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     facing: pos.dx < 0 ? -1 : 1,
     hp: maxHp,
     maxHp,
-    speed: boss?.speed ?? sp.speed,
+    speed: (boss?.speed ?? sp.speed) * (boss ? BOSS_SPEED : spawn.lead ? LEAD_SPEED : 1),
     armor: boss?.armor ?? sp.armor,
     bounty: Math.round(sp.bounty * (spawn.hp / sp.hp) ** 0.7 * bountyScale(tier, wave) * (boss ? 3 : 1)),
     boss: Boolean(boss),

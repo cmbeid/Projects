@@ -36,6 +36,10 @@ type Mode =
   | { kind: 'ball'; ball: BallKey }
   | { kind: 'power'; key: PowerupKey };
 
+/** Game speeds, in the order the speed button steps through them. 0 is paused. */
+const SPEEDS: readonly number[] = [0, 1, 2, 3, 5];
+const speedLabel = (v: number): string => (v === 0 ? '❚❚' : `${v}×`);
+
 const TARGET_LABEL: Record<TargetMode, string> = { first: 'First', last: 'Last', strong: 'Strong', close: 'Close' };
 
 const PLACE_ERROR: Record<string, string> = {
@@ -96,17 +100,28 @@ export function startBattle(opts: BattleOptions): void {
   const livesEl = h('span.chip.lives');
   const moneyEl = h('span.chip.money');
   const waveEl = h('span.chip.wave');
-  const speedBtn = button('btn.small.speed', '1×', () => cycleSpeed(), { title: 'Game speed (F)' });
-  const pauseBtn = button('btn.small.icon', '❚❚', () => pause(), { title: 'Pause (P)', 'aria-label': 'Pause' });
+  // Phones get one button that cycles the speeds; wide layouts show them all (style.css picks).
+  const speedBtn = button('btn.small.speed', '1×', () => cycleSpeed(), { title: 'Game speed (F); pause (P)' });
+  const speedSeg = h('div.segmented.speeds', { role: 'group', 'aria-label': 'Game speed' }, ...SPEEDS.map((v) => h('button', {
+    'data-speed': String(v),
+    title: v === 0 ? 'Pause (P)' : `${v}× speed`,
+    onclick: () => {
+      unlock();
+      sfx.click();
+      setSpeed(v);
+    },
+  }, speedLabel(v))));
+  const menuBtn = button('btn.small.icon', '☰', () => pause(), { title: 'Menu (Esc)', 'aria-label': 'Menu' });
   const fs = fullscreenButton('btn small icon');
-  const hud = h('header.hud', {}, livesEl, moneyEl, waveEl, h('span.grow'), speedBtn, fs, pauseBtn);
+  const hud = h('header.hud', {}, livesEl, moneyEl, waveEl, h('span.grow'), speedBtn, speedSeg, fs, menuBtn);
+  const pausedTag = h('div.paused-tag', {}, '❚❚ Paused — you can still build');
 
   const waveBtn = button('btn.primary.wave-btn', 'Start', () => callWave());
   const preview = h('div.preview');
   const waveBar = h('div.wave-bar', {}, waveBtn, preview);
   const bossBar = h('div.boss-bar', { style: 'display:none' });
   const coach = h('div.coach', { style: 'display:none' });
-  const stage = h('main.stage', {}, canvas, bossBar, coach);
+  const stage = h('main.stage', {}, canvas, bossBar, coach, pausedTag);
   const rail = h('aside.rail');
   const dock = h('footer.dock');
   const root = h('div.battle', {}, hud, stage, waveBar, rail, dock);
@@ -116,6 +131,8 @@ export function startBattle(opts: BattleOptions): void {
   let ghost: { x: number; y: number } | null = null;
   let pointer: { x: number; y: number } | null = null;
   let speed = 1;
+  /** The speed to go back to when unpausing. */
+  let lastSpeed = 1;
   let paused = false;
   let finished = false;
   let raf = 0;
@@ -288,7 +305,7 @@ export function startBattle(opts: BattleOptions): void {
         setMode({ kind: 'idle' });
       } else pause();
     } else if (k === 'f') cycleSpeed();
-    else if (k === 'p') pause();
+    else if (k === 'p') setSpeed(speed === 0 ? lastSpeed : 0);
     else if (k === 'u' && selected !== null) doLevel();
     else if (k === 's' && selected !== null) doSell();
     else if (k === 'b') chooseBall();
@@ -303,13 +320,23 @@ export function startBattle(opts: BattleOptions): void {
   function callWave(): void {
     if (!hasNextWave(g)) return;
     unlock();
+    // Calling a wave while paused means "go".
+    if (speed === 0) setSpeed(lastSpeed);
     startWave(g);
     renderDock();
   }
 
+  function setSpeed(v: number): void {
+    speed = v;
+    if (v > 0) lastSpeed = v;
+    speedBtn.textContent = speedLabel(v);
+    speedBtn.classList.toggle('paused', v === 0);
+    for (const b of speedSeg.querySelectorAll('button')) b.classList.toggle('on', Number(b.dataset['speed']) === v);
+    stage.classList.toggle('frozen', v === 0);
+  }
+
   function cycleSpeed(): void {
-    speed = speed === 1 ? 2 : speed === 2 ? 3 : 1;
-    speedBtn.textContent = `${speed}×`;
+    setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!);
   }
 
   function pickShop(lineId: string): void {
@@ -853,12 +880,12 @@ export function startBattle(opts: BattleOptions): void {
     if (running) {
       acc += dt * speed;
       let n = 0;
-      while (acc >= STEP && n < 12) {
+      while (acc >= STEP && n < 20) {
         step(g);
         acc -= STEP;
         n += 1;
       }
-      if (n === 12) acc = 0;
+      if (n === 20) acc = 0;
     }
     if (g.events.length) {
       const events = g.events.splice(0);
@@ -923,6 +950,7 @@ export function startBattle(opts: BattleOptions): void {
     document.removeEventListener('visibilitychange', onVisibility);
   });
   resize();
+  setSpeed(1);
   renderHud();
   renderRail();
   renderDock(true);

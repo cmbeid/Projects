@@ -236,3 +236,16 @@ describe('battle', () => {
     expect(g.status).toBe('won');
   });
 });
+
+describe('bosses', () => {
+  it('walk at half their listed speed, leads at three quarters', async () => {
+    const { BOSS_SPEED, LEAD_SPEED } = await import('../src/game/game');
+    const g = game();
+    g.wave = g.totalWaves - 1;
+    startWave(g);
+    for (let i = 0; i < 60 * 60 && !g.enemies.some((e) => e.boss); i += 1) step(g);
+    const boss = g.enemies.find((e) => e.boss)!;
+    expect(boss.speed).toBeCloseTo(mapDef('viridian-forest').boss.speed! * BOSS_SPEED);
+    expect(LEAD_SPEED).toBeLessThan(1);
+  });
+});
