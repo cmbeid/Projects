@@ -433,7 +433,7 @@ export function settingsScreen(back: () => void): void {
           'Tap a tower to level it up; at set levels it evolves, and at the top level it learns one of two signature moves. ',
           'Type matchups matter: Water beats Fire, Electric can’t touch Ground, Ground can’t reach flyers. Psychic and Ghost towers can see invisible Pokémon. ',
           'Weaken a wild Pokémon, then throw a Poké Ball to catch it — some towers can only be had this way. ',
-          'Keyboard: 1–8 pick a tower, Space starts a wave, F changes speed, U levels up, S sells, B throws a ball, Esc cancels.')),
+          'Keyboard: 1–8 pick a tower, Space starts a wave, F changes speed, P pauses, U levels up, S sells, B throws a ball, Esc cancels or opens the menu.')),
       h('div.card', {},
         h('div', { style: 'font-weight:700;margin-bottom:6px' }, 'Credits'),
         h('div.credits', {},

@@ -273,7 +273,7 @@ export const MAPS: readonly MapDef[] = [
       { dex: 137, weight: 1, from: 4, rare: true }, { dex: 131, weight: 1, from: 10, rare: true },
     ],
     miniBoss: [{ wave: 11, dex: 122, hp: 26 }],
-    boss: { dex: 65, hp: 70, speed: 0.8, abilities: [{ kind: 'teleport', every: 4.5, tiles: 3 }, { kind: 'shield', every: 9, duration: 2 }], escort: [64, 122] },
+    boss: { dex: 65, hp: 70, speed: 0.8, abilities: [{ kind: 'teleport', every: 7, tiles: 2 }, { kind: 'shield', every: 9, duration: 2 }], escort: [64, 122] },
   },
   {
     id: 'cinnabar', name: 'Cinnabar Volcano', region: 'Cinnabar Island', leader: 'Blaine', tier: 7,
@@ -414,7 +414,7 @@ export const MAPS: readonly MapDef[] = [
       { dex: 151, weight: 0.3, from: 10, rare: true },
     ],
     miniBoss: [],
-    boss: { dex: 150, hp: 155, armor: 0.3, speed: 0.8, abilities: [{ kind: 'teleport', every: 5, tiles: 2.5 }, { kind: 'shield', every: 8, duration: 2 }, { kind: 'stun', every: 7, radius: 2.5, duration: 2 }, { kind: 'heal', fraction: 0.3 }], escort: [65, 112] },
+    boss: { dex: 150, hp: 155, armor: 0.3, speed: 0.8, abilities: [{ kind: 'teleport', every: 7, tiles: 2 }, { kind: 'shield', every: 8, duration: 2 }, { kind: 'stun', every: 7, radius: 2.5, duration: 2 }, { kind: 'heal', fraction: 0.3 }], escort: [65, 112] },
   },
 ];
 
