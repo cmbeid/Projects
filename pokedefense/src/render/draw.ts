@@ -6,7 +6,7 @@
  * are spawned from the game's events by `ingest` and live here, in screen
  * time, so they keep animating while the game is paused.
  */
-import { COLS, ROWS } from '../data/maps';
+import { COLS, ROWS, type Weather } from '../data/maps';
 import { POWERUPS } from '../data/items';
 import { type PokeType, TYPE_COLOURS } from '../data/types';
 import type { Enemy, Game, GameEvent, Tower } from '../game/game';
@@ -88,6 +88,9 @@ export function ingest(g: Game, events: readonly GameEvent[], now: number, lastE
         fxs.push({ kind: 'text', x: e.x, y: e.y - 1, text: `+₽${e.bounty}`, size: e.boss ? 0.42 : 0.28, t0: now, dur: 0.9, colour: '#f8d848' });
         break;
       }
+      case 'life':
+        fxs.push({ kind: 'text', x: e.x, y: e.y - 0.4, text: '+♥', size: 0.34, t0: now, dur: 1, colour: '#ff8a8a' });
+        break;
       case 'money':
         fxs.push({ kind: 'text', x: e.x, y: e.y - 0.6, text: `+₽${e.amount}`, size: 0.24, t0: now, dur: 0.7, colour: '#f8d848' });
         break;
@@ -537,6 +540,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, g: Game, view: View, o
   }
   for (const fx of fxs) drawFx(ctx, fx, T, now);
 
+  if (g.map.weather) drawWeather(ctx, g.map.weather, W, H, T, now);
+
   if (g.buffs.repel > g.t || g.buffs.scope > g.t) {
     ctx.fillStyle = g.buffs.scope > g.t ? 'rgba(160,120,255,0.08)' : 'rgba(120,200,255,0.08)';
     ctx.fillRect(0, 0, W, H);
@@ -570,6 +575,57 @@ export function drawBattle(ctx: CanvasRenderingContext2D, g: Game, view: View, o
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/** Hoenn weather over the whole map. Deterministic per time, so no state to keep. */
+function drawWeather(ctx: CanvasRenderingContext2D, weather: Weather, W: number, H: number, T: number, now: number): void {
+  ctx.save();
+  const hash = (i: number, k: number): number => {
+    const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  if (weather === 'rain') {
+    ctx.fillStyle = 'rgba(40,70,120,0.12)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(190,215,255,0.55)';
+    ctx.lineWidth = Math.max(1, T / 24);
+    ctx.beginPath();
+    for (let i = 0; i < 70; i += 1) {
+      const speed = 1.6 + hash(i, 1);
+      const x = (hash(i, 2) * W + now * T * 1.5) % W;
+      const y = ((hash(i, 3) + now * speed) % 1) * (H + T) - T / 2;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - T * 0.12, y + T * 0.45);
+    }
+    ctx.stroke();
+  } else if (weather === 'sun') {
+    const glow = ctx.createRadialGradient(W * 0.85, 0, 0, W * 0.85, 0, H * 0.9);
+    glow.addColorStop(0, 'rgba(255,230,140,0.35)');
+    glow.addColorStop(1, 'rgba(255,160,60,0.05)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+  } else if (weather === 'sand') {
+    ctx.fillStyle = 'rgba(200,170,100,0.16)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(235,205,140,0.7)';
+    const s = Math.max(2, T / 12);
+    for (let i = 0; i < 90; i += 1) {
+      const x = ((hash(i, 4) + now * (0.25 + hash(i, 5) * 0.3)) % 1) * W;
+      const y = (hash(i, 6) * H + Math.sin(now * 2 + i) * T * 0.3 + H) % H;
+      ctx.fillRect(Math.round(x), Math.round(y), s * 2, s);
+    }
+  } else if (weather === 'hail') {
+    ctx.fillStyle = 'rgba(200,230,255,0.12)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const s = Math.max(2, T / 10);
+    for (let i = 0; i < 60; i += 1) {
+      const x = (hash(i, 7) * W + Math.sin(now + i) * T * 0.2 + W) % W;
+      const y = ((hash(i, 8) + now * (0.5 + hash(i, 9) * 0.4)) % 1) * H;
+      ctx.fillRect(Math.round(x), Math.round(y), s, s);
+    }
+  }
+  ctx.restore();
 }
 
 /** Snapshot of enemies by id, so fainting ones can still be drawn after the game drops them. */

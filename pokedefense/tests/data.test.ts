@@ -4,6 +4,7 @@ import { BUILDABLE, COLS, MAPS, pathTiles, ROWS, terrainAt, waypointXY } from '.
 import { SPECIES, species } from '../src/data/species';
 import { LINES, levelCost, lineDexes, lineForDex, MAX_LEVEL } from '../src/data/towers';
 import { effectiveness } from '../src/data/types';
+import { REGIONS } from '../src/data/regions';
 
 describe('type chart', () => {
   it('knows the classics', () => {
@@ -60,15 +61,16 @@ describe('maps', () => {
     });
   }
 
-  it('awards the eight badges once each', () => {
-    const badges = MAPS.map((m) => m.badge).filter(Boolean);
-    expect(badges.sort()).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  it('awards the 24 badges once each, in their own regions', () => {
+    const badges = MAPS.map((m) => m.badge).filter((b): b is number => Boolean(b));
+    expect(badges.sort((a, b) => a - b)).toEqual(Array.from({ length: 24 }, (_, i) => i + 1));
+    for (const m of MAPS) if (m.badge) expect(REGIONS[m.regionId].badges).toContain(m.badge);
   });
 });
 
 describe('tower lines', () => {
-  it('has 24 lines, every Pokémon in them known', () => {
-    expect(LINES).toHaveLength(24);
+  it('has 55 lines, every Pokémon in them known', () => {
+    expect(LINES).toHaveLength(55);
     for (const l of LINES) for (const dex of lineDexes(l)) expect(SPECIES.has(dex)).toBe(true);
   });
 

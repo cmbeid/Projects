@@ -68,7 +68,7 @@ export function titleScreen(): void {
   }, { once: true });
 
   // A parade of Pokémon marching across the bottom of the title.
-  const walkers = [4, 7, 1, 25, 133, 143, 94, 149, 6, 9, 3, 151, 150];
+  const walkers = [4, 7, 1, 25, 155, 158, 152, 252, 255, 258, 133, 143, 94, 249, 149, 6, 157, 260, 384, 151, 150];
   void loadSheets(walkers);
   const ctx = parade.getContext('2d')!;
   let raf = 0;
@@ -183,11 +183,13 @@ function welcome(id: RegionId): void {
   dexes.forEach((dex, i) => setTimeout(() => cry(dex, { volume: 0.5 }), 500 + i * 900));
   const close = modal(h('div', {},
     h('h2', {}, `Welcome to ${region.name}!`),
-    h('p.muted', { style: 'margin:0;text-align:center' }, `${region.professor} has three Pokémon for you. All of them join your team:`),
+    h('p.muted', { style: 'margin:0;text-align:center' }, `${region.professor} has three Pokémon for you. All of them join your roster — and your team, if there’s room:`),
     h('div.caught-row', {}, ...lines.map((l) => h('div.mon', {}, thumb(l.stages[0]!.dex, 72, { animate: true }), l.name))),
     button('btn.primary', 'Thanks, Professor!', () => {
       const cur = getProgress();
-      setProgress({ ...cur, greeted: [...cur.greeted, id] });
+      // Put the new starters straight onto the team, as far as there is room.
+      const team = [...new Set([...cur.team, ...region.starters])].slice(0, TEAM_SIZE);
+      setProgress({ ...cur, greeted: [...cur.greeted, id], team });
       close();
     }),
   ), { dismissable: false });

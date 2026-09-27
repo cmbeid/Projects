@@ -96,7 +96,7 @@ export const KANTO: readonly MapDef[] = [
       { dex: 52, weight: 2, from: 3, rare: true }, { dex: 129, weight: 2, from: 2, rare: true },
     ],
     miniBoss: [{ wave: 10, dex: 26, hp: 14 }],
-    boss: { dex: 26, hp: 45, speed: 1.1, abilities: [{ kind: 'stun', every: 7, radius: 2, duration: 2.5 }], escort: [100, 100, 81, 81] },
+    boss: { dex: 26, hp: 40, speed: 1.1, abilities: [{ kind: 'stun', every: 7, radius: 2, duration: 2.5 }], escort: [100, 100, 81, 81] },
   },
   {
     id: 'celadon', name: 'Celadon Gardens', regionId: 'kanto', area: 'Celadon City', leader: 'Erika', tier: 4,
@@ -162,7 +162,7 @@ export const KANTO: readonly MapDef[] = [
   },
   {
     id: 'silph-co', name: 'Silph Co.', regionId: 'kanto', area: 'Saffron City', leader: 'Sabrina', tier: 6,
-    theme: 'office', track: 'rockethideout', bossTrack: 'kantogymbattle', waves: 22, startMoney: 520, badge: 6,
+    theme: 'office', track: 'rockethideout', bossTrack: 'kantogymbattle', waves: 22, hpMul: 0.88, startMoney: 520, badge: 6,
     twist: 'Teleport pads fling enemies across the floor.',
     grid: [
       'XXXXXXXXX',
@@ -194,7 +194,7 @@ export const KANTO: readonly MapDef[] = [
   },
   {
     id: 'cinnabar', name: 'Cinnabar Volcano', regionId: 'kanto', area: 'Cinnabar Island', leader: 'Blaine', tier: 7,
-    theme: 'volcano', track: 'route3', bossTrack: 'kantogymbattle', waves: 24, startMoney: 500, badge: 7,
+    theme: 'volcano', track: 'route3', bossTrack: 'kantogymbattle', waves: 24, hpMul: 0.9, startMoney: 500, badge: 7,
     twist: 'Two trails between lava flows, and very fast fire horses.',
     grid: [
       'LL.LLL.LL',

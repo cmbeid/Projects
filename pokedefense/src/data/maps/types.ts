@@ -61,7 +61,11 @@ export interface MapDef {
   /** Where it is, shown under the name ("Route 2", "Goldenrod City"). */
   area: string;
   leader: string;
-  /** 1-based; scales HP and ₽. Keeps climbing from one region to the next. */
+  /**
+   * 1-based; scales HP and ₽. Each region starts a little higher than the
+   * last (Johto from 3, Hoenn from 5) rather than carrying on from 9: your
+   * roster grows wider from region to region, not stronger.
+   */
   tier: number;
   theme: Theme;
   track: TrackId;
@@ -74,12 +78,14 @@ export interface MapDef {
   startMoney: number;
   pool: readonly PoolEntry[];
   /** Waves (1-based) whose last group is a tougher lead Pokémon. */
-  miniBoss: { wave: number; dex: number; hp: number }[];
+  miniBoss: { wave: number; dex: number; hp: number; shiny?: boolean }[];
   boss: BossDef;
   /** More bosses before the last wave (the Elite Four). */
   extraBosses?: { wave: number; trainer: string; boss: BossDef }[];
   twist: string;
   weather?: Weather;
+  /** Scales every wild Pokémon's HP here, for balancing a map against its neighbours. */
+  hpMul?: number;
   endless?: boolean;
   /** Badge awarded (1–24) for clearing it. */
   badge?: number;

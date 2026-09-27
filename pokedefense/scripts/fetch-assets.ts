@@ -7,7 +7,7 @@
  *   step through a GIF's frames, so the game draws from the sheet instead.
  * - `cries/` — each cry, decoded by what it really is (PokeAPI's `.ogg` files
  *   are sometimes MP3s) and rewritten as a small mono WAV that plays on iOS.
- * - `items/` and `badges/` — item icons and the eight Kanto badges, as they are.
+ * - `items/` and `badges/` — item icons and the 24 Kanto, Johto and Hoenn badges, as they are.
  *
  * The result is committed. Files already present are skipped; pass `--force`
  * to fetch everything again.
@@ -316,8 +316,8 @@ async function main(): Promise<void> {
   for (const dex of dexes) await fetchCry(dex);
   for (const icon of ITEM_ICONS) await fetchFile(`${RAW}/items/${icon}.png`, `public/items/${icon}.png`);
   console.log(`  items  ${ITEM_ICONS.length}`);
-  for (let badge = 1; badge <= 8; badge += 1) await fetchFile(`${RAW}/badges/${badge}.png`, `public/badges/${badge}.png`);
-  console.log('  badges 1–8');
+  for (let badge = 1; badge <= 24; badge += 1) await fetchFile(`${RAW}/badges/${badge}.png`, `public/badges/${badge}.png`);
+  console.log('  badges 1–24');
 }
 
 main().catch((error: unknown) => {

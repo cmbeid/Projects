@@ -222,6 +222,18 @@ describe('battle', () => {
     expect(g.status).toBe('won');
   });
 
+  it('makes you retry even when the boss is the last of its wave to get through', () => {
+    const g = game();
+    g.wave = g.totalWaves - 1;
+    g.cleared = g.totalWaves - 1;
+    g.lives = g.maxLives = 200;
+    startWave(g);
+    // Nothing to stop them: the escorts leak first, then Onix, emptying the wave.
+    for (let i = 0; i < 60 * 400 && g.status === 'playing'; i += 1) step(g);
+    expect(g.status).toBe('retry');
+    expect(g.lives).toBeGreaterThan(0);
+  });
+
   it('still ends the battle when lives run out on an ordinary wave', () => {
     const g = game();
     g.lives = 1;
