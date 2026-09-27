@@ -1,7 +1,8 @@
 # PokéDefense
 
 A Pokémon tower defense game for the phone, portrait-first, that also lays out
-properly on tablets and desktops. Place Pokémon beside the path, level them up
+properly on tablets and desktops: when there's room beside the map, the map
+takes the full height and the controls move into columns beside it. Place Pokémon beside the path, level them up
 until they evolve, teach them signature moves, and catch the wild Pokémon
 marching past, through nine places in Kanto to the Indigo Plateau, then on
 into the endless Cerulean Cave.

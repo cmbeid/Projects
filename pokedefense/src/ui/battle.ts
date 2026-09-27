@@ -106,10 +106,10 @@ export function startBattle(opts: BattleOptions): void {
   const waveBar = h('div.wave-bar', {}, waveBtn, preview);
   const bossBar = h('div.boss-bar', { style: 'display:none' });
   const coach = h('div.coach', { style: 'display:none' });
-  const stage = h('main.stage', {}, canvas, bossBar, coach, waveBar);
+  const stage = h('main.stage', {}, canvas, bossBar, coach);
   const rail = h('aside.rail');
   const dock = h('footer.dock');
-  const root = h('div.battle', {}, hud, stage, rail, dock);
+  const root = h('div.battle', {}, hud, stage, waveBar, rail, dock);
 
   let mode: Mode = { kind: 'idle' };
   let selected: number | null = null;
@@ -136,6 +136,29 @@ export function startBattle(opts: BattleOptions): void {
   };
   const observer = new ResizeObserver(resize);
   observer.observe(stage);
+
+  /**
+   * Phones stack everything under the map. When the map at full height would
+   * leave room beside it, the controls move into that room instead: one side
+   * column, or with plenty of room, a column either side.
+   */
+  const arrange = (): void => {
+    const r = root.getBoundingClientRect();
+    const mapWidth = ((r.height - 20) * COLS) / ROWS;
+    const spare = r.width - mapWidth - 20;
+    const mode = spare >= 560 ? 'split' : spare >= 300 ? 'side' : 'stack';
+    root.classList.toggle('side', mode === 'side');
+    root.classList.toggle('split', mode === 'split');
+    if (mode === 'split') {
+      const left = Math.round(Math.min(380, Math.max(230, spare * 0.42)));
+      root.style.setProperty('--left', `${left}px`);
+      root.style.setProperty('--side', `${Math.round(Math.min(520, spare - left))}px`);
+    } else if (mode === 'side') {
+      root.style.setProperty('--side', `${Math.round(Math.min(480, spare))}px`);
+    }
+  };
+  const rootObserver = new ResizeObserver(arrange);
+  rootObserver.observe(root);
 
   // --- input -------------------------------------------------------------------------
   const toTile = (ev: PointerEvent): { x: number; y: number } => {
@@ -895,6 +918,7 @@ export function startBattle(opts: BattleOptions): void {
   mount(root, () => {
     cancelAnimationFrame(raf);
     observer.disconnect();
+    rootObserver.disconnect();
     window.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVisibility);
   });
