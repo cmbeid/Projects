@@ -25,7 +25,7 @@ import { startBattle } from './battle';
 import { h } from './dom';
 import { fullscreenButton } from './fullscreen';
 
-export const WEATHER_ICON = { rain: '🌧️', sun: '☀️', sand: '🏜️', hail: '🌨️' } as const;
+export const WEATHER_ICON = { rain: '🌧️', sun: '☀️', sand: '🏜️', hail: '🌨️', fog: '🌫️' } as const;
 
 function topbar(title: string, back?: () => void, ...extra: (Node | null)[]): HTMLElement {
   return h('header.topbar', {},
@@ -68,7 +68,7 @@ export function titleScreen(): void {
   }, { once: true });
 
   // A parade of Pokémon marching across the bottom of the title.
-  const walkers = [4, 7, 1, 25, 155, 158, 152, 252, 255, 258, 133, 143, 94, 249, 149, 6, 157, 260, 384, 151, 150];
+  const walkers = [4, 7, 1, 25, 155, 158, 152, 252, 255, 258, 390, 393, 387, 495, 498, 501, 653, 656, 650, 133, 143, 94, 249, 149, 6, 157, 260, 448, 658, 384, 487, 644, 151, 150];
   void loadSheets(walkers);
   const ctx = parade.getContext('2d')!;
   let raf = 0;
@@ -169,6 +169,8 @@ export function worldScreen(): void {
     ),
   );
   mount(el);
+  // Six regions don't fit a phone's width: keep the one shown in view.
+  tabs.querySelector<HTMLElement>('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   playMusic(region.worldTrack);
   if (!p.greeted.includes(regionId)) welcome(regionId);
 }
@@ -333,7 +335,7 @@ export function martScreen(back: () => void, tab: MartTab = 'items'): void {
       return ware(k, d.name, desc, `In bag: ${p.balls[k]}`, d.price, () => buy(d.price, (q) => ({ ...q, balls: { ...q.balls, [k]: q.balls[k] + 1 } }), d.name));
     });
   } else if (tab === 'held') {
-    shelf = HELD_ITEMS.map((item) => {
+    shelf = HELD_ITEMS.filter((item) => !item.region || regionUnlocked(p, item.region)).map((item) => {
       const owned = p.heldOwned.includes(item.key);
       const equipped = Object.entries(p.held).filter(([, v]) => v === item.key).map(([lineId]) => LINES.find((l) => l.id === lineId)?.name).filter(Boolean);
       const equip = owned ? button('btn.small', equipped.length ? `On ${equipped.join(', ')}` : 'Give to…', () => equipModal(item.key, () => martScreen(back, tab)), { style: 'margin-top:6px' }) : null;
@@ -381,7 +383,8 @@ function equipModal(itemKey: string, done: () => void): void {
 
 export function dexScreen(back: () => void): void {
   const p = getProgress();
-  const all = [...SPECIES.values()].sort((a, b) => a.dex - b.dex);
+  // Mega Evolutions are forms, not entries of their own.
+  const all = [...SPECIES.values()].filter((sp) => sp.dex < 10000).sort((a, b) => a.dex - b.dex);
   void loadSheets(all.filter((s) => p.seen.includes(s.dex) || p.caught.includes(s.dex)).map((s) => s.dex));
   const cells = all.map((sp) => {
     const seen = p.seen.includes(sp.dex) || p.caught.includes(sp.dex);

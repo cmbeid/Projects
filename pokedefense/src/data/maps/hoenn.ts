@@ -229,7 +229,7 @@ export const HOENN: readonly MapDef[] = [
     miniBoss: [{ wave: 12, dex: 344, hp: 28 }],
     boss: {
       dex: 338, hp: 30, armor: 0.3, abilities: [{ kind: 'teleport', every: 7, tiles: 2 }, { kind: 'shield', every: 9, duration: 2 }], escort: [344, 178],
-      partner: { dex: 337, hp: 30, armor: 0.3, abilities: [{ kind: 'teleport', every: 7, tiles: 2 }, { kind: 'stun', every: 9, radius: 2, duration: 2 }], escort: [] },
+      partners: [{ dex: 337, hp: 30, armor: 0.3, abilities: [{ kind: 'teleport', every: 7, tiles: 2 }, { kind: 'stun', every: 9, radius: 2, duration: 2 }], escort: [] }],
     },
   },
   {

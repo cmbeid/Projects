@@ -81,6 +81,11 @@ export function playEvents(g: Game, events: readonly GameEvent[], now: number): 
       case 'evolveEnemy':
         playCry(e.dex, now, { volume: 0.35 });
         break;
+      case 'mega':
+        sfx.evolve();
+        setTimeout(() => cry(e.dex, { volume: 0.8 }), 900);
+        buzz([30, 40, 30, 40, 120]);
+        break;
       case 'leak':
         throttled('leak', 0.2, now, sfx.leak);
         buzz(e.lives > 1 ? [60, 40, 60] : 50);

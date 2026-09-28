@@ -15,11 +15,11 @@ import {
 } from '../data/items';
 import { BUILDABLE, COLS, type MapDef, pathTiles, ROWS, terrainAt, type Weather } from '../data/maps';
 import { type Ability, species, type Species } from '../data/species';
-import { type AttackKind, type Effects, levelCost, line, MAX_LEVEL, type TowerLine } from '../data/towers';
+import { type AttackKind, type Effects, KEY_STONE, levelCost, line, MAX_LEVEL, MEGA_SECONDS, MEGAS, PROTEAN_TYPES, type TowerLine } from '../data/towers';
 import { effectiveness, type PokeType } from '../data/types';
 import { buildPath, type PathGeom, pointAt } from './path';
 import { makeRng, pickWeighted, type Rng } from './rng';
-import { stageIndex, type TowerStats, towerStats } from './stats';
+import { NO_EFFECTS, stageIndex, type TowerStats, towerStats } from './stats';
 import {
   bountyScale, buildWave, DIFFICULTIES, type DifficultyKey, hpScale, isBossWave, type Spawn, waveBonus, waveCount,
 } from './waves';
@@ -90,6 +90,10 @@ export interface Enemy {
   born: number;
   abilities: { ability: Ability; next: number }[];
   healed: boolean;
+  /** Mega Evolves into this form at half HP (Korrina's Lucario, Diantha's Gardevoir). */
+  mega: number | null;
+  /** The species it spawned as, before any evolving or Mega Evolving. */
+  origin: number;
   status: Status;
   catching: Catching | null;
   revealed: boolean;
@@ -121,6 +125,8 @@ export interface Tower {
   placedAt: number;
   /** Waves it has been on the field for, for Speed Boost. */
   wavesFought: number;
+  /** Mega Evolved until this time (Kalos); 0 when not. */
+  megaUntil: number;
   stats: TowerStats;
 }
 
@@ -158,6 +164,8 @@ export type GameEvent =
   | { kind: 'splash'; x: number; y: number; type: PokeType; radius: number }
   | { kind: 'faint'; id: number; x: number; y: number; dex: number; bounty: number; boss: boolean }
   | { kind: 'evolveEnemy'; id: number; dex: number; x: number; y: number }
+  /** A tower, or a boss, Mega Evolved. */
+  | { kind: 'mega'; dex: number; x: number; y: number }
   | { kind: 'leak'; dex: number; lives: number }
   | { kind: 'waveStart'; wave: number; boss: boolean; early: number }
   | { kind: 'waveClear'; wave: number; bonus: number }
@@ -178,7 +186,7 @@ export type GameEvent =
 /** Everything a retry rewinds. Catches and the Pokédex are kept. */
 interface Checkpoint {
   wave: number;
-  state: Pick<Game, 't' | 'money' | 'lives' | 'wave' | 'cleared' | 'pending' | 'openWaves' | 'enemies' | 'towers' | 'buffs' | 'cooldowns' | 'items' | 'balls'> & {
+  state: Pick<Game, 't' | 'money' | 'lives' | 'wave' | 'cleared' | 'pending' | 'openWaves' | 'enemies' | 'towers' | 'buffs' | 'cooldowns' | 'items' | 'balls' | 'megaUsed'> & {
     log: Omit<Game['log'], 'caught' | 'seen'>;
   };
 }
@@ -240,6 +248,8 @@ export interface Game {
   bossLeaked: boolean;
   /** Times the current boss wave has been retried. */
   retries: number;
+  /** A tower has Mega Evolved this battle: only one may. */
+  megaUsed: boolean;
   autoWave: boolean;
   autoAt: number | null;
   /** What happened, for the results screen and the save. */
@@ -297,6 +307,7 @@ export function newGame(setup: BattleSetup): Game {
     checkpoint: null,
     bossLeaked: false,
     retries: 0,
+    megaUsed: false,
     autoWave: false,
     autoAt: null,
     log: { kills: 0, leaked: 0, caught: [], seen: new Set(), found: [], used: [], ballsUsed: [], earned: 0 },
@@ -331,13 +342,15 @@ export function sellValue(g: Game, tower: Tower): number {
   return Math.floor(tower.invested * (0.7 + g.trainer.refund * 0.1));
 }
 
-function setupFor(g: Game, t: Pick<Tower, 'line' | 'level' | 'branch' | 'move' | 'x' | 'y'>): TowerStats {
+function setupFor(g: Game, t: Pick<Tower, 'line' | 'level' | 'branch' | 'move' | 'x' | 'y'> & { megaUntil?: number }): TowerStats {
   return towerStats(t.line, {
     level: t.level,
     branch: t.branch,
     move: t.move,
     held: g.held[t.line.id] ?? null,
     ledge: terrainAt(g.map, t.x, t.y) === 'ledge',
+    mega: (t.megaUntil ?? 0) > g.t,
+    fog: g.map.weather === 'fog',
   });
 }
 
@@ -382,7 +395,7 @@ export function placeTower(g: Game, lineId: string, x: number, y: number): Tower
   const base = { line: l, level: 1, branch: null, move: null, x, y };
   const tower: Tower = {
     id: g.nextId++, ...base, target: 'first', cooldown: 0, xp: 0, invested: cost, kills: 0, damageDone: 0,
-    stunnedUntil: 0, facing: x < COLS / 2 ? 1 : -1, lastShot: -1, placedAt: g.wave, wavesFought: 0, stats: setupFor(g, base),
+    stunnedUntil: 0, facing: x < COLS / 2 ? 1 : -1, lastShot: -1, placedAt: g.wave, wavesFought: 0, megaUntil: 0, stats: setupFor(g, base),
   };
   g.towers.push(tower);
   emit(g, { kind: 'place', id: tower.id, dex: tower.stats.dex, x: x + 0.5, y: y + 0.5 });
@@ -432,6 +445,24 @@ export function chooseMove(g: Game, towerId: number, index: number): 'money' | '
   return null;
 }
 
+/**
+ * Whether this tower could Mega Evolve now: fully grown into a stage that has
+ * a Mega form, holding a Key Stone, and no Mega Evolution used yet this battle.
+ */
+export function canMega(g: Game, tower: Tower): boolean {
+  return !g.megaUsed && tower.level >= MAX_LEVEL && tower.megaUntil === 0 && g.held[tower.line.id] === KEY_STONE && MEGAS.has(tower.stats.dex);
+}
+
+export function megaEvolve(g: Game, towerId: number): boolean {
+  const tower = g.towers.find((t) => t.id === towerId);
+  if (!tower || !canMega(g, tower)) return false;
+  g.megaUsed = true;
+  tower.megaUntil = g.t + MEGA_SECONDS;
+  tower.stats = setupFor(g, tower);
+  emit(g, { kind: 'mega', dex: tower.stats.dex, x: tower.x + 0.5, y: tower.y + 0.5 });
+  return true;
+}
+
 export function sellTower(g: Game, towerId: number): number {
   const i = g.towers.findIndex((t) => t.id === towerId);
   if (i < 0) return 0;
@@ -467,7 +498,7 @@ export function startWave(g: Game): boolean {
       wave: g.wave + 1,
       state: structuredClone({
         t: g.t, money: g.money, lives: g.lives, wave: g.wave, cleared: g.cleared, pending: g.pending, openWaves: g.openWaves,
-        enemies: g.enemies, towers: g.towers, buffs: g.buffs, cooldowns: g.cooldowns, items: g.items, balls: g.balls, log,
+        enemies: g.enemies, towers: g.towers, buffs: g.buffs, cooldowns: g.cooldowns, items: g.items, balls: g.balls, megaUsed: g.megaUsed, log,
       }),
     };
     g.bossLeaked = false;
@@ -513,10 +544,12 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     lead: Boolean(spawn.lead),
     rare: Boolean(spawn.rare),
     // The last boss of a map costs half your lives; the Elite Four a quarter.
-    lives: boss ? (boss.dex === g.map.boss.dex || boss.dex === g.map.boss.partner?.dex ? 10 : 5) : spawn.lead ? 3 : 1,
+    lives: boss ? (boss === g.map.boss || g.map.boss.partners?.includes(boss) || g.map.rotation?.includes(boss) ? 10 : 5) : spawn.lead ? 3 : 1,
     born: g.t,
     abilities: (boss?.abilities ?? sp.abilities).map((ability) => ({ ability, next: g.t + ('every' in ability ? ability.every * (0.5 + 0.5 * g.rng()) : 0) })),
     healed: false,
+    mega: boss?.mega ?? null,
+    origin: sp.dex,
     status: { ...NO_STATUS },
     catching: null,
     revealed: true,
@@ -667,12 +700,7 @@ export function dropAt(g: Game, x: number, y: number): Drop | undefined {
 // --- combat -------------------------------------------------------------------------
 
 type Hit = Effects;
-const NO_HIT: Hit = {
-  splash: 0, chain: 0, burn: 0, poison: 0, slow: 0, sleep: 0, paralyse: 0, confuse: 0, flinch: 0,
-  crit: 0, knockback: 0, pierceArmour: 0, weaken: 0, ohko: 0, payDay: 0, antiAir: 0,
-  auraDamage: 0, auraRate: 0, income: 0, wish: 0, rewind: 0, hex: 0, random: 0,
-  lifeEvery: 0, accelerate: 0, chip: 0,
-};
+const NO_HIT: Hit = NO_EFFECTS;
 
 /** Enemies slide this much faster over icy path. */
 export const ICE_SLIDE = 1.6;
@@ -705,9 +733,17 @@ function hasStatus(g: Game, e: Enemy): boolean {
   return s.burnUntil > g.t || s.poisonUntil > g.t || s.sleepUntil > g.t || s.paraUntil > g.t || s.confuseUntil > g.t || s.slowUntil > g.t;
 }
 
+/** Protean: the type, of the ones Greninja can take, that hits these types hardest. */
+export function proteanType(own: PokeType, against: readonly PokeType[]): PokeType {
+  let best = own;
+  for (const t of PROTEAN_TYPES) if (effectiveness(t, against) > effectiveness(best, against)) best = t;
+  return best;
+}
+
 /** Deal a hit. Returns the damage done. */
-function damageEnemy(g: Game, e: Enemy, raw: number, type: PokeType, tower: Tower | null, fx: Hit): number {
+function damageEnemy(g: Game, e: Enemy, raw: number, hitType: PokeType, tower: Tower | null, fx: Hit): number {
   if (!e.alive || e.catching) return 0;
+  const type = fx.adapt ? proteanType(hitType, e.sp.types) : hitType;
   const eff = effectiveness(type, e.sp.types);
   if (eff === 0) {
     emit(g, { kind: 'hit', x: e.x, y: e.y, type, damage: 0, crit: false, eff: 0 });
@@ -819,7 +855,8 @@ function stunTowers(g: Game, x: number, y: number, radius: number, duration: num
 function canHit(g: Game, stats: TowerStats, e: Enemy): boolean {
   if (!e.alive || e.catching || !e.revealed) return false;
   if (stats.groundOnly && e.sp.traits.includes('flying')) return false;
-  return effectiveness(stats.type, e.sp.types) > 0 || e.status.shieldUntil > g.t;
+  const type = stats.effects.adapt ? proteanType(stats.type, e.sp.types) : stats.type;
+  return effectiveness(type, e.sp.types) > 0 || e.status.shieldUntil > g.t;
 }
 
 function remaining(g: Game, e: Enemy): number {
@@ -1018,6 +1055,16 @@ function evolveEnemy(g: Game, e: Enemy, dex: number): void {
   emit(g, { kind: 'evolveEnemy', id: e.id, dex, x: e.x, y: e.y });
 }
 
+/** A boss Mega Evolves: its mega form's look, a little tougher and quicker. */
+function megaEnemy(g: Game, e: Enemy, form: number): void {
+  e.mega = null;
+  e.dex = form;
+  e.sp = species(form);
+  e.armor = Math.min(0.7, e.armor + 0.1);
+  e.speed *= 1.15;
+  emit(g, { kind: 'mega', dex: form, x: e.x, y: e.y });
+}
+
 function updateEnemies(g: Game, dt: number): void {
   for (const e of g.enemies) {
     if (!e.alive) continue;
@@ -1059,6 +1106,7 @@ function updateEnemies(g: Game, dt: number): void {
     }
     if (e.sp.regen && !e.boss) e.hp = Math.min(e.maxHp, e.hp + e.sp.regen * e.maxHp * dt);
 
+    if (e.mega !== null && e.hp < e.maxHp / 2) megaEnemy(g, e, e.mega);
     for (const slot of e.abilities) {
       const ab = slot.ability;
       if (ab.kind === 'truant') continue;
@@ -1154,6 +1202,12 @@ export function step(g: Game, dt = STEP): void {
   updateEnemies(g, dt);
   revealEnemies(g);
 
+  for (const tower of g.towers) {
+    if (tower.megaUntil && g.t >= tower.megaUntil) {
+      tower.megaUntil = 0;
+      tower.stats = setupFor(g, tower);
+    }
+  }
   const aura = auras(g);
   const xAttack = g.buffs.xAttack > g.t ? 1.5 : 1;
   const xSpeed = g.buffs.xSpeed > g.t ? 1.5 : 1;

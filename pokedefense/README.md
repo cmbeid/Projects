@@ -4,8 +4,9 @@ A Pokémon tower defense game for the phone, portrait-first, that also lays out
 properly on tablets and desktops: when there's room beside the map, the map
 takes the full height and the controls move into columns beside it. Place Pokémon beside the path, level them up
 until they evolve, teach them signature moves, and catch the wild Pokémon
-marching past — through three regions, **Kanto, Johto and Hoenn**, each with
-eight Gym Leaders, a Pokémon League and an endless map of its own.
+marching past — through six regions, **Kanto, Johto, Hoenn, Sinnoh, Unova and
+Kalos**, each with eight Gym Leaders, a Pokémon League and an endless map of
+its own.
 
 ## Running it
 
@@ -30,7 +31,8 @@ npm run build && npm run preview   # the built game, at http://localhost:4173/
 - **Target:** each tower can aim at the first, last, strongest or closest enemy.
 - **Types matter:** the full modern type chart applies. Ground attacks can't
   reach flyers, Normal can't touch Ghosts, and only Psychic/Ghost/Porygon/Mew
-  towers (or a Silph Scope) can see invisible Pokémon.
+  towers and a few others with sharp senses (Luxray, Lucario, Noibat…), or a
+  Silph Scope, can see invisible Pokémon.
 - **Catch:** tap the Poké Ball, then a wild Pokémon; the chance shows above
   each one. Weak, asleep or paralysed Pokémon are easier. Twelve tower lines
   can only be had by catching (Meowth, Clefairy, Gastly, Eevee, Magikarp,
@@ -39,41 +41,60 @@ npm run build && npm run preview   # the built game, at http://localhost:4173/
 - **Power-ups:** Rare Candy, X Attack, X Speed, Max Repel, Poké Flute, Full
   Restore, TM Thunderbolt, TM Earthquake, Silph Scope, Amulet Coin. Fainted
   Pokémon sometimes drop items; tap them before they fade.
-- **Gym Leaders:** bosses have far more HP than anything else, so they walk at half speed. A map ends with its leader's ace (the Indigo Plateau also has the Elite Four). If that Pokémon gets through, or your lives run out during its wave, the wave starts over with your towers, ₽, lives and items as they were when it began. You can rearrange first, and retry as often as it takes. Catches made during a failed attempt are kept.
+- **Gym Leaders:** bosses have far more HP than anything else, so they walk at half speed. A map ends with its leader's ace (each League also has its Elite Four). If that Pokémon gets through, or your lives run out during its wave, the wave starts over with your towers, ₽, lives and items as they were when it began. You can rearrange first, and retry as often as it takes. Catches made during a failed attempt are kept.
 - **Waves:** call the next wave early for bonus ₽. Speeds: pause, 1×, 2×, 3× and 5×; you can still place and upgrade towers while paused. Auto-waves are in the ☰ menu.
 - **Keyboard:** 1–8 pick a tower, Space next wave, F speed, U level up, S sell,
   B ball, P pause, Esc cancel / menu.
 
 Winning earns stars (by lives kept), a badge, and **BP** to spend in the
 **Poké Mart**: power-ups, Poké/Great/Ultra/Master Balls, **held items** given
-to a whole tower line (Charcoal, Scope Lens, Quick Claw, Wide Lens…), and
+to a whole tower line (Charcoal, Scope Lens, Quick Claw, Wide Lens, and from
+Kalos the Key Stone…), and
 permanent **Trainer upgrades** (start ₽, lives, discounts, interest, catch rate…).
 Clearing a map opens its Hard mode.
 
 ### Regions
 
-Regions open in order: becoming Champion of Kanto opens Johto, and Johto's
-League opens Hoenn. Your whole roster comes with you, and on arrival the
-region's professor hands over its three starters. Each region's difficulty
-starts a little above the last's (your roster gets wider, not stronger), and
-its endless map opens once you're its Champion.
+Regions open in order: becoming Champion of one opens the next. Your whole
+roster comes with you, and on arrival the region's professor hands over its
+three starters. Each region's difficulty starts a little above the last's
+(your roster gets wider, not stronger), and its endless map opens once you're
+its Champion.
 
 | Region | Starters | Music | Endless |
 | --- | --- | --- | --- |
 | Kanto | Bulbasaur, Charmander, Squirtle | Pokémon Crystal | Cerulean Cave — Mewtwo |
 | Johto | Chikorita (its knockouts restore lives), Cyndaquil, Totodile | Pokémon Crystal | Mt. Silver — Red, and the legendary beasts |
 | Hoenn | Treecko, Torchic (Speed Boost), Mudkip | Pokémon Emerald, arranged for Game Boy | Sky Pillar — Rayquaza, and Latios & Latias |
+| Sinnoh | Turtwig, Chimchar, Piplup | Pokémon Platinum, arranged for Game Boy | Spear Pillar — Giratina, Dialga and Palkia in turn |
+| Unova | Snivy, Tepig, Oshawott | Pokémon Black and White, arranged for Game Boy (see below) | Giant Chasm — Kyurem, and Reshiram & Zekrom |
+| Kalos | Chespin, Fennekin, Froakie (Protean) | Original tunes | Terminus Cave — Zygarde, and Xerneas & Yveltal |
 
-55 tower lines in all: 12 Kanto, 16 Johto and 15 Hoenn lines, plus the 12
-catch-only Kanto rarities. Johto brings Dark and Steel towers (Houndour,
+99 tower lines in all. Johto brings Dark and Steel towers (Houndour,
 Skarmory, Sneasel…), Hoenn a Ralts that becomes Gardevoir or Gallade, a
 Trapinch that lurks on the path until it grows wings as Flygon, and Feebas —
-this region's Magikarp.
+that region's Magikarp. Sinnoh has Riolu and Gible, and Spiritomb to catch;
+Unova, Litwick, Axew and a Ferroseed that sits on the path; Kalos, the
+fastest bird in Fletchling, Honedge, and Klefki's jangling key ring. Froakie's
+Protean gives each hit whichever of Water, Dark, Ice, Fighting or Poison its
+target fears most.
 
-Hoenn has **weather**: rain powers up Water attacks and dampens Fire, harsh
-sun does the reverse, and sandstorms wear down anything that isn't Rock,
-Ground or Steel. Johto's Lake of Rage has ice that enemies slide across
-faster, and Mossdeep's twins send out two bosses at once.
+Each region has a twist:
+
+- **Hoenn — weather.** Rain powers up Water attacks and dampens Fire, harsh
+  sun does the reverse, and sandstorms wear down anything that isn't Rock,
+  Ground or Steel. (Johto's Lake of Rage has ice that enemies slide across
+  faster, and Mossdeep's twins send out two bosses at once.)
+- **Sinnoh — fog.** In Hearthome (and Kalos's Laverre City), every tower
+  sees three-quarters as far, except a Flying type or one holding a Wide Lens.
+  Snowpoint's hail and icy road come back too.
+- **Unova — triple battles.** Striaton City and the League come in down three
+  lanes, and the Striaton triplets send their three monkeys at once.
+- **Kalos — Mega Evolution.** Buy the Key Stone in the Mart once Kalos opens,
+  give it to a kind of tower, and a fully grown one with a Mega form can Mega
+  Evolve: once a battle, for 40 seconds, half as strong again (21 lines can,
+  from Venusaur to Garchomp). Korrina's Lucario and Diantha's Gardevoir Mega
+  Evolve when they're hurt.
 
 #### Kanto
 
@@ -120,6 +141,51 @@ faster, and Mossdeep's twins send out two bosses at once.
 | Ever Grande | Sidney, Phoebe, Glacia, Drake, then Steven | Steven's Metagross |
 | Sky Pillar | 🏜️ Endless, in a sandstorm | Rayquaza every 25th wave |
 
+#### Sinnoh
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Oreburgh Mine | Coal carts of Geodude, revived fossils | Roark's Rampardos |
+| Eterna Forest | Burmy that cloak up and fly off as Mothim | Gardenia's Roserade |
+| Veilstone City | Tough Fighting types | Maylene's Lucario |
+| The Great Marsh | 🌧️ Rain on the marsh | Crasher Wake's Floatzel (Swift Swim) |
+| Hearthome City | 🌫️ Fog, and ghosts that fade in and out | Fantina's Mismagius |
+| Canalave Harbour | Two lanes either side of a canal; Steel types | Byron's Bastiodon |
+| Snowpoint City | 🌨️ Hail and an icy road | Candice's Froslass |
+| Sunyshore City | Electric types on solar walkways | Volkner's Electivire |
+| Pokémon League | Aaron, Bertha, Flint, Lucian, then Cynthia | Cynthia's Garchomp |
+| Spear Pillar | Endless; the lake spirits flit by | Giratina, Dialga and Palkia, in turn every 25th wave |
+
+#### Unova
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Striaton City | Three lanes | Cilan, Chili and Cress's Simisage, Simisear and Simipour together |
+| Nacrene Museum | Invisible Yamask among the exhibits | Lenora's Watchog |
+| Pinwheel Forest | Sewaddle that grow into Leavanny | Burgh's Leavanny |
+| Nimbasa City | Electric types round the amusement park | Elesa's Zebstrika |
+| Driftveil Drawbridge | 🏜️ A sandstorm off the desert | Clay's Excadrill (burrows) |
+| Mistralton Cargo | Flocks over the airfield | Skyla's Swanna |
+| Twist Mountain | 🌨️ Hail and icy rails | Brycen's Beartic |
+| Opelucid City | Dragons, and Deino in the crowd | Drayden's Haxorus |
+| Pokémon League | Three lanes: Shauntal, Grimsley, Caitlin, Marshal, then Alder | Alder's Volcarona |
+| Giant Chasm | 🌨️ Endless; the Swords of Justice pass through | Kyurem every 25th wave |
+
+#### Kalos
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Santalune Forest | Scatterbug that grow into Vivillon | Viola's Vivillon (Sleep Powder) |
+| Glittering Cave | Revived fossils, two tunnels | Grant's Tyrantrum and Aurorus together |
+| Tower of Mastery | Where Mega Evolution was born | Korrina's Lucario — Mega Evolves |
+| Route 12 | Skiddo herds by the sea | Ramos's Gogoat |
+| Lumiose City | Two boulevards round Prism Tower | Clemont's Heliolisk |
+| Laverre City | 🌫️ Fog, and fairies everywhere | Valerie's Sylveon |
+| Anistar City | Psychic types beneath the sundial | Olympia's Meowstic |
+| Frost Cavern | 🌨️ Hail and frozen floors | Wulfric's Avalugg |
+| Pokémon League | Malva, Siebold, Wikstrom, Drasna, then Diantha | Diantha's Gardevoir — Mega Evolves |
+| Terminus Cave | Endless; Noibat flutter by | Zygarde every 25th wave |
+
 ## How it is built
 
 TypeScript, Vite, a 2D canvas and Web Audio. No framework.
@@ -127,7 +193,7 @@ TypeScript, Vite, a 2D canvas and Web Audio. No framework.
 | Path | What it holds |
 | --- | --- |
 | `src/game/` | The simulation — `game.ts` runs one battle at a fixed 60 Hz with no DOM, so it all runs under Vitest. Tower stats, paths, wave generation and a seeded RNG beside it, plus `bot.ts`, a greedy player used for balancing. |
-| `src/data/` | Type chart, species (enemy stats, traits, abilities), the 55 tower lines, items, regions, music, and the maps — one file per region under `maps/`. |
+| `src/data/` | Type chart, species (enemy stats, traits, abilities), the 99 tower lines and the Mega Evolutions, items, regions, music, and the maps. Species, towers and maps from Sinnoh on each have a file per region (`species/`, `towers/`, `maps/`). |
 | `src/render/` | Sprite sheets, procedurally drawn pixel-art tiles per theme, the battle renderer and its effects. |
 | `src/audio/` | The mixer and synth effects, event → sound mapping, and the Game Boy music player. |
 | `src/ui/` | Screens (title, region map, team select, Mart, Pokédex, settings) and the battle screen. |
@@ -152,14 +218,17 @@ The playtest bot is a floor, not a measure. For each map it brings the eight
 lines that best cover the map's wild Pokémon and bosses from what a player
 would have by then (earlier regions, this region's starters and badges, no
 catches), never uses an item, mostly spams level-1 towers, and gets two
-retries at a failed boss. It clears all 27 campaign maps on Normal. Maps are
+retries at a failed boss. Like a player seeing a gym leader coming, it brings
+out and grows something that can hurt a boss its towers can't. It clears all 54 campaign maps on Normal. Maps are
 tuned with each map's `hpMul` and its bosses' HP.
 
 ## Art and sound
 
 Pokémon sprites are the animated Black/White sprites from
 [PokeAPI's sprites repository](https://github.com/PokeAPI/sprites), with their
-shinies; `npm run fetch-assets` decodes each GIF, trims it and packs it into a
+shinies; Kalos's Pokémon and most Mega Evolutions, which Black and White never
+had, use the same repository's animated Pokémon Showdown sprites, drawn in the
+same style; `npm run fetch-assets` decodes each GIF, trims it and packs it into a
 palette PNG sheet with a JSON of frame timings (canvas can't step through GIF
 frames). Item icons and badges come from the same place. Cries are from
 [PokeAPI's cries repository](https://github.com/PokeAPI/cries), rewritten as
@@ -173,8 +242,23 @@ original; [pret/pokeemerald](https://github.com/pret/pokeemerald) keeps each
 song as MIDI, and `scripts/music/midi.ts` arranges it for the same four
 channels — the highest note at each moment to pulse 1, the next to pulse 2,
 the lowest to the wave channel as bass, drums to noise — looping at the
-song's own loop markers. A chiptune cover of the real tune. `npm run
-fetch-music` converts both.
+song's own loop markers. A chiptune cover of the real tune.
+
+Sinnoh's is Pokémon Platinum's: [pret/pokeplatinum](https://github.com/pret/pokeplatinum)
+keeps each DS sequence as MIDI, with the sequencer's calls and loops written
+in as text markers, so the converter plays each track through its calls and
+jumps before arranging it the same way.
+
+Unova's is Pokémon Black and White's, which has no public disassembly. The
+converter can read the game's own sound archive (`sound_data.sdat`, from a
+cartridge you own): `npm run fetch-music -- --sdat path/to/sound_data.sdat
+--list` lists its songs, and naming them in `UNOVA_SEQ` (`src/data/music.ts`)
+converts them. Only the converted note lists are committed. Until a track is
+converted, a Platinum stand-in plays in its place.
+
+Kalos's music is original, written for this game in a small score notation
+(`scripts/music/kalos.ts`): X and Y's music is streamed audio with no notes to
+arrange. `npm run fetch-music` builds all of it.
 
 Pokémon and all of the above are © Nintendo / Creatures / GAME FREAK, used
 here for a personal, non-commercial project. The map tiles, effects and other

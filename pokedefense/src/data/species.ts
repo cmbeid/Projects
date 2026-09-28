@@ -5,6 +5,10 @@
  *
  * Catch rates are the games' own (0–255): Caterpie 255, Snorlax 25, Mewtwo 3.
  */
+import { FLY, s } from './species/make';
+import { KALOS_SPECIES } from './species/kalos';
+import { SINNOH_SPECIES } from './species/sinnoh';
+import { UNOVA_SPECIES } from './species/unova';
 import type { PokeType } from './types';
 
 export type Trait = 'flying' | 'invisible';
@@ -51,19 +55,6 @@ export interface Species {
   /** On fainting, stuns towers within `radius` for `duration` s (Self-Destruct). */
   explode: { radius: number; duration: number } | null;
 }
-
-type Extra = Partial<Omit<Species, 'dex' | 'name' | 'types' | 'hp' | 'speed' | 'catchRate'>>;
-
-function s(dex: number, name: string, types: PokeType[], hp: number, speed: number, catchRate: number, extra: Extra = {}): Species {
-  return {
-    dex, name, types, hp, speed, catchRate,
-    armor: 0, bounty: Math.max(1, Math.round(hp * 3)), traits: [], abilities: [], regen: 0,
-    split: null, evolve: null, explode: null,
-    ...extra,
-  };
-}
-
-const FLY: Extra = { traits: ['flying'] };
 
 const LIST: Species[] = [
   // Kanto starters and their lines (towers; rarely seen as enemies).
@@ -375,6 +366,10 @@ const LIST: Species[] = [
 
   // Towers only
   s(212, 'Scizor', ['bug', 'steel'], 7, 1.2, 25, { armor: 0.4 }),
+
+  ...SINNOH_SPECIES,
+  ...UNOVA_SPECIES,
+  ...KALOS_SPECIES,
 ];
 
 export const SPECIES: ReadonlyMap<number, Species> = new Map(LIST.map((sp) => [sp.dex, sp]));

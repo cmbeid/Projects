@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { HELD_ITEMS, ITEM_ICONS } from '../src/data/items';
-import { BUILDABLE, COLS, MAPS, pathTiles, ROWS, terrainAt, waypointXY } from '../src/data/maps';
+import { BUILDABLE, COLS, mapBosses, MAPS, pathTiles, ROWS, terrainAt, waypointXY } from '../src/data/maps';
 import { SPECIES, species } from '../src/data/species';
-import { LINES, levelCost, lineDexes, lineForDex, MAX_LEVEL } from '../src/data/towers';
+import { LINES, levelCost, lineDexes, lineForDex, MAX_LEVEL, MEGAS } from '../src/data/towers';
 import { effectiveness } from '../src/data/types';
 import { REGIONS } from '../src/data/regions';
 
@@ -52,8 +52,9 @@ describe('maps', () => {
 
       it('only uses species that exist', () => {
         for (const p of map.pool) expect(SPECIES.has(p.dex)).toBe(true);
-        for (const b of [map.boss, ...(map.extraBosses ?? []).map((e) => e.boss)]) {
+        for (const b of mapBosses(map)) {
           expect(SPECIES.has(b.dex)).toBe(true);
+          if (b.mega) expect(SPECIES.has(b.mega)).toBe(true);
           for (const dex of b.escort) expect(SPECIES.has(dex)).toBe(true);
           for (const ab of b.abilities) if (ab.kind === 'summon') expect(SPECIES.has(ab.dex)).toBe(true);
         }
@@ -61,16 +62,18 @@ describe('maps', () => {
     });
   }
 
-  it('awards the 24 badges once each, in their own regions', () => {
+  it('awards every region’s 8 badges once each, in their own regions', () => {
     const badges = MAPS.map((m) => m.badge).filter((b): b is number => Boolean(b));
-    expect(badges.sort((a, b) => a - b)).toEqual(Array.from({ length: 24 }, (_, i) => i + 1));
+    expect(badges.sort((a, b) => a - b)).toEqual(Object.values(REGIONS).flatMap((r) => r.badges).sort((a, b) => a - b));
+    expect(badges).toHaveLength(48);
     for (const m of MAPS) if (m.badge) expect(REGIONS[m.regionId].badges).toContain(m.badge);
   });
 });
 
 describe('tower lines', () => {
-  it('has 55 lines, every Pokémon in them known', () => {
-    expect(LINES).toHaveLength(55);
+  it('has 99 lines, every Pokémon in them known', () => {
+    expect(LINES).toHaveLength(99);
+    expect(new Set(LINES.map((l) => l.id)).size).toBe(LINES.length);
     for (const l of LINES) for (const dex of lineDexes(l)) expect(SPECIES.has(dex)).toBe(true);
   });
 
@@ -90,6 +93,14 @@ describe('tower lines', () => {
   it('prices each level more than the last', () => {
     for (const l of LINES) {
       for (let lv = 2; lv < MAX_LEVEL; lv += 1) expect(levelCost(l, lv)).toBeGreaterThan(levelCost(l, lv - 1));
+    }
+  });
+
+  it('gives each Mega Evolution a form, from a stage some line reaches', () => {
+    const stages = new Set(LINES.flatMap(lineDexes));
+    for (const [dex, mega] of MEGAS) {
+      expect(stages.has(dex), `#${dex}`).toBe(true);
+      expect(SPECIES.has(mega.form), `#${mega.form}`).toBe(true);
     }
   });
 

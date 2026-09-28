@@ -122,6 +122,11 @@ export function ingest(g: Game, events: readonly GameEvent[], now: number, lastE
         if (e.ability === 'heal') fxs.push({ kind: 'text', x: e.x, y: e.y - 1.4, text: 'Recover!', size: 0.34, t0: now, dur: 1, colour: '#78f878' });
         if (e.ability === 'summon') fxs.push({ kind: 'ring', x: e.x, y: e.y, radius: 1, t0: now, dur: 0.4, colour: '#f85858' });
         break;
+      case 'mega':
+        fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.4, t0: now, dur: 0.8, colour: '#ffffff', radius: 1.4 });
+        fxs.push({ kind: 'stars', x: e.x, y: e.y - 0.4, t0: now, dur: 1.2, colour: '#f8a0f8', radius: 1.3 });
+        fxs.push({ kind: 'text', x: e.x, y: e.y - 1.5, text: 'Mega Evolution!', size: 0.4, t0: now, dur: 1.6, colour: '#f8a0f8' });
+        break;
       case 'evolveEnemy':
         fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.4, t0: now, dur: 0.5, colour: '#ffffff', radius: 0.7 });
         fxs.push({ kind: 'text', x: e.x, y: e.y - 1.2, text: 'evolved!', size: 0.26, t0: now, dur: 0.9, colour: '#f89090' });
@@ -577,7 +582,7 @@ export function drawBattle(ctx: CanvasRenderingContext2D, g: Game, view: View, o
   }
 }
 
-/** Hoenn weather over the whole map. Deterministic per time, so no state to keep. */
+/** Weather over the whole map. Deterministic per time, so no state to keep. */
 function drawWeather(ctx: CanvasRenderingContext2D, weather: Weather, W: number, H: number, T: number, now: number): void {
   ctx.save();
   const hash = (i: number, k: number): number => {
@@ -613,6 +618,20 @@ function drawWeather(ctx: CanvasRenderingContext2D, weather: Weather, W: number,
       const x = ((hash(i, 4) + now * (0.25 + hash(i, 5) * 0.3)) % 1) * W;
       const y = (hash(i, 6) * H + Math.sin(now * 2 + i) * T * 0.3 + H) % H;
       ctx.fillRect(Math.round(x), Math.round(y), s * 2, s);
+    }
+  } else if (weather === 'fog') {
+    // Drifting banks of mist, thick enough to feel, thin enough to play through.
+    ctx.fillStyle = 'rgba(225,230,240,0.2)';
+    ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 9; i += 1) {
+      const r = T * (1.6 + hash(i, 10) * 1.6);
+      const x = ((hash(i, 11) + now * (0.02 + hash(i, 12) * 0.03)) % 1) * (W + 2 * r) - r;
+      const y = hash(i, 13) * H + Math.sin(now * 0.3 + i) * T * 0.4;
+      const bank = ctx.createRadialGradient(x, y, 0, x, y, r);
+      bank.addColorStop(0, 'rgba(235,238,245,0.5)');
+      bank.addColorStop(1, 'rgba(235,238,245,0)');
+      ctx.fillStyle = bank;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
     }
   } else if (weather === 'hail') {
     ctx.fillStyle = 'rgba(200,230,255,0.12)';

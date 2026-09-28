@@ -1,5 +1,6 @@
 /**
- * The 24 tower lines. Each is one evolution family: it is bought as its
+ * The tower lines, Kanto to Hoenn here and the later regions' in `towers/`.
+ * Each is one evolution family: it is bought as its
  * first stage and levelled up to {@link MAX_LEVEL}, evolving on the way, and
  * at the top level learns one of two signature moves.
  *
@@ -7,6 +8,9 @@
  * held item and buffs.
  */
 import type { RegionId } from './regions';
+import { KALOS_LINES } from './towers/kalos';
+import { SINNOH_LINES } from './towers/sinnoh';
+import { UNOVA_LINES } from './towers/unova';
 import type { PokeType } from './types';
 
 export const MAX_LEVEL = 6;
@@ -75,7 +79,12 @@ export interface Effects {
   accelerate: number;
   /** Sandstorm: enemies in range that aren't Rock, Ground or Steel lose this fraction of max HP a second. */
   chip: number;
+  /** Protean: each hit takes whichever of {@link PROTEAN_TYPES} hits its target hardest. */
+  adapt: number;
 }
+
+/** The types Greninja's Protean can take. */
+export const PROTEAN_TYPES: readonly PokeType[] = ['water', 'dark', 'ice', 'fighting', 'poison'];
 
 export interface TowerBase {
   damage: number;
@@ -725,7 +734,26 @@ export const LINES: readonly TowerLine[] = [
     ],
     placement: 'any', unlock: { kind: 'catch' },
   },
+  ...SINNOH_LINES,
+  ...UNOVA_LINES,
+  ...KALOS_LINES,
 ];
+
+/**
+ * Mega Evolution, from Kalos on: a fully grown tower holding a Key Stone can
+ * Mega Evolve once a battle, for {@link MEGA_SECONDS}. Keyed by the stage it
+ * evolves from; `form` is the mega's PokeAPI form id (its sprite and cry).
+ */
+export const MEGAS: ReadonlyMap<number, { form: number; type?: PokeType }> = new Map([
+  [3, { form: 10033 }], [6, { form: 10034, type: 'dragon' }], [9, { form: 10036 }], [65, { form: 10037 }],
+  [94, { form: 10038 }], [130, { form: 10041 }], [181, { form: 10045, type: 'dragon' }], [212, { form: 10046 }],
+  [214, { form: 10047 }], [248, { form: 10049 }], [254, { form: 10065, type: 'dragon' }], [257, { form: 10050 }],
+  [260, { form: 10064 }], [282, { form: 10051 }], [306, { form: 10053 }], [310, { form: 10055 }], [359, { form: 10057 }],
+  [376, { form: 10076 }], [445, { form: 10058 }], [448, { form: 10059 }], [460, { form: 10060 }],
+]);
+export const MEGA_SECONDS = 40;
+/** The held item that lets a tower Mega Evolve. */
+export const KEY_STONE = 'key-stone';
 
 export const LINE_BY_ID: ReadonlyMap<string, TowerLine> = new Map(LINES.map((l) => [l.id, l]));
 

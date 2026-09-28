@@ -9,7 +9,7 @@
  * `npm run playtest -- johto` plays one region; `-- mt-moon` one map.
  */
 import { NO_TRAINER } from '../src/data/items';
-import { MAPS } from '../src/data/maps';
+import { mapBosses, MAPS } from '../src/data/maps';
 import { REGIONS } from '../src/data/regions';
 import { species } from '../src/data/species';
 import { line } from '../src/data/towers';
@@ -68,14 +68,16 @@ function pickTeam(available: string[], pool: { dex: number; weight: number }[]):
 for (const [i, map] of MAPS.entries()) {
   if (only && map.id !== only && map.regionId !== only) continue;
   const available = unlockedLines(progressBefore(i)).map((l) => l.id);
-  const bosses = [map.boss, ...(map.extraBosses ?? []).map((e) => e.boss)].map((bs) => ({ dex: bs.dex, weight: 3 }));
+  const bosses = mapBosses(map).map((bs) => ({ dex: bs.dex, weight: 3 }));
   const team = pickTeam(available, [...map.pool.filter((p) => !p.rare), ...bosses]);
   // Like a player, bring something that can see invisible Pokémon if any are coming.
-  const hidden = [...map.pool.filter((p) => !p.rare), ...bosses].some((p) => species(p.dex).traits.includes('invisible'));
+  const hidden = [...map.pool.filter((p) => !p.rare), ...bosses].some((p) => species(p.dex).traits.includes('invisible'))
+    || mapBosses(map).some((b) => b.abilities.some((a) => a.kind === 'vanish'));
   if (hidden && !team.some((id) => line(id).detect)) {
     const seer = available.filter((id) => line(id).detect).sort((a, b) => line(b).base.damage - line(a).base.damage)[0];
     if (seer) team[team.length - 1] = seer;
   }
+  if (process.env.TEAM) console.log(team.join(" "));
   const row: string[] = [];
   for (const difficulty of ['normal', 'hard'] as DifficultyKey[]) {
     const g = newGame({ map, difficulty, team, items: {}, balls: {}, held: {}, trainer: NO_TRAINER, seed: 1 });

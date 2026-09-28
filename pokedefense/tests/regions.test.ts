@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { NO_TRAINER } from '../src/data/items';
 import { MAPS, mapDef } from '../src/data/maps';
-import { REGION_IDS, REGIONS } from '../src/data/regions';
-import { line, LINES } from '../src/data/towers';
+import { REGION_IDS, type RegionId, REGIONS } from '../src/data/regions';
+import { KEY_STONE, line, LINES, MAX_LEVEL, MEGA_SECONDS } from '../src/data/towers';
 import { playOut } from '../src/game/bot';
-import { ICE_SLIDE, newGame, placeTower, startWave, step, type Tower, weatherBoost } from '../src/game/game';
-import { towerStats } from '../src/game/stats';
+import { canMega, type Game, ICE_SLIDE, levelUp, megaEvolve, newGame, placeTower, proteanType, startWave, STEP, step, type Tower, weatherBoost } from '../src/game/game';
+import { FOG_RANGE, towerStats } from '../src/game/stats';
 import { buildWave } from '../src/game/waves';
 import { freshProgress, lineUnlocked, mapUnlocked, type Progress, regionMaps, regionUnlocked } from '../src/state/save';
 
-function champion(p: Progress, region: 'kanto' | 'johto' | 'hoenn'): Progress {
+function champion(p: Progress, region: RegionId): Progress {
   for (const m of regionMaps(region)) if (!m.endless) p.results[m.id] = { normal: 1, hard: 0, best: 0 };
   return p;
 }
@@ -17,16 +17,20 @@ function champion(p: Progress, region: 'kanto' | 'johto' | 'hoenn'): Progress {
 describe('regions', () => {
   it('opens each region once the one before has a Champion', () => {
     const p = freshProgress();
-    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, false, false]);
+    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, false, false, false, false, false]);
     expect(mapUnlocked(p, mapDef('sprout-tower'))).toBe(false);
     champion(p, 'kanto');
-    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, true, false]);
+    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, true, false, false, false, false]);
     expect(mapUnlocked(p, mapDef('sprout-tower'))).toBe(true);
     expect(mapUnlocked(p, mapDef('ilex-forest'))).toBe(false);
     expect(mapUnlocked(p, mapDef('mt-silver'))).toBe(false);
     champion(p, 'johto');
     expect(mapUnlocked(p, mapDef('mt-silver'))).toBe(true);
     expect(regionUnlocked(p, 'hoenn')).toBe(true);
+    for (const id of ['hoenn', 'sinnoh', 'unova'] as const) champion(p, id);
+    expect(REGION_IDS.every((id) => regionUnlocked(p, id))).toBe(true);
+    expect(mapUnlocked(p, mapDef('santalune-forest'))).toBe(true);
+    expect(mapUnlocked(p, mapDef('glittering-cave'))).toBe(false);
   });
 
   it('gives each region’s starters on arrival, and its badge towers with its badges', () => {
@@ -48,7 +52,7 @@ describe('regions', () => {
       expect(maps[8]!.id).toBe(REGIONS[id].league);
       expect(maps[9]!.id).toBe(REGIONS[id].endless);
     }
-    expect(MAPS).toHaveLength(30);
+    expect(MAPS).toHaveLength(60);
   });
 
   it('gives every region its three starters as towers', () => {
@@ -119,5 +123,85 @@ describe('Johto and Hoenn mechanics', () => {
       playOut(g);
       expect(g.status, id).toBe('won');
     }
+  });
+});
+
+describe('Sinnoh, Unova and Kalos mechanics', () => {
+  const battle = (id: string, team: string[] = [], held: Record<string, string> = {}): Game =>
+    newGame({ map: mapDef(id), difficulty: 'normal', team, items: {}, balls: {}, held, trainer: NO_TRAINER, seed: 3 });
+
+  it('shortens towers’ reach in fog, but not a Flying type’s or a Wide Lens holder’s', () => {
+    const at = (id: string, fog: boolean, held: string | null = null) => towerStats(line(id), { level: 1, branch: null, move: null, held, ledge: false, fog }).range;
+    expect(at('piplup', true)).toBeCloseTo(at('piplup', false) * FOG_RANGE);
+    expect(at('pidove', true)).toBe(at('pidove', false));
+    expect(at('piplup', true, 'wide-lens')).toBe(at('piplup', false, 'wide-lens'));
+    const g = battle('hearthome', ['piplup']);
+    const t = placeTower(g, 'piplup', 4, 7) as Tower;
+    expect(t.stats.range).toBeCloseTo(at('piplup', false) * FOG_RANGE);
+  });
+
+  it('sends the Striaton triplets out together, one down each of three lanes', () => {
+    const map = mapDef('striaton');
+    const bosses = buildWave(map, map.waves).filter((s) => s.boss);
+    expect(bosses.map((b) => b.dex).sort()).toEqual([512, 514, 516]);
+    expect(new Set(bosses.map((b) => b.path)).size).toBe(3);
+  });
+
+  it('takes turns between an endless map’s legends', () => {
+    const map = mapDef('spear-pillar');
+    const bossAt = (wave: number) => buildWave(map, wave).find((s) => s.boss && s.boss.escort.length)!.dex;
+    expect([bossAt(25), bossAt(50), bossAt(75), bossAt(100)]).toEqual([487, 483, 484, 487]);
+  });
+
+  it('lets Protean take whichever type hits hardest', () => {
+    expect(proteanType('water', ['fire'])).toBe('water');
+    expect(proteanType('water', ['grass', 'dragon'])).toBe('ice');
+    expect(proteanType('water', ['psychic'])).toBe('dark');
+  });
+
+  it('Mega Evolves a grown tower holding a Key Stone: once a battle, for a while', () => {
+    const g = battle('santalune-forest', ['riolu', 'gible'], { riolu: KEY_STONE, gible: KEY_STONE });
+    g.money = 1e6;
+    const a = placeTower(g, 'riolu', 2, 6) as Tower;
+    const b = placeTower(g, 'gible', 6, 6) as Tower;
+    expect(canMega(g, a)).toBe(false);
+    while (a.level < MAX_LEVEL) levelUp(g, a.id);
+    while (b.level < MAX_LEVEL) levelUp(g, b.id);
+    const before = a.stats.damage;
+    expect(canMega(g, a)).toBe(true);
+    expect(megaEvolve(g, a.id)).toBe(true);
+    expect(a.stats.dex).toBe(10059);
+    expect(a.stats.damage).toBeGreaterThan(before * 1.4);
+    // Only one Mega Evolution a battle.
+    expect(canMega(g, b)).toBe(false);
+    for (let i = 0; i < (MEGA_SECONDS + 1) / STEP; i += 1) step(g);
+    expect(a.stats.dex).toBe(448);
+    expect(a.stats.damage).toBeCloseTo(before);
+  });
+
+  it('won’t Mega Evolve without a Key Stone', () => {
+    const g = battle('santalune-forest', ['riolu']);
+    g.money = 1e6;
+    const a = placeTower(g, 'riolu', 2, 6) as Tower;
+    while (a.level < MAX_LEVEL) levelUp(g, a.id);
+    expect(canMega(g, a)).toBe(false);
+  });
+
+  it('Mega Evolves Korrina’s Lucario once it’s hurt', () => {
+    const map = mapDef('tower-of-mastery');
+    expect(map.boss.mega).toBe(10059);
+    const g = battle('tower-of-mastery');
+    g.lives = 1000;
+    g.wave = map.waves - 1;
+    startWave(g);
+    let lucario: Game['enemies'][number] | undefined;
+    for (let i = 0; i < 60 * 60 && !lucario; i += 1) {
+      step(g);
+      lucario = g.enemies.find((e) => e.boss);
+    }
+    lucario!.hp = lucario!.maxHp * 0.4;
+    step(g);
+    expect(lucario!.dex).toBe(10059);
+    expect(lucario!.origin).toBe(448);
   });
 });

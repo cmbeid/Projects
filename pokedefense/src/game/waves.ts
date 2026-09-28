@@ -69,7 +69,11 @@ export function waveCount(map: MapDef): number {
 }
 
 function bossFor(map: MapDef, wave: number): BossDef | null {
-  if (map.endless) return wave % 25 === 0 ? map.boss : null;
+  if (map.endless) {
+    if (wave % 25) return null;
+    const bosses = [map.boss, ...(map.rotation ?? [])];
+    return bosses[(wave / 25 - 1) % bosses.length]!;
+  }
   if (wave === map.waves) return map.boss;
   return map.extraBosses?.find((b) => b.wave === wave)?.boss ?? null;
 }
@@ -116,10 +120,10 @@ export function buildWave(map: MapDef, wave: number): Spawn[] {
       spawns.push({ at: t + 1 + i * 1.2, dex, path: i % map.paths.length, hp: species(dex).hp * 1.5 });
     });
     spawns.push({ at: t + 3 + boss.escort.length * 1.2, dex: boss.dex, path: 0, hp: boss.hp, boss });
-    // Tate & Liza: two bosses at once, on the other path if there is one.
-    if (boss.partner) {
-      spawns.push({ at: t + 3.6 + boss.escort.length * 1.2, dex: boss.partner.dex, path: 1 % map.paths.length, hp: boss.partner.hp, boss: boss.partner });
-    }
+    // Tate & Liza, the Striaton triplets: bosses side by side, one down each path.
+    (boss.partners ?? []).forEach((partner, i) => {
+      spawns.push({ at: t + 3.6 + i * 0.6 + boss.escort.length * 1.2, dex: partner.dex, path: (i + 1) % map.paths.length, hp: partner.hp, boss: partner });
+    });
   }
 
   return spawns.sort((a, b) => a.at - b.at);
