@@ -99,6 +99,13 @@ async function run(name: string, viewport: { width: number; height: number }, to
   check(placed === 4, `battle: placed ${placed} of 4 towers`);
   await page.screenshot({ path: `${OUT}/${name}-4-placed.png` });
 
+  // The last Pokémon picked stays picked: two more Pidgey without touching the dock.
+  await tapTile(page, 6, 5, touch);
+  await tapTile(page, 4, 9, touch);
+  const more = await page.evaluate(() => (window as unknown as { __battle: { towers: unknown[] } }).__battle.towers.length);
+  check(more === 6, `battle: built ${more - 4} more of the same without choosing it again`);
+  check(await page.locator('.shop-card.on', { hasText: 'Pidgey' }).count() === 1, 'battle: Pidgey is still chosen after building');
+
   await page.locator('.wave-btn').click();
   await page.waitForTimeout(6000);
   await page.screenshot({ path: `${OUT}/${name}-5-wave.png` });
@@ -111,6 +118,32 @@ async function run(name: string, viewport: { width: number; height: number }, to
   const s = await sounds(page);
   check((s['osc'] ?? 0) > 5, `sound: synth effects and music playing (${s['osc']} oscillators)`);
   check((s['buffer'] ?? 0) > 0, `sound: cries or drums playing (${s['buffer']} buffers)`);
+
+  // Close the tab mid-battle (a reload will do) and come back: the battle carries on, paused.
+  type Snap = { wave: number; money: number; towers: unknown[]; enemies: unknown[] };
+  const before = await page.evaluate(() => {
+    const g = (window as unknown as { __battle: Snap }).__battle;
+    return { wave: g.wave, towers: g.towers.length };
+  });
+  await page.waitForTimeout(3500); // past a save
+  await page.reload();
+  await page.waitForSelector('canvas.map', { timeout: 10_000 }).catch(() => undefined);
+  const after = await page.evaluate(() => {
+    const g = (window as unknown as { __battle?: Snap }).__battle;
+    return g ? { wave: g.wave, towers: g.towers.length } : null;
+  });
+  check(after !== null && after.wave === before.wave && after.towers === before.towers,
+    `reopened: the battle resumes (wave ${after?.wave}/${before.wave}, ${after?.towers}/${before.towers} towers)`);
+  check(await page.locator('.modal', { hasText: 'Welcome back' }).isVisible(), 'reopened: waiting, paused, to carry on');
+  await page.screenshot({ path: `${OUT}/${name}-6b-resumed.png` });
+  await page.getByRole('button', { name: 'Resume' }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Give up' }).click();
+  await page.waitForSelector('.map-card');
+  await page.reload();
+  await page.waitForSelector('.logo', { timeout: 10_000 }).catch(() => undefined);
+  check(await page.locator('.logo').isVisible(), 'after giving up, reopening shows the title, not the old battle');
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
   await browser.close();
 }

@@ -22,6 +22,9 @@ npm run build && npm run preview   # the built game, at http://localhost:4173/
 
 - **Place:** pick a Pokémon in the dock, then tap a tile. On a touch screen the
   first tap previews it (with its range), and a second tap on the same tile places it.
+  It stays picked, so you can build several in a row; tap its card again (or Esc) when done.
+- **Saved as you go:** if the tab closes mid-battle, opening the game again picks
+  the battle up where it was, paused.
 - **Upgrade:** tap a tower to level it up. At set levels it **evolves**
   (Charmander → Charmeleon → Charizard). At level 6 it learns one of two
   **signature moves** (Flamethrower's piercing beam or Fire Blast's huge
