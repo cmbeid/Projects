@@ -3,6 +3,7 @@
  * held items equipped on a tower line, and permanent Trainer upgrades. Icons
  * are PokeAPI item sprites, fetched into `public/items/`.
  */
+import type { RegionId } from './regions';
 import type { Effects } from './towers';
 import type { PokeType } from './types';
 
@@ -61,6 +62,8 @@ export interface HeldItem {
   /** Extra ₽ per knockout, as a fraction. */
   bounty?: number;
   price: number;
+  /** Sold only once this region is open. */
+  region?: RegionId;
 }
 
 const typeItem = (key: string, name: string, type: PokeType): HeldItem => ({
@@ -91,6 +94,10 @@ export const HELD_ITEMS: readonly HeldItem[] = [
   { key: 'wide-lens', name: 'Wide Lens', desc: '+0.5 tiles of range.', range: 0.5, price: 450 },
   { key: 'kings-rock', name: "King's Rock", desc: '15% chance to make the target flinch.', effects: { flinch: 0.15 }, price: 400 },
   { key: 'amulet-coin', name: 'Amulet Coin', desc: 'Its knockouts pay 50% more ₽.', bounty: 0.5, price: 400 },
+  {
+    key: 'key-stone', name: 'Key Stone', region: 'kalos', price: 900,
+    desc: 'A fully grown tower that has a Mega form can Mega Evolve — once a battle, for 40 s: half as strong again. Venusaur, Charizard, Blastoise, Alakazam, Gengar, Gyarados, Ampharos, Scizor, Heracross, Tyranitar, Sceptile, Blaziken, Swampert, Gardevoir, Aggron, Manectric, Absol, Metagross, Garchomp, Lucario, Abomasnow.',
+  },
 ];
 
 export const HELD_BY_KEY: ReadonlyMap<string, HeldItem> = new Map(HELD_ITEMS.map((i) => [i.key, i]));

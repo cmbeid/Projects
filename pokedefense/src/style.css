@@ -52,6 +52,7 @@ img.pix, canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; 
 .btn:disabled { opacity: 0.45; }
 .btn.primary { background: var(--red); }
 .btn.gold { background: var(--yellow); color: #2a2000; }
+.btn.mega { background: linear-gradient(135deg, #f878c8, #a878f8 50%, #58c8f8); color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
 .btn.green { background: #2f9a4e; }
 .btn.ghost { background: transparent; box-shadow: none; border: 1px solid var(--line); }
 .btn.small { min-height: 36px; padding: 6px 12px; font-size: 13px; }
@@ -335,6 +336,7 @@ img.pix, canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; 
 .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .tabs .btn { flex: 0 0 auto; }
 .tabs .btn.on { background: var(--yellow); color: #2a2000; }
+@media (max-width: 420px) { .tabs.regions .btn { padding: 6px 10px; } }
 .shelf { display: flex; flex-direction: column; gap: 8px; }
 .ware { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; }
 .ware img { width: 40px; height: 40px; }

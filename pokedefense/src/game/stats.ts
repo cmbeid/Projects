@@ -5,14 +5,14 @@
  * applied when it attacks, not here.
  */
 import { HELD_BY_KEY } from '../data/items';
-import { type AttackKind, type Effects, type TowerLine, MAX_LEVEL } from '../data/towers';
+import { type AttackKind, type Effects, MAX_LEVEL, MEGAS, type TowerLine } from '../data/towers';
 import type { PokeType } from '../data/types';
 
 export const NO_EFFECTS: Effects = {
   splash: 0, chain: 0, burn: 0, poison: 0, slow: 0, sleep: 0, paralyse: 0, confuse: 0, flinch: 0,
   crit: 0, knockback: 0, pierceArmour: 0, weaken: 0, ohko: 0, payDay: 0, antiAir: 0,
   auraDamage: 0, auraRate: 0, income: 0, wish: 0, rewind: 0, hex: 0, random: 0,
-  lifeEvery: 0, accelerate: 0, chip: 0,
+  lifeEvery: 0, accelerate: 0, chip: 0, adapt: 0,
 };
 
 export interface TowerStats {
@@ -37,7 +37,14 @@ export interface TowerSetup {
   move: number | null;
   held: string | null;
   ledge: boolean;
+  /** Mega Evolved (Kalos): stronger, and in its mega form. */
+  mega?: boolean;
+  /** Fog on the map: every tower's reach shrinks, but a Flying type's or a Wide Lens holder's. */
+  fog?: boolean;
 }
+
+/** Range left to a tower in fog. */
+export const FOG_RANGE = 0.75;
 
 function addEffects(into: Effects, more: Partial<Effects> | undefined): void {
   if (!more) return;
@@ -93,6 +100,15 @@ export function towerStats(line: TowerLine, setup: TowerSetup): TowerStats {
     if (move.airborne) groundOnly = false;
   }
 
+  const mega = setup.mega ? MEGAS.get(dex) : undefined;
+  if (mega) {
+    dex = mega.form;
+    type = mega.type ?? type;
+    damage *= 1.5;
+    rate *= 1.1;
+    range += 0.3;
+  }
+
   damage *= power * 1.4 ** (level - 1);
   rate *= 1.08 ** (level - 1);
   range += 0.12 * (level - 1) + (setup.ledge ? 0.5 : 0);
@@ -109,6 +125,8 @@ export function towerStats(line: TowerLine, setup: TowerSetup): TowerStats {
     addEffects(effects, held.effects);
     bounty += held.bounty ?? 0;
   }
+
+  if (setup.fog && type !== 'flying' && held?.key !== 'wide-lens') range *= FOG_RANGE;
 
   return { dex, stage: branchIdx, type, attack, damage, range, rate, effects, detect: Boolean(line.detect), groundOnly, bounty };
 }

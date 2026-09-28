@@ -1,12 +1,12 @@
 /**
- * The three regions, played in order: becoming Champion of one opens the
- * next. Each has its own Gym Badges (PokeAPI numbers them 1–24 straight
- * through), its own music, and a professor who hands over that region's
- * three starters on arrival.
+ * The six regions, played in order: becoming Champion of one opens the
+ * next. Each has its own Gym Badges (PokeAPI numbers them 1–40 straight
+ * through Unova, then Kalos's from 51), its own music, and a professor who
+ * hands over that region's three starters on arrival.
  */
 import type { TrackId } from './music';
 
-export const REGION_IDS = ['kanto', 'johto', 'hoenn'] as const;
+export const REGION_IDS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos'] as const;
 export type RegionId = (typeof REGION_IDS)[number];
 
 export interface Region {
@@ -40,6 +40,21 @@ export const REGIONS: Record<RegionId, Region> = {
     id: 'hoenn', name: 'Hoenn', professor: 'Professor Birch', starters: ['treecko', 'torchic', 'mudkip'],
     badges: [17, 18, 19, 20, 21, 22, 23, 24], league: 'ever-grande', endless: 'sky-pillar',
     worldTrack: 'e_littleroot', teamTrack: 'e_rustboro', winTrack: 'e_victory_gym_leader', championTrack: 'e_hall_of_fame',
+  },
+  sinnoh: {
+    id: 'sinnoh', name: 'Sinnoh', professor: 'Professor Rowan', starters: ['turtwig', 'chimchar', 'piplup'],
+    badges: [25, 26, 27, 28, 29, 30, 31, 32], league: 'sinnoh-league', endless: 'spear-pillar',
+    worldTrack: 'p_twinleaf', teamTrack: 'p_gym', winTrack: 'p_victory', championTrack: 'p_halloffame',
+  },
+  unova: {
+    id: 'unova', name: 'Unova', professor: 'Professor Juniper', starters: ['snivy', 'tepig', 'oshawott'],
+    badges: [33, 34, 35, 36, 37, 38, 39, 40], league: 'unova-league', endless: 'giant-chasm',
+    worldTrack: 'u_nuvema', teamTrack: 'u_gym', winTrack: 'u_victory', championTrack: 'p_halloffame',
+  },
+  kalos: {
+    id: 'kalos', name: 'Kalos', professor: 'Professor Sycamore', starters: ['chespin', 'fennekin', 'froakie'],
+    badges: [51, 52, 53, 54, 55, 56, 57, 58], league: 'kalos-league', endless: 'terminus-cave',
+    worldTrack: 'k_vaniville', teamTrack: 'k_gym', winTrack: 'k_victory', championTrack: 'k_victory',
   },
 };
 

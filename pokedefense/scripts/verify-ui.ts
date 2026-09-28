@@ -7,6 +7,7 @@
  */
 import { mkdir } from 'node:fs/promises';
 import { chromium, type Page } from 'playwright';
+import { MAPS } from '../src/data/maps';
 
 const URL = process.env['VERIFY_URL'] ?? 'http://localhost:4173/';
 const EXECUTABLE = process.env['CHROMIUM_PATH'];
@@ -142,7 +143,7 @@ async function regions(name: string, viewport: { width: number; height: number }
   check((await page.locator('.modal h2').textContent()) === 'Welcome to Hoenn!', 'Professor Birch welcomes you to Hoenn');
   await page.screenshot({ path: `${OUT}/${name}-7-welcome.png` });
   await page.getByRole('button', { name: /Thanks, Professor/ }).click();
-  check(await page.locator('.tabs.regions button').count() === 3, 'three region tabs');
+  check(await page.locator('.tabs.regions button').count() === 6, 'six region tabs');
   await page.screenshot({ path: `${OUT}/${name}-8-hoenn.png` });
 
   for (const [tab, mapName, shot] of [['Johto', 'Sprout Tower', '9-johto-battle'], ['Hoenn', 'Mt. Chimney', '10-hoenn-battle']] as const) {
@@ -163,8 +164,99 @@ async function regions(name: string, viewport: { width: number; height: number }
   await browser.close();
 }
 
+/**
+ * Sinnoh, Unova and Kalos, from a save that has cleared everything up to
+ * Kalos: Professor Sycamore's welcome, six region tabs, Hearthome's fog,
+ * the Striaton triplets, and Korrina's Lucario Mega Evolving.
+ */
+async function laterRegions(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
+  console.log(`${name} later regions (${viewport.width}×${viewport.height})`);
+  const browser = await chromium.launch(EXECUTABLE ? { executablePath: EXECUTABLE } : {});
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  const cleared = MAPS.filter((m) => !m.endless && ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova'].includes(m.regionId)).map((m) => m.id)
+    .concat(['santalune-forest', 'glittering-cave']);
+  await page.addInitScript((ids: string[]) => {
+    const results = Object.fromEntries(ids.map((id) => [id, { normal: 3, hard: 0, best: 0 }]));
+    localStorage.setItem('pokedefense.save.v1', JSON.stringify({
+      results, greeted: ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova'], tutorialDone: true, bp: 500, heldOwned: ['key-stone'],
+    }));
+  }, cleared);
+  await page.goto(URL);
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.waitForSelector('.modal');
+  await page.waitForTimeout(700);
+  check((await page.locator('.modal h2').textContent()) === 'Welcome to Kalos!', 'Professor Sycamore welcomes you to Kalos');
+  await page.screenshot({ path: `${OUT}/${name}-11-welcome-kalos.png` });
+  await page.getByRole('button', { name: /Thanks, Professor/ }).click();
+  check(await page.locator('.tabs.regions button').count() === 6, 'six region tabs');
+  const tabInView = await page.locator('.tabs.regions button.on').evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return r.left >= 0 && r.right <= window.innerWidth;
+  });
+  check(tabInView, 'the chosen region’s tab is in view');
+  await page.screenshot({ path: `${OUT}/${name}-12-kalos.png` });
+
+  const battles = [
+    ['Sinnoh', 'Hearthome City', 'hearthome', '13-sinnoh-fog'],
+    ['Unova', 'Striaton City', 'striaton', '14-unova-triplets'],
+    ['Kalos', 'Tower of Mastery', 'tower-of-mastery', '15-kalos-mega'],
+  ] as const;
+  for (const [tab, mapName, id, shot] of battles) {
+    await page.locator('.tabs.regions button', { hasText: tab }).click();
+    await page.locator('.map-card', { hasText: mapName }).click();
+    await page.getByRole('button', { name: /Battle!/ }).click();
+    await page.waitForSelector('canvas.map');
+    const boss = id !== 'hearthome';
+    // Skip ahead to the gym leader's wave, and keep the battle going through it.
+    if (boss) await page.evaluate(() => {
+      const g = (window as unknown as { __battle: { wave: number; lives: number; map: { waves: number } } }).__battle;
+      g.wave = g.map.waves - 1;
+      g.lives = 999;
+    });
+    await page.locator('.wave-btn').click();
+    if (boss) {
+      // The gym leader comes out after the wave's wild Pokémon.
+      await page.waitForFunction(
+        (n) => (window as unknown as { __battle: { enemies: { boss: boolean; alive: boolean }[] } }).__battle.enemies.filter((e) => e.boss && e.alive).length >= n,
+        id === 'striaton' ? 3 : 1, { timeout: 60_000 },
+      ).catch(() => undefined);
+      await page.waitForTimeout(1500);
+    } else {
+      await page.waitForTimeout(4000);
+    }
+    if (id === 'tower-of-mastery') {
+      const mega = await page.evaluate(async () => {
+        const g = (window as unknown as { __battle: { enemies: { boss: boolean; hp: number; maxHp: number; dex: number }[] } }).__battle;
+        const lucario = g.enemies.find((e) => e.boss);
+        if (!lucario) return 0;
+        lucario.hp = lucario.maxHp * 0.45;
+        await new Promise((r) => setTimeout(r, 900));
+        return lucario.dex;
+      });
+      check(mega === 10059, 'Korrina’s Lucario Mega Evolves at half HP');
+    }
+    if (id === 'striaton') {
+      const bosses = await page.evaluate(() => (window as unknown as { __battle: { enemies: { boss: boolean; alive: boolean }[] } }).__battle.enemies.filter((e) => e.boss && e.alive).length);
+      check(bosses === 3, 'the Striaton triplets come out together');
+    }
+    await page.screenshot({ path: `${OUT}/${name}-${shot}.png` });
+    const map = await page.evaluate(() => (window as unknown as { __battle: { map: { id: string } } }).__battle.map.id);
+    check(map === id, `${tab}: ${mapName} battle running`);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.getByRole('button', { name: 'Give up' }).click();
+    await page.waitForSelector('.map-card');
+  }
+  check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
+  await browser.close();
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT, { recursive: true });
+  await laterRegions('phone', { width: 390, height: 844 }, true);
+  await laterRegions('desktop', { width: 1440, height: 900 }, false);
   await regions('phone', { width: 390, height: 844 }, true);
   await regions('desktop', { width: 1440, height: 900 }, false);
   await run('phone', { width: 390, height: 844 }, true);

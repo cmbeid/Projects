@@ -26,10 +26,20 @@ export type Theme =
   // Johto
   | 'bamboo' | 'darkforest' | 'city' | 'ash' | 'cliffs' | 'lighthouse' | 'icecave' | 'dragonden' | 'mountain'
   // Hoenn
-  | 'woods' | 'granite' | 'powerplant' | 'ashen' | 'dojo' | 'rainroute' | 'space' | 'sootopolis' | 'league' | 'sky';
+  | 'woods' | 'granite' | 'powerplant' | 'ashen' | 'dojo' | 'rainroute' | 'space' | 'sootopolis' | 'league' | 'sky'
+  // Sinnoh
+  | 'mine' | 'eterna' | 'veilstone' | 'marsh' | 'hearthome' | 'canalave' | 'snowpoint' | 'sunyshore' | 'sinnohleague' | 'spearpillar'
+  // Unova
+  | 'striaton' | 'museum' | 'pinwheel' | 'nimbasa' | 'driftveil' | 'mistralton' | 'twistmountain' | 'opelucid' | 'unovaleague' | 'chasm'
+  // Kalos
+  | 'santalune' | 'glittering' | 'mastery' | 'coumarine' | 'lumiose' | 'laverre' | 'anistar' | 'frostcavern' | 'kalosleague' | 'terminus';
 
-/** Hoenn weather: boosts or weakens attack types, or wears enemies down. */
-export type Weather = 'rain' | 'sun' | 'sand' | 'hail';
+/**
+ * Weather: rain and sun boost or weaken attack types, sandstorm and hail wear
+ * enemies down, and fog (Sinnoh) shortens every tower's reach but a Flying
+ * type's or one holding a Wide Lens.
+ */
+export type Weather = 'rain' | 'sun' | 'sand' | 'hail' | 'fog';
 
 /** A species that can turn up in a map's waves. */
 export interface PoolEntry {
@@ -50,8 +60,10 @@ export interface BossDef {
   abilities: readonly Ability[];
   /** Pokémon that come with it. */
   escort: readonly number[];
-  /** A second boss that enters alongside (Tate & Liza). */
-  partner?: BossDef;
+  /** Bosses that enter alongside, one down each other path (Tate & Liza, the Striaton triplets). */
+  partners?: readonly BossDef[];
+  /** Mega Evolves into this form (its form id) at half HP. */
+  mega?: number;
 }
 
 export interface MapDef {
@@ -87,7 +99,9 @@ export interface MapDef {
   /** Scales every wild Pokémon's HP here, for balancing a map against its neighbours. */
   hpMul?: number;
   endless?: boolean;
-  /** Badge awarded (1–24) for clearing it. */
+  /** Endless maps: bosses that take turns with `boss`, one each 25 waves. */
+  rotation?: readonly BossDef[];
+  /** Badge awarded for clearing it (PokeAPI's badge number). */
   badge?: number;
 }
 

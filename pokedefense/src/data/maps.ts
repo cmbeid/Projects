@@ -1,5 +1,5 @@
 /**
- * The campaigns: nine places in each of Kanto, Johto and Hoenn — each ending
+ * The campaigns: nine places in each of six regions, Kanto to Kalos — each ending
  * with its Gym Leader's ace, the last with the Pokémon League — and an
  * endless map per region. The maps themselves live in `maps/`, one file per
  * region; this module gathers them and holds the helpers.
@@ -22,18 +22,27 @@
  */
 import { HOENN } from './maps/hoenn';
 import { JOHTO } from './maps/johto';
+import { KALOS } from './maps/kalos';
 import { KANTO } from './maps/kanto';
-import { COLS, type MapDef, ROWS, TERRAIN, type Terrain, type Waypoint } from './maps/types';
+import { SINNOH } from './maps/sinnoh';
+import { UNOVA } from './maps/unova';
+import { type BossDef, COLS, type MapDef, ROWS, TERRAIN, type Terrain, type Waypoint } from './maps/types';
 
 export * from './maps/types';
 
-export const MAPS: readonly MapDef[] = [...KANTO, ...JOHTO, ...HOENN];
+export const MAPS: readonly MapDef[] = [...KANTO, ...JOHTO, ...HOENN, ...SINNOH, ...UNOVA, ...KALOS];
 
 export function terrainAt(map: MapDef, x: number, y: number): Terrain {
   return TERRAIN[map.grid[y]?.[x] ?? 'X'] ?? 'grass';
 }
 
 export const MAP_BY_ID: ReadonlyMap<string, MapDef> = new Map(MAPS.map((m) => [m.id, m]));
+
+/** Every boss a map can send: its leader and partners, the Elite Four, an endless map's rotation. */
+export function mapBosses(map: MapDef): BossDef[] {
+  const bosses = [map.boss, ...(map.extraBosses ?? []).map((b) => b.boss), ...(map.rotation ?? [])];
+  return bosses.flatMap((b) => [b, ...(b.partners ?? [])]);
+}
 
 export function mapDef(id: string): MapDef {
   const m = MAP_BY_ID.get(id);

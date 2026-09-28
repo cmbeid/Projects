@@ -9,14 +9,14 @@ import { playEvents } from '../audio/events';
 import { sfx, unlock } from '../audio/index';
 import { playMusic, preloadMusic } from '../audio/music';
 import { BALL_KEYS, BALLS, type BallKey, POWERUP_KEYS, POWERUPS, type PowerupKey } from '../data/items';
-import { COLS, type MapDef, mapDef, MAPS, ROWS, terrainAt } from '../data/maps';
+import { COLS, type MapDef, mapBosses, mapDef, MAPS, ROWS, terrainAt } from '../data/maps';
 import { REGIONS } from '../data/regions';
 import { species } from '../data/species';
-import { line, lineDexes, lineForDex, MAX_LEVEL, type TowerLine } from '../data/towers';
+import { KEY_STONE, line, lineDexes, lineForDex, MAX_LEVEL, MEGA_SECONDS, MEGAS, type TowerLine } from '../data/towers';
 import { TYPE_COLOURS } from '../data/types';
 import {
-  buffLeft, canPlace, catchChance, chooseMove, dropAt, earlyBonus, type Enemy, type Game, hasNextWave, levelUp, moveCost,
-  needsBranch, newGame, pickUp, placeCost, placeTower, powerupReady, sellTower, sellValue, setTarget, starsFor, startWave,
+  buffLeft, canMega, canPlace, catchChance, chooseMove, dropAt, earlyBonus, type Enemy, type Game, hasNextWave, levelUp, moveCost,
+  megaEvolve, needsBranch, newGame, pickUp, placeCost, placeTower, powerupReady, sellTower, sellValue, setTarget, starsFor, startWave,
   retryWave, STEP, step, TARGET_MODES, type TargetMode, throwBall, type Tower, towerAt, upgradeCost, usePowerup,
 } from '../game/game';
 import { stageIndex, towerStats } from '../game/stats';
@@ -58,8 +58,9 @@ export interface BattleOptions {
 }
 
 function trainerFor(map: MapDef, e: Enemy): string {
-  if (e.dex === map.boss.dex) return map.leader;
-  return map.extraBosses?.find((b) => b.boss.dex === e.dex)?.trainer ?? 'Wild';
+  const leaders = [map.boss, ...(map.boss.partners ?? []), ...(map.rotation ?? [])];
+  if (leaders.some((b) => b.dex === e.origin)) return map.leader;
+  return map.extraBosses?.find((b) => b.boss.dex === e.origin)?.trainer ?? 'Wild';
 }
 
 export function startBattle(opts: BattleOptions): void {
@@ -77,11 +78,16 @@ export function startBattle(opts: BattleOptions): void {
   // Load what this map needs up front: every wild Pokémon, the team, the bosses.
   const dexes = new Set<number>([
     ...map.pool.map((p) => p.dex),
-    map.boss.dex, ...map.boss.escort,
-    ...(map.extraBosses ?? []).flatMap((b) => [b.boss.dex, ...b.boss.escort]),
     ...opts.team.flatMap((id) => lineDexes(line(id))),
   ]);
-  for (const b of [map.boss, ...(map.extraBosses ?? []).map((x) => x.boss)]) {
+  for (const dex of [...dexes]) {
+    const mega = MEGAS.get(dex);
+    if (mega && start.heldOwned.includes(KEY_STONE)) dexes.add(mega.form);
+  }
+  for (const b of mapBosses(map)) {
+    dexes.add(b.dex);
+    for (const dex of b.escort) dexes.add(dex);
+    if (b.mega) dexes.add(b.mega);
     for (const ab of b.abilities) if (ab.kind === 'summon') dexes.add(ab.dex);
   }
   for (const p of map.pool) {
@@ -620,6 +626,17 @@ export function startBattle(opts: BattleOptions): void {
       parts.push(h('div.hint', {}, `Fully grown. ${l.moves[t.move]!.desc}`));
       parts.push(h('div.actions', {}, button('btn.small', `Sell +₽${sellValue(g, t)}`, () => doSell())));
     }
+    if (t.megaUntil > g.t) {
+      parts.push(h('div.hint', {}, `✨ Mega Evolved — for ${Math.ceil(t.megaUntil - g.t)} s more.`));
+    } else if (canMega(g, t)) {
+      const form = species(MEGAS.get(s.dex)!.form).name;
+      parts.push(h('div.actions', {}, button('btn.mega', h('span', {}, `✨ Mega Evolve → ${form}`, h('br'), h('small', {}, `Once a battle, for ${MEGA_SECONDS} s`)), () => {
+        megaEvolve(g, t.id);
+        renderDock();
+      })));
+    } else if (t.level >= MAX_LEVEL && MEGAS.has(s.dex) && !g.megaUsed && g.held[l.id] !== KEY_STONE && start.heldOwned.includes(KEY_STONE)) {
+      parts.push(h('div.hint', {}, 'Give this kind of tower your Key Stone (in the Mart) and it can Mega Evolve.'));
+    }
     if (s.attack !== 'aura') {
       const seg = h('div.segmented', {}, ...TARGET_MODES.map((m) => h('button', {
         className: t.target === m ? 'on' : '',
@@ -646,7 +663,7 @@ export function startBattle(opts: BattleOptions): void {
       return;
     }
     // A Champion gets their own theme.
-    const want = boss.dex === map.boss.dex && map.finalTrack ? map.finalTrack : map.bossTrack;
+    const want = boss.origin === map.boss.dex && map.finalTrack ? map.finalTrack : map.bossTrack;
     if (bossMusic !== want) {
       bossMusic = want;
       playMusic(want);
@@ -720,7 +737,7 @@ export function startBattle(opts: BattleOptions): void {
     for (const e of events) {
       if (e.kind === 'spawn' && e.boss) {
         const boss = g.enemies.find((x) => x.id === e.id);
-        if (boss) banner(`${trainerFor(map, boss)} sends out ${boss.sp.name}!`, map.twist && boss.dex === map.boss.dex ? 'Gym Leader battle' : '');
+        if (boss) banner(`${trainerFor(map, boss)} ${/ and /.test(trainerFor(map, boss)) ? 'send' : 'sends'} out ${boss.sp.name}!`, map.twist && boss.dex === map.boss.dex ? 'Gym Leader battle' : '');
       } else if (e.kind === 'spawn' && e.shiny) {
         toast('✨ A shiny Pokémon appeared!');
       } else if (e.kind === 'catch' && e.success) {
