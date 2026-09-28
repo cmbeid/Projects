@@ -13,7 +13,7 @@
 import {
   BALLS, type BallKey, DROP_CHANCE, DROPS, NO_TRAINER, POWERUPS, type PowerupKey, type TrainerLevels,
 } from '../data/items';
-import { BUILDABLE, COLS, type MapDef, pathTiles, ROWS, terrainAt, type Weather } from '../data/maps';
+import { type BossDef, BUILDABLE, COLS, type MapDef, pathTiles, ROWS, terrainAt, type Weather } from '../data/maps';
 import { type Ability, species, type Species } from '../data/species';
 import { type AttackKind, type Effects, KEY_STONE, levelCost, line, MAX_LEVEL, MEGA_SECONDS, MEGAS, PROTEAN_TYPES, type TowerLine } from '../data/towers';
 import { effectiveness, type PokeType } from '../data/types';
@@ -516,6 +516,15 @@ export function startWave(g: Game): boolean {
   return true;
 }
 
+/**
+ * A map's own leader (with partners, or an endless map's legends), not an
+ * Elite Four member. By species: a retried or resumed wave's spawns hold
+ * copies of the boss, not the map's own.
+ */
+function finalBoss(map: MapDef, boss: BossDef): boolean {
+  return [map.boss, ...(map.boss.partners ?? []), ...(map.rotation ?? [])].some((b) => b.dex === boss.dex);
+}
+
 function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed = true): Enemy {
   const sp = species(spawn.dex);
   const diff = DIFFICULTIES[g.difficulty];
@@ -544,7 +553,7 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     lead: Boolean(spawn.lead),
     rare: Boolean(spawn.rare),
     // The last boss of a map costs half your lives; the Elite Four a quarter.
-    lives: boss ? (boss === g.map.boss || g.map.boss.partners?.includes(boss) || g.map.rotation?.includes(boss) ? 10 : 5) : spawn.lead ? 3 : 1,
+    lives: boss ? (finalBoss(g.map, boss) ? 10 : 5) : spawn.lead ? 3 : 1,
     born: g.t,
     abilities: (boss?.abilities ?? sp.abilities).map((ability) => ({ ability, next: g.t + ('every' in ability ? ability.every * (0.5 + 0.5 * g.rng()) : 0) })),
     healed: false,

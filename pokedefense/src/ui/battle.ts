@@ -28,7 +28,8 @@ import { loadCries } from '../audio/index';
 import { getProgress, mount, modal, modalOpen, setProgress, toast, button } from './app';
 import { h } from './dom';
 import { fullscreenButton } from './fullscreen';
-import { lineUnlocked, recordBattle, type Progress } from '../state/save';
+import { clearBattle, lineUnlocked, recordBattle, type Progress, saveBattle, type SavedBattle } from '../state/save';
+import { restoreGame, serializeGame } from '../game/snapshot';
 
 type Mode =
   | { kind: 'idle' }
@@ -63,14 +64,26 @@ function trainerFor(map: MapDef, e: Enemy): string {
   return map.extraBosses?.find((b) => b.boss.dex === e.origin)?.trainer ?? 'Wild';
 }
 
-export function startBattle(opts: BattleOptions): void {
+/**
+ * Start a battle, or with `resume`, carry on one saved when the tab closed.
+ * A resumed battle opens paused. Returns false, having shown nothing, if the
+ * saved battle can't be read.
+ */
+export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean {
   const map = mapDef(opts.mapId);
   const start: Progress = getProgress();
-  const g: Game = newGame({
-    map, difficulty: opts.difficulty, team: opts.team, items: start.items, balls: start.balls, held: start.held,
+  const setup = {
+    difficulty: opts.difficulty, team: opts.team, items: start.items, balls: start.balls, held: start.held,
     trainer: start.trainer, seed: (Date.now() & 0xffffff) ^ 0x5eed,
-  });
-  const newThisBattle = new Set<string>();
+  };
+  const restored = resume ? restoreGame(resume.game, setup) : null;
+  if (resume && !restored) {
+    clearBattle();
+    return false;
+  }
+  const g: Game = restored ?? newGame({ map, ...setup });
+  const newThisBattle = new Set<string>(restored ? resume!.newLines : []);
+  if (!restored) clearBattle();
   // For scripts/verify-ui.ts and poking around in the console.
   (window as unknown as { __battle?: Game }).__battle = g;
   resetEffects();
@@ -284,11 +297,8 @@ export function startBattle(opts: BattleOptions): void {
         }
         const t = placeTower(g, mode.lineId, tx, ty);
         if (typeof t !== 'string') {
-          const lineId = mode.lineId;
-          mode = { kind: 'idle' };
+          // The same Pokémon stays chosen, to build another straight away; tap its card again to stop.
           ghost = null;
-          // Keep placing the same thing with a mouse, if it can be afforded again.
-          if (mouse && g.money >= placeCost(g, lineId)) mode = { kind: 'place', lineId };
           renderDock();
         }
         return;
@@ -404,7 +414,7 @@ export function startBattle(opts: BattleOptions): void {
     );
   }
 
-  function pause(): void {
+  function pause(note?: string): void {
     if (finished) return;
     paused = true;
     const auto = h('button.switch', { className: `switch${g.autoWave ? ' on' : ''}`, 'aria-label': 'Auto-start waves' });
@@ -415,6 +425,7 @@ export function startBattle(opts: BattleOptions): void {
     const close = modal(
       h('div', {},
         h('h2', {}, 'Paused'),
+        note ? h('p.muted', { style: 'margin:0;text-align:center' }, note) : null,
         h('div.card.setting', {}, h('span', {}, 'Start waves automatically'), auto),
         button('btn.primary', 'Resume', () => close()),
         button('btn', 'Restart', () => {
@@ -563,7 +574,7 @@ export function startBattle(opts: BattleOptions): void {
     });
     if (!getProgress().hints) return h('div', {}, h('div.shop', {}, ...cards));
     const hint = mode.kind === 'place'
-      ? h('div.hint', {}, `${line(mode.lineId).role}. ${line(mode.lineId).placement === 'path' ? 'Goes on the path itself.' : line(mode.lineId).placement === 'any' ? 'Can swim.' : ''} Tap a tile${matchMedia('(pointer: coarse)').matches ? ' twice' : ''} to place.`)
+      ? h('div.hint', {}, `${line(mode.lineId).role}. ${line(mode.lineId).placement === 'path' ? 'Goes on the path itself.' : line(mode.lineId).placement === 'any' ? 'Can swim.' : ''} Tap a tile${matchMedia('(pointer: coarse)').matches ? ' twice' : ''} to place — as many as you like; tap its card again when done.`)
       : h('div.hint', {}, 'Choose a Pokémon, then tap the map to place it.');
     return h('div', {}, h('div.shop', {}, ...cards), hint);
   }
@@ -838,6 +849,7 @@ export function startBattle(opts: BattleOptions): void {
   function quit(restart: boolean): void {
     if (finished) return;
     finished = true;
+    clearBattle();
     record(false);
     if (restart) startBattle(opts);
     else opts.onExit();
@@ -846,6 +858,7 @@ export function startBattle(opts: BattleOptions): void {
   function finish(): void {
     if (finished) return;
     finished = true;
+    clearBattle();
     const won = g.status === 'won';
     const hadBadges = MAPS.filter((m) => m.badge && getProgress().results[m.id] && (getProgress().results[m.id]!.normal || getProgress().results[m.id]!.hard)).length;
     const { bp, newLines } = record(won);
@@ -958,10 +971,20 @@ export function startBattle(opts: BattleOptions): void {
     return set;
   }
 
+  /** Keep the battle saved as it goes, so a closed tab can pick up where it was. */
+  function save(): void {
+    if (finished || (g.status !== 'playing' && g.status !== 'retry')) return;
+    saveBattle({ mapId: map.id, difficulty: opts.difficulty, team: opts.team, game: serializeGame(g), newLines: [...newThisBattle] });
+  }
+  const saveTimer = window.setInterval(save, 3000);
+
   const onVisibility = (): void => {
-    if (document.hidden && !finished && !paused) pause();
+    if (!document.hidden) return;
+    save();
+    if (!finished && !paused) pause();
   };
   document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pagehide', save);
 
   mount(root, () => {
     cancelAnimationFrame(raf);
@@ -969,6 +992,8 @@ export function startBattle(opts: BattleOptions): void {
     rootObserver.disconnect();
     window.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', save);
+    clearInterval(saveTimer);
   });
   resize();
   setSpeed(1);
@@ -976,4 +1001,10 @@ export function startBattle(opts: BattleOptions): void {
   renderRail();
   renderDock(true);
   raf = requestAnimationFrame(frame);
+  if (restored) {
+    // Pick up where the tab closed: paused, so nothing happens until you're ready.
+    if (g.status === 'retry') bossFailed();
+    else pause('Welcome back! Your battle was saved just as you left it.');
+  }
+  return true;
 }

@@ -9,7 +9,7 @@
 import {
   BALL_KEYS, type BallKey, HELD_BY_KEY, NO_TRAINER, POWERUP_KEYS, type PowerupKey, TRAINER_KEYS, type TrainerLevels,
 } from '../data/items';
-import { MAPS, type MapDef } from '../data/maps';
+import { MAP_BY_ID, MAPS, type MapDef } from '../data/maps';
 import { previousRegion, REGIONS, type RegionId } from '../data/regions';
 import { LINES, lineForDex, type TowerLine } from '../data/towers';
 import type { DifficultyKey } from '../game/waves';
@@ -74,6 +74,7 @@ export function freshProgress(): Progress {
 interface Store {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem?(key: string): void;
 }
 
 function defaultStore(): Store | null {
@@ -150,6 +151,49 @@ export function saveProgress(p: Progress, store: Store | null = defaultStore()):
     store?.setItem(KEY, JSON.stringify(p));
   } catch {
     // Private mode or full: the game carries on, it just won't remember.
+  }
+}
+
+// --- a battle in progress ---------------------------------------------------------
+
+const BATTLE_KEY = 'pokedefense.battle.v1';
+
+/** A battle saved as it goes, so closing the tab doesn't lose it. */
+export interface SavedBattle {
+  mapId: string;
+  difficulty: DifficultyKey;
+  team: string[];
+  /** `serializeGame`'s snapshot. */
+  game: string;
+  /** Lines caught this battle, still marked NEW. */
+  newLines: string[];
+}
+
+export function saveBattle(b: SavedBattle, store: Store | null = defaultStore()): void {
+  try {
+    store?.setItem(BATTLE_KEY, JSON.stringify(b));
+  } catch {
+    // As with progress: without storage, a closed tab loses the battle.
+  }
+}
+
+export function loadBattle(store: Store | null = defaultStore()): SavedBattle | null {
+  try {
+    const raw = JSON.parse(store?.getItem(BATTLE_KEY) ?? 'null') as Partial<SavedBattle> | null;
+    if (!raw || typeof raw.mapId !== 'string' || typeof raw.game !== 'string' || !MAP_BY_ID.has(raw.mapId)) return null;
+    return {
+      mapId: raw.mapId, difficulty: raw.difficulty === 'hard' ? 'hard' : 'normal', team: strs(raw.team), game: raw.game, newLines: strs(raw.newLines),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function clearBattle(store: Store | null = defaultStore()): void {
+  try {
+    store?.removeItem?.(BATTLE_KEY);
+  } catch {
+    // Nothing to clear.
   }
 }
 
