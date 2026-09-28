@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ITEM_ICONS } from '../src/data/items';
-import { TRACKS } from '../src/data/music';
+import { TRACKS, trackFile } from '../src/data/music';
 import { SPECIES } from '../src/data/species';
 
 describe('assets', () => {
@@ -20,6 +20,6 @@ describe('assets', () => {
   it('has every item icon, badge and music track', () => {
     for (const icon of ITEM_ICONS) expect(existsSync(`public/items/${icon}.png`), icon).toBe(true);
     for (let b = 1; b <= 24; b += 1) expect(existsSync(`public/badges/${b}.png`)).toBe(true);
-    for (const t of TRACKS) expect(existsSync(`public/music/${t}.json`), t).toBe(true);
+    for (const t of TRACKS) expect(existsSync(`public/music/${trackFile(t)}.json`), t).toBe(true);
   });
 });
