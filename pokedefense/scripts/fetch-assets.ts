@@ -2,12 +2,14 @@
  * Downloads everything the game uses from PokeAPI into `public/`:
  *
  * - `sprites/` — each Pokémon's animated Black/White sprite (and its shiny),
+ *   or for the Pokémon Black and White never had — Kalos's, and most Mega
+ *   Evolutions — Pokémon Showdown's animated sprites in the same style;
  *   decoded from GIF, trimmed to the pixels it actually uses, and packed into
  *   one PNG sheet per Pokémon with a JSON file of frame timings. Canvas cannot
  *   step through a GIF's frames, so the game draws from the sheet instead.
  * - `cries/` — each cry, decoded by what it really is (PokeAPI's `.ogg` files
  *   are sometimes MP3s) and rewritten as a small mono WAV that plays on iOS.
- * - `items/` and `badges/` — item icons and the 24 Kanto, Johto and Hoenn badges, as they are.
+ * - `items/` and `badges/` — item icons and every region's badges, as they are.
  *
  * The result is committed. Files already present are skipped; pass `--force`
  * to fetch everything again.
@@ -23,11 +25,13 @@ import { MPEGDecoder } from 'mpg123-decoder';
 import { GifReader } from 'omggif';
 import { PNG } from 'pngjs';
 import { ITEM_ICONS } from '../src/data/items';
+import { REGIONS } from '../src/data/regions';
 import { SPECIES } from '../src/data/species';
 
 const RAW = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites';
 const ANIMATED = `${RAW}/pokemon/versions/generation-v/black-white/animated`;
 const STATIC = `${RAW}/pokemon/versions/generation-v/black-white`;
+const SHOWDOWN = `${RAW}/pokemon/other/showdown`;
 const CRIES = 'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest';
 const CRY_RATE = 16_000;
 /** Trim cries longer than this; a few run on well past the part anyone hears. */
@@ -249,7 +253,8 @@ async function fetchSprite(dex: number, shiny: boolean): Promise<void> {
   const dir = shiny ? '/shiny' : '';
   let packed: { png: Buffer; sheet: Sheet };
   try {
-    const { width, height, frames, delays } = gifFrames(await download(`${ANIMATED}${dir}/${dex}.gif`));
+    const gif = await download(`${ANIMATED}${dir}/${dex}.gif`).catch(() => download(`${SHOWDOWN}${dir}/${dex}.gif`));
+    const { width, height, frames, delays } = gifFrames(gif);
     packed = packSheet(width, height, frames, delays);
   } catch {
     // No animation (or an unreadable one): the still sprite, as a one-frame sheet.
@@ -316,8 +321,9 @@ async function main(): Promise<void> {
   for (const dex of dexes) await fetchCry(dex);
   for (const icon of ITEM_ICONS) await fetchFile(`${RAW}/items/${icon}.png`, `public/items/${icon}.png`);
   console.log(`  items  ${ITEM_ICONS.length}`);
-  for (let badge = 1; badge <= 24; badge += 1) await fetchFile(`${RAW}/badges/${badge}.png`, `public/badges/${badge}.png`);
-  console.log('  badges 1–24');
+  const badges = Object.values(REGIONS).flatMap((r) => r.badges);
+  for (const badge of badges) await fetchFile(`${RAW}/badges/${badge}.png`, `public/badges/${badge}.png`);
+  console.log(`  badges ${badges.length}`);
 }
 
 main().catch((error: unknown) => {
