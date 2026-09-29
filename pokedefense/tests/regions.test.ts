@@ -17,10 +17,10 @@ function champion(p: Progress, region: RegionId): Progress {
 describe('regions', () => {
   it('opens each region once the one before has a Champion', () => {
     const p = freshProgress();
-    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, false, false, false, false, false]);
+    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, false, false, false, false, false, false, false, false]);
     expect(mapUnlocked(p, mapDef('sprout-tower'))).toBe(false);
     champion(p, 'kanto');
-    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, true, false, false, false, false]);
+    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, true, false, false, false, false, false, false, false]);
     expect(mapUnlocked(p, mapDef('sprout-tower'))).toBe(true);
     expect(mapUnlocked(p, mapDef('ilex-forest'))).toBe(false);
     expect(mapUnlocked(p, mapDef('mt-silver'))).toBe(false);
@@ -28,9 +28,13 @@ describe('regions', () => {
     expect(mapUnlocked(p, mapDef('mt-silver'))).toBe(true);
     expect(regionUnlocked(p, 'hoenn')).toBe(true);
     for (const id of ['hoenn', 'sinnoh', 'unova'] as const) champion(p, id);
-    expect(REGION_IDS.every((id) => regionUnlocked(p, id))).toBe(true);
     expect(mapUnlocked(p, mapDef('santalune-forest'))).toBe(true);
     expect(mapUnlocked(p, mapDef('glittering-cave'))).toBe(false);
+    expect(regionUnlocked(p, 'alola')).toBe(false);
+    for (const id of ['kalos', 'alola', 'galar'] as const) champion(p, id);
+    expect(REGION_IDS.every((id) => regionUnlocked(p, id))).toBe(true);
+    expect(mapUnlocked(p, mapDef('cortondo'))).toBe(true);
+    expect(mapUnlocked(p, mapDef('area-zero'))).toBe(false);
   });
 
   it('gives each region’s starters on arrival, and its badge towers with its badges', () => {
@@ -52,7 +56,7 @@ describe('regions', () => {
       expect(maps[8]!.id).toBe(REGIONS[id].league);
       expect(maps[9]!.id).toBe(REGIONS[id].endless);
     }
-    expect(MAPS).toHaveLength(60);
+    expect(MAPS).toHaveLength(90);
   });
 
   it('gives every region its three starters as towers', () => {

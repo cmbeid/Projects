@@ -87,6 +87,39 @@ const PALETTES: Record<Theme, Palette> = {
   frostcavern: { ground: '#b8d4ea', groundDot: '#e0eefa', groundDark: '#94b4d0', path: '#6c8cb0', pathEdge: '#4a6a90', pathDot: '#8aaccc', water: '#2a5a9a', waterLight: '#6a9ada', block: '#4e6e94', blockLight: '#a8d0f0', blockDark: '#324a6a', accent: '#ffffff' },
   kalosleague: { ground: '#d0b890', groundDot: '#e0caa4', groundDark: '#b09a72', path: '#a83a4a', pathEdge: '#7a2432', pathDot: '#c05060', water: '#3a78c8', waterLight: '#7ab0ea', block: '#8a7458', blockLight: '#aa947a', blockDark: '#5e4e3a', accent: '#f8d048' },
   terminus: { ground: '#4a4e40', groundDot: '#5a5e4e', groundDark: '#363a2e', path: '#7a7c66', pathEdge: '#565844', pathDot: '#8a8c74', water: '#2e4e5e', waterLight: '#5a7e8e', block: '#2c3024', blockLight: '#48f048', blockDark: '#1a1c14', accent: '#48f048' },
+  // Alola
+  verdant: { ground: '#7a6a4c', groundDot: '#8c7c5c', groundDark: '#5e5038', path: '#b09a70', pathEdge: '#806a4a', pathDot: '#c4ac80', water: '#2e6a9a', waterLight: '#5e9aca', block: '#4a3e2c', blockLight: '#6a5a40', blockDark: '#2e2618', accent: '#f8d048' },
+  brooklet: { ground: '#58b050', groundDot: '#70c462', groundDark: '#44923e', path: '#d8c898', pathEdge: '#a89868', pathDot: '#c8b888', water: '#38a0d8', waterLight: '#88d0f8', block: '#2e7a3a', blockLight: '#4c9a4a', blockDark: '#1c5424', accent: '#f8f0a8' },
+  wela: { ground: '#8a5a44', groundDot: '#9c6a52', groundDark: '#6c4434', path: '#c8a888', pathEdge: '#987860', pathDot: '#b89878', water: '#e86020', waterLight: '#f8a848', block: '#4a2c24', blockLight: '#6c4234', blockDark: '#2e1a14', accent: '#f87848' },
+  lushjungle: { ground: '#2e8a3a', groundDot: '#3ea04a', groundDark: '#20702c', path: '#9a8458', pathEdge: '#6c5a38', pathDot: '#8a744a', water: '#2e7a9a', waterLight: '#62aac8', block: '#145a22', blockLight: '#24783a', blockDark: '#0a3814', accent: '#f878c8' },
+  hokulani: { ground: '#c4c8d8', groundDot: '#d6dae6', groundDark: '#a4a8bc', path: '#4a4e78', pathEdge: '#30345a', pathDot: '#f8f8b8', water: '#3a78c8', waterLight: '#7ab0ea', block: '#5a6488', blockLight: '#7a84a8', blockDark: '#3a4262', accent: '#f8e048' },
+  megamart: { ground: '#b8b0a4', groundDot: '#c8c0b4', groundDark: '#968e82', path: '#6a5a6a', pathEdge: '#4a3e4a', pathDot: '#7a6a7a', water: '#3a5a8a', waterLight: '#6a8aba', block: '#5a4a4a', blockLight: '#7a6a6a', blockDark: '#3a2e2e', accent: '#d8a0f8' },
+  poni: { ground: '#c49064', groundDot: '#d4a276', groundDark: '#a0724a', path: '#e0c49a', pathEdge: '#b0946a', pathDot: '#d0b48a', water: '#3a88d0', waterLight: '#8ac0f0', block: '#8a5a3a', blockLight: '#aa7a58', blockDark: '#5e3a24', accent: '#f8f0d0' },
+  ulaula: { ground: '#e6a4c0', groundDot: '#f0bcd2', groundDark: '#c884a2', path: '#d8c89c', pathEdge: '#a8986c', pathDot: '#c8b88c', water: '#3a88d0', waterLight: '#8ac0f0', block: '#6a8a4a', blockLight: '#8aaa6a', blockDark: '#4a6230', accent: '#f8f8f8' },
+  alolaleague: { ground: '#d8ccb0', groundDot: '#e6dcc4', groundDark: '#b8ac90', path: '#6a8aa8', pathEdge: '#4a6a88', pathDot: '#8aaac8', water: '#2a7ac8', waterLight: '#78b8f0', block: '#8a7a64', blockLight: '#aa9a84', blockDark: '#5e5242', accent: '#f8d048' },
+  altar: { ground: '#4a4468', groundDot: '#5a5478', groundDark: '#363052', path: '#a89c7a', pathEdge: '#786e52', pathDot: '#f8e080', water: '#2e3a7a', waterLight: '#5a6ab8', block: '#2e2a44', blockLight: '#f8c848', blockDark: '#1c1a2e', accent: '#f8c848' },
+  // Galar
+  turffield: { ground: '#6aae4a', groundDot: '#82c25c', groundDark: '#54923a', path: '#c8b088', pathEdge: '#98805c', pathDot: '#b8a078', water: '#3a88d0', waterLight: '#8ac0f0', block: '#8a7a6a', blockLight: '#aa9a8a', blockDark: '#5e5044', accent: '#f8f0d0' },
+  hulbury: { ground: '#a08a74', groundDot: '#b09c86', groundDark: '#826e5a', path: '#707480', pathEdge: '#4e525c', pathDot: '#80848e', water: '#23578e', waterLight: '#5a8ac0', block: '#6a4a3a', blockLight: '#8a6a58', blockDark: '#463024', accent: '#f8d048' },
+  motostoke: { ground: '#9a6a5a', groundDot: '#ac7c6a', groundDark: '#7a5244', path: '#5a5a62', pathEdge: '#3a3a42', pathDot: '#6a6a72', water: '#e06a28', waterLight: '#f8b048', block: '#6a3a2e', blockLight: '#8a5a4a', blockDark: '#46241c', accent: '#f8a048' },
+  stowonside: { ground: '#d8b888', groundDot: '#e6c89c', groundDark: '#b89a6c', path: '#a88a60', pathEdge: '#7a6040', pathDot: '#98784e', water: '#3a78c8', waterLight: '#7ab0ea', block: '#a8744a', blockLight: '#c89468', blockDark: '#7a5030', accent: '#f8e070' },
+  ballonlea: { ground: '#3a4a6a', groundDot: '#4a5a7e', groundDark: '#2a3852', path: '#8a6aa8', pathEdge: '#5e4480', pathDot: '#b890e0', water: '#2e4a86', waterLight: '#5e7ab8', block: '#24304a', blockLight: '#58e8c8', blockDark: '#141c2e', accent: '#f8a8f8' },
+  circhester: { ground: '#dde6ee', groundDot: '#f4f8fc', groundDark: '#b8c6d4', path: '#8a8a96', pathEdge: '#62626e', pathDot: '#a2a2ae', water: '#3a6cb0', waterLight: '#8ab8e8', block: '#6a5a50', blockLight: '#d8e2ea', blockDark: '#463a32', accent: '#88c8f8' },
+  spikemuth: { ground: '#3a3640', groundDot: '#4a4650', groundDark: '#2a262e', path: '#5a5060', pathEdge: '#3a3242', pathDot: '#f858a8', water: '#3a3a6a', waterLight: '#6a6aa8', block: '#26222a', blockLight: '#48404e', blockDark: '#141216', accent: '#f858a8' },
+  hammerlocke: { ground: '#b0a490', groundDot: '#c2b6a2', groundDark: '#908472', path: '#6a6258', pathEdge: '#4a443c', pathDot: '#7a7268', water: '#3a78c8', waterLight: '#7ab0ea', block: '#7a6e5e', blockLight: '#9a8e7e', blockDark: '#524a3e', accent: '#58a8f8' },
+  wyndon: { ground: '#4a8a4a', groundDot: '#5ea05a', groundDark: '#38703a', path: '#e8e8f0', pathEdge: '#b8b8c8', pathDot: '#f8f8ff', water: '#3a78c8', waterLight: '#7ab0ea', block: '#3a3a5a', blockLight: '#5a5a7a', blockDark: '#24243a', accent: '#f8d048' },
+  weald: { ground: '#3a5a48', groundDot: '#4a6c58', groundDark: '#2a4636', path: '#6a7a72', pathEdge: '#4a5852', pathDot: '#8a9a92', water: '#2e4e6e', waterLight: '#5a7e9e', block: '#1e3a2a', blockLight: '#2e5a40', blockDark: '#12261a', accent: '#c8e8f8' },
+  // Paldea
+  cortondo: { ground: '#9ac068', groundDot: '#b0d27c', groundDark: '#7ea252', path: '#e0c498', pathEdge: '#b0946a', pathDot: '#d0b488', water: '#3a88d0', waterLight: '#8ac0f0', block: '#c89a58', blockLight: '#e0b878', blockDark: '#9a7038', accent: '#f8e048' },
+  artazon: { ground: '#78b858', groundDot: '#90cc6c', groundDark: '#609a44', path: '#e8d0a8', pathEdge: '#b8a078', pathDot: '#d8c098', water: '#3a88d0', waterLight: '#8ac0f0', block: '#4a8a3a', blockLight: '#6aaa58', blockDark: '#2e6224', accent: '#f878a8' },
+  levincia: { ground: '#3a4458', groundDot: '#4a5468', groundDark: '#2a3244', path: '#e8e058', pathEdge: '#b0a830', pathDot: '#f8f088', water: '#2a6ac8', waterLight: '#6aaaf8', block: '#5a3a7a', blockLight: '#8a5aa8', blockDark: '#3a2452', accent: '#58e8f8' },
+  cascarrafa: { ground: '#e4d09c', groundDot: '#f0dcb0', groundDark: '#c4b07c', path: '#c8a878', pathEdge: '#987850', pathDot: '#b89868', water: '#2a8ac8', waterLight: '#78c0f0', block: '#b8906a', blockLight: '#d4ac84', blockDark: '#8a6444', accent: '#f8f0d0' },
+  medali: { ground: '#c8b8a0', groundDot: '#d8c8b2', groundDark: '#a89880', path: '#8a6a58', pathEdge: '#5e4638', pathDot: '#9a7a68', water: '#3a78c8', waterLight: '#7ab0ea', block: '#9a5a4a', blockLight: '#ba7a68', blockDark: '#6a3a2e', accent: '#f8c048' },
+  montenevera: { ground: '#d8e2ee', groundDot: '#f0f4fa', groundDark: '#b4c2d4', path: '#7a6a8a', pathEdge: '#54466a', pathDot: '#9a8aaa', water: '#3a6cb0', waterLight: '#8ab8e8', block: '#4a4a5a', blockLight: '#d0dae6', blockDark: '#2e2e3a', accent: '#f858f8' },
+  alfornada: { ground: '#d8b890', groundDot: '#e6c8a4', groundDark: '#b89a72', path: '#a88ab8', pathEdge: '#7a6090', pathDot: '#c8a8d8', water: '#3a78c8', waterLight: '#7ab0ea', block: '#8a6a4a', blockLight: '#aa8a68', blockDark: '#5e4630', accent: '#f8a8d8' },
+  glaseado: { ground: '#e8f0f8', groundDot: '#ffffff', groundDark: '#c4d4e4', path: '#a8c0d8', pathEdge: '#7e98b4', pathDot: '#c4d8ea', water: '#3a6cb0', waterLight: '#8ab8e8', block: '#5a7a9a', blockLight: '#e0ecf6', blockDark: '#3a5470', accent: '#88d8f8' },
+  paldealeague: { ground: '#d0c8b8', groundDot: '#e0d8ca', groundDark: '#b0a898', path: '#4a6a4a', pathEdge: '#304a30', pathDot: '#6a8a6a', water: '#3a78c8', waterLight: '#7ab0ea', block: '#8a8070', blockLight: '#aaa090', blockDark: '#625a4c', accent: '#f8d048' },
+  areazero: { ground: '#2a4a3a', groundDot: '#3a5c4a', groundDark: '#1c362a', path: '#5a7a8a', pathEdge: '#3a5664', pathDot: '#88f8e8', water: '#1a3a5a', waterLight: '#4a7aa8', block: '#14281e', blockLight: '#58f8d8', blockDark: '#0a1810', accent: '#58f8d8' },
 };
 
 export function palette(theme: Theme): Palette {
@@ -101,15 +134,18 @@ function px(ctx: Ctx, x: number, y: number, w: number, h: number, colour: string
 }
 
 /** Themes floored with planks, with tiles, and with tufty grass; the rest are bare ground. */
-const PLANKS: ReadonlySet<Theme> = new Set(['ship', 'bamboo', 'dojo', 'canalave', 'driftveil', 'coumarine']);
+const PLANKS: ReadonlySet<Theme> = new Set(['ship', 'bamboo', 'dojo', 'canalave', 'driftveil', 'coumarine', 'hulbury']);
 const TILED: ReadonlySet<Theme> = new Set([
   'office', 'city', 'lighthouse', 'powerplant', 'space', 'sootopolis', 'sky',
   'veilstone', 'hearthome', 'sunyshore', 'sinnohleague', 'spearpillar', 'museum', 'nimbasa', 'mistralton', 'opelucid',
   'unovaleague', 'mastery', 'lumiose', 'anistar', 'kalosleague',
+  'hokulani', 'megamart', 'alolaleague', 'motostoke', 'stowonside', 'hammerlocke', 'wyndon', 'spikemuth',
+  'levincia', 'medali', 'alfornada', 'paldealeague',
 ]);
 const GRASSY: ReadonlySet<Theme> = new Set([
   'forest', 'garden', 'plateau', 'woods', 'rainroute', 'cliffs', 'league', 'darkforest',
   'eterna', 'marsh', 'striaton', 'pinwheel', 'santalune', 'laverre',
+  'brooklet', 'lushjungle', 'ulaula', 'turffield', 'cortondo', 'artazon',
 ]);
 
 function ground(ctx: Ctx, p: Palette, theme: Theme, ox: number, oy: number, rng: () => number, kind: Terrain): void {

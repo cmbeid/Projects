@@ -2,6 +2,7 @@
 import type { TrackId } from '../music';
 import type { RegionId } from '../regions';
 import type { Ability } from '../species';
+import type { PokeType } from '../types';
 
 export const COLS = 9;
 export const ROWS = 15;
@@ -32,7 +33,13 @@ export type Theme =
   // Unova
   | 'striaton' | 'museum' | 'pinwheel' | 'nimbasa' | 'driftveil' | 'mistralton' | 'twistmountain' | 'opelucid' | 'unovaleague' | 'chasm'
   // Kalos
-  | 'santalune' | 'glittering' | 'mastery' | 'coumarine' | 'lumiose' | 'laverre' | 'anistar' | 'frostcavern' | 'kalosleague' | 'terminus';
+  | 'santalune' | 'glittering' | 'mastery' | 'coumarine' | 'lumiose' | 'laverre' | 'anistar' | 'frostcavern' | 'kalosleague' | 'terminus'
+  // Alola
+  | 'verdant' | 'brooklet' | 'wela' | 'lushjungle' | 'hokulani' | 'megamart' | 'poni' | 'ulaula' | 'alolaleague' | 'altar'
+  // Galar
+  | 'turffield' | 'hulbury' | 'motostoke' | 'stowonside' | 'ballonlea' | 'circhester' | 'spikemuth' | 'hammerlocke' | 'wyndon' | 'weald'
+  // Paldea
+  | 'cortondo' | 'artazon' | 'levincia' | 'cascarrafa' | 'medali' | 'montenevera' | 'alfornada' | 'glaseado' | 'paldealeague' | 'areazero';
 
 /**
  * Weather: rain and sun boost or weaken attack types, sandstorm and hail wear
@@ -64,6 +71,12 @@ export interface BossDef {
   partners?: readonly BossDef[];
   /** Mega Evolves into this form (its form id) at half HP. */
   mega?: number;
+  /** A Totem Pokémon (Alola): tougher allies nearby, and it calls two more when hurt. */
+  totem?: boolean;
+  /** Dynamaxed (Galar): giant, with half again the HP, sending out Max Move shockwaves for its first 30 s. */
+  dynamax?: boolean;
+  /** Terastallized (Paldea): it has only this type. */
+  tera?: PokeType;
 }
 
 export interface MapDef {

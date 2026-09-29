@@ -65,14 +65,14 @@ describe('maps', () => {
   it('awards every region’s 8 badges once each, in their own regions', () => {
     const badges = MAPS.map((m) => m.badge).filter((b): b is number => Boolean(b));
     expect(badges.sort((a, b) => a - b)).toEqual(Object.values(REGIONS).flatMap((r) => r.badges).sort((a, b) => a - b));
-    expect(badges).toHaveLength(48);
+    expect(badges).toHaveLength(72);
     for (const m of MAPS) if (m.badge) expect(REGIONS[m.regionId].badges).toContain(m.badge);
   });
 });
 
 describe('tower lines', () => {
-  it('has 99 lines, every Pokémon in them known', () => {
-    expect(LINES).toHaveLength(99);
+  it('has 141 lines, every Pokémon in them known', () => {
+    expect(LINES).toHaveLength(141);
     expect(new Set(LINES.map((l) => l.id)).size).toBe(LINES.length);
     for (const l of LINES) for (const dex of lineDexes(l)) expect(SPECIES.has(dex)).toBe(true);
   });
@@ -111,7 +111,7 @@ describe('tower lines', () => {
 
 describe('items', () => {
   it('has an icon for everything', () => {
-    for (const h of HELD_ITEMS) expect(ITEM_ICONS).toContain(h.key);
+    for (const h of HELD_ITEMS) expect(ITEM_ICONS).toContain(h.icon ?? h.key);
   });
   it('names every species', () => {
     expect(species(25).name).toBe('Pikachu');

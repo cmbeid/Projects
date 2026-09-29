@@ -5,7 +5,10 @@
  *
  * Catch rates are the games' own (0–255): Caterpie 255, Snorlax 25, Mewtwo 3.
  */
+import { ALOLA_SPECIES } from './species/alola';
+import { GALAR_SPECIES } from './species/galar';
 import { FLY, s } from './species/make';
+import { PALDEA_SPECIES } from './species/paldea';
 import { KALOS_SPECIES } from './species/kalos';
 import { SINNOH_SPECIES } from './species/sinnoh';
 import { UNOVA_SPECIES } from './species/unova';
@@ -370,6 +373,9 @@ const LIST: Species[] = [
   ...SINNOH_SPECIES,
   ...UNOVA_SPECIES,
   ...KALOS_SPECIES,
+  ...ALOLA_SPECIES,
+  ...GALAR_SPECIES,
+  ...PALDEA_SPECIES,
 ];
 
 export const SPECIES: ReadonlyMap<number, Species> = new Map(LIST.map((sp) => [sp.dex, sp]));

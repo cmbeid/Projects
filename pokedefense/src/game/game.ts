@@ -15,7 +15,10 @@ import {
 } from '../data/items';
 import { type BossDef, BUILDABLE, COLS, type MapDef, pathTiles, ROWS, terrainAt, type Weather } from '../data/maps';
 import { type Ability, species, type Species } from '../data/species';
-import { type AttackKind, type Effects, KEY_STONE, levelCost, line, MAX_LEVEL, MEGA_SECONDS, MEGAS, PROTEAN_TYPES, type TowerLine } from '../data/towers';
+import {
+  type AttackKind, DYNAMAX_BAND, DYNAMAX_HP, DYNAMAX_SECONDS, type Effects, KEY_STONE, levelCost, line, MAX_LEVEL, MAX_WEATHER, MEGA_SECONDS, MEGAS,
+  PROTEAN_TYPES, TERA_ORB, type TowerLine, Z_MOVES, Z_RADIUS, Z_RING,
+} from '../data/towers';
 import { effectiveness, type PokeType } from '../data/types';
 import { buildPath, type PathGeom, pointAt } from './path';
 import { makeRng, pickWeighted, type Rng } from './rng';
@@ -94,6 +97,14 @@ export interface Enemy {
   mega: number | null;
   /** The species it spawned as, before any evolving or Mega Evolving. */
   origin: number;
+  /** A Terastallized boss's one type (Paldea). */
+  tera: PokeType | null;
+  /** Dynamaxed — giant, shaking the ground — until this time (Galar); 0 when not. */
+  dynamaxUntil: number;
+  /** Next Max Move shockwave. */
+  nextMax: number;
+  /** A Totem Pokémon (Alola): its allies nearby are tougher, and it calls one more when hurt. */
+  totem: { ally: number; called: boolean } | null;
   status: Status;
   catching: Catching | null;
   revealed: boolean;
@@ -127,6 +138,10 @@ export interface Tower {
   wavesFought: number;
   /** Mega Evolved until this time (Kalos); 0 when not. */
   megaUntil: number;
+  /** Dynamaxed until this time (Galar); 0 when not. */
+  dynamaxUntil: number;
+  /** Terastallized into this type (Paldea), for the rest of the battle. */
+  tera: PokeType | null;
   stats: TowerStats;
 }
 
@@ -166,6 +181,9 @@ export type GameEvent =
   | { kind: 'evolveEnemy'; id: number; dex: number; x: number; y: number }
   /** A tower, or a boss, Mega Evolved. */
   | { kind: 'mega'; dex: number; x: number; y: number }
+  | { kind: 'zMove'; name: string; type: PokeType; x: number; y: number; radius: number }
+  | { kind: 'dynamax'; dex: number; x: number; y: number }
+  | { kind: 'tera'; type: PokeType; x: number; y: number }
   | { kind: 'leak'; dex: number; lives: number }
   | { kind: 'waveStart'; wave: number; boss: boolean; early: number }
   | { kind: 'waveClear'; wave: number; bonus: number }
@@ -186,7 +204,7 @@ export type GameEvent =
 /** Everything a retry rewinds. Catches and the Pokédex are kept. */
 interface Checkpoint {
   wave: number;
-  state: Pick<Game, 't' | 'money' | 'lives' | 'wave' | 'cleared' | 'pending' | 'openWaves' | 'enemies' | 'towers' | 'buffs' | 'cooldowns' | 'items' | 'balls' | 'megaUsed'> & {
+  state: Pick<Game, 't' | 'money' | 'lives' | 'wave' | 'cleared' | 'pending' | 'openWaves' | 'enemies' | 'towers' | 'buffs' | 'cooldowns' | 'items' | 'balls' | 'megaUsed' | 'zUsed' | 'dynamaxUsed' | 'teraUsed' | 'weather'> & {
     log: Omit<Game['log'], 'caught' | 'seen'>;
   };
 }
@@ -250,6 +268,12 @@ export interface Game {
   retries: number;
   /** A tower has Mega Evolved this battle: only one may. */
   megaUsed: boolean;
+  /** Once-a-battle powers from Alola, Galar and Paldea, spent. */
+  zUsed: boolean;
+  dynamaxUsed: boolean;
+  teraUsed: boolean;
+  /** The weather now: the map's own, until a Max Move changes it. */
+  weather: Weather | undefined;
   autoWave: boolean;
   autoAt: number | null;
   /** What happened, for the results screen and the save. */
@@ -308,6 +332,10 @@ export function newGame(setup: BattleSetup): Game {
     bossLeaked: false,
     retries: 0,
     megaUsed: false,
+    zUsed: false,
+    dynamaxUsed: false,
+    teraUsed: false,
+    weather: map.weather,
     autoWave: false,
     autoAt: null,
     log: { kills: 0, leaked: 0, caught: [], seen: new Set(), found: [], used: [], ballsUsed: [], earned: 0 },
@@ -342,7 +370,7 @@ export function sellValue(g: Game, tower: Tower): number {
   return Math.floor(tower.invested * (0.7 + g.trainer.refund * 0.1));
 }
 
-function setupFor(g: Game, t: Pick<Tower, 'line' | 'level' | 'branch' | 'move' | 'x' | 'y'> & { megaUntil?: number }): TowerStats {
+function setupFor(g: Game, t: Pick<Tower, 'line' | 'level' | 'branch' | 'move' | 'x' | 'y'> & Partial<Pick<Tower, 'megaUntil' | 'dynamaxUntil' | 'tera'>>): TowerStats {
   return towerStats(t.line, {
     level: t.level,
     branch: t.branch,
@@ -350,7 +378,9 @@ function setupFor(g: Game, t: Pick<Tower, 'line' | 'level' | 'branch' | 'move' |
     held: g.held[t.line.id] ?? null,
     ledge: terrainAt(g.map, t.x, t.y) === 'ledge',
     mega: (t.megaUntil ?? 0) > g.t,
-    fog: g.map.weather === 'fog',
+    dynamax: (t.dynamaxUntil ?? 0) > g.t,
+    tera: t.tera ?? null,
+    fog: g.weather === 'fog',
   });
 }
 
@@ -395,7 +425,7 @@ export function placeTower(g: Game, lineId: string, x: number, y: number): Tower
   const base = { line: l, level: 1, branch: null, move: null, x, y };
   const tower: Tower = {
     id: g.nextId++, ...base, target: 'first', cooldown: 0, xp: 0, invested: cost, kills: 0, damageDone: 0,
-    stunnedUntil: 0, facing: x < COLS / 2 ? 1 : -1, lastShot: -1, placedAt: g.wave, wavesFought: 0, megaUntil: 0, stats: setupFor(g, base),
+    stunnedUntil: 0, facing: x < COLS / 2 ? 1 : -1, lastShot: -1, placedAt: g.wave, wavesFought: 0, megaUntil: 0, dynamaxUntil: 0, tera: null, stats: setupFor(g, base),
   };
   g.towers.push(tower);
   emit(g, { kind: 'place', id: tower.id, dex: tower.stats.dex, x: x + 0.5, y: y + 0.5 });
@@ -463,6 +493,69 @@ export function megaEvolve(g: Game, towerId: number): boolean {
   return true;
 }
 
+const grown = (t: Tower): boolean => t.level >= MAX_LEVEL;
+const holding = (g: Game, t: Tower, item: string): boolean => g.held[t.line.id] === item;
+
+/** A Z-Move (Alola): a fully grown tower holding a Z-Ring, once a battle, with something in reach. */
+export function canZMove(g: Game, tower: Tower): boolean {
+  return !g.zUsed && grown(tower) && holding(g, tower, Z_RING) && tower.stats.attack !== 'aura' && zTarget(g, tower) !== undefined;
+}
+
+function zTarget(g: Game, tower: Tower): Enemy | undefined {
+  return pickTarget(g, tower) ?? g.enemies
+    .filter((e) => canHit(g, tower.stats, e) && Math.hypot(e.x - tower.x - 0.5, e.y - tower.y - 0.5) <= tower.stats.range * 1.5)
+    .sort((a, b) => b.hp - a.hp)[0];
+}
+
+/** One enormous hit of the tower's type on everything around its target. */
+export function zMove(g: Game, towerId: number): boolean {
+  const tower = g.towers.find((t) => t.id === towerId);
+  if (!tower || !canZMove(g, tower)) return false;
+  const target = zTarget(g, tower)!;
+  g.zUsed = true;
+  const { x, y } = target;
+  emit(g, { kind: 'zMove', name: Z_MOVES[tower.stats.type], type: tower.stats.type, x, y, radius: Z_RADIUS });
+  for (const e of [...g.enemies]) {
+    if (!e.alive || e.catching || Math.hypot(e.x - x, e.y - y) > Z_RADIUS) continue;
+    damageEnemy(g, e, tower.stats.damage * (e.boss ? 3 : 8), tower.stats.type, tower, NO_HIT);
+  }
+  tower.lastShot = g.t;
+  return true;
+}
+
+/** Dynamax (Galar): a fully grown tower holding a Dynamax Band, once a battle. */
+export function canDynamax(g: Game, tower: Tower): boolean {
+  return !g.dynamaxUsed && grown(tower) && holding(g, tower, DYNAMAX_BAND) && tower.stats.attack !== 'aura';
+}
+
+/** Max Moves for a while: its attacks burst over whole groups, and its type sets the weather. */
+export function dynamax(g: Game, towerId: number): boolean {
+  const tower = g.towers.find((t) => t.id === towerId);
+  if (!tower || !canDynamax(g, tower)) return false;
+  g.dynamaxUsed = true;
+  tower.dynamaxUntil = g.t + DYNAMAX_SECONDS;
+  g.weather = MAX_WEATHER[tower.stats.type] ?? g.weather;
+  for (const t of g.towers) t.stats = setupFor(g, t);
+  emit(g, { kind: 'dynamax', dex: tower.stats.dex, x: tower.x + 0.5, y: tower.y + 0.5 });
+  return true;
+}
+
+/** Terastallizing (Paldea): a fully grown tower holding the Tera Orb, once a battle. */
+export function canTera(g: Game, tower: Tower): boolean {
+  return !g.teraUsed && grown(tower) && holding(g, tower, TERA_ORB) && tower.tera === null && tower.stats.attack !== 'aura';
+}
+
+/** It takes a Tera type of your choosing, and hits a little harder, for the rest of the battle. */
+export function terastallize(g: Game, towerId: number, type: PokeType): boolean {
+  const tower = g.towers.find((t) => t.id === towerId);
+  if (!tower || !canTera(g, tower)) return false;
+  g.teraUsed = true;
+  tower.tera = type;
+  tower.stats = setupFor(g, tower);
+  emit(g, { kind: 'tera', type, x: tower.x + 0.5, y: tower.y + 0.5 });
+  return true;
+}
+
 export function sellTower(g: Game, towerId: number): number {
   const i = g.towers.findIndex((t) => t.id === towerId);
   if (i < 0) return 0;
@@ -498,7 +591,8 @@ export function startWave(g: Game): boolean {
       wave: g.wave + 1,
       state: structuredClone({
         t: g.t, money: g.money, lives: g.lives, wave: g.wave, cleared: g.cleared, pending: g.pending, openWaves: g.openWaves,
-        enemies: g.enemies, towers: g.towers, buffs: g.buffs, cooldowns: g.cooldowns, items: g.items, balls: g.balls, megaUsed: g.megaUsed, log,
+        enemies: g.enemies, towers: g.towers, buffs: g.buffs, cooldowns: g.cooldowns, items: g.items, balls: g.balls, megaUsed: g.megaUsed,
+        zUsed: g.zUsed, dynamaxUsed: g.dynamaxUsed, teraUsed: g.teraUsed, weather: g.weather, log,
       }),
     };
     g.bossLeaked = false;
@@ -525,12 +619,19 @@ function finalBoss(map: MapDef, boss: BossDef): boolean {
   return [map.boss, ...(map.boss.partners ?? []), ...(map.rotation ?? [])].some((b) => b.dex === boss.dex);
 }
 
+/** An enemy's species as it fights: a Terastallized boss has only its Tera type. */
+export function enemySpecies(dex: number, tera: PokeType | null): Species {
+  const sp = species(dex);
+  return tera ? { ...sp, types: [tera] } : sp;
+}
+
 function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed = true): Enemy {
-  const sp = species(spawn.dex);
+  const boss = spawn.boss;
+  const tera = boss?.tera ?? null;
+  const sp = enemySpecies(spawn.dex, tera);
   const diff = DIFFICULTIES[g.difficulty];
   const tier = g.map.endless ? g.map.tier + Math.floor(wave / 15) : g.map.tier;
-  const maxHp = Math.round(spawn.hp * hpScale(tier, wave) * diff.hp * (g.map.hpMul ?? 1));
-  const boss = spawn.boss;
+  const maxHp = Math.round(spawn.hp * hpScale(tier, wave) * diff.hp * (g.map.hpMul ?? 1) * (boss?.dynamax ? DYNAMAX_HP : 1));
   const path = g.paths[spawn.path] ?? g.paths[0]!;
   const pos = pointAt(path, dist);
   const e: Enemy = {
@@ -559,6 +660,10 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     healed: false,
     mega: boss?.mega ?? null,
     origin: sp.dex,
+    tera,
+    dynamaxUntil: boss?.dynamax ? g.t + DYNAMAX_SECONDS : 0,
+    nextMax: g.t + 4,
+    totem: boss?.totem ? { ally: boss.escort[0] ?? spawn.dex, called: false } : null,
     status: { ...NO_STATUS },
     catching: null,
     revealed: true,
@@ -727,8 +832,8 @@ const SAND_PROOF: readonly PokeType[] = ['rock', 'ground', 'steel'];
 function chipFraction(g: Game, e: Enemy): number {
   let f = 0;
   const types = e.sp.types;
-  if (g.map.weather === 'sand' && !types.some((t) => SAND_PROOF.includes(t))) f += 0.01;
-  if (g.map.weather === 'hail' && !types.includes('ice')) f += 0.01;
+  if (g.weather === 'sand' && !types.some((t) => SAND_PROOF.includes(t))) f += 0.01;
+  if (g.weather === 'hail' && !types.includes('ice')) f += 0.01;
   if (!types.some((t) => SAND_PROOF.includes(t))) {
     for (const t of g.towers) {
       if (t.stats.effects.chip > 0 && Math.hypot(t.x + 0.5 - e.x, t.y + 0.5 - e.y) <= t.stats.range) f += t.stats.effects.chip;
@@ -740,6 +845,13 @@ function chipFraction(g: Game, e: Enemy): number {
 function hasStatus(g: Game, e: Enemy): boolean {
   const s = e.status;
   return s.burnUntil > g.t || s.poisonUntil > g.t || s.sleepUntil > g.t || s.paraUntil > g.t || s.confuseUntil > g.t || s.slowUntil > g.t;
+}
+
+/** A Totem Pokémon's allies within 2 tiles of it shrug off more of each hit. */
+const TOTEM_ARMOR = 0.2;
+function totemNear(g: Game, e: Enemy): boolean {
+  if (e.totem || e.boss) return false;
+  return g.enemies.some((b) => b.totem && b.alive && Math.hypot(b.x - e.x, b.y - e.y) <= 2);
 }
 
 /** Protean: the type, of the ones Greninja can take, that hits these types hardest. */
@@ -763,11 +875,12 @@ function damageEnemy(g: Game, e: Enemy, raw: number, hitType: PokeType, tower: T
     return 0;
   }
   const crit = fx.crit > 0 && g.rng() < fx.crit;
-  let dmg = raw * eff * (crit ? 2 : 1) * weatherBoost(g.map.weather, type);
+  let dmg = raw * eff * (crit ? 2 : 1) * weatherBoost(g.weather, type);
   if (e.status.weakenUntil > g.t) dmg *= 1.25;
   if (fx.hex && hasStatus(g, e)) dmg *= 2;
   if (fx.antiAir && e.sp.traits.includes('flying')) dmg *= 1 + fx.antiAir;
-  dmg *= 1 - e.armor * (1 - Math.min(1, fx.pierceArmour));
+  const armor = Math.min(0.7, e.armor + (totemNear(g, e) ? TOTEM_ARMOR : 0));
+  dmg *= 1 - armor * (1 - Math.min(1, fx.pierceArmour));
   if (fx.ohko && !e.boss && !e.lead && g.rng() < fx.ohko) dmg = e.hp;
   dmg = Math.max(1, dmg);
   e.hp -= dmg;
@@ -1116,6 +1229,16 @@ function updateEnemies(g: Game, dt: number): void {
     if (e.sp.regen && !e.boss) e.hp = Math.min(e.maxHp, e.hp + e.sp.regen * e.maxHp * dt);
 
     if (e.mega !== null && e.hp < e.maxHp / 2) megaEnemy(g, e, e.mega);
+    if (e.dynamaxUntil && g.t >= e.dynamaxUntil) e.dynamaxUntil = 0;
+    if (e.dynamaxUntil && g.t >= e.nextMax && s.sleepUntil <= g.t) {
+      // A Max Move: a shockwave that stops towers around it.
+      e.nextMax = g.t + 8;
+      stunTowers(g, e.x, e.y, 2.2, 1.5);
+    }
+    if (e.totem && !e.totem.called && e.hp < e.maxHp / 2) {
+      e.totem.called = true;
+      useAbility(g, e, { kind: 'summon', every: 0, dex: e.totem.ally, count: 2 });
+    }
     for (const slot of e.abilities) {
       const ab = slot.ability;
       if (ab.kind === 'truant') continue;
@@ -1216,6 +1339,10 @@ export function step(g: Game, dt = STEP): void {
       tower.megaUntil = 0;
       tower.stats = setupFor(g, tower);
     }
+    if (tower.dynamaxUntil && g.t >= tower.dynamaxUntil) {
+      tower.dynamaxUntil = 0;
+      tower.stats = setupFor(g, tower);
+    }
   }
   const aura = auras(g);
   const xAttack = g.buffs.xAttack > g.t ? 1.5 : 1;
@@ -1279,7 +1406,7 @@ export function retryWave(g: Game): boolean {
   g.log = { ...g.log, ...log };
   // structuredClone copies the shared data too; point back at the originals.
   for (const t of g.towers) t.line = line(t.line.id);
-  for (const e of g.enemies) e.sp = species(e.dex);
+  for (const e of g.enemies) e.sp = enemySpecies(e.dex, e.tera);
   g.projectiles = [];
   g.drops = [];
   g.bossLeaked = false;

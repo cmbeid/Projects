@@ -53,6 +53,11 @@ img.pix, canvas.pix { image-rendering: pixelated; image-rendering: crisp-edges; 
 .btn.primary { background: var(--red); }
 .btn.gold { background: var(--yellow); color: #2a2000; }
 .btn.mega { background: linear-gradient(135deg, #f878c8, #a878f8 50%, #58c8f8); color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.btn.zmove { background: linear-gradient(135deg, #f8d048, #f88838); color: #2a1400; }
+.btn.dynamax { background: linear-gradient(135deg, #f84858, #a02048); }
+.btn.tera { background: linear-gradient(135deg, #58d8f8, #a878f8 55%, #f878c8); text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.tera-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+.tera-types .type { min-height: 40px; border: 0; border-radius: 10px; color: #fff; font-weight: 800; text-transform: capitalize; text-shadow: 0 1px 0 rgba(0,0,0,.4); }
 .btn.green { background: #2f9a4e; }
 .btn.ghost { background: transparent; box-shadow: none; border: 1px solid var(--line); }
 .btn.small { min-height: 36px; padding: 6px 12px; font-size: 13px; }
