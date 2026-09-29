@@ -64,6 +64,8 @@ export interface HeldItem {
   price: number;
   /** Sold only once this region is open. */
   region?: RegionId;
+  /** The icon to show, when PokeAPI has none of its own. */
+  icon?: string;
 }
 
 const typeItem = (key: string, name: string, type: PokeType): HeldItem => ({
@@ -97,6 +99,18 @@ export const HELD_ITEMS: readonly HeldItem[] = [
   {
     key: 'key-stone', name: 'Key Stone', region: 'kalos', price: 900,
     desc: 'A fully grown tower that has a Mega form can Mega Evolve — once a battle, for 40 s: half as strong again. Venusaur, Charizard, Blastoise, Alakazam, Gengar, Gyarados, Ampharos, Scizor, Heracross, Tyranitar, Sceptile, Blaziken, Swampert, Gardevoir, Aggron, Manectric, Absol, Metagross, Garchomp, Lucario, Abomasnow.',
+  },
+  {
+    key: 'z-ring', name: 'Z-Ring', region: 'alola', price: 900,
+    desc: 'A fully grown tower holding it can unleash a Z-Move — once a battle: one enormous hit of its type on everything around its target.',
+  },
+  {
+    key: 'dynamax-band', name: 'Dynamax Band', region: 'galar', price: 900, icon: 'power-band',
+    desc: 'A fully grown tower holding it can Dynamax — once a battle, for 30 s: Max Moves that burst over whole groups, and change the weather to suit its type.',
+  },
+  {
+    key: 'tera-orb', name: 'Tera Orb', region: 'paldea', price: 900, icon: 'comet-shard',
+    desc: 'A fully grown tower holding it can Terastallize — once a battle: it takes any type you choose, and hits a fifth harder, for the rest of the battle.',
   },
 ];
 
@@ -134,10 +148,10 @@ export const DROPS: readonly [key: PowerupKey | BallKey, weight: number][] = [
 export const DROP_CHANCE = 0.025;
 
 export const ITEM_ICONS: readonly string[] = [
-  ...POWERUP_KEYS, ...BALL_KEYS, ...HELD_ITEMS.map((i) => i.key),
+  ...POWERUP_KEYS, ...BALL_KEYS, ...HELD_ITEMS.map((i) => i.icon ?? i.key),
   'water-stone', 'thunder-stone', 'fire-stone', 'exp-share', 'lucky-egg',
 ].filter((k, i, all) => all.indexOf(k) === i);
 
 export function itemIconUrl(key: string): string {
-  return `items/${key}.png`;
+  return `items/${HELD_BY_KEY.get(key)?.icon ?? key}.png`;
 }

@@ -176,7 +176,7 @@ async function regions(name: string, viewport: { width: number; height: number }
   check((await page.locator('.modal h2').textContent()) === 'Welcome to Hoenn!', 'Professor Birch welcomes you to Hoenn');
   await page.screenshot({ path: `${OUT}/${name}-7-welcome.png` });
   await page.getByRole('button', { name: /Thanks, Professor/ }).click();
-  check(await page.locator('.tabs.regions button').count() === 6, 'six region tabs');
+  check(await page.locator('.tabs.regions button').count() === 9, 'nine region tabs');
   await page.screenshot({ path: `${OUT}/${name}-8-hoenn.png` });
 
   for (const [tab, mapName, shot] of [['Johto', 'Sprout Tower', '9-johto-battle'], ['Hoenn', 'Mt. Chimney', '10-hoenn-battle']] as const) {
@@ -199,7 +199,7 @@ async function regions(name: string, viewport: { width: number; height: number }
 
 /**
  * Sinnoh, Unova and Kalos, from a save that has cleared everything up to
- * Kalos: Professor Sycamore's welcome, six region tabs, Hearthome's fog,
+ * Kalos: Professor Sycamore's welcome, all nine region tabs, Hearthome's fog,
  * the Striaton triplets, and Korrina's Lucario Mega Evolving.
  */
 async function laterRegions(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
@@ -224,7 +224,7 @@ async function laterRegions(name: string, viewport: { width: number; height: num
   check((await page.locator('.modal h2').textContent()) === 'Welcome to Kalos!', 'Professor Sycamore welcomes you to Kalos');
   await page.screenshot({ path: `${OUT}/${name}-11-welcome-kalos.png` });
   await page.getByRole('button', { name: /Thanks, Professor/ }).click();
-  check(await page.locator('.tabs.regions button').count() === 6, 'six region tabs');
+  check(await page.locator('.tabs.regions button').count() === 9, 'nine region tabs');
   const tabInView = await page.locator('.tabs.regions button.on').evaluate((el) => {
     const r = el.getBoundingClientRect();
     return r.left >= 0 && r.right <= window.innerWidth;
@@ -286,8 +286,161 @@ async function laterRegions(name: string, viewport: { width: number; height: num
   await browser.close();
 }
 
+type Win = { __battle: {
+  wave: number; lives: number; money: number; t: number; weather: string | null; zUsed: boolean; map: { id: string; waves: number };
+  towers: { x: number; y: number; level: number; tera: string | null; dynamaxUntil: number }[];
+  enemies: { boss: boolean; alive: boolean; totem: unknown; tera: string | null; dynamaxUntil: number }[];
+} };
+const battle = (page: Page) => page.evaluate(() => {
+  const g = (window as unknown as Win).__battle;
+  return { ...g, towers: g.towers.map((t) => ({ ...t })), enemies: g.enemies.map((e) => ({ ...e, totem: Boolean(e.totem) })) };
+});
+
+/** Build one of `who` on the first free tile beside the most path, grow it fully, and open its panel. */
+async function buildGrown(page: Page, who: string, touch: boolean): Promise<void> {
+  await page.evaluate(() => {
+    (window as unknown as Win).__battle.money = 1e6;
+  });
+  await page.locator('.shop-card', { hasText: who }).click();
+  // Tiles beside the most path first, so it has something to hit.
+  const tiles = await page.evaluate(() => {
+    const path = [...(window as unknown as { __battle: { pathSet: Set<string> } }).__battle.pathSet].map((k) => k.split(',').map(Number) as [number, number]);
+    const all: [number, number, number][] = [];
+    for (let y = 0; y < 15; y += 1) for (let x = 0; x < 9; x += 1) all.push([x, y, path.filter(([px, py]) => Math.hypot(px - x, py - y) <= 1.5).length]);
+    return all.sort((a, b) => b[2] - a[2]);
+  });
+  for (const [x, y] of tiles) {
+    await tapTile(page, x, y, touch);
+    if ((await battle(page)).towers.length) break;
+  }
+  const t = await page.evaluate(() => {
+    const tower = (window as unknown as Win).__battle.towers[0]!;
+    tower.level = 6;
+    return tower;
+  });
+  await page.keyboard.press('Escape');
+  await tapTile(page, t.x, t.y, false);
+  await page.waitForSelector('.panel');
+}
+
+/**
+ * Alola, Galar and Paldea, from a save that has cleared everything up to
+ * Paldea: Professor Sada's welcome, nine region tabs, a Totem, a Z-Move, a
+ * Dynamaxed gym leader and a Dynamaxing tower, and a Tera boss and a
+ * Terastallizing tower.
+ */
+async function newestRegions(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
+  console.log(`${name} newest regions (${viewport.width}×${viewport.height})`);
+  const browser = await chromium.launch(EXECUTABLE ? { executablePath: EXECUTABLE } : {});
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  const before = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar'];
+  const cleared = MAPS.filter((m) => !m.endless && before.includes(m.regionId)).map((m) => m.id).concat(['cortondo', 'artazon']);
+  await page.addInitScript(([ids, greeted]: [string[], string[]]) => {
+    const results = Object.fromEntries(ids.map((id) => [id, { normal: 3, hard: 0, best: 0 }]));
+    localStorage.setItem('pokedefense.save.v1', JSON.stringify({
+      results, greeted, tutorialDone: true, bp: 500, heldOwned: ['z-ring', 'dynamax-band', 'tera-orb'],
+      held: { litten: 'z-ring', scorbunny: 'dynamax-band', fuecoco: 'tera-orb' }, team: ['litten', 'scorbunny', 'fuecoco', 'pidgey'],
+    }));
+  }, [cleared, before] as [string[], string[]]);
+  await page.goto(URL);
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.waitForSelector('.modal');
+  await page.waitForTimeout(700);
+  check((await page.locator('.modal h2').textContent()) === 'Welcome to Paldea!', 'Professor Sada welcomes you to Paldea');
+  await page.screenshot({ path: `${OUT}/${name}-16-welcome-paldea.png` });
+  await page.getByRole('button', { name: /Thanks, Professor/ }).click();
+  check(await page.locator('.tabs.regions button').count() === 9, 'nine region tabs');
+  await page.screenshot({ path: `${OUT}/${name}-17-paldea.png` });
+
+  const battles = [
+    ['Alola', 'Verdant Cavern', 'verdant-cavern', 'Litten', '18-alola-totem'],
+    ['Galar', 'Turffield', 'turffield', 'Scorbunny', '19-galar-dynamax'],
+    ['Paldea', 'Cortondo', 'cortondo', 'Fuecoco', '20-paldea-tera'],
+  ] as const;
+  for (const [tab, mapName, id, who, shot] of battles) {
+    await page.locator('.tabs.regions button', { hasText: tab }).click();
+    await page.locator('.map-card', { hasText: mapName }).click();
+    await page.getByRole('button', { name: /Battle!/ }).click();
+    await page.waitForSelector('canvas.map');
+    await buildGrown(page, who, touch);
+    // Skip ahead to the gym leader's wave, and keep the battle going through it.
+    await page.evaluate(() => {
+      const g = (window as unknown as Win).__battle;
+      g.wave = g.map.waves - 1;
+      g.lives = 999;
+    });
+    await page.locator('.wave-btn').click();
+    await page.waitForFunction(
+      () => (window as unknown as Win).__battle.enemies.some((e) => e.boss && e.alive),
+      undefined, { timeout: 60_000 },
+    ).catch(() => undefined);
+    await page.waitForTimeout(800);
+    const boss = (await battle(page)).enemies.find((e) => e.boss);
+    // Calling the wave put the panel away: open it again.
+    const tower = (await battle(page)).towers[0]!;
+    if (!(await page.locator('.panel').isVisible())) await tapTile(page, tower.x, tower.y, false);
+    if (id === 'verdant-cavern') {
+      check(Boolean(boss?.totem), 'Alola: Ilima’s Gumshoos is a Totem');
+      const z = await page.waitForSelector('.btn.zmove', { timeout: 60_000 }).catch(() => null);
+      check(z !== null, 'Alola: a grown Litten holding the Z-Ring offers its Z-Move');
+      await page.screenshot({ path: `${OUT}/${name}-${shot}-zmove.png` });
+      await z?.click();
+      check((await battle(page)).zUsed, 'Alola: the Z-Move goes off, once a battle');
+    }
+    if (id === 'turffield') {
+      check((boss?.dynamaxUntil ?? 0) > 0, 'Galar: Milo’s Eldegoss comes out Dynamaxed');
+      await page.locator('.btn.dynamax').click();
+      const g = await battle(page);
+      check(g.towers[0]!.dynamaxUntil > g.t && g.weather === 'sun', 'Galar: Scorbunny Dynamaxes, and its Max Moves bring out the sun');
+      await page.waitForSelector('text=Dynamax');
+    }
+    if (id === 'cortondo') {
+      check(boss?.tera === 'bug', 'Paldea: Katy’s Teddiursa is Tera Bug');
+      check(await page.locator('.boss-bar', { hasText: 'Tera bug' }).count() > 0, 'Paldea: the boss bar shows its Tera type');
+      await page.locator('.btn.tera').click();
+      await page.locator('.tera-types button', { hasText: 'ghost' }).click();
+      check((await battle(page)).towers[0]!.tera === 'ghost', 'Paldea: Fuecoco Terastallizes into the type you pick');
+    }
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${OUT}/${name}-${shot}.png` });
+    check((await battle(page)).map.id === id, `${tab}: ${mapName} battle running`);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.getByRole('button', { name: 'Give up' }).click();
+    await page.waitForSelector('.map-card');
+  }
+  check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
+  await browser.close();
+}
+
+/** Buying from far down the Mart's shelf keeps the shelf where it was. */
+async function mart(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
+  console.log(`${name} mart (${viewport.width}×${viewport.height})`);
+  const browser = await chromium.launch(EXECUTABLE ? { executablePath: EXECUTABLE } : {});
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('pokedefense.save.v1', JSON.stringify({ bp: 50_000, tutorialDone: true })));
+  await page.goto(URL);
+  await page.getByRole('button', { name: 'Poké Mart' }).first().click();
+  await page.waitForSelector('.ware');
+  const before = await page.locator('.screen .scroll').evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+    return el.scrollTop;
+  });
+  await page.locator('.ware button.gold').last().click();
+  await page.waitForTimeout(300);
+  const after = await page.locator('.screen .scroll').evaluate((el) => el.scrollTop);
+  check(before > 0 && Math.abs(after - before) < 2, `mart: buying keeps the shelf where it was (${after} vs ${before})`);
+  await browser.close();
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT, { recursive: true });
+  await mart('phone', { width: 390, height: 844 }, true);
+  await newestRegions('phone', { width: 390, height: 844 }, true);
+  await newestRegions('desktop', { width: 1440, height: 900 }, false);
   await laterRegions('phone', { width: 390, height: 844 }, true);
   await laterRegions('desktop', { width: 1440, height: 900 }, false);
   await regions('phone', { width: 390, height: 844 }, true);

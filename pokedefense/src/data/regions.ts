@@ -1,12 +1,14 @@
 /**
- * The six regions, played in order: becoming Champion of one opens the
- * next. Each has its own Gym Badges (PokeAPI numbers them 1–40 straight
- * through Unova, then Kalos's from 51), its own music, and a professor who
- * hands over that region's three starters on arrival.
+ * The nine regions, played in order: becoming Champion of one opens the
+ * next. Each has its own Gym Badges — PokeAPI numbers them 1–40 straight
+ * through Unova, and Kalos's from 51; Alola's island trials, Galar's and
+ * Paldea's badges aren't there, so `fetch-assets` draws them as 101–108,
+ * 111–118 and 121–128 — its own music, and a professor who hands over that
+ * region's three starters on arrival.
  */
 import type { TrackId } from './music';
 
-export const REGION_IDS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos'] as const;
+export const REGION_IDS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea'] as const;
 export type RegionId = (typeof REGION_IDS)[number];
 
 export interface Region {
@@ -55,6 +57,21 @@ export const REGIONS: Record<RegionId, Region> = {
     id: 'kalos', name: 'Kalos', professor: 'Professor Sycamore', starters: ['chespin', 'fennekin', 'froakie'],
     badges: [51, 52, 53, 54, 55, 56, 57, 58], league: 'kalos-league', endless: 'terminus-cave',
     worldTrack: 'k_vaniville', teamTrack: 'k_gym', winTrack: 'k_victory', championTrack: 'k_victory',
+  },
+  alola: {
+    id: 'alola', name: 'Alola', professor: 'Professor Kukui', starters: ['rowlet', 'litten', 'popplio'],
+    badges: [101, 102, 103, 104, 105, 106, 107, 108], league: 'alola-league', endless: 'altar-of-the-sunne',
+    worldTrack: 'k_coumarine', teamTrack: 'e_petalburg', winTrack: 'e_victory_gym_leader', championTrack: 'e_hall_of_fame',
+  },
+  galar: {
+    id: 'galar', name: 'Galar', professor: 'Professor Magnolia', starters: ['grookey', 'scorbunny', 'sobble'],
+    badges: [111, 112, 113, 114, 115, 116, 117, 118], league: 'wyndon-stadium', endless: 'slumbering-weald',
+    worldTrack: 'p_route206', teamTrack: 'p_gym', winTrack: 'p_victory', championTrack: 'p_halloffame',
+  },
+  paldea: {
+    id: 'paldea', name: 'Paldea', professor: 'Professor Sada', starters: ['sprigatito', 'fuecoco', 'quaxly'],
+    badges: [121, 122, 123, 124, 125, 126, 127, 128], league: 'paldea-league', endless: 'area-zero',
+    worldTrack: 'k_santalune', teamTrack: 'k_gym', winTrack: 'k_victory', championTrack: 'halloffame',
   },
 };
 

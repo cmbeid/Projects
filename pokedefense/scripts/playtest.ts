@@ -15,7 +15,8 @@ import { species } from '../src/data/species';
 import { line } from '../src/data/towers';
 import { effectiveness } from '../src/data/types';
 import { playOut } from '../src/game/bot';
-import { newGame } from '../src/game/game';
+import { enemySpecies, newGame } from '../src/game/game';
+import type { PokeType } from '../src/data/types';
 import type { DifficultyKey } from '../src/game/waves';
 import { freshProgress, type Progress, TEAM_SIZE, unlockedLines } from '../src/state/save';
 
@@ -33,19 +34,22 @@ function progressBefore(index: number): Progress {
   return p;
 }
 
+/** A wild Pokémon or boss, in its Tera type if it has one. */
+type Foe = { dex: number; weight: number; tera?: PokeType | undefined };
+
 /** How hard a line hits one wild Pokémon, as a player would weigh it. */
-function hitValue(lineId: string, dex: number): number {
+function hitValue(lineId: string, p: Foe): number {
   const l = line(lineId);
-  const sp = species(dex);
+  const sp = enemySpecies(p.dex, p.tera ?? null);
   if (l.groundOnly && sp.traits.includes('flying')) return 0;
   if (sp.traits.includes('invisible') && !l.detect) return 0.3 * effectiveness(l.type, sp.types);
   return effectiveness(l.type, sp.types);
 }
 
 /** Pick a team greedily for coverage: each pick is the line that most improves the best answer to every wild Pokémon. */
-function pickTeam(available: string[], pool: { dex: number; weight: number }[]): string[] {
+function pickTeam(available: string[], pool: Foe[]): string[] {
   const team: string[] = [];
-  const best = new Map(pool.map((p) => [p.dex, 0]));
+  const best = new Map(pool.map((p) => [p, 0]));
   while (team.length < TEAM_SIZE && team.length < available.length) {
     let pick = '';
     let gain = -Infinity;
@@ -53,14 +57,14 @@ function pickTeam(available: string[], pool: { dex: number; weight: number }[]):
       if (team.includes(id)) continue;
       const l = line(id);
       let g = (l.base.damage * Math.max(0.5, l.base.rate)) / 60;
-      for (const p of pool) g += p.weight * Math.max(0, hitValue(id, p.dex) - best.get(p.dex)!) / 4;
+      for (const p of pool) g += p.weight * Math.max(0, hitValue(id, p) - best.get(p)!) / 4;
       if (g > gain) {
         gain = g;
         pick = id;
       }
     }
     team.push(pick);
-    for (const p of pool) best.set(p.dex, Math.max(best.get(p.dex)!, hitValue(pick, p.dex)));
+    for (const p of pool) best.set(p, Math.max(best.get(p)!, hitValue(pick, p)));
   }
   return team;
 }
@@ -68,7 +72,7 @@ function pickTeam(available: string[], pool: { dex: number; weight: number }[]):
 for (const [i, map] of MAPS.entries()) {
   if (only && map.id !== only && map.regionId !== only) continue;
   const available = unlockedLines(progressBefore(i)).map((l) => l.id);
-  const bosses = mapBosses(map).map((bs) => ({ dex: bs.dex, weight: 3 }));
+  const bosses = mapBosses(map).map((bs) => ({ dex: bs.dex, tera: bs.tera, weight: 3 }));
   const team = pickTeam(available, [...map.pool.filter((p) => !p.rare), ...bosses]);
   // Like a player, bring something that can see invisible Pokémon if any are coming.
   const hidden = [...map.pool.filter((p) => !p.rare), ...bosses].some((p) => species(p.dex).traits.includes('invisible'))
@@ -77,7 +81,6 @@ for (const [i, map] of MAPS.entries()) {
     const seer = available.filter((id) => line(id).detect).sort((a, b) => line(b).base.damage - line(a).base.damage)[0];
     if (seer) team[team.length - 1] = seer;
   }
-  if (process.env.TEAM) console.log(team.join(" "));
   const row: string[] = [];
   for (const difficulty of ['normal', 'hard'] as DifficultyKey[]) {
     const g = newGame({ map, difficulty, team, items: {}, balls: {}, held: {}, trainer: NO_TRAINER, seed: 1 });

@@ -1,3 +1,4 @@
+import { itemIconUrl } from '../data/items';
 /** Small still portraits of Pokémon for the DOM (shop, team, Pokédex, results). */
 import { drawPokemon, loadSheet, sheetSize } from './sprites';
 
@@ -37,7 +38,7 @@ export function thumb(dex: number, size: number, opts: { shiny?: boolean; animat
 
 export function icon(key: string, size = 32, className = 'pix'): HTMLImageElement {
   const img = document.createElement('img');
-  img.src = `items/${key}.png`;
+  img.src = itemIconUrl(key);
   img.alt = '';
   img.className = className;
   img.width = size;

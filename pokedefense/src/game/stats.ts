@@ -39,6 +39,10 @@ export interface TowerSetup {
   ledge: boolean;
   /** Mega Evolved (Kalos): stronger, and in its mega form. */
   mega?: boolean;
+  /** Dynamaxed (Galar): Max Moves that burst over whole groups. */
+  dynamax?: boolean;
+  /** Terastallized (Paldea) into this type. */
+  tera?: PokeType | null;
   /** Fog on the map: every tower's reach shrinks, but a Flying type's or a Wide Lens holder's. */
   fog?: boolean;
 }
@@ -107,6 +111,17 @@ export function towerStats(line: TowerLine, setup: TowerSetup): TowerStats {
     damage *= 1.5;
     rate *= 1.1;
     range += 0.3;
+  }
+
+  if (setup.tera) {
+    type = setup.tera;
+    damage *= 1.2;
+  }
+  if (setup.dynamax && attack !== 'aura') {
+    attack = 'splash';
+    effects.splash = Math.max(effects.splash, 1.2);
+    damage *= 1.3;
+    range += 0.5;
   }
 
   damage *= power * 1.4 ** (level - 1);

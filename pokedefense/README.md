@@ -4,8 +4,8 @@ A Pokémon tower defense game for the phone, portrait-first, that also lays out
 properly on tablets and desktops: when there's room beside the map, the map
 takes the full height and the controls move into columns beside it. Place Pokémon beside the path, level them up
 until they evolve, teach them signature moves, and catch the wild Pokémon
-marching past — through six regions, **Kanto, Johto, Hoenn, Sinnoh, Unova and
-Kalos**, each with eight Gym Leaders, a Pokémon League and an endless map of
+marching past — through nine regions, **Kanto, Johto, Hoenn, Sinnoh, Unova,
+Kalos, Alola, Galar and Paldea**, each with eight Gym Leaders, a Pokémon League and an endless map of
 its own.
 
 ## Running it
@@ -52,7 +52,7 @@ npm run build && npm run preview   # the built game, at http://localhost:4173/
 Winning earns stars (by lives kept), a badge, and **BP** to spend in the
 **Poké Mart**: power-ups, Poké/Great/Ultra/Master Balls, **held items** given
 to a whole tower line (Charcoal, Scope Lens, Quick Claw, Wide Lens, and from
-Kalos the Key Stone…), and
+Kalos the Key Stone, then the Z-Ring, Dynamax Band and Tera Orb…), and
 permanent **Trainer upgrades** (start ₽, lives, discounts, interest, catch rate…).
 Clearing a map opens its Hard mode.
 
@@ -72,15 +72,23 @@ its Champion.
 | Sinnoh | Turtwig, Chimchar, Piplup | Pokémon Platinum, arranged for Game Boy | Spear Pillar — Giratina, Dialga and Palkia in turn |
 | Unova | Snivy, Tepig, Oshawott | Pokémon Black and White, arranged for Game Boy (see below) | Giant Chasm — Kyurem, and Reshiram & Zekrom |
 | Kalos | Chespin, Fennekin, Froakie (Protean) | Original tunes | Terminus Cave — Zygarde, and Xerneas & Yveltal |
+| Alola | Rowlet, Litten, Popplio | Earlier regions' tracks | Altar of the Sunne — Solgaleo and Lunala in turn |
+| Galar | Grookey, Scorbunny, Sobble | Earlier regions' tracks | Energy Plant — Eternatus, and Zacian & Zamazenta |
+| Paldea | Sprigatito, Fuecoco, Quaxly | Earlier regions' tracks | Area Zero — Koraidon and Miraidon in turn, and Terapagos |
 
-99 tower lines in all. Johto brings Dark and Steel towers (Houndour,
+141 tower lines in all. Johto brings Dark and Steel towers (Houndour,
 Skarmory, Sneasel…), Hoenn a Ralts that becomes Gardevoir or Gallade, a
 Trapinch that lurks on the path until it grows wings as Flygon, and Feebas —
 that region's Magikarp. Sinnoh has Riolu and Gible, and Spiritomb to catch;
 Unova, Litwick, Axew and a Ferroseed that sits on the path; Kalos, the
 fastest bird in Fletchling, Honedge, and Klefki's jangling key ring. Froakie's
 Protean gives each hit whichever of Water, Dark, Ice, Fighting or Poison its
-target fears most.
+target fears most. Alola brings Pikipek, Grubbin, Rockruff, Mudbray and
+Jangmo-o, with Mimikyu, Mareanie, Salandit and Wimpod to catch; Galar,
+Rookidee, Rolycoly, Toxel, Hatenna and Dreepy, with Sinistea, Falinks, Cufant
+and Applin; Paldea, Lechonk, Pawmi, Tinkatink, Charcadet and Frigibax, with
+Gimmighoul, Tandemaus, Flittle and Orthworm. Each region's two box legends can
+be caught on its endless map.
 
 Each region has a twist:
 
@@ -98,6 +106,21 @@ Each region has a twist:
   Evolve: once a battle, for 40 seconds, half as strong again (21 lines can,
   from Venusaur to Garchomp). Korrina's Lucario and Diantha's Gardevoir Mega
   Evolve when they're hurt.
+- **Alola — Totems and Z-Moves.** Each trial ends with a Totem Pokémon: its
+  allies near it take a fifth less damage, and it calls two more when it's
+  hurt. Give a kind of tower the Z-Ring and a fully grown one can, once a
+  battle, unleash its type's Z-Move: eight times its damage over everything
+  near its target (three times on a boss).
+- **Galar — Dynamax.** Gym Leaders' aces come out Dynamaxed: giant, half as
+  tough again, and every 8 seconds a Max Move stuns towers near them, for 30
+  seconds. With the Dynamax Band, once a battle, a fully grown tower grows
+  giant for 30 seconds and its attacks become Max Moves over an area — and a
+  Fire, Water, Rock or Ice one changes the weather for the rest of the battle.
+  Leon's Charizard Gigantamaxes when it's hurt.
+- **Paldea — Terastallizing.** Every Gym Leader's ace has Terastallized into
+  another type, shown on the boss bar, so plan for that type, not its own.
+  With the Tera Orb, once a battle, a fully grown tower takes any Tera type
+  you choose for the rest of the battle, and hits a fifth harder.
 
 #### Kanto
 
@@ -189,6 +212,51 @@ Each region has a twist:
 | Pokémon League | Malva, Siebold, Wikstrom, Drasna, then Diantha | Diantha's Gardevoir — Mega Evolves |
 | Terminus Cave | Endless; Noibat flutter by | Zygarde every 25th wave |
 
+#### Alola
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Verdant Cavern | Yungoos pour out of their dens | Ilima's Totem Gumshoos |
+| Brooklet Hill | 🌧️ Rain on the pools | Lana's Totem Wishiwashi, as a whole school |
+| Wela Volcano Park | ☀️ Harsh sun on the volcano | Kiawe's Totem Salazzle |
+| Lush Jungle | Mimikyu hiding in the undergrowth | Mallow's Totem Lurantis (heals) |
+| Hokulani Observatory | Electric types under the telescope | Sophocles's Totem Vikavolt (stuns towers) |
+| Thrifty Megamart | An abandoned supermarket full of ghosts | Acerola's Totem Mimikyu (invisible) |
+| Vast Poni Canyon | Dragons and rock, and no captain | Totem Kommo-o |
+| Ula'ula Meadow | Oricorio dancing overhead | Kahuna Nanu's Krookodile (burrows) |
+| Pokémon League | Hala, Olivia, Acerola, Kahili, then Kukui | Kukui's Lycanroc |
+| Altar of the Sunne | Endless; the island guardians pass by | Solgaleo and Lunala, in turn every 25th wave |
+
+#### Galar
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Turffield | Fields of Wooloo | Milo's Eldegoss — Dynamaxed |
+| Hulbury Harbour | Two lanes round the docks | Nessa's Drednaw — Dynamaxed |
+| Motostoke | Steam and coal | Kabu's Centiskorch — Dynamaxed |
+| Stow-on-Side | Falinks marching in formation | Bea's Machamp — Dynamaxed |
+| Glimwood Tangle | A glowing forest of fairies | Opal's Alcremie — Dynamaxed, heals |
+| Circhester | 🌨️ Hail over the old spa town | Melony's Lapras — Dynamaxed |
+| Spikemuth | No stadium, so no Dynamaxing | Piers's Obstagoon |
+| Hammerlocke | 🏜️ A sandstorm inside the castle walls | Raihan's Duraludon — Dynamaxed |
+| Wyndon Stadium | Marnie, Hop and Bede, then Leon | Leon's Charizard — Gigantamaxes |
+| Energy Plant | 🌫️ Endless, in the mist | Eternatus every 25th wave — Eternamax when hurt |
+
+#### Paldea
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Cortondo | Olive groves and bugs | Katy's Teddiursa — Tera Bug |
+| Artazon | Giant flower sculptures | Brassius's Sudowoodo — Tera Grass |
+| Levincia | A neon city, live-streamed | Iono's Mismagius — Tera Electric, fades from sight |
+| Cascarrafa | A waterfall in the desert | Kofu's Crabominable — Tera Water |
+| Medali | A tired salaryman's Normal gym | Larry's Staraptor — Tera Flying |
+| Montenevera | 🌨️ A snowbound rap battle | Ryme's Toxtricity — Tera Ghost |
+| Alfornada | A hidden cavern of Psychic types | Tulip's Florges — Tera Psychic |
+| Glaseado | 🌨️ A ski slope in the hail, icy underfoot | Grusha's Altaria — Tera Ice |
+| Pokémon League | Rika, Poppy, Larry, Hassel, each ace Terastallized, then Geeta | Geeta's Kingambit — Tera Rock |
+| Area Zero | Endless; paradox Pokémon roam | Koraidon and Miraidon, in turn every 25th wave |
+
 ## How it is built
 
 TypeScript, Vite, a 2D canvas and Web Audio. No framework.
@@ -196,7 +264,7 @@ TypeScript, Vite, a 2D canvas and Web Audio. No framework.
 | Path | What it holds |
 | --- | --- |
 | `src/game/` | The simulation — `game.ts` runs one battle at a fixed 60 Hz with no DOM, so it all runs under Vitest. Tower stats, paths, wave generation and a seeded RNG beside it, plus `bot.ts`, a greedy player used for balancing. |
-| `src/data/` | Type chart, species (enemy stats, traits, abilities), the 99 tower lines and the Mega Evolutions, items, regions, music, and the maps. Species, towers and maps from Sinnoh on each have a file per region (`species/`, `towers/`, `maps/`). |
+| `src/data/` | Type chart, species (enemy stats, traits, abilities), the 141 tower lines, the Mega Evolutions and the once-a-battle powers, items, regions, music, and the maps. Species, towers and maps from Sinnoh on each have a file per region (`species/`, `towers/`, `maps/`). |
 | `src/render/` | Sprite sheets, procedurally drawn pixel-art tiles per theme, the battle renderer and its effects. |
 | `src/audio/` | The mixer and synth effects, event → sound mapping, and the Game Boy music player. |
 | `src/ui/` | Screens (title, region map, team select, Mart, Pokédex, settings) and the battle screen. |
@@ -222,16 +290,16 @@ lines that best cover the map's wild Pokémon and bosses from what a player
 would have by then (earlier regions, this region's starters and badges, no
 catches), never uses an item, mostly spams level-1 towers, and gets two
 retries at a failed boss. Like a player seeing a gym leader coming, it brings
-out and grows something that can hurt a boss its towers can't. It clears all 54 campaign maps on Normal. Maps are
+out and grows something that can hurt a boss its towers can't. It clears all 81 campaign maps on Normal. Maps are
 tuned with each map's `hpMul` and its bosses' HP.
 
 ## Art and sound
 
 Pokémon sprites are the animated Black/White sprites from
 [PokeAPI's sprites repository](https://github.com/PokeAPI/sprites), with their
-shinies; Kalos's Pokémon and most Mega Evolutions, which Black and White never
+shinies; Kalos's Pokémon onwards and most Mega Evolutions, which Black and White never
 had, use the same repository's animated Pokémon Showdown sprites, drawn in the
-same style; `npm run fetch-assets` decodes each GIF, trims it and packs it into a
+same style (the few newest with no animation fall back to a still sprite); `npm run fetch-assets` decodes each GIF, trims it and packs it into a
 palette PNG sheet with a JSON of frame timings (canvas can't step through GIF
 frames). Item icons and badges come from the same place. Cries are from
 [PokeAPI's cries repository](https://github.com/PokeAPI/cries), rewritten as

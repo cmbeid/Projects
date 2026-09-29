@@ -9,7 +9,8 @@
  *   step through a GIF's frames, so the game draws from the sheet instead.
  * - `cries/` — each cry, decoded by what it really is (PokeAPI's `.ogg` files
  *   are sometimes MP3s) and rewritten as a small mono WAV that plays on iOS.
- * - `items/` and `badges/` — item icons and every region's badges, as they are.
+ * - `items/` and `badges/` — item icons and every region's badges, as they are;
+ *   Alola's and Paldea's, which PokeAPI doesn't have, are drawn (`drawBadge`).
  *
  * The result is committed. Files already present are skipped; pass `--force`
  * to fetch everything again.
@@ -26,7 +27,9 @@ import { GifReader } from 'omggif';
 import { PNG } from 'pngjs';
 import { ITEM_ICONS } from '../src/data/items';
 import { REGIONS } from '../src/data/regions';
-import { SPECIES } from '../src/data/species';
+import { MAPS } from '../src/data/maps';
+import { SPECIES, species } from '../src/data/species';
+import { TYPE_COLOURS } from '../src/data/types';
 
 const RAW = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites';
 const ANIMATED = `${RAW}/pokemon/versions/generation-v/black-white/animated`;
@@ -257,8 +260,10 @@ async function fetchSprite(dex: number, shiny: boolean): Promise<void> {
     const { width, height, frames, delays } = gifFrames(gif);
     packed = packSheet(width, height, frames, delays);
   } catch {
-    // No animation (or an unreadable one): the still sprite, as a one-frame sheet.
-    const png = PNG.sync.read(Buffer.from(await download(`${STATIC}${dir}/${dex}.png`)));
+    // No animation (or an unreadable one): the still sprite, as a one-frame sheet —
+    // Black/White's where it has one, else PokeAPI's default.
+    const still = await download(`${STATIC}${dir}/${dex}.png`).catch(() => download(`${RAW}/pokemon${dir}/${dex}.png`));
+    const png = PNG.sync.read(Buffer.from(still));
     packed = packSheet(png.width, png.height, [new Uint8Array(png.data)], [1000]);
   }
   await writeFile(`public/sprites/${name}.png`, packed.png);
@@ -311,6 +316,47 @@ async function fetchFile(url: string, path: string): Promise<void> {
   await writeFile(path, await download(url));
 }
 
+/**
+ * Alola's island trials, and Galar's and Paldea's gyms, have no badge
+ * sprites on PokeAPI, so draw one: a 32 px emblem in the colour of the
+ * leader's type — a crystal for Alola (after its Z-Crystals), a round badge
+ * for Galar, an eight-point star for Paldea.
+ */
+async function drawBadge(badge: number): Promise<void> {
+  const path = `public/badges/${badge}.png`;
+  if (!FORCE && existsSync(path)) return;
+  const map = MAPS.find((m) => m.badge === badge);
+  if (!map) throw new Error(`no map awards badge ${badge}`);
+  const type = map.boss.tera ?? species(map.boss.dex).types[0]!;
+  const hex = TYPE_COLOURS[type];
+  const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+  const shade = (f: number): [number, number, number] => rgb.map((c) => Math.max(0, Math.min(255, Math.round(f > 1 ? c + (255 - c) * (f - 1) : c * f)))) as [number, number, number];
+  const size = 32;
+  const png = new PNG({ width: size, height: size });
+  const shape = badge < 110 ? 'crystal' : badge < 120 ? 'round' : 'star';
+  const inside = (x: number, y: number): boolean => {
+    const dx = x - 15.5;
+    const dy = y - 15.5;
+    if (shape === 'crystal') return Math.abs(dx) / 10 + Math.abs(dy) / 14.5 <= 1; // a tall diamond
+    const r = Math.hypot(dx, dy);
+    if (shape === 'round') return r <= 14 && !(r > 9 && r < 10.5); // a disc with a ring
+
+    const a = Math.atan2(dy, dx);
+    return r <= 9 + 5.5 * Math.abs(Math.cos(a * 4)); // eight points
+  };
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const i = (y * size + x) * 4;
+      if (!inside(x, y)) continue;
+      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+      // Lit from the top left: a pale facet, a dark one, and an outline.
+      const c = edge ? shade(0.45) : x + y < 26 ? shade(1.45) : x > y ? shade(0.8) : shade(1);
+      png.data.set([...c, 255], i);
+    }
+  }
+  await writeFile(path, PNG.sync.write(png));
+}
+
 async function main(): Promise<void> {
   for (const dir of ['public/sprites', 'public/cries', 'public/items', 'public/badges']) await mkdir(dir, { recursive: true });
   const dexes = [...SPECIES.keys()].sort((a, b) => a - b);
@@ -322,7 +368,10 @@ async function main(): Promise<void> {
   for (const icon of ITEM_ICONS) await fetchFile(`${RAW}/items/${icon}.png`, `public/items/${icon}.png`);
   console.log(`  items  ${ITEM_ICONS.length}`);
   const badges = Object.values(REGIONS).flatMap((r) => r.badges);
-  for (const badge of badges) await fetchFile(`${RAW}/badges/${badge}.png`, `public/badges/${badge}.png`);
+  for (const badge of badges) {
+    if (badge > 100) await drawBadge(badge);
+    else await fetchFile(`${RAW}/badges/${badge}.png`, `public/badges/${badge}.png`);
+  }
   console.log(`  badges ${badges.length}`);
 }
 

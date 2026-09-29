@@ -10,7 +10,7 @@ nothing at the root to install.
 | [`starseed/`](starseed/) | An idle game about a self-replicating space probe. Three eras and the automation ladder are playable; prestige and offline progress are not built yet. |
 | [`storied/`](storied/) | A phone-first reader for branching stories, driven entirely by JSON content in `storied/public/content/`. Seven demo stories ship on the shelf; a story can also be imported straight from a local file or folder, and a story already opened once stays readable with the network off. |
 | [`pokefling/`](pokefling/) | An Angry Birds–style slingshot physics game for the phone, themed on Pokémon. Sixty levels in ten Kanto and Johto locations, items, and Pokémon Crystal's music played by a Game Boy–style synth. |
-| [`pokedefense/`](pokedefense/) | A Pokémon tower defense game, portrait-first for the phone. Six regions, Kanto to Kalos: 54 maps with Gym Leaders and six Leagues, six endless maps, 99 evolving tower lines, catching, weather, Mega Evolution, items, and each region's own music. |
+| [`pokedefense/`](pokedefense/) | A Pokémon tower defense game, portrait-first for the phone. Nine regions, Kanto to Paldea: 81 maps with Gym Leaders and nine Leagues, nine endless maps, 141 evolving tower lines, catching, weather, Mega Evolution, Z-Moves, Dynamax and Terastallizing, items, and music from the games. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
 ## Working on one

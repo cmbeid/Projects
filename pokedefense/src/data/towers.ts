@@ -8,7 +8,10 @@
  * held item and buffs.
  */
 import type { RegionId } from './regions';
+import { ALOLA_LINES } from './towers/alola';
+import { GALAR_LINES } from './towers/galar';
 import { KALOS_LINES } from './towers/kalos';
+import { PALDEA_LINES } from './towers/paldea';
 import { SINNOH_LINES } from './towers/sinnoh';
 import { UNOVA_LINES } from './towers/unova';
 import type { PokeType } from './types';
@@ -737,6 +740,9 @@ export const LINES: readonly TowerLine[] = [
   ...SINNOH_LINES,
   ...UNOVA_LINES,
   ...KALOS_LINES,
+  ...ALOLA_LINES,
+  ...GALAR_LINES,
+  ...PALDEA_LINES,
 ];
 
 /**
@@ -754,6 +760,30 @@ export const MEGAS: ReadonlyMap<number, { form: number; type?: PokeType }> = new
 export const MEGA_SECONDS = 40;
 /** The held item that lets a tower Mega Evolve. */
 export const KEY_STONE = 'key-stone';
+
+/** Alola: a Z-Ring lets a fully grown tower unleash one Z-Move a battle. */
+export const Z_RING = 'z-ring';
+/** Tiles around the target a Z-Move hits. */
+export const Z_RADIUS = 2.5;
+export const Z_MOVES: Record<PokeType, string> = {
+  normal: 'Breakneck Blitz', fire: 'Inferno Overdrive', water: 'Hydro Vortex', grass: 'Bloom Doom', electric: 'Gigavolt Havoc',
+  ice: 'Subzero Slammer', fighting: 'All-Out Pummeling', poison: 'Acid Downpour', ground: 'Tectonic Rage', flying: 'Supersonic Skystrike',
+  psychic: 'Shattered Psyche', bug: 'Savage Spin-Out', rock: 'Continental Crush', ghost: 'Never-Ending Nightmare', dragon: 'Devastating Drake',
+  dark: 'Black Hole Eclipse', steel: 'Corkscrew Crash', fairy: 'Twinkle Tackle',
+};
+
+/** Galar: a Dynamax Band lets a fully grown tower Dynamax once a battle. */
+export const DYNAMAX_BAND = 'dynamax-band';
+export const DYNAMAX_SECONDS = 30;
+/** A Dynamaxed boss's extra HP. */
+export const DYNAMAX_HP = 1.5;
+/** The weather a Dynamaxed tower's Max Moves set, by its type. */
+export const MAX_WEATHER: Partial<Record<PokeType, 'sun' | 'rain' | 'sand' | 'hail'>> = {
+  fire: 'sun', water: 'rain', rock: 'sand', ground: 'sand', ice: 'hail',
+};
+
+/** Paldea: the Tera Orb lets a fully grown tower Terastallize once a battle. */
+export const TERA_ORB = 'tera-orb';
 
 export const LINE_BY_ID: ReadonlyMap<string, TowerLine> = new Map(LINES.map((l) => [l.id, l]));
 

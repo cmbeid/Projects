@@ -302,7 +302,10 @@ export function teamScreen(map: MapDef): void {
 
 type MartTab = 'items' | 'balls' | 'held' | 'trainer';
 
-export function martScreen(back: () => void, tab: MartTab = 'items'): void {
+/** The shelf's scroll position, to keep it steady when the Mart redraws after a purchase. */
+const shelfScroll = (): number => document.querySelector('.screen .scroll')?.scrollTop ?? 0;
+
+export function martScreen(back: () => void, tab: MartTab = 'items', scrollTop = 0): void {
   const p = getProgress();
   const buy = (price: number, apply: (q: Progress) => Progress, what: string): void => {
     const cur = getProgress();
@@ -314,7 +317,7 @@ export function martScreen(back: () => void, tab: MartTab = 'items'): void {
     setProgress(apply({ ...cur, bp: cur.bp - price }));
     sfx.coin();
     toast(`Bought ${what}!`);
-    martScreen(back, tab);
+    martScreen(back, tab, shelfScroll());
   };
   const ware = (iconKey: string | null, name: string, desc: string, own: string, price: number | null, onBuy: (() => void) | null, extra: Node | null = null): HTMLElement =>
     h('div.card.ware', {},
@@ -338,7 +341,7 @@ export function martScreen(back: () => void, tab: MartTab = 'items'): void {
     shelf = HELD_ITEMS.filter((item) => !item.region || regionUnlocked(p, item.region)).map((item) => {
       const owned = p.heldOwned.includes(item.key);
       const equipped = Object.entries(p.held).filter(([, v]) => v === item.key).map(([lineId]) => LINES.find((l) => l.id === lineId)?.name).filter(Boolean);
-      const equip = owned ? button('btn.small', equipped.length ? `On ${equipped.join(', ')}` : 'Give to…', () => equipModal(item.key, () => martScreen(back, tab)), { style: 'margin-top:6px' }) : null;
+      const equip = owned ? button('btn.small', equipped.length ? `On ${equipped.join(', ')}` : 'Give to…', () => equipModal(item.key, () => martScreen(back, tab, shelfScroll())), { style: 'margin-top:6px' }) : null;
       return ware(item.key, item.name, item.desc, owned ? 'Owned' : '', owned ? null : item.price, owned ? null : () => buy(item.price, (q) => ({ ...q, heldOwned: [...q.heldOwned, item.key] }), item.name), equip);
     });
     shelf.unshift(h('div.muted', { style: 'font-size:13px' }, 'Held items are kept for good. Give one to a kind of tower and every tower of that kind carries it — one item per kind.'));
@@ -355,9 +358,9 @@ export function martScreen(back: () => void, tab: MartTab = 'items'): void {
 
   const tabs = h('div.tabs', {}, ...([['items', 'Items'], ['balls', 'Poké Balls'], ['held', 'Held items'], ['trainer', 'Trainer']] as [MartTab, string][]).map(([k, label]) =>
     button(`btn.small${tab === k ? '.on' : ''}`, label, () => martScreen(back, k))));
-  mount(h('div.screen', {},
-    topbar('Poké Mart', back, bpChip(p)),
-    h('div.scroll', {}, h('div.content', {}, tabs, h('div.shelf', {}, ...shelf)))));
+  const scroll = h('div.scroll', {}, h('div.content', {}, tabs, h('div.shelf', {}, ...shelf)));
+  mount(h('div.screen', {}, topbar('Poké Mart', back, bpChip(p)), scroll));
+  scroll.scrollTop = scrollTop;
   playMusic(MART_TRACK);
 }
 

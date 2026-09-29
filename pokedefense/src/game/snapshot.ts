@@ -9,9 +9,9 @@
  * it doesn't replay.
  */
 import { MAP_BY_ID } from '../data/maps';
-import { type Species, species } from '../data/species';
+import type { Species } from '../data/species';
 import { line, type TowerLine } from '../data/towers';
-import { type BattleSetup, type Enemy, type Game, newGame, type Tower } from './game';
+import { type BattleSetup, type Enemy, enemySpecies, type Game, newGame, type Tower } from './game';
 
 const VERSION = 1;
 
@@ -31,7 +31,7 @@ export function serializeGame(g: Game): string {
 
 function relink(towers: Tower[], enemies: Enemy[]): void {
   for (const t of towers) t.line = line(t.line as unknown as string);
-  for (const e of enemies) e.sp = species(e.dex);
+  for (const e of enemies) e.sp = enemySpecies(e.dex, e.tera ?? null);
 }
 
 /** The battle a snapshot holds, or null if it can't be read (an old version, a map that's gone). */
@@ -44,6 +44,8 @@ export function restoreGame(json: string, setup: Omit<BattleSetup, 'map'>): Game
     if (data.v !== VERSION || !map || !data.state) return null;
     const g = newGame({ ...setup, map });
     Object.assign(g, data.state, { events: [] });
+    // Towers saved before a field existed get its starting value.
+    for (const t of g.towers) Object.assign(t, { dynamaxUntil: t.dynamaxUntil ?? 0, tera: t.tera ?? null });
     relink(g.towers, g.enemies);
     if (g.checkpoint) relink(g.checkpoint.state.towers, g.checkpoint.state.enemies);
     return g;

@@ -81,6 +81,19 @@ export function playEvents(g: Game, events: readonly GameEvent[], now: number): 
       case 'evolveEnemy':
         playCry(e.dex, now, { volume: 0.35 });
         break;
+      case 'zMove':
+        sfx.bossStart();
+        buzz([60, 30, 60, 30, 160]);
+        break;
+      case 'dynamax':
+        sfx.bossStart();
+        setTimeout(() => cry(e.dex, { rate: 0.7, volume: 0.9 }), 500);
+        buzz([80, 40, 160]);
+        break;
+      case 'tera':
+        sfx.evolve();
+        buzz([30, 30, 30, 30, 90]);
+        break;
       case 'mega':
         sfx.evolve();
         setTimeout(() => cry(e.dex, { volume: 0.8 }), 900);

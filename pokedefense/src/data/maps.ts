@@ -1,5 +1,5 @@
 /**
- * The campaigns: nine places in each of six regions, Kanto to Kalos — each ending
+ * The campaigns: nine places in each of nine regions, Kanto to Paldea — each ending
  * with its Gym Leader's ace, the last with the Pokémon League — and an
  * endless map per region. The maps themselves live in `maps/`, one file per
  * region; this module gathers them and holds the helpers.
@@ -20,17 +20,20 @@
  *   g  grave — blocked              L  lava — blocked
  *   B  bamboo / pillar — blocked
  */
+import { ALOLA } from './maps/alola';
+import { GALAR } from './maps/galar';
 import { HOENN } from './maps/hoenn';
 import { JOHTO } from './maps/johto';
 import { KALOS } from './maps/kalos';
 import { KANTO } from './maps/kanto';
+import { PALDEA } from './maps/paldea';
 import { SINNOH } from './maps/sinnoh';
 import { UNOVA } from './maps/unova';
 import { type BossDef, COLS, type MapDef, ROWS, TERRAIN, type Terrain, type Waypoint } from './maps/types';
 
 export * from './maps/types';
 
-export const MAPS: readonly MapDef[] = [...KANTO, ...JOHTO, ...HOENN, ...SINNOH, ...UNOVA, ...KALOS];
+export const MAPS: readonly MapDef[] = [...KANTO, ...JOHTO, ...HOENN, ...SINNOH, ...UNOVA, ...KALOS, ...ALOLA, ...GALAR, ...PALDEA];
 
 export function terrainAt(map: MapDef, x: number, y: number): Terrain {
   return TERRAIN[map.grid[y]?.[x] ?? 'X'] ?? 'grass';

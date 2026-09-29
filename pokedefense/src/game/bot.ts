@@ -10,7 +10,7 @@ import { species } from '../data/species';
 import { line, MAX_LEVEL } from '../data/towers';
 import { effectiveness, type PokeType } from '../data/types';
 import {
-  canPlace, chooseMove, type Game, hasNextWave, type Tower, levelUp, moveCost, needsBranch, placeCost, placeTower, retryWave, startWave, step,
+  canPlace, chooseMove, enemySpecies, type Game, hasNextWave, type Tower, levelUp, moveCost, needsBranch, placeCost, placeTower, retryWave, startWave, step,
   upgradeCost,
 } from './game';
 
@@ -27,11 +27,11 @@ function coverage(g: Game, x: number, y: number, range: number): number {
 /** How well a line suits this map's wild Pokémon and its bosses, 0–2ish. Bosses count twice over. */
 function suitability(g: Game, lineId: string): number {
   const l = line(lineId);
-  const bosses = mapBosses(g.map).map((b) => ({ dex: b.dex, weight: 2 }));
+  const bosses = mapBosses(g.map).map((b) => ({ dex: b.dex, tera: b.tera, weight: 2 }));
   let total = 0;
   let weight = 0;
   for (const p of [...g.map.pool, ...bosses]) {
-    const sp = species(p.dex);
+    const sp = enemySpecies(p.dex, ('tera' in p && p.tera) || null);
     let eff = effectiveness(l.type, sp.types);
     if (l.groundOnly && sp.traits.includes('flying')) eff = 0;
     if (sp.traits.includes('invisible') && !l.detect) eff *= 0.5;
@@ -53,7 +53,7 @@ function comingBosses(g: Game): BossDef[] {
 
 /** Whether a tower hits this boss at least neutrally. */
 function hitsBoss(t: Tower, boss: BossDef): boolean {
-  const sp = species(boss.dex);
+  const sp = enemySpecies(boss.dex, boss.tera ?? null);
   if (t.stats.groundOnly && sp.traits.includes('flying')) return false;
   return effectiveness(t.stats.type, sp.types) >= 1;
 }
@@ -65,7 +65,7 @@ function hitsBoss(t: Tower, boss: BossDef): boolean {
  */
 function answerTo(g: Game, team: string[]): { id: string } | null {
   for (const boss of comingBosses(g)) {
-    const sp = species(boss.dex);
+    const sp = enemySpecies(boss.dex, boss.tera ?? null);
     const hides = sp.traits.includes('invisible') || boss.abilities.some((a) => a.kind === 'vanish');
     const flies = sp.traits.includes('flying');
     const hits = (type: PokeType, groundOnly: boolean): number => (groundOnly && flies ? 0 : effectiveness(type, sp.types));
@@ -87,7 +87,7 @@ export function botTurn(g: Game): void {
   for (let guard = 0; guard < 20; guard += 1) {
     // A boss coming that only a few low-level towers can hurt: grow those.
     const weak = comingBosses(g).filter((b) => g.towers.filter((t) => hitsBoss(t, b)).reduce((n, t) => n + t.level, 0) < 10);
-    const worth = (t: Tower): number => (t.damageDone / (t.invested || 1)) * (weak.some((b) => hitsBoss(t, b)) ? 3 : 1);
+    const worth = (t: Tower): number => t.damageDone / (t.invested || 1) + (weak.some((b) => hitsBoss(t, b)) ? 1000 : 0);
     const best = [...g.towers]
       .filter((t) => t.level < MAX_LEVEL && t.stats.attack !== 'aura')
       .sort((a, b) => worth(b) - worth(a))[0];

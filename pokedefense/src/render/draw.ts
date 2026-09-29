@@ -83,7 +83,7 @@ export function ingest(g: Game, events: readonly GameEvent[], now: number, lastE
         break;
       case 'faint': {
         const last = lastEnemies.get(e.id);
-        if (last) fainting.push({ dex: last.dex, x: last.x, y: last.y, t0: now, flip: last.facing > 0, shiny: last.shiny, scale: enemyScale(last) });
+        if (last) fainting.push({ dex: last.dex, x: last.x, y: last.y, t0: now, flip: last.facing > 0, shiny: last.shiny, scale: enemyScale(g, last) });
         fxs.push({ kind: 'poof', x: e.x, y: e.y - 0.3, t0: now, dur: 0.45, colour: '#f8f8f8' });
         fxs.push({ kind: 'text', x: e.x, y: e.y - 1, text: `+₽${e.bounty}`, size: e.boss ? 0.42 : 0.28, t0: now, dur: 0.9, colour: '#f8d848' });
         break;
@@ -121,6 +121,21 @@ export function ingest(g: Game, events: readonly GameEvent[], now: number, lastE
         if (e.ability === 'teleport') fxs.push({ kind: 'stars', x: e.x, y: e.y - 0.3, t0: now, dur: 0.4, colour: '#f878c8', radius: 0.6 });
         if (e.ability === 'heal') fxs.push({ kind: 'text', x: e.x, y: e.y - 1.4, text: 'Recover!', size: 0.34, t0: now, dur: 1, colour: '#78f878' });
         if (e.ability === 'summon') fxs.push({ kind: 'ring', x: e.x, y: e.y, radius: 1, t0: now, dur: 0.4, colour: '#f85858' });
+        break;
+      case 'zMove':
+        fxs.push({ kind: 'flash', x: e.x, y: e.y, t0: now, dur: 0.9, colour: colour(e.type), radius: e.radius });
+        fxs.push({ kind: 'ring', x: e.x, y: e.y, radius: e.radius, t0: now, dur: 0.7, colour: '#ffffff' });
+        fxs.push({ kind: 'stars', x: e.x, y: e.y, t0: now, dur: 1.2, colour: colour(e.type), radius: e.radius });
+        fxs.push({ kind: 'text', x: e.x, y: e.y - 1.6, text: `${e.name}!`, size: 0.42, t0: now, dur: 1.8, colour: '#f8e048' });
+        break;
+      case 'dynamax':
+        fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.5, t0: now, dur: 0.9, colour: '#f84858', radius: 1.8 });
+        fxs.push({ kind: 'text', x: e.x, y: e.y - 1.8, text: 'Dynamax!', size: 0.42, t0: now, dur: 1.6, colour: '#f85868' });
+        break;
+      case 'tera':
+        fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.4, t0: now, dur: 0.8, colour: colour(e.type), radius: 1.2 });
+        fxs.push({ kind: 'stars', x: e.x, y: e.y - 0.4, t0: now, dur: 1.2, colour: '#ffffff', radius: 1.1 });
+        fxs.push({ kind: 'text', x: e.x, y: e.y - 1.5, text: `Terastallized: ${e.type}!`, size: 0.34, t0: now, dur: 1.6, colour: colour(e.type) });
         break;
       case 'mega':
         fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.4, t0: now, dur: 0.8, colour: '#ffffff', radius: 1.4 });
@@ -170,13 +185,38 @@ function spriteScale(dex: number, shiny: boolean, base: number, maxTiles: number
   return Math.min(base, maxTiles / size.h, (maxTiles * 1.2) / size.w);
 }
 
-function enemyScale(e: Enemy): number {
+/** Dynamaxed Pokémon are drawn this much bigger. */
+const DYNAMAX_SCALE = 1.8;
+
+function enemyScale(g: Game, e: Enemy): number {
   const base = SPRITE_TILE * (e.boss ? 1.45 : e.lead ? 1.15 : 0.85);
-  return spriteScale(e.dex, e.shiny, base, e.boss ? 2.3 : 1.5);
+  const scale = spriteScale(e.dex, e.shiny, base, e.boss ? 2.3 : 1.5);
+  return e.dynamaxUntil > g.t ? scale * DYNAMAX_SCALE : scale;
 }
 
-function towerScale(t: Tower): number {
-  return spriteScale(t.stats.dex, false, SPRITE_TILE * (0.95 + 0.08 * t.stats.stage), 1.8);
+function towerScale(g: Game, t: Tower): number {
+  const scale = spriteScale(t.stats.dex, false, SPRITE_TILE * (0.95 + 0.08 * t.stats.stage), 1.8);
+  return t.dynamaxUntil > g.t ? scale * DYNAMAX_SCALE : scale;
+}
+
+/** A Tera crystal over a Terastallized Pokémon's head, in its Tera type's colour. */
+function teraCrown(ctx: CanvasRenderingContext2D, x: number, y: number, T: number, type: PokeType, time: number): void {
+  const r = T * 0.16;
+  const glint = 0.75 + 0.25 * Math.sin(time * 4);
+  ctx.save();
+  ctx.globalAlpha = glint;
+  ctx.fillStyle = colour(type);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = Math.max(1, T / 24);
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 1.4);
+  ctx.lineTo(x + r, y);
+  ctx.lineTo(x, y + r * 0.8);
+  ctx.lineTo(x - r, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
 }
 
 function ellipse(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, fill: string): void {
@@ -214,7 +254,7 @@ function drawTower(ctx: CanvasRenderingContext2D, g: Game, t: Tower, T: number, 
   const cx = (t.x + 0.5) * T;
   const by = (t.y + 0.86) * T;
   ellipse(ctx, cx, by, T * 0.36, T * 0.13, selected ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.28)');
-  const scale = towerScale(t) * T;
+  const scale = towerScale(g, t) * T;
   // A little hop when it attacks.
   const since = g.t - t.lastShot;
   const hop = since >= 0 && since < 0.15 ? Math.sin((since / 0.15) * Math.PI) * T * 0.06 : 0;
@@ -245,6 +285,7 @@ function drawTower(ctx: CanvasRenderingContext2D, g: Game, t: Tower, T: number, 
   }
   const held = g.held[t.line.id];
   if (held) drawIcon(ctx, held, cx + T * 0.34, by - T * 0.12, T * 0.34);
+  if (t.tera) teraCrown(ctx, cx, by - (sheetSize(t.stats.dex, false)?.h ?? 46) * scale - T * 0.12, T, t.tera, time);
 }
 
 function drawEnemy(ctx: CanvasRenderingContext2D, g: Game, e: Enemy, T: number, time: number): void {
@@ -270,7 +311,19 @@ function drawEnemy(ctx: CanvasRenderingContext2D, g: Game, e: Enemy, T: number, 
   }
 
   ellipse(ctx, cx, by, T * (e.boss ? 0.5 : 0.28), T * (e.boss ? 0.16 : 0.1), hidden ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.25)');
-  const scale = enemyScale(e) * T;
+  if (e.totem && !hidden) {
+    // A Totem's aura: gold, reaching the allies it toughens.
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(time * 3);
+    ctx.strokeStyle = '#f8c848';
+    ctx.lineWidth = Math.max(1, T / 14);
+    ctx.beginPath();
+    ctx.ellipse(cx, by, T * 2, T * 0.9, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (e.dynamaxUntil > g.t && !hidden) ellipse(ctx, cx, by, T * 0.9, T * 0.3, 'rgba(248,72,88,0.35)');
+  const scale = enemyScale(g, e) * T;
   const opts = {
     time: time * 1000,
     shiny: e.shiny,
@@ -286,6 +339,7 @@ function drawEnemy(ctx: CanvasRenderingContext2D, g: Game, e: Enemy, T: number, 
   if (hidden) return;
   const size = sheetSize(e.dex, e.shiny);
   const top = by + bob - (size ? size.h * scale : T * 0.8) - T * 0.08;
+  if (e.tera) teraCrown(ctx, cx, top - T * 0.3, T, e.tera, time);
   if (e.shiny && Math.floor(time * 3 + e.id) % 2 === 0) {
     ctx.fillStyle = '#f8f8a8';
     ctx.font = `${Math.round(T * 0.3)}px system-ui, sans-serif`;
@@ -545,7 +599,7 @@ export function drawBattle(ctx: CanvasRenderingContext2D, g: Game, view: View, o
   }
   for (const fx of fxs) drawFx(ctx, fx, T, now);
 
-  if (g.map.weather) drawWeather(ctx, g.map.weather, W, H, T, now);
+  if (g.weather) drawWeather(ctx, g.weather, W, H, T, now);
 
   if (g.buffs.repel > g.t || g.buffs.scope > g.t) {
     ctx.fillStyle = g.buffs.scope > g.t ? 'rgba(160,120,255,0.08)' : 'rgba(120,200,255,0.08)';

@@ -12,10 +12,10 @@ import { BALL_KEYS, BALLS, type BallKey, POWERUP_KEYS, POWERUPS, type PowerupKey
 import { COLS, type MapDef, mapBosses, mapDef, MAPS, ROWS, terrainAt } from '../data/maps';
 import { REGIONS } from '../data/regions';
 import { species } from '../data/species';
-import { KEY_STONE, line, lineDexes, lineForDex, MAX_LEVEL, MEGA_SECONDS, MEGAS, type TowerLine } from '../data/towers';
-import { TYPE_COLOURS } from '../data/types';
+import { DYNAMAX_SECONDS, KEY_STONE, line, lineDexes, lineForDex, MAX_LEVEL, MEGA_SECONDS, MEGAS, type TowerLine, Z_MOVES } from '../data/towers';
+import { type PokeType, TYPE_COLOURS } from '../data/types';
 import {
-  buffLeft, canMega, canPlace, catchChance, chooseMove, dropAt, earlyBonus, type Enemy, type Game, hasNextWave, levelUp, moveCost,
+  buffLeft, canDynamax, canMega, canPlace, canTera, canZMove, dynamax, terastallize, zMove, catchChance, chooseMove, dropAt, earlyBonus, type Enemy, type Game, hasNextWave, levelUp, moveCost,
   megaEvolve, needsBranch, newGame, pickUp, placeCost, placeTower, powerupReady, sellTower, sellValue, setTarget, starsFor, startWave,
   retryWave, STEP, step, TARGET_MODES, type TargetMode, throwBall, type Tower, towerAt, upgradeCost, usePowerup,
 } from '../game/game';
@@ -540,12 +540,18 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
   }
 
   let dockKey = '';
+  /** What the once-a-battle power buttons and their countdowns show, so the panel redraws when it changes. */
+  function powersKey(t: Tower): string {
+    const left = (until: number): number => Math.max(0, Math.ceil(until - g.t));
+    return `${left(t.megaUntil)}|${left(t.dynamaxUntil)}|${t.tera}|${canZMove(g, t)}|${canDynamax(g, t)}|${canTera(g, t)}|${g.megaUsed}`;
+  }
+
   function renderDock(force = false): void {
     const t = selectedTower();
     if (selected !== null && !t) selected = null;
     const affordable = g.team.map((id) => g.money >= placeCost(g, id)).join();
     const key = t
-      ? `t|${t.id}|${t.level}|${t.move}|${t.branch}|${t.target}|${g.money >= upgradeCost(g, t).cost}|${t.level >= MAX_LEVEL ? t.line.moves.map((_, i) => g.money >= moveCost(g, t, i)).join() : ''}|${sellValue(g, t)}|${Math.floor(t.xp / 10)}`
+      ? `t|${t.id}|${t.level}|${t.move}|${t.branch}|${t.target}|${g.money >= upgradeCost(g, t).cost}|${t.level >= MAX_LEVEL ? t.line.moves.map((_, i) => g.money >= moveCost(g, t, i)).join() : ''}|${sellValue(g, t)}|${Math.floor(t.xp / 10)}|${powersKey(t)}`
       : `s|${mode.kind === 'place' ? mode.lineId : ''}|${affordable}|${g.team.join()}`;
     if (key === dockKey && !force) return;
     dockKey = key;
@@ -648,6 +654,26 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
     } else if (t.level >= MAX_LEVEL && MEGAS.has(s.dex) && !g.megaUsed && g.held[l.id] !== KEY_STONE && start.heldOwned.includes(KEY_STONE)) {
       parts.push(h('div.hint', {}, 'Give this kind of tower your Key Stone (in the Mart) and it can Mega Evolve.'));
     }
+    // Alola, Galar and Paldea's once-a-battle powers, for a tower holding the item.
+    const powers: HTMLElement[] = [];
+    if (canZMove(g, t)) {
+      powers.push(button('btn.zmove', h('span', {}, `💎 ${Z_MOVES[s.type]}`, h('br'), h('small', {}, 'Z-Move · once a battle')), () => {
+        zMove(g, t.id);
+        renderDock();
+      }));
+    }
+    if (t.dynamaxUntil > g.t) parts.push(h('div.hint', {}, `🔴 Dynamaxed — for ${Math.ceil(t.dynamaxUntil - g.t)} s more.`));
+    else if (canDynamax(g, t)) {
+      powers.push(button('btn.dynamax', h('span', {}, '🔴 Dynamax', h('br'), h('small', {}, `Max Moves for ${DYNAMAX_SECONDS} s`)), () => {
+        dynamax(g, t.id);
+        renderDock();
+      }));
+    }
+    if (t.tera) parts.push(h('div.hint', {}, `💠 Terastallized: ${t.tera} type.`));
+    else if (canTera(g, t)) {
+      powers.push(button('btn.tera', h('span', {}, '💠 Terastallize', h('br'), h('small', {}, 'Pick its type · once a battle')), () => teraPicker(t)));
+    }
+    if (powers.length) parts.push(h('div.actions', {}, ...powers));
     if (s.attack !== 'aura') {
       const seg = h('div.segmented', {}, ...TARGET_MODES.map((m) => h('button', {
         className: t.target === m ? 'on' : '',
@@ -660,6 +686,21 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
       parts.push(h('div.row', {}, h('span.muted', { style: 'font-size:12px' }, 'Target'), seg));
     }
     return h('div.panel', {}, ...parts);
+  }
+
+  /** Choose a Tera type: any of the eighteen. */
+  function teraPicker(t: Tower): void {
+    const close = modal(h('div', {},
+      h('h2', {}, 'Terastallize into…'),
+      h('div.tera-types', {}, ...(Object.keys(TYPE_COLOURS) as PokeType[]).map((type) => h('button.type', {
+        style: `background:${TYPE_COLOURS[type]}`,
+        onclick: () => {
+          terastallize(g, t.id, type);
+          close();
+          renderDock();
+        },
+      }, type))),
+      button('btn.ghost', 'Cancel', () => close())));
   }
 
   // --- boss bar, banners, coach ------------------------------------------------------------
@@ -682,7 +723,8 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
     bossBar.style.display = '';
     const pct = Math.max(0, (boss.hp / boss.maxHp) * 100);
     bossBar.replaceChildren(
-      h('div', {}, `${trainerFor(map, boss)}'s ${boss.sp.name}`),
+      h('div', {}, `${trainerFor(map, boss)}'s ${boss.dynamaxUntil > g.t ? 'Dynamax ' : ''}${boss.totem ? 'Totem ' : ''}${boss.sp.name}`,
+        boss.tera ? h('span.type', { style: `background:${TYPE_COLOURS[boss.tera]};margin-left:6px` }, `Tera ${boss.tera}`) : null),
       h('div.hp', {}, h('div', { style: `width:${pct}%` })),
     );
   }
