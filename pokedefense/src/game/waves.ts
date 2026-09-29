@@ -22,6 +22,7 @@ export interface Spawn {
   lead?: boolean;
   rare?: boolean;
   shiny?: boolean;
+  alpha?: boolean;
 }
 
 export interface Difficulty {
@@ -97,7 +98,9 @@ export function buildWave(map: MapDef, wave: number): Spawn[] {
     for (let i = 0; i < count; i += 1) {
       // On two-path maps a big group splits across both.
       const p = map.paths.length > 1 && count >= 6 ? (path + i) % map.paths.length : path;
-      spawns.push({ at: t + i * gap, dex: sp.dex, path: p, hp: sp.hp });
+      // Hisui's Alphas: one now and then among the rest.
+      const alpha = entry.alpha !== undefined && rng() < entry.alpha;
+      spawns.push({ at: t + i * gap, dex: sp.dex, path: p, hp: sp.hp, ...(alpha ? { alpha } : {}) });
     }
     t += count * gap * 0.65 + 1.5;
   }

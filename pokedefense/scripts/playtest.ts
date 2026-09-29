@@ -9,26 +9,38 @@
  * `npm run playtest -- johto` plays one region; `-- mt-moon` one map.
  */
 import { NO_TRAINER } from '../src/data/items';
-import { mapBosses, MAPS } from '../src/data/maps';
-import { REGIONS } from '../src/data/regions';
+import { mapBosses, type MapDef, type MapRules, MAPS } from '../src/data/maps';
+import { previousRegion, REGION_IDS, type RegionId, REGIONS } from '../src/data/regions';
 import { species } from '../src/data/species';
-import { line } from '../src/data/towers';
-import { effectiveness } from '../src/data/types';
+import { line, type TowerLine } from '../src/data/towers';
+import { effectiveness, TYPES } from '../src/data/types';
 import { playOut } from '../src/game/bot';
-import { enemySpecies, newGame } from '../src/game/game';
+import { enemySpecies, lineAllowed, newGame } from '../src/game/game';
 import type { PokeType } from '../src/data/types';
 import type { DifficultyKey } from '../src/game/waves';
-import { freshProgress, type Progress, TEAM_SIZE, unlockedLines } from '../src/state/save';
+import { CUP_HP, CUP_MIN_LINES, cupLines, cupMaps, gauntletMap, RUN_LIVES } from '../src/state/frontier';
+import { freshProgress, type Progress, regionUnlocked, TEAM_SIZE, unlockedLines } from '../src/state/save';
 
 const only = process.argv[2];
 
-/** A save that has cleared everything before `index` (and, for an endless map, its League). */
+/** The regions a player must be Champion of to reach this one: the mainline before it, or a side region's own chain. */
+function regionsBefore(id: RegionId): RegionId[] {
+  const prev = previousRegion(id);
+  return prev ? [...regionsBefore(prev), prev] : [];
+}
+
+/**
+ * A save that has cleared the regions leading to this map's, and this
+ * region's maps before it (for an endless map, all of them). Side regions
+ * aren't assumed for the mainline: a player can skip them.
+ */
 function progressBefore(index: number): Progress {
   const p = freshProgress();
   const target = MAPS[index]!;
+  const earlier = new Set(regionsBefore(target.regionId));
   for (const [i, m] of MAPS.entries()) {
     if (m.endless) continue;
-    const before = target.endless ? m.regionId !== target.regionId ? i < index : true : i < index;
+    const before = earlier.has(m.regionId) || (m.regionId === target.regionId && (target.endless || i < index));
     if (before) p.results[m.id] = { normal: 3, hard: 0, best: 0 };
   }
   return p;
@@ -70,8 +82,14 @@ function pickTeam(available: string[], pool: Foe[]): string[] {
 }
 
 for (const [i, map] of MAPS.entries()) {
-  if (only && map.id !== only && map.regionId !== only) continue;
-  const available = unlockedLines(progressBefore(i)).map((l) => l.id);
+  if (only === 'frontier' || (only && map.id !== only && map.regionId !== only)) continue;
+  // Within the map's challenge rules (the Orange Crew's); and a side region's starters only if it's on the way here.
+  const chain = new Set([...regionsBefore(map.regionId), map.regionId]);
+  const progress = progressBefore(i);
+  const givers = (l: TowerLine): RegionId[] => REGION_IDS.filter((r) => (l.unlock.kind === 'region' && l.unlock.region === r) || REGIONS[r].starters.includes(l.id));
+  const skipped = (l: TowerLine): boolean => l.unlock.kind === 'region'
+    && !givers(l).some((r) => chain.has(r) || (!REGIONS[r].after && regionUnlocked(progress, r)));
+  const available = unlockedLines(progress).filter((l) => !skipped(l)).map((l) => l.id).filter((id) => lineAllowed(map.rules ?? {}, id));
   const bosses = mapBosses(map).map((bs) => ({ dex: bs.dex, tera: bs.tera, weight: 3 }));
   const team = pickTeam(available, [...map.pool.filter((p) => !p.rare), ...bosses]);
   // Like a player, bring something that can see invisible Pokémon if any are coming.
@@ -81,6 +99,7 @@ for (const [i, map] of MAPS.entries()) {
     const seer = available.filter((id) => line(id).detect).sort((a, b) => line(b).base.damage - line(a).base.damage)[0];
     if (seer) team[team.length - 1] = seer;
   }
+  if (process.env['TEAM']) console.log(team.join(' '));
   const row: string[] = [];
   for (const difficulty of ['normal', 'hard'] as DifficultyKey[]) {
     const g = newGame({ map, difficulty, team, items: {}, balls: {}, held: {}, trainer: NO_TRAINER, seed: 1 });
@@ -89,4 +108,47 @@ for (const [i, map] of MAPS.entries()) {
     row.push(`${difficulty}: ${g.status === 'won' ? `won, ${String(lives).padStart(2)} lives${tries}` : `${g.status === 'retry' ? 'boss' : g.status} at wave ${cleared + 1}`}`.padEnd(34));
   }
   console.log(`${REGIONS[map.regionId].name.padEnd(6)} ${map.name.padEnd(22)} ${row.join('   ')}`);
+}
+
+/**
+ * `-- frontier`: the Champions' Gauntlet, and every Mono-type Cup, with the
+ * roster of someone who is Champion everywhere (and has caught nothing).
+ */
+if (only === 'frontier') {
+  const everything = freshProgress();
+  for (const m of MAPS) if (!m.endless) everything.results[m.id] = { normal: 3, hard: 0, best: 0 };
+  const owned = unlockedLines(everything);
+  const play = (map: MapDef, team: string[], rules: MapRules, label: string): boolean => {
+    const g = newGame({ map, difficulty: 'normal', team, items: {}, balls: {}, held: {}, trainer: NO_TRAINER, seed: 1, rules });
+    const { lives, cleared } = playOut(g, 3600, 0);
+    console.log(`${label.padEnd(34)} ${g.status === 'won' ? `won, ${String(lives).padStart(2)} lives` : `${g.status} at wave ${cleared + 1}`}`);
+    return g.status === 'won';
+  };
+  const g = gauntletMap();
+  const bosses = mapBosses(g).map((bs) => ({ dex: bs.dex, tera: bs.tera, weight: 3 }));
+  const gTeam = pickTeam(owned.map((l) => l.id), [...g.pool, ...bosses]);
+  if (process.env['TEAM']) console.log(gTeam.join(' '));
+  play(g, gTeam, {}, 'Champions’ Gauntlet');
+  for (const type of TYPES) {
+    const lines = cupLines(owned, type).map((l) => l.id);
+    if (lines.length < CUP_MIN_LINES) {
+      console.log(`${`${type} cup`.padEnd(34)} only ${lines.length} line(s)`);
+      continue;
+    }
+    let lives = RUN_LIVES;
+    let left = 0;
+    let result = 'won';
+    for (const [n, map] of cupMaps(type).entries()) {
+      const team = pickTeam(lines, [...map.pool.filter((p) => !p.rare), ...mapBosses(map).map((bs) => ({ dex: bs.dex, tera: bs.tera, weight: 3 }))]);
+      const game = newGame({ map, difficulty: 'normal', team, items: {}, balls: {}, held: {}, trainer: NO_TRAINER, seed: 1, rules: { types: [type], lives, hpMul: CUP_HP } });
+      left = game.lives;
+      const out = playOut(game, 3600, 0);
+      if (game.status !== 'won') {
+        result = `lost battle ${n + 1} (${map.name}, wave ${out.cleared + 1})`;
+        break;
+      }
+      left = out.lives;
+    }
+    console.log(`${`${type} cup (${lines.length} lines)`.padEnd(34)} ${result}${result === 'won' ? `, ${left} lives in the last` : ''}`);
+  }
 }

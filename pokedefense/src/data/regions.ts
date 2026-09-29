@@ -8,7 +8,7 @@
  */
 import type { TrackId } from './music';
 
-export const REGION_IDS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea'] as const;
+export const REGION_IDS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola', 'galar', 'paldea', 'orange', 'hisui', 'kitakami'] as const;
 export type RegionId = (typeof REGION_IDS)[number];
 
 export interface Region {
@@ -21,6 +21,8 @@ export interface Region {
   /** The map whose clearing makes you Champion, and opens the next region. */
   league: string;
   endless: string;
+  /** Side regions: the region whose Champion opens this one (mainline regions follow the one before). */
+  after?: RegionId;
   worldTrack: TrackId;
   teamTrack: TrackId;
   winTrack: TrackId;
@@ -73,10 +75,27 @@ export const REGIONS: Record<RegionId, Region> = {
     badges: [121, 122, 123, 124, 125, 126, 127, 128], league: 'paldea-league', endless: 'area-zero',
     worldTrack: 'k_santalune', teamTrack: 'k_gym', winTrack: 'k_victory', championTrack: 'halloffame',
   },
+  orange: {
+    id: 'orange', name: 'Orange Islands', professor: 'Professor Ivy', starters: ['marill', 'venonat', 'vulpix'],
+    badges: [131, 132, 133, 134, 135, 136, 137, 138], league: 'pummelo-stadium', endless: 'shamouti-shrine', after: 'kanto',
+    worldTrack: 'e_route119', teamTrack: 'pokemoncenter', winTrack: 'gymleadervictory', championTrack: 'halloffame',
+  },
+  hisui: {
+    id: 'hisui', name: 'Hisui', professor: 'Professor Laventon', starters: ['rowlet', 'cyndaquil', 'oshawott'],
+    badges: [141, 142, 143, 144, 145, 146, 147, 148], league: 'temple-of-sinnoh', endless: 'hall-of-origin', after: 'sinnoh',
+    worldTrack: 'p_jubilife', teamTrack: 'p_eterna_forest', winTrack: 'p_victory', championTrack: 'p_halloffame',
+  },
+  kitakami: {
+    id: 'kitakami', name: 'Kitakami', professor: 'Professor Sada', starters: ['poltchageist', 'duraludon', 'dipplin'],
+    badges: [151, 152, 153, 154, 155, 156, 157, 158], league: 'blueberry-league', endless: 'area-zero-underdepths', after: 'paldea',
+    worldTrack: 'k_shalour', teamTrack: 'k_gym', winTrack: 'k_victory', championTrack: 'halloffame',
+  },
 };
 
-/** The region before this one, whose League opens it. */
+/** The region whose League opens this one: the one before, or a side region's `after`. */
 export function previousRegion(id: RegionId): RegionId | null {
+  const after = REGIONS[id].after;
+  if (after) return after;
   const i = REGION_IDS.indexOf(id);
   return i > 0 ? REGION_IDS[i - 1]! : null;
 }

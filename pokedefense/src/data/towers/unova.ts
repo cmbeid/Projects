@@ -25,7 +25,15 @@ export const UNOVA_LINES: readonly TowerLine[] = [
   {
     id: 'oshawott', name: 'Oshawott', type: 'water', attack: 'bolt', role: 'Scalchop slashes that land critical hits; can swim',
     cost: 115, base: { damage: 10, range: 2, rate: 1.1 }, effects: { crit: 0.2 },
-    stages: [{ dex: 501, level: 1 }, { dex: 502, level: 3 }, { dex: 503, level: 5 }],
+    stages: [{ dex: 501, level: 1 }, { dex: 502, level: 3 }],
+    // Or its Hisuian form, as Professor Laventon knew it.
+    branches: {
+      level: 5,
+      options: [
+        { item: 'mystic-water', dex: 503, type: 'water', attack: 'bolt', desc: 'Samurott: the seamitars, as in Unova.', effects: {} },
+        { item: 'black-glasses', dex: 10236, type: 'dark', attack: 'bolt', desc: 'Hisuian Samurott: dark blades that leave targets weakened.', effects: { weaken: 0.5 } },
+      ],
+    },
     moves: [
       { name: 'Razor Shell', desc: 'Critical hits nearly half the time.', effects: { crit: 0.25 }, cost: 480 },
       { name: 'Hydro Pump', desc: 'A jet through a whole line.', attack: 'beam', damage: 1.5, cost: 500 },

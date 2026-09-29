@@ -31,7 +31,10 @@ export function serializeGame(g: Game): string {
 
 function relink(towers: Tower[], enemies: Enemy[]): void {
   for (const t of towers) t.line = line(t.line as unknown as string);
-  for (const e of enemies) e.sp = enemySpecies(e.dex, e.tera ?? null);
+  for (const e of enemies) {
+    Object.assign(e, { alpha: e.alpha ?? false, frenzy: e.frenzy ?? 0, phases: e.phases ?? [] });
+    e.sp = enemySpecies(e.dex, e.tera ?? null);
+  }
 }
 
 /** The battle a snapshot holds, or null if it can't be read (an old version, a map that's gone). */

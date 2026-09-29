@@ -9,9 +9,10 @@
 import {
   BALL_KEYS, type BallKey, HELD_BY_KEY, NO_TRAINER, POWERUP_KEYS, type PowerupKey, TRAINER_KEYS, type TrainerLevels,
 } from '../data/items';
-import { MAP_BY_ID, MAPS, type MapDef } from '../data/maps';
-import { previousRegion, REGIONS, type RegionId } from '../data/regions';
+import { MAP_BY_ID, MAPS, type MapDef, type MapRules } from '../data/maps';
+import { previousRegion, REGION_IDS, REGIONS, type RegionId } from '../data/regions';
 import { LINES, lineForDex, type TowerLine } from '../data/towers';
+import { type PokeType, TYPES } from '../data/types';
 import type { DifficultyKey } from '../game/waves';
 
 const KEY = 'pokedefense.save.v1';
@@ -51,6 +52,54 @@ export interface Progress {
   tutorialDone: boolean;
   /** Regions whose professor has already handed over the starters. */
   greeted: RegionId[];
+  frontier: FrontierProgress;
+}
+
+export type FacilityId = 'tower' | 'factory' | 'mono' | 'gauntlet';
+
+/** A Battle Frontier challenge under way: its battles so far and what carries between them. */
+export interface FrontierRun {
+  facility: Exclude<FacilityId, 'gauntlet'>;
+  /** Battles won so far in this run. */
+  streak: number;
+  /** Lives carried from one battle to the next. */
+  lives: number;
+  seed: number;
+  /** The Battle Factory's rental team. */
+  team: string[];
+  /** The Mono-type Cup's type. */
+  type: PokeType | null;
+}
+
+export interface FrontierProgress {
+  towerBest: number;
+  factoryBest: number;
+  /** Mono-type Cups won. */
+  monoTrophies: PokeType[];
+  /** Most waves cleared in the Champions' Gauntlet; `gauntletWon` once all of it. */
+  gauntletBest: number;
+  gauntletWon: boolean;
+  run: FrontierRun | null;
+}
+
+export const NO_FRONTIER: FrontierProgress = { towerBest: 0, factoryBest: 0, monoTrophies: [], gauntletBest: 0, gauntletWon: false, run: null };
+
+function parseFrontier(raw: unknown): FrontierProgress {
+  if (!raw || typeof raw !== 'object') return { ...NO_FRONTIER };
+  const f = raw as Record<string, unknown>;
+  const isType = (t: unknown): t is PokeType => typeof t === 'string' && (TYPES as readonly string[]).includes(t);
+  const r = f.run as Record<string, unknown> | null | undefined;
+  const run: FrontierRun | null = r && typeof r === 'object' && (r.facility === 'tower' || r.facility === 'factory' || r.facility === 'mono')
+    ? {
+      facility: r.facility, streak: num(r.streak), lives: Math.max(1, num(r.lives, 20)), seed: num(r.seed),
+      team: strs(r.team).filter((id) => LINES.some((l) => l.id === id)), type: isType(r.type) ? r.type : null,
+    }
+    : null;
+  return {
+    towerBest: num(f.towerBest), factoryBest: num(f.factoryBest),
+    monoTrophies: Array.isArray(f.monoTrophies) ? [...new Set(f.monoTrophies.filter(isType))] : [],
+    gauntletBest: num(f.gauntletBest), gauntletWon: f.gauntletWon === true, run,
+  };
 }
 
 export const DEFAULT_VOLUMES: Volumes = { sfx: 70, cries: 60, music: 45 };
@@ -67,7 +116,7 @@ export function freshProgress(): Progress {
   return {
     results: {}, caught: [], shinies: [], seen: [], bp: 0, items, balls, heldOwned: [], held: {},
     trainer: { ...NO_TRAINER }, team: ['charmander', 'squirtle', 'bulbasaur', 'pidgey'],
-    volumes: { ...DEFAULT_VOLUMES }, muted: false, haptics: true, hints: true, tutorialDone: false, greeted: ['kanto'],
+    volumes: { ...DEFAULT_VOLUMES }, muted: false, haptics: true, hints: true, tutorialDone: false, greeted: ['kanto'], frontier: { ...NO_FRONTIER },
   };
 }
 
@@ -143,6 +192,7 @@ export function loadProgress(store: Store | null = defaultStore()): Progress {
     hints: raw.hints !== false,
     tutorialDone: raw.tutorialDone === true,
     greeted: Array.isArray(raw.greeted) ? strs(raw.greeted).filter((r): r is RegionId => r in REGIONS) : ['kanto'],
+    frontier: parseFrontier(raw.frontier),
   };
 }
 
@@ -167,6 +217,9 @@ export interface SavedBattle {
   game: string;
   /** Lines caught this battle, still marked NEW. */
   newLines: string[];
+  /** A Battle Frontier battle: which facility, and the rules it set. */
+  frontier?: FacilityId;
+  rules?: MapRules;
 }
 
 export function saveBattle(b: SavedBattle, store: Store | null = defaultStore()): void {
@@ -183,6 +236,8 @@ export function loadBattle(store: Store | null = defaultStore()): SavedBattle | 
     if (!raw || typeof raw.mapId !== 'string' || typeof raw.game !== 'string' || !MAP_BY_ID.has(raw.mapId)) return null;
     return {
       mapId: raw.mapId, difficulty: raw.difficulty === 'hard' ? 'hard' : 'normal', team: strs(raw.team), game: raw.game, newLines: strs(raw.newLines),
+      ...(raw.frontier && ['tower', 'factory', 'mono', 'gauntlet'].includes(raw.frontier) ? { frontier: raw.frontier } : {}),
+      ...(raw.rules && typeof raw.rules === 'object' ? { rules: raw.rules } : {}),
     };
   } catch {
     return null;
@@ -233,6 +288,8 @@ export function mapUnlocked(p: Progress, map: MapDef): boolean {
 export function lineUnlocked(p: Progress, l: TowerLine): boolean {
   if (l.unlock.kind === 'start') return true;
   if (l.unlock.kind === 'region' && regionUnlocked(p, l.unlock.region)) return true;
+  // Or another region's professor hands it over (Hisui's Rowlet, Cyndaquil and Oshawott).
+  if (l.unlock.kind === 'region' && REGION_IDS.some((r) => REGIONS[r].starters.includes(l.id) && regionUnlocked(p, r))) return true;
   if (l.unlock.kind === 'badge' && badges(p).includes(l.unlock.badge)) return true;
   return p.caught.some((dex) => lineForDex(dex)?.id === l.id);
 }
@@ -261,6 +318,8 @@ export interface BattleOutcome {
   cleared: number;
   caught: { dex: number; shiny: boolean }[];
   seen: number[];
+  /** A Battle Frontier battle: its catches count, but not towards the map's stars or BP. */
+  frontier?: boolean;
 }
 
 /** Fold a finished battle into the save. Returns the new progress and the BP earned. */
@@ -269,8 +328,8 @@ export function recordBattle(p: Progress, o: BattleOutcome): { progress: Progres
   const before = new Set(unlockedLines(p).map((l) => l.id));
   const prev = p.results[o.mapId] ?? { normal: 0, hard: 0, best: 0 };
   const firstClear = o.won && prev[o.difficulty] === 0;
-  const bp = battleReward(map, o.difficulty, o.won, o.stars, o.cleared, firstClear);
-  const results = {
+  const bp = o.frontier ? 0 : battleReward(map, o.difficulty, o.won, o.stars, o.cleared, firstClear);
+  const results = o.frontier ? p.results : {
     ...p.results,
     [o.mapId]: { ...prev, [o.difficulty]: Math.max(prev[o.difficulty], o.stars), best: Math.max(prev.best, o.cleared) },
   };

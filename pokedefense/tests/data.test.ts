@@ -43,7 +43,8 @@ describe('maps', () => {
         for (let y = 0; y < ROWS; y += 1) {
           for (let x = 0; x < COLS; x += 1) {
             const t = terrainAt(map, x, y);
-            if (!onPath.has(`${x},${y}`) && BUILDABLE.has(t)) land += 1;
+            // Where only swimmers may battle, the sea is the room to build.
+            if (!onPath.has(`${x},${y}`) && (BUILDABLE.has(t) || (map.rules?.swimmersOnly && t === 'water'))) land += 1;
           }
         }
         expect(land).toBeGreaterThanOrEqual(30);
@@ -65,20 +66,21 @@ describe('maps', () => {
   it('awards every region’s 8 badges once each, in their own regions', () => {
     const badges = MAPS.map((m) => m.badge).filter((b): b is number => Boolean(b));
     expect(badges.sort((a, b) => a - b)).toEqual(Object.values(REGIONS).flatMap((r) => r.badges).sort((a, b) => a - b));
-    expect(badges).toHaveLength(72);
+    expect(badges).toHaveLength(96);
     for (const m of MAPS) if (m.badge) expect(REGIONS[m.regionId].badges).toContain(m.badge);
   });
 });
 
 describe('tower lines', () => {
-  it('has 141 lines, every Pokémon in them known', () => {
-    expect(LINES).toHaveLength(141);
+  it('has 178 lines, every Pokémon in them known', () => {
+    expect(LINES).toHaveLength(178);
     expect(new Set(LINES.map((l) => l.id)).size).toBe(LINES.length);
     for (const l of LINES) for (const dex of lineDexes(l)) expect(SPECIES.has(dex)).toBe(true);
   });
 
   it('can catch every catch-only line somewhere', () => {
-    const wild = new Set(MAPS.flatMap((m) => m.pool.map((p) => p.dex)));
+    // Wild Pokémon anywhere, and the legends at the end of an endless map's 25th waves.
+    const wild = new Set(MAPS.flatMap((m) => [...m.pool.map((p) => p.dex), ...(m.endless ? mapBosses(m).map((b) => b.dex) : [])]));
     for (const l of LINES.filter((x) => x.unlock.kind === 'catch')) {
       expect(lineDexes(l).some((dex) => wild.has(dex)), l.name).toBe(true);
     }

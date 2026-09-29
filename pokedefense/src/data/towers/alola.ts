@@ -5,7 +5,15 @@ export const ALOLA_LINES: readonly TowerLine[] = [
   {
     id: 'rowlet', name: 'Rowlet', type: 'grass', attack: 'bolt', role: 'Silent feathered arrows from afar; Decidueye sees the unseen',
     cost: 120, base: { damage: 9, range: 2.8, rate: 1 }, effects: { crit: 0.1 },
-    stages: [{ dex: 722, level: 1 }, { dex: 723, level: 3 }, { dex: 724, level: 5 }],
+    stages: [{ dex: 722, level: 1 }, { dex: 723, level: 3 }],
+    // Or its Hisuian form, as Professor Laventon knew it.
+    branches: {
+      level: 5,
+      options: [
+        { item: 'spell-tag', dex: 724, type: 'grass', attack: 'bolt', desc: 'Decidueye: the hooded archer, as in Alola.', effects: {} },
+        { item: 'black-belt', dex: 10244, type: 'fighting', attack: 'bolt', desc: 'Hisuian Decidueye: a Fighting-type archer whose arrows pierce armour.', damage: 1.1, effects: { pierceArmour: 0.4 } },
+      ],
+    },
     moves: [
       { name: 'Spirit Shackle', desc: 'Ghost-type arrows that pin enemies in place.', type: 'ghost', damage: 1.3, effects: { slow: 0.4 }, cost: 500 },
       { name: 'Leaf Blade', desc: 'Critical hits nearly half the time.', effects: { crit: 0.35 }, cost: 500 },

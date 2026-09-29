@@ -7,7 +7,8 @@
  */
 import { mkdir } from 'node:fs/promises';
 import { chromium, type Page } from 'playwright';
-import { MAPS } from '../src/data/maps';
+import { mapDef, MAPS } from '../src/data/maps';
+import { buildWave } from '../src/game/waves';
 
 const URL = process.env['VERIFY_URL'] ?? 'http://localhost:4173/';
 const EXECUTABLE = process.env['CHROMIUM_PATH'];
@@ -167,7 +168,7 @@ async function regions(name: string, viewport: { width: number; height: number }
   ];
   await page.addInitScript((ids: string[]) => {
     const results = Object.fromEntries(ids.map((id) => [id, { normal: 3, hard: 0, best: 0 }]));
-    localStorage.setItem('pokedefense.save.v1', JSON.stringify({ results, greeted: ['kanto', 'johto'], tutorialDone: true, bp: 500 }));
+    localStorage.setItem('pokedefense.save.v1', JSON.stringify({ results, greeted: ['kanto', 'johto', 'orange'], tutorialDone: true, bp: 500 }));
   }, cleared);
   await page.goto(URL);
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -176,7 +177,7 @@ async function regions(name: string, viewport: { width: number; height: number }
   check((await page.locator('.modal h2').textContent()) === 'Welcome to Hoenn!', 'Professor Birch welcomes you to Hoenn');
   await page.screenshot({ path: `${OUT}/${name}-7-welcome.png` });
   await page.getByRole('button', { name: /Thanks, Professor/ }).click();
-  check(await page.locator('.tabs.regions button').count() === 9, 'nine region tabs');
+  check(await page.locator('.tabs.regions button:not(.frontier)').count() === 12, 'twelve region tabs');
   await page.screenshot({ path: `${OUT}/${name}-8-hoenn.png` });
 
   for (const [tab, mapName, shot] of [['Johto', 'Sprout Tower', '9-johto-battle'], ['Hoenn', 'Mt. Chimney', '10-hoenn-battle']] as const) {
@@ -214,7 +215,7 @@ async function laterRegions(name: string, viewport: { width: number; height: num
   await page.addInitScript((ids: string[]) => {
     const results = Object.fromEntries(ids.map((id) => [id, { normal: 3, hard: 0, best: 0 }]));
     localStorage.setItem('pokedefense.save.v1', JSON.stringify({
-      results, greeted: ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova'], tutorialDone: true, bp: 500, heldOwned: ['key-stone'],
+      results, greeted: ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'orange', 'hisui'], tutorialDone: true, bp: 500, heldOwned: ['key-stone'],
     }));
   }, cleared);
   await page.goto(URL);
@@ -224,7 +225,7 @@ async function laterRegions(name: string, viewport: { width: number; height: num
   check((await page.locator('.modal h2').textContent()) === 'Welcome to Kalos!', 'Professor Sycamore welcomes you to Kalos');
   await page.screenshot({ path: `${OUT}/${name}-11-welcome-kalos.png` });
   await page.getByRole('button', { name: /Thanks, Professor/ }).click();
-  check(await page.locator('.tabs.regions button').count() === 9, 'nine region tabs');
+  check(await page.locator('.tabs.regions button:not(.frontier)').count() === 12, 'twelve region tabs');
   const tabInView = await page.locator('.tabs.regions button.on').evaluate((el) => {
     const r = el.getBoundingClientRect();
     return r.left >= 0 && r.right <= window.innerWidth;
@@ -344,7 +345,7 @@ async function newestRegions(name: string, viewport: { width: number; height: nu
       results, greeted, tutorialDone: true, bp: 500, heldOwned: ['z-ring', 'dynamax-band', 'tera-orb'],
       held: { litten: 'z-ring', scorbunny: 'dynamax-band', fuecoco: 'tera-orb' }, team: ['litten', 'scorbunny', 'fuecoco', 'pidgey'],
     }));
-  }, [cleared, before] as [string[], string[]]);
+  }, [cleared, [...before, 'orange', 'hisui']] as [string[], string[]]);
   await page.goto(URL);
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.waitForSelector('.modal');
@@ -352,7 +353,7 @@ async function newestRegions(name: string, viewport: { width: number; height: nu
   check((await page.locator('.modal h2').textContent()) === 'Welcome to Paldea!', 'Professor Sada welcomes you to Paldea');
   await page.screenshot({ path: `${OUT}/${name}-16-welcome-paldea.png` });
   await page.getByRole('button', { name: /Thanks, Professor/ }).click();
-  check(await page.locator('.tabs.regions button').count() === 9, 'nine region tabs');
+  check(await page.locator('.tabs.regions button:not(.frontier)').count() === 12, 'twelve region tabs');
   await page.screenshot({ path: `${OUT}/${name}-17-paldea.png` });
 
   const battles = [
@@ -415,6 +416,140 @@ async function newestRegions(name: string, viewport: { width: number; height: nu
   await browser.close();
 }
 
+/**
+ * The side regions and the Battle Frontier, from a save that is Champion of
+ * everything but Hisui, with a Mewtwo caught: Professor Laventon's welcome,
+ * twelve region tabs and the Frontier's, an Alpha, Mewtwo in the shop, an
+ * Orange Crew rule, Ogerpon changing mask, the Frontier hub, a Mono-type Cup
+ * and the Champions' Gauntlet.
+ */
+async function sideRegions(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
+  console.log(`${name} side regions and Frontier (${viewport.width}×${viewport.height})`);
+  const browser = await chromium.launch(EXECUTABLE ? { executablePath: EXECUTABLE } : {});
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  const cleared = MAPS.filter((m) => !m.endless && m.regionId !== 'hisui').map((m) => m.id);
+  const greeted = [...new Set(MAPS.map((m) => m.regionId))].filter((r) => r !== 'hisui');
+  const alphaWave = Array.from({ length: 22 }, (_, i) => i + 1).find((w) => buildWave(mapDef('obsidian-fieldlands'), w).some((x) => x.alpha))!;
+  await page.addInitScript(([ids, regions]: [string[], string[]]) => {
+    const results = Object.fromEntries(ids.map((id) => [id, { normal: 3, hard: 0, best: 0 }]));
+    localStorage.setItem('pokedefense.save.v1', JSON.stringify({
+      results, greeted: regions, tutorialDone: true, bp: 500, caught: [150],
+      team: ['mewtwo', 'venonat', 'marill', 'poltchageist', 'charmander', 'squirtle', 'pidgey', 'bulbasaur'],
+    }));
+  }, [cleared, greeted] as [string[], string[]]);
+  await page.goto(URL);
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.waitForSelector('.modal');
+  await page.waitForTimeout(700);
+  check((await page.locator('.modal h2').textContent()) === 'Welcome to Hisui!', 'Professor Laventon welcomes you to Hisui');
+  await page.screenshot({ path: `${OUT}/${name}-21-welcome-hisui.png` });
+  await page.getByRole('button', { name: /Thanks, Professor/ }).click();
+  check(await page.locator('.tabs.regions button:not(.frontier)').count() === 12, 'twelve region tabs');
+  check(await page.locator('.tabs.regions .frontier').isVisible(), 'the Battle Frontier’s tab');
+  await page.screenshot({ path: `${OUT}/${name}-22-hisui.png` });
+
+  const leave = async (): Promise<void> => {
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.getByRole('button', { name: 'Give up' }).click();
+    await page.waitForSelector('.tabs.regions');
+  };
+
+  // Hisui: an Alpha, and the Mewtwo caught long ago, ready to place.
+  await page.locator('.map-card', { hasText: 'Obsidian Fieldlands' }).click();
+  await page.getByRole('button', { name: /Battle!/ }).click();
+  await page.waitForSelector('canvas.map');
+  check(await page.locator('.shop-card', { hasText: 'Mewtwo' }).count() === 1, 'a caught Mewtwo is a tower now');
+  await page.evaluate((w) => {
+    const g = (window as unknown as Win).__battle;
+    g.wave = w - 1;
+    g.lives = 999;
+  }, alphaWave);
+  await page.locator('.wave-btn').click();
+  const alpha = await page.waitForFunction(() => (window as unknown as { __battle: { enemies: { alpha: boolean; alive: boolean }[] } }).__battle.enemies.some((e) => e.alpha && e.alive), undefined, { timeout: 60_000 }).then(() => true).catch(() => false);
+  check(alpha, 'Hisui: an Alpha on the field');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${OUT}/${name}-23-hisui-alpha.png` });
+  await leave();
+
+  // Orange Islands: Cissy's rule keeps Venonat out of the water.
+  await page.locator('.tabs.regions button', { hasText: 'Orange Islands' }).click();
+  await page.locator('.map-card', { hasText: 'Mikan Island' }).click();
+  await page.waitForSelector('.roster');
+  check(await page.locator('.rules', { hasText: 'swimmers only' }).count() > 0, 'Orange Islands: Cissy’s rule is shown');
+  check(await page.locator('.roster-card.off', { hasText: 'Venonat' }).count() === 1, 'Orange Islands: a Pokémon that can’t swim can’t come');
+  await page.screenshot({ path: `${OUT}/${name}-24-orange-rules.png` });
+  await page.getByRole('button', { name: /Battle!/ }).click();
+  await page.waitForSelector('canvas.map');
+  const team = await page.evaluate(() => (window as unknown as { __battle: { team: string[] } }).__battle.team);
+  check(team.includes('marill') && !team.includes('venonat'), `Orange Islands: swimmers only on the team (${team.join(', ')})`);
+  await leave();
+
+  // Kitakami: Ogerpon changes mask as it's worn down.
+  await page.locator('.tabs.regions button', { hasText: 'Kitakami' }).click();
+  await page.locator('.map-card', { hasText: 'Timeless Woods' }).click();
+  await page.getByRole('button', { name: /Battle!/ }).click();
+  await page.waitForSelector('canvas.map');
+  await page.evaluate(() => {
+    const g = (window as unknown as Win).__battle;
+    g.wave = g.map.waves - 1;
+    g.lives = 999;
+  });
+  await page.locator('.wave-btn').click();
+  await page.waitForFunction(() => (window as unknown as Win).__battle.enemies.some((e) => e.boss && e.alive), undefined, { timeout: 60_000 }).catch(() => undefined);
+  const masked = await page.evaluate(async () => {
+    const g = (window as unknown as { __battle: { enemies: { boss: boolean; hp: number; maxHp: number; dex: number }[] } }).__battle;
+    const ogerpon = g.enemies.find((e) => e.boss);
+    if (!ogerpon) return 0;
+    ogerpon.hp = ogerpon.maxHp * 0.7;
+    await new Promise((r) => setTimeout(r, 900));
+    return ogerpon.dex;
+  });
+  check(masked === 10273, 'Kitakami: Ogerpon puts on the Wellspring Mask');
+  check(await page.locator('.boss-bar', { hasText: 'Tera water' }).count() > 0, 'Kitakami: the boss bar shows its new type');
+  await page.screenshot({ path: `${OUT}/${name}-25-kitakami-mask.png` });
+  await leave();
+
+  // The Battle Frontier.
+  await page.locator('.tabs.regions .frontier').click();
+  await page.waitForSelector('.facility');
+  check(await page.locator('.facility').count() === 4, 'the Frontier has four facilities');
+  await fits(page, 'Frontier');
+  await page.screenshot({ path: `${OUT}/${name}-26-frontier.png` });
+  await page.locator('.facility', { hasText: 'Mono-type Cup' }).getByRole('button', { name: 'Start' }).click();
+  await page.locator('.tera-types button', { hasText: 'fire' }).click();
+  await page.waitForSelector('.roster');
+  check(await page.locator('.rules', { hasText: 'Fire Cup' }).count() > 0, 'Mono-type Cup: the Fire Cup’s rule');
+  check(await page.locator('.roster-card.off', { hasText: 'Squirtle' }).count() === 1, 'Mono-type Cup: other types can’t come');
+  await page.screenshot({ path: `${OUT}/${name}-27-fire-cup.png` });
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.waitForSelector('.facility');
+  await page.locator('.facility', { hasText: 'Mono-type Cup' }).getByRole('button', { name: 'Forfeit' }).click();
+  await page.waitForSelector('.facility');
+  check(await page.locator('.facility', { hasText: 'Mono-type Cup' }).getByRole('button', { name: 'Start' }).count() === 1, 'Mono-type Cup: forfeited');
+
+  await page.locator('.facility', { hasText: 'Champions’ Gauntlet' }).getByRole('button', { name: 'Enter' }).click();
+  await page.getByRole('button', { name: /Battle!/ }).click();
+  await page.waitForSelector('canvas.map');
+  await page.evaluate(() => {
+    const g = (window as unknown as Win).__battle;
+    g.wave = 2;
+    g.lives = 999;
+  });
+  await page.locator('.wave-btn').click();
+  await page.waitForFunction(() => (window as unknown as Win).__battle.enemies.some((e) => e.boss && e.alive), undefined, { timeout: 60_000 }).catch(() => undefined);
+  await page.waitForTimeout(800);
+  check(await page.locator('.boss-bar', { hasText: 'Champion Blue' }).count() > 0, 'the Gauntlet opens with Champion Blue’s Charizard');
+  await page.screenshot({ path: `${OUT}/${name}-28-gauntlet.png` });
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Give up' }).click();
+  await page.waitForSelector('.facility');
+  check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
+  await browser.close();
+}
+
 /** Buying from far down the Mart's shelf keeps the shelf where it was. */
 async function mart(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
   console.log(`${name} mart (${viewport.width}×${viewport.height})`);
@@ -439,6 +574,8 @@ async function mart(name: string, viewport: { width: number; height: number }, t
 async function main(): Promise<void> {
   await mkdir(OUT, { recursive: true });
   await mart('phone', { width: 390, height: 844 }, true);
+  await sideRegions('phone', { width: 390, height: 844 }, true);
+  await sideRegions('desktop', { width: 1440, height: 900 }, false);
   await newestRegions('phone', { width: 390, height: 844 }, true);
   await newestRegions('desktop', { width: 1440, height: 900 }, false);
   await laterRegions('phone', { width: 390, height: 844 }, true);

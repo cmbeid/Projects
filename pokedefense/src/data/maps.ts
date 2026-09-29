@@ -21,11 +21,15 @@
  *   B  bamboo / pillar — blocked
  */
 import { ALOLA } from './maps/alola';
+import { gauntletMap } from './maps/frontier';
 import { GALAR } from './maps/galar';
+import { HISUI } from './maps/hisui';
 import { HOENN } from './maps/hoenn';
 import { JOHTO } from './maps/johto';
 import { KALOS } from './maps/kalos';
 import { KANTO } from './maps/kanto';
+import { KITAKAMI } from './maps/kitakami';
+import { ORANGE } from './maps/orange';
 import { PALDEA } from './maps/paldea';
 import { SINNOH } from './maps/sinnoh';
 import { UNOVA } from './maps/unova';
@@ -33,13 +37,16 @@ import { type BossDef, COLS, type MapDef, ROWS, TERRAIN, type Terrain, type Wayp
 
 export * from './maps/types';
 
-export const MAPS: readonly MapDef[] = [...KANTO, ...JOHTO, ...HOENN, ...SINNOH, ...UNOVA, ...KALOS, ...ALOLA, ...GALAR, ...PALDEA];
+export const MAPS: readonly MapDef[] = [...KANTO, ...JOHTO, ...HOENN, ...SINNOH, ...UNOVA, ...KALOS, ...ALOLA, ...GALAR, ...PALDEA, ...ORANGE, ...HISUI, ...KITAKAMI];
 
 export function terrainAt(map: MapDef, x: number, y: number): Terrain {
   return TERRAIN[map.grid[y]?.[x] ?? 'X'] ?? 'grass';
 }
 
-export const MAP_BY_ID: ReadonlyMap<string, MapDef> = new Map(MAPS.map((m) => [m.id, m]));
+/** The Battle Frontier's maps: outside the regions, but battles like any other. */
+export const FRONTIER_MAPS: readonly MapDef[] = [gauntletMap(MAPS)];
+
+export const MAP_BY_ID: ReadonlyMap<string, MapDef> = new Map([...MAPS, ...FRONTIER_MAPS].map((m) => [m.id, m]));
 
 /** Every boss a map can send: its leader and partners, the Elite Four, an endless map's rotation. */
 export function mapBosses(map: MapDef): BossDef[] {

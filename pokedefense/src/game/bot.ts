@@ -10,7 +10,7 @@ import { species } from '../data/species';
 import { line, MAX_LEVEL } from '../data/towers';
 import { effectiveness, type PokeType } from '../data/types';
 import {
-  canPlace, chooseMove, enemySpecies, type Game, hasNextWave, type Tower, levelUp, moveCost, needsBranch, placeCost, placeTower, retryWave, startWave, step,
+  canPlace, chooseMove, enemySpecies, type Game, lineAllowed, hasNextWave, type Tower, levelUp, moveCost, needsBranch, placeCost, placeTower, retryWave, startWave, step,
   upgradeCost,
 } from './game';
 
@@ -79,11 +79,22 @@ function answerTo(g: Game, team: string[]): { id: string } | null {
   return null;
 }
 
+/** The evolution (Eevee's stones, a Hisuian form) whose type best suits this map's Pokémon. */
+function bestBranch(g: Game, t: Tower): number {
+  const foes = [...g.map.pool.filter((p) => !p.rare), ...mapBosses(g.map).map((b) => ({ dex: b.dex, weight: 2 }))];
+  const fit = (type: PokeType): number => foes.reduce((sum, p) => sum + p.weight * effectiveness(type, species(p.dex).types), 0);
+  const options = t.line.branches!.options;
+  let best = t.id % options.length;
+  for (const [i, o] of options.entries()) if (fit(o.type) > fit(options[best]!.type) + 1e-9) best = i;
+  return best;
+}
+
 export function botTurn(g: Game): void {
   // Keep a detector if anything invisible is coming.
   const bosses = mapBosses(g.map);
   const invisible = [...g.map.pool, ...bosses].some((p) => species(p.dex).traits.includes('invisible'));
-  const team = [...g.team];
+  // Only what the challenge's rules allow.
+  const team = g.team.filter((id) => lineAllowed(g.rules, id));
   for (let guard = 0; guard < 20; guard += 1) {
     // A boss coming that only a few low-level towers can hurt: grow those.
     const weak = comingBosses(g).filter((b) => g.towers.filter((t) => hitsBoss(t, b)).reduce((n, t) => n + t.level, 0) < 10);
@@ -97,18 +108,28 @@ export function botTurn(g: Game): void {
       .map((id) => ({ id, score: suitability(g, id) + (invisible && line(id).detect && !g.towers.some((t) => t.stats.detect) ? 3 : 0) }))
       .sort((a, b) => b.score - a.score);
     const answer = answerTo(g, team);
-    const pick = answer ?? lines[g.towers.length % Math.min(3, lines.length)] ?? lines[0];
-    let spot: { x: number; y: number; score: number } | null = null;
-    if (pick && g.towers.length < 40) {
-      const l = line(pick.id);
+    const first = answer ?? lines[g.towers.length % Math.min(3, lines.length)] ?? lines[0];
+    // The best tile for a line that it can be placed on now.
+    const bestSpot = (id: string): { x: number; y: number; score: number } | null => {
+      let found: { x: number; y: number; score: number } | null = null;
+      const l = line(id);
       for (let y = 0; y < ROWS; y += 1) {
         for (let x = 0; x < COLS; x += 1) {
-          if (canPlace(g, pick.id, x, y)) continue;
+          if (canPlace(g, id, x, y)) continue;
           const score = coverage(g, x, y, l.base.range);
-          if (!spot || score > spot.score) spot = { x, y, score };
+          if (!found || score > found.score) found = { x, y, score };
         }
       }
-    }
+      return found;
+    };
+    // Whether it could go anywhere at all, given the ₽.
+    const hasRoom = (id: string): boolean => {
+      for (let y = 0; y < ROWS; y += 1) for (let x = 0; x < COLS; x += 1) if ([null, 'money'].includes(canPlace(g, id, x, y))) return true;
+      return false;
+    };
+    // Nowhere for the first choice (a swimmer on dry land, say): the next that has room.
+    const pick = first && !hasRoom(first.id) ? lines.find((x) => hasRoom(x.id)) ?? first : first;
+    const spot = pick && g.towers.length < 40 ? bestSpot(pick.id) : null;
     const place = pick && spot ? placeCost(g, pick.id) : Infinity;
 
     const maxed = g.towers.find((t) => t.level >= MAX_LEVEL && t.move === null);
@@ -122,7 +143,7 @@ export function botTurn(g: Game): void {
       if (g.money < place) break;
       placeTower(g, pick.id, spot.x, spot.y);
     } else if (best && g.money >= upgrade) {
-      levelUp(g, best.id, needsBranch(best) ? { branch: best.id % 3 } : {});
+      levelUp(g, best.id, needsBranch(best) ? { branch: bestBranch(g, best) } : {});
     } else if (spot && pick && g.money >= place) {
       placeTower(g, pick.id, spot.x, spot.y);
     } else break;

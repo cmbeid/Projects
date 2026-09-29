@@ -9,7 +9,7 @@ import { playEvents } from '../audio/events';
 import { sfx, unlock } from '../audio/index';
 import { playMusic, preloadMusic } from '../audio/music';
 import { BALL_KEYS, BALLS, type BallKey, POWERUP_KEYS, POWERUPS, type PowerupKey } from '../data/items';
-import { COLS, type MapDef, mapBosses, mapDef, MAPS, ROWS, terrainAt } from '../data/maps';
+import { COLS, type MapDef, mapBosses, mapDef, type MapRules, MAPS, ROWS, terrainAt } from '../data/maps';
 import { REGIONS } from '../data/regions';
 import { species } from '../data/species';
 import { DYNAMAX_SECONDS, KEY_STONE, line, lineDexes, lineForDex, MAX_LEVEL, MEGA_SECONDS, MEGAS, type TowerLine, Z_MOVES } from '../data/towers';
@@ -28,7 +28,7 @@ import { loadCries } from '../audio/index';
 import { getProgress, mount, modal, modalOpen, setProgress, toast, button } from './app';
 import { h } from './dom';
 import { fullscreenButton } from './fullscreen';
-import { clearBattle, lineUnlocked, recordBattle, type Progress, saveBattle, type SavedBattle } from '../state/save';
+import { clearBattle, type FacilityId, lineUnlocked, recordBattle, type Progress, saveBattle, type SavedBattle } from '../state/save';
 import { restoreGame, serializeGame } from '../game/snapshot';
 
 type Mode =
@@ -48,6 +48,8 @@ const PLACE_ERROR: Record<string, string> = {
   occupied: 'Something is already there.',
   money: 'Not enough ₽.',
   team: 'Not on your team.',
+  rule: 'This challenge’s rules don’t allow that Pokémon.',
+  limit: 'No more towers allowed in this challenge.',
   outside: '',
 };
 
@@ -56,6 +58,11 @@ export interface BattleOptions {
   difficulty: DifficultyKey;
   team: string[];
   onExit: () => void;
+  /** A Battle Frontier challenge's rules, on top of the map's. */
+  rules?: MapRules;
+  /** A Battle Frontier battle: no retries, no stars, and `onEnd` hears how it went. */
+  frontier?: FacilityId;
+  onEnd?: (result: { won: boolean; lives: number; cleared: number }) => void;
 }
 
 function trainerFor(map: MapDef, e: Enemy): string {
@@ -74,7 +81,7 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
   const start: Progress = getProgress();
   const setup = {
     difficulty: opts.difficulty, team: opts.team, items: start.items, balls: start.balls, held: start.held,
-    trainer: start.trainer, seed: (Date.now() & 0xffffff) ^ 0x5eed,
+    trainer: start.trainer, seed: (Date.now() & 0xffffff) ^ 0x5eed, ...(opts.rules ? { rules: opts.rules } : {}),
   };
   const restored = resume ? restoreGame(resume.game, setup) : null;
   if (resume && !restored) {
@@ -723,7 +730,7 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
     bossBar.style.display = '';
     const pct = Math.max(0, (boss.hp / boss.maxHp) * 100);
     bossBar.replaceChildren(
-      h('div', {}, `${trainerFor(map, boss)}'s ${boss.dynamaxUntil > g.t ? 'Dynamax ' : ''}${boss.totem ? 'Totem ' : ''}${boss.sp.name}`,
+      h('div', {}, `${trainerFor(map, boss)}'s ${boss.dynamaxUntil > g.t ? 'Dynamax ' : ''}${boss.totem ? 'Totem ' : ''}${boss.frenzy > 0 ? 'frenzied Noble ' : ''}${boss.sp.name}`,
         boss.tera ? h('span.type', { style: `background:${TYPE_COLOURS[boss.tera]};margin-left:6px` }, `Tera ${boss.tera}`) : null),
       h('div.hp', {}, h('div', { style: `width:${pct}%` })),
     );
@@ -847,14 +854,21 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
     const p = getProgress();
     const result = recordBattle({ ...p, ...bagAfter(p), tutorialDone: p.tutorialDone || tutorial }, {
       mapId: map.id, difficulty: opts.difficulty, won, stars: won ? starsFor(g) : 0, cleared: g.cleared,
-      caught: g.log.caught, seen: [...g.log.seen],
+      caught: g.log.caught, seen: [...g.log.seen], ...(opts.frontier ? { frontier: true } : {}),
     });
     setProgress(result.progress);
+    opts.onEnd?.({ won, lives: g.lives, cleared: g.cleared });
     return result;
   }
 
   /** A gym leader's Pokémon got through: rewind to the start of its wave and try again. */
   function bossFailed(): void {
+    // The Battle Frontier gives no second tries.
+    if (opts.frontier) {
+      g.status = 'lost';
+      finish();
+      return;
+    }
     const boss = map.extraBosses?.find((b) => b.wave === g.checkpoint?.wave);
     const trainer = boss?.trainer ?? map.leader;
     const dex = boss?.boss.dex ?? map.boss.dex;
@@ -928,7 +942,7 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
           caught,
           unlocked,
           h('div.row', {},
-            button('btn.grow', 'Retry', () => {
+            opts.frontier ? null : button('btn.grow', 'Retry', () => {
               close();
               startBattle(opts);
             }),
@@ -1016,7 +1030,10 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
   /** Keep the battle saved as it goes, so a closed tab can pick up where it was. */
   function save(): void {
     if (finished || (g.status !== 'playing' && g.status !== 'retry')) return;
-    saveBattle({ mapId: map.id, difficulty: opts.difficulty, team: opts.team, game: serializeGame(g), newLines: [...newThisBattle] });
+    saveBattle({
+      mapId: map.id, difficulty: opts.difficulty, team: opts.team, game: serializeGame(g), newLines: [...newThisBattle],
+      ...(opts.frontier ? { frontier: opts.frontier } : {}), ...(opts.rules ? { rules: opts.rules } : {}),
+    });
   }
   const saveTimer = window.setInterval(save, 3000);
 
@@ -1047,6 +1064,6 @@ export function startBattle(opts: BattleOptions, resume?: SavedBattle): boolean 
     // Pick up where the tab closed: paused, so nothing happens until you're ready.
     if (g.status === 'retry') bossFailed();
     else pause('Welcome back! Your battle was saved just as you left it.');
-  }
+  } else if (g.rules.label) toast(`📜 ${g.rules.label}`);
   return true;
 }

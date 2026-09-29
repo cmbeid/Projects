@@ -4,6 +4,7 @@ import { suspend, unlock } from './audio/index';
 import { clearBattle, loadBattle } from './state/save';
 import { applySettings } from './ui/app';
 import { startBattle } from './ui/battle';
+import { frontierBattle } from './ui/frontier';
 import { titleScreen, worldScreen } from './ui/screens';
 
 applySettings();
@@ -17,6 +18,7 @@ function resumeBattle(): boolean {
   const saved = loadBattle();
   if (!saved) return false;
   try {
+    if (saved.frontier) return startBattle(frontierBattle(saved.frontier, saved.mapId, saved.difficulty, saved.team, saved.rules ?? {}), saved);
     return startBattle({ mapId: saved.mapId, difficulty: saved.difficulty, team: saved.team, onExit: worldScreen }, saved);
   } catch {
     clearBattle();
