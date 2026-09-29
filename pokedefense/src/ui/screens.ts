@@ -7,12 +7,13 @@ import { playMusic, preloadMusic } from '../audio/music';
 import {
   BALL_KEYS, BALLS, HELD_ITEMS, POWERUP_KEYS, POWERUPS, TRAINER, TRAINER_KEYS, type TrainerKey,
 } from '../data/items';
-import { COLS, MAPS, type MapDef, ROWS } from '../data/maps';
+import { COLS, MAPS, type MapDef, type MapRules, ROWS } from '../data/maps';
 import { MART_TRACK, TITLE_TRACK } from '../data/music';
 import { previousRegion, REGION_IDS, REGIONS, type RegionId } from '../data/regions';
 import { SPECIES, species } from '../data/species';
 import { LINES, lineForDex, type TowerLine } from '../data/towers';
 import { TYPE_COLOURS } from '../data/types';
+import { lineAllowed } from '../game/game';
 import { type DifficultyKey } from '../game/waves';
 import { renderGround } from '../render/tiles';
 import { badgeImg, icon, thumb } from '../render/thumbs';
@@ -22,19 +23,21 @@ import {
 } from '../state/save';
 import { button, getProgress, modal, mount, setProgress, toast } from './app';
 import { startBattle } from './battle';
+import { frontierScreen } from './frontier';
+import { frontierOpen } from '../state/frontier';
 import { h } from './dom';
 import { fullscreenButton } from './fullscreen';
 
 export const WEATHER_ICON = { rain: '🌧️', sun: '☀️', sand: '🏜️', hail: '🌨️', fog: '🌫️' } as const;
 
-function topbar(title: string, back?: () => void, ...extra: (Node | null)[]): HTMLElement {
+export function topbar(title: string, back?: () => void, ...extra: (Node | null)[]): HTMLElement {
   return h('header.topbar', {},
     back ? button('btn.small.icon.ghost', '←', back, { 'aria-label': 'Back', style: 'border-color:rgba(255,255,255,0.35)' }) : null,
     h('h1', {}, title),
     ...extra);
 }
 
-function bpChip(p: Progress): HTMLElement {
+export function bpChip(p: Progress): HTMLElement {
   return h('span.chip.gold', { title: 'Battle Points — spend them at the Poké Mart' }, `${p.bp} BP`);
 }
 
@@ -113,7 +116,10 @@ let shownRegion: RegionId | null = null;
 export function worldScreen(): void {
   const p = getProgress();
   const open = REGION_IDS.filter((id) => regionUnlocked(p, id));
-  const regionId = shownRegion && open.includes(shownRegion) ? shownRegion : open[open.length - 1]!;
+  // Otherwise a newly opened region to be welcomed to, else the furthest mainline one.
+  const fresh = open.find((id) => !p.greeted.includes(id));
+  const furthest = open.filter((id) => !REGIONS[id].after).pop()!;
+  const regionId = shownRegion && open.includes(shownRegion) ? shownRegion : fresh ?? furthest;
   const region = REGIONS[regionId];
   const earned = badges(p);
   const maps = regionMaps(regionId);
@@ -138,7 +144,8 @@ export function worldScreen(): void {
     h('div', {},
       h('div.name', {}, unlocked ? map.name : `🔒 ${map.name}`, map.weather ? ` ${WEATHER_ICON[map.weather]}` : ''),
       h('div.sub', {}, `${map.area} · ${map.endless ? 'endless waves' : `${map.waves} waves`} · ${map.leader}`),
-      h('div.twist', {}, unlocked ? map.twist : map.endless ? `Become Champion of ${region.name} to enter.` : 'Clear the map before it to unlock.')),
+      h('div.twist', {}, unlocked ? map.twist : map.endless ? `Become Champion of ${region.name} to enter.` : 'Clear the map before it to unlock.'),
+      unlocked && map.rules?.label ? h('div.rules', {}, `📜 ${map.rules.label}`) : null),
     side);
   });
 
@@ -152,7 +159,7 @@ export function worldScreen(): void {
       shownRegion = id;
       worldScreen();
     });
-  }));
+  }), frontierOpen(p) ? button('btn.small.frontier', '🗼 Battle Frontier', () => frontierScreen()) : null);
   const regionStars = maps.reduce((sum, m) => sum + (p.results[m.id]?.normal ?? 0) + (p.results[m.id]?.hard ?? 0), 0);
   const badgeRow = h('div.badges-row', {}, ...region.badges.map((n) => badgeImg(n, `pix${earned.includes(n) ? '' : ' dim'}`)));
   const el = h('div.screen', {},
@@ -169,7 +176,7 @@ export function worldScreen(): void {
     ),
   );
   mount(el);
-  // Six regions don't fit a phone's width: keep the one shown in view.
+  // A dozen regions don't fit a phone's width: keep the one shown in view.
   tabs.querySelector<HTMLElement>('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   playMusic(region.worldTrack);
   if (!p.greeted.includes(regionId)) welcome(regionId);
@@ -217,13 +224,31 @@ function towerCard(l: TowerLine, p: Progress, cls: string, onclick: () => void, 
   ...extra);
 }
 
-export function teamScreen(map: MapDef): void {
+/** How the Battle Frontier uses the team screen: its own roster, rules and next step. */
+export interface TeamOptions {
+  /** Lines to choose from instead of your own (the Battle Factory's rentals). */
+  roster?: readonly TowerLine[];
+  rules?: MapRules;
+  /** How many to bring, if fewer than a full team. */
+  size?: number;
+  /** Shown above the wild Pokémon, instead of the map's own difficulty choice. */
+  note?: string;
+  back?: () => void;
+  onStart?: (team: string[]) => void;
+}
+
+export function teamScreen(map: MapDef, opts: TeamOptions = {}): void {
   const p = getProgress();
-  const available = unlockedLines(p);
-  let team = p.team.filter((id) => available.some((l) => l.id === id));
-  if (!team.length) team = available.slice(0, TEAM_SIZE).map((l) => l.id);
+  const rules: MapRules = { ...map.rules, ...opts.rules };
+  const size = opts.size ?? TEAM_SIZE;
+  const owned = (l: TowerLine): boolean => (opts.roster ? opts.roster.includes(l) : lineUnlocked(p, l));
+  const allowed = (l: TowerLine): boolean => owned(l) && lineAllowed(rules, l.id);
+  const available = (opts.roster ?? unlockedLines(p)).filter(allowed);
+  let team = (opts.roster ? [] : p.team).filter((id) => available.some((l) => l.id === id)).slice(0, size);
+  if (!team.length) team = available.slice(0, size).map((l) => l.id);
   let difficulty: DifficultyKey = 'normal';
-  const hardOpen = cleared(p, map) && !map.endless;
+  const hardOpen = cleared(p, map) && !map.endless && !opts.onStart;
+  const back = opts.back ?? worldScreen;
 
   const wildDex = [...new Set(map.pool.filter((x) => !x.rare).map((x) => x.dex))];
   const rareCount = map.pool.filter((x) => x.rare).length;
@@ -235,7 +260,7 @@ export function teamScreen(map: MapDef): void {
   const roster = h('div.roster');
   const diffSeg = h('div.segmented');
   const render = (): void => {
-    slots.replaceChildren(...Array.from({ length: TEAM_SIZE }, (_, i) => {
+    slots.replaceChildren(...Array.from({ length: size }, (_, i) => {
       const id = team[i];
       const l = id ? LINES.find((x) => x.id === id) : undefined;
       if (!l) return h('div.slot.empty', {}, '+');
@@ -244,16 +269,17 @@ export function teamScreen(map: MapDef): void {
         render();
       }, [h('span.stripe', { style: `background:${TYPE_COLOURS[l.type]}` })]);
     }));
-    roster.replaceChildren(...LINES.map((l) => {
-      if (!lineUnlocked(p, l)) {
+    roster.replaceChildren(...(opts.roster ?? LINES).map((l) => {
+      if (!owned(l)) {
         const hint = l.unlock.kind === 'badge' ? `Badge ${l.unlock.badge}` : 'Catch one';
         return h('div.roster-card.locked', {}, h('span', { style: 'font-size:30px;line-height:48px' }, '?'), h('span', {}, hint));
       }
       const on = team.includes(l.id);
+      if (!allowed(l)) return towerCard(l, p, 'roster-card off', () => toast(`Not allowed here: ${rules.label ?? 'this challenge has rules'}.`));
       return towerCard(l, p, `roster-card${on ? ' on' : ''}`, () => {
         if (on) team = team.filter((x) => x !== l.id);
-        else if (team.length < TEAM_SIZE) team = [...team, l.id];
-        else toast(`A team has at most ${TEAM_SIZE} Pokémon.`);
+        else if (team.length < size) team = [...team, l.id];
+        else toast(`A team has at most ${size} Pokémon.`);
         cry(l.stages[0]!.dex, { volume: 0.35 });
         render();
       });
@@ -271,23 +297,29 @@ export function teamScreen(map: MapDef): void {
   };
 
   const go = button('btn.primary', `Battle! ${map.name}`, () => {
+    if (opts.onStart) {
+      opts.onStart(team);
+      return;
+    }
     setProgress({ ...getProgress(), team });
     startBattle({ mapId: map.id, difficulty, team, onExit: worldScreen });
   }, { style: 'width:100%;min-height:54px;font-size:17px' });
 
   const el = h('div.screen', {},
-    topbar(map.name, worldScreen, bpChip(p)),
+    topbar(map.name, back, bpChip(p)),
     h('div.scroll', {}, h('div.content', {},
       h('div.card', {},
         h('div', { style: 'font-weight:800' }, `${map.area} — ${map.endless ? 'endless' : `${map.waves} waves`}, ${map.endless ? `${map.leader} lurks within` : `then ${map.leader}`}`),
         h('div.muted', { style: 'font-size:13px;margin-top:4px' }, map.twist),
-        map.endless ? null : h('div.row', { style: 'margin-top:10px' }, h('span.muted', { style: 'font-size:13px' }, 'Difficulty'), diffSeg)),
+        rules.label ? h('div.rules', {}, `📜 ${rules.label}`) : null,
+        opts.note ? h('div.muted', { style: 'font-size:13px;margin-top:6px' }, opts.note) : null,
+        map.endless || opts.onStart ? null : h('div.row', { style: 'margin-top:10px' }, h('span.muted', { style: 'font-size:13px' }, 'Difficulty'), diffSeg)),
       h('div.section-title', {}, 'Wild Pokémon here'),
       h('div.card', {}, h('div.wild', {}, ...wildDex.map((dex) => {
         const sp = species(dex);
         return h('div.mon', {}, thumb(dex, 48), sp.name, h('div', {}, ...sp.types.map((t) => h('span.type', { style: `background:${TYPE_COLOURS[t]};font-size:8px;padding:0 3px;margin:1px` }, t))));
       }), rareCount ? h('div.mon', {}, h('span', { style: 'font-size:30px;line-height:48px' }, '✨'), `${rareCount} rare`) : null)),
-      h('div.section-title', {}, `Your team (${TEAM_SIZE} max) — tap to remove`),
+      h('div.section-title', {}, `Your team (${size} max) — tap to remove`),
       slots,
       h('div.section-title', {}, 'Your Pokémon — tap to add'),
       roster,

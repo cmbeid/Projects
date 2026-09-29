@@ -13,13 +13,13 @@
 import {
   BALLS, type BallKey, DROP_CHANCE, DROPS, NO_TRAINER, POWERUPS, type PowerupKey, type TrainerLevels,
 } from '../data/items';
-import { type BossDef, BUILDABLE, COLS, type MapDef, pathTiles, ROWS, terrainAt, type Weather } from '../data/maps';
+import { type BossDef, type BossPhase, BUILDABLE, COLS, type MapDef, type MapRules, pathTiles, ROWS, terrainAt, type Weather } from '../data/maps';
 import { type Ability, species, type Species } from '../data/species';
 import {
   type AttackKind, DYNAMAX_BAND, DYNAMAX_HP, DYNAMAX_SECONDS, type Effects, KEY_STONE, levelCost, line, MAX_LEVEL, MAX_WEATHER, MEGA_SECONDS, MEGAS,
   PROTEAN_TYPES, TERA_ORB, type TowerLine, Z_MOVES, Z_RADIUS, Z_RING,
 } from '../data/towers';
-import { effectiveness, type PokeType } from '../data/types';
+import { effectiveness, type PokeType, TYPES } from '../data/types';
 import { buildPath, type PathGeom, pointAt } from './path';
 import { makeRng, pickWeighted, type Rng } from './rng';
 import { NO_EFFECTS, stageIndex, type TowerStats, towerStats } from './stats';
@@ -31,6 +31,10 @@ export const STEP = 1 / 60;
 export const BASE_LIVES = 20;
 /** Chance that any one wild Pokémon is shiny. */
 export const SHINY_CHANCE = 1 / 128;
+/** An Alpha's HP, against an ordinary one of its kind (Hisui). */
+export const ALPHA_HP = 2.5;
+/** Seconds a frenzied Noble shields itself for. */
+export const FRENZY_SHIELD = 2.5;
 /**
  * Bosses and mid-map leads lumber: their HP is many times anyone else's, and
  * at full speed they'd cross the map before most towers get a proper go at them.
@@ -105,6 +109,12 @@ export interface Enemy {
   nextMax: number;
   /** A Totem Pokémon (Alola): its allies nearby are tougher, and it calls one more when hurt. */
   totem: { ally: number; called: boolean } | null;
+  /** An Alpha (Hisui). */
+  alpha: boolean;
+  /** Frenzies a Noble has left to throw. */
+  frenzy: number;
+  /** Changes still to come as it's worn down (Ogerpon's masks). */
+  phases: BossPhase[];
   status: Status;
   catching: Catching | null;
   revealed: boolean;
@@ -184,6 +194,10 @@ export type GameEvent =
   | { kind: 'zMove'; name: string; type: PokeType; x: number; y: number; radius: number }
   | { kind: 'dynamax'; dex: number; x: number; y: number }
   | { kind: 'tera'; type: PokeType; x: number; y: number }
+  /** A Noble's frenzy (Hisui). */
+  | { kind: 'frenzy'; x: number; y: number }
+  /** A boss changing mask or form (Kitakami). */
+  | { kind: 'phase'; dex: number; type: PokeType; x: number; y: number }
   | { kind: 'leak'; dex: number; lives: number }
   | { kind: 'waveStart'; wave: number; boss: boolean; early: number }
   | { kind: 'waveClear'; wave: number; bonus: number }
@@ -220,10 +234,14 @@ export interface BattleSetup {
   held: Readonly<Record<string, string>>;
   trainer: TrainerLevels;
   seed: number;
+  /** A challenge's rules on top of the map's own (the Battle Frontier's). */
+  rules?: MapRules;
 }
 
 export interface Game {
   map: MapDef;
+  /** The map's challenge rules and any the Battle Frontier adds. */
+  rules: MapRules;
   difficulty: DifficultyKey;
   /** Lines that can be placed. A catch that unlocks a new line joins it mid-battle. */
   team: string[];
@@ -292,14 +310,18 @@ export interface Game {
 // --- setup -------------------------------------------------------------------
 
 export function newGame(setup: BattleSetup): Game {
-  const { map, trainer } = setup;
+  const { trainer } = setup;
+  // The Battle Tower's Tycoon takes the place of the map's own last boss.
+  const map = setup.rules?.boss ? { ...setup.map, boss: setup.rules.boss } : setup.map;
   const diff = DIFFICULTIES[setup.difficulty];
-  const maxLives = BASE_LIVES + trainer.lives * 2;
-  const items = Object.fromEntries(Object.keys(POWERUPS).map((k) => [k, setup.items[k as PowerupKey] ?? 0])) as Record<PowerupKey, number>;
+  const rules: MapRules = { ...map.rules, ...setup.rules };
+  const maxLives = rules.lives ?? BASE_LIVES + trainer.lives * 2;
+  const items = Object.fromEntries(Object.keys(POWERUPS).map((k) => [k, rules.noItems ? 0 : setup.items[k as PowerupKey] ?? 0])) as Record<PowerupKey, number>;
   const balls = Object.fromEntries(Object.keys(BALLS).map((k) => [k, setup.balls[k as BallKey] ?? 0])) as Record<BallKey, number>;
   balls['poke-ball'] += trainer.pouch;
   return {
     map,
+    rules,
     difficulty: setup.difficulty,
     team: [...setup.team],
     rng: makeRng(setup.seed),
@@ -390,13 +412,23 @@ export function towerAt(g: Game, x: number, y: number): Tower | undefined {
   return g.towers.find((t) => t.x === x && t.y === y);
 }
 
-export type PlaceError = 'outside' | 'occupied' | 'terrain' | 'money' | 'team';
+export type PlaceError = 'outside' | 'occupied' | 'terrain' | 'money' | 'team' | 'rule' | 'limit';
+
+/** Whether a challenge's rules let this line be placed at all. */
+export function lineAllowed(rules: MapRules, lineId: string): boolean {
+  const l = line(lineId);
+  if (rules.types && !rules.types.includes(l.type)) return false;
+  if (rules.swimmersOnly && l.placement !== 'water' && l.placement !== 'any') return false;
+  return true;
+}
 
 /** Whether a tower of `lineId` could go on tile (x, y), and why not. */
 export function canPlace(g: Game, lineId: string, x: number, y: number): PlaceError | null {
   if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return 'outside';
   if (!g.team.includes(lineId)) return 'team';
   if (towerAt(g, x, y)) return 'occupied';
+  if (!lineAllowed(g.rules, lineId)) return 'rule';
+  if (g.rules.maxTowers !== undefined && g.towers.length >= g.rules.maxTowers) return 'limit';
   const l = line(lineId);
   const onPath = g.pathSet.has(`${x},${y}`);
   const terrain = terrainAt(g.map, x, y);
@@ -422,12 +454,17 @@ export function placeTower(g: Game, lineId: string, x: number, y: number): Tower
   const cost = placeCost(g, lineId);
   g.money -= cost;
   const l = line(lineId);
-  const base = { line: l, level: 1, branch: null, move: null, x, y };
+  const base = { line: l, level: Math.min(MAX_LEVEL - 1, g.rules.startLevel ?? 1), branch: null, move: null, x, y };
   const tower: Tower = {
     id: g.nextId++, ...base, target: 'first', cooldown: 0, xp: 0, invested: cost, kills: 0, damageDone: 0,
     stunnedUntil: 0, facing: x < COLS / 2 ? 1 : -1, lastShot: -1, placedAt: g.wave, wavesFought: 0, megaUntil: 0, dynamaxUntil: 0, tera: null, stats: setupFor(g, base),
   };
   g.towers.push(tower);
+  if (l.fieldWeather) {
+    // Kyogre, Groudon and Rayquaza change the weather for the rest of the battle.
+    g.weather = l.fieldWeather === 'clear' ? undefined : l.fieldWeather;
+    for (const t of g.towers) t.stats = setupFor(g, t);
+  }
   emit(g, { kind: 'place', id: tower.id, dex: tower.stats.dex, x: x + 0.5, y: y + 0.5 });
   return tower;
 }
@@ -631,14 +668,14 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
   const sp = enemySpecies(spawn.dex, tera);
   const diff = DIFFICULTIES[g.difficulty];
   const tier = g.map.endless ? g.map.tier + Math.floor(wave / 15) : g.map.tier;
-  const maxHp = Math.round(spawn.hp * hpScale(tier, wave) * diff.hp * (g.map.hpMul ?? 1) * (boss?.dynamax ? DYNAMAX_HP : 1));
+  const maxHp = Math.round(spawn.hp * hpScale(tier, wave) * diff.hp * (g.map.hpMul ?? 1) * (boss?.dynamax ? DYNAMAX_HP : 1) * (spawn.alpha ? ALPHA_HP : 1) * (g.rules.hpMul ?? 1));
   const path = g.paths[spawn.path] ?? g.paths[0]!;
   const pos = pointAt(path, dist);
   const e: Enemy = {
     id: g.nextId++,
     dex: sp.dex,
     sp,
-    shiny: Boolean(spawn.shiny) || (shinyAllowed && !boss && g.rng() < SHINY_CHANCE),
+    shiny: Boolean(spawn.shiny) || (shinyAllowed && !boss && !spawn.alpha && g.rng() < SHINY_CHANCE),
     wave,
     path: spawn.path,
     dist,
@@ -649,12 +686,12 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     maxHp,
     speed: (boss?.speed ?? sp.speed) * (boss ? BOSS_SPEED : spawn.lead ? LEAD_SPEED : 1),
     armor: boss?.armor ?? sp.armor,
-    bounty: Math.round(sp.bounty * (spawn.hp / sp.hp) ** 0.7 * bountyScale(tier, wave) * (boss ? 3 : 1)),
+    bounty: Math.round(sp.bounty * (spawn.hp / sp.hp) ** 0.7 * bountyScale(tier, wave) * (boss || spawn.alpha ? 3 : 1)),
     boss: Boolean(boss),
     lead: Boolean(spawn.lead),
     rare: Boolean(spawn.rare),
     // The last boss of a map costs half your lives; the Elite Four a quarter.
-    lives: boss ? (finalBoss(g.map, boss) ? 10 : 5) : spawn.lead ? 3 : 1,
+    lives: boss ? (finalBoss(g.map, boss) ? 10 : 5) : spawn.lead ? 3 : spawn.alpha ? 2 : 1,
     born: g.t,
     abilities: (boss?.abilities ?? sp.abilities).map((ability) => ({ ability, next: g.t + ('every' in ability ? ability.every * (0.5 + 0.5 * g.rng()) : 0) })),
     healed: false,
@@ -664,6 +701,9 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
     dynamaxUntil: boss?.dynamax ? g.t + DYNAMAX_SECONDS : 0,
     nextMax: g.t + 4,
     totem: boss?.totem ? { ally: boss.escort[0] ?? spawn.dex, called: false } : null,
+    alpha: Boolean(spawn.alpha),
+    frenzy: boss?.frenzy ? 2 : 0,
+    phases: [...(boss?.phases ?? [])],
     status: { ...NO_STATUS },
     catching: null,
     revealed: true,
@@ -681,7 +721,7 @@ function spawnEnemy(g: Game, spawn: Spawn, wave: number, dist = 0, shinyAllowed 
 export type PowerupError = 'none' | 'cooldown' | 'target' | 'unused';
 
 export function powerupReady(g: Game, key: PowerupKey): boolean {
-  return g.items[key] > 0 && (g.cooldowns[key] ?? 0) <= g.t && g.status === 'playing';
+  return g.items[key] > 0 && !g.rules.noItems && (g.cooldowns[key] ?? 0) <= g.t && g.status === 'playing';
 }
 
 /** Whether the effect of a timed power-up is still running, and for how long. */
@@ -694,7 +734,7 @@ export function buffLeft(g: Game, key: PowerupKey): number {
 }
 
 export function usePowerup(g: Game, key: PowerupKey, target: { towerId?: number; x?: number; y?: number } = {}): PowerupError | null {
-  if (g.items[key] <= 0) return 'none';
+  if (g.items[key] <= 0 || g.rules.noItems) return 'none';
   if (!powerupReady(g, key)) return 'cooldown';
   const def = POWERUPS[key];
   const until = g.t + def.duration;
@@ -861,11 +901,26 @@ export function proteanType(own: PokeType, against: readonly PokeType[]): PokeTy
   return best;
 }
 
+/** Judgment: the type, of all eighteen, that hits these types hardest. */
+export function judgmentType(own: PokeType, against: readonly PokeType[]): PokeType {
+  let best = own;
+  for (const t of TYPES) if (effectiveness(t, against) > effectiveness(best, against)) best = t;
+  return best;
+}
+
+/** The type a hit lands as, and the types it's measured against (Thousand Arrows grounds flyers). */
+export function hitAs(fx: Pick<Effects, 'adapt' | 'judgment' | 'smackDown'>, own: PokeType, types: readonly PokeType[]): { type: PokeType; against: readonly PokeType[] } {
+  const type = fx.judgment ? judgmentType(own, types) : fx.adapt ? proteanType(own, types) : own;
+  if (!fx.smackDown || type !== 'ground' || !types.includes('flying')) return { type, against: types };
+  const grounded = types.filter((t) => t !== 'flying');
+  return { type, against: grounded.length ? grounded : ['normal'] };
+}
+
 /** Deal a hit. Returns the damage done. */
 function damageEnemy(g: Game, e: Enemy, raw: number, hitType: PokeType, tower: Tower | null, fx: Hit): number {
   if (!e.alive || e.catching) return 0;
-  const type = fx.adapt ? proteanType(hitType, e.sp.types) : hitType;
-  const eff = effectiveness(type, e.sp.types);
+  const { type, against } = hitAs(fx, hitType, e.sp.types);
+  const eff = effectiveness(type, against);
   if (eff === 0) {
     emit(g, { kind: 'hit', x: e.x, y: e.y, type, damage: 0, crit: false, eff: 0 });
     return 0;
@@ -879,6 +934,7 @@ function damageEnemy(g: Game, e: Enemy, raw: number, hitType: PokeType, tower: T
   if (e.status.weakenUntil > g.t) dmg *= 1.25;
   if (fx.hex && hasStatus(g, e)) dmg *= 2;
   if (fx.antiAir && e.sp.traits.includes('flying')) dmg *= 1 + fx.antiAir;
+  if (fx.bossBonus && e.boss) dmg *= 1 + fx.bossBonus;
   const armor = Math.min(0.7, e.armor + (totemNear(g, e) ? TOTEM_ARMOR : 0));
   dmg *= 1 - armor * (1 - Math.min(1, fx.pierceArmour));
   if (fx.ohko && !e.boss && !e.lead && g.rng() < fx.ohko) dmg = e.hp;
@@ -977,8 +1033,8 @@ function stunTowers(g: Game, x: number, y: number, radius: number, duration: num
 function canHit(g: Game, stats: TowerStats, e: Enemy): boolean {
   if (!e.alive || e.catching || !e.revealed) return false;
   if (stats.groundOnly && e.sp.traits.includes('flying')) return false;
-  const type = stats.effects.adapt ? proteanType(stats.type, e.sp.types) : stats.type;
-  return effectiveness(type, e.sp.types) > 0 || e.status.shieldUntil > g.t;
+  const { type, against } = hitAs(stats.effects, stats.type, e.sp.types);
+  return effectiveness(type, against) > 0 || e.status.shieldUntil > g.t;
 }
 
 function remaining(g: Game, e: Enemy): number {
@@ -1177,6 +1233,23 @@ function evolveEnemy(g: Game, e: Enemy, dex: number): void {
   emit(g, { kind: 'evolveEnemy', id: e.id, dex, x: e.x, y: e.y });
 }
 
+/** A Noble's frenzy (Hisui): it shields itself for a moment and stuns every tower around it. */
+function frenzy(g: Game, e: Enemy): void {
+  e.frenzy -= 1;
+  e.status.shieldUntil = Math.max(e.status.shieldUntil, g.t + FRENZY_SHIELD);
+  stunTowers(g, e.x, e.y, 2.5, 1.5);
+  emit(g, { kind: 'frenzy', x: e.x, y: e.y });
+}
+
+/** A boss changes as it's worn down (Ogerpon's masks): a new Tera type, a new form, or both. */
+function changePhase(g: Game, e: Enemy, phase: BossPhase): void {
+  e.phases.shift();
+  e.tera = phase.tera ?? e.tera;
+  e.dex = phase.dex ?? e.dex;
+  e.sp = enemySpecies(e.dex, e.tera);
+  emit(g, { kind: 'phase', dex: e.dex, type: e.sp.types[0]!, x: e.x, y: e.y });
+}
+
 /** A boss Mega Evolves: its mega form's look, a little tougher and quicker. */
 function megaEnemy(g: Game, e: Enemy, form: number): void {
   e.mega = null;
@@ -1235,6 +1308,9 @@ function updateEnemies(g: Game, dt: number): void {
       e.nextMax = g.t + 8;
       stunTowers(g, e.x, e.y, 2.2, 1.5);
     }
+    if (e.frenzy > 0 && e.hp < (e.maxHp * e.frenzy) / 3) frenzy(g, e);
+    const phase = e.phases[0];
+    if (phase && e.hp < e.maxHp * phase.at) changePhase(g, e, phase);
     if (e.totem && !e.totem.called && e.hp < e.maxHp / 2) {
       e.totem.called = true;
       useAbility(g, e, { kind: 'summon', every: 0, dex: e.totem.ally, count: 2 });

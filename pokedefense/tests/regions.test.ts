@@ -15,26 +15,44 @@ function champion(p: Progress, region: RegionId): Progress {
 }
 
 describe('regions', () => {
-  it('opens each region once the one before has a Champion', () => {
+  it('opens each region once the one before has a Champion, and each side region after its own', () => {
     const p = freshProgress();
-    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, false, false, false, false, false, false, false, false]);
+    const open = (): RegionId[] => REGION_IDS.filter((id) => regionUnlocked(p, id));
+    expect(open()).toEqual(['kanto']);
     expect(mapUnlocked(p, mapDef('sprout-tower'))).toBe(false);
     champion(p, 'kanto');
-    expect(REGION_IDS.map((id) => regionUnlocked(p, id))).toEqual([true, true, false, false, false, false, false, false, false]);
+    // Kanto's Champion opens Johto, and the Orange Islands beside it.
+    expect(open()).toEqual(['kanto', 'johto', 'orange']);
     expect(mapUnlocked(p, mapDef('sprout-tower'))).toBe(true);
+    expect(mapUnlocked(p, mapDef('valencia-island'))).toBe(true);
     expect(mapUnlocked(p, mapDef('ilex-forest'))).toBe(false);
     expect(mapUnlocked(p, mapDef('mt-silver'))).toBe(false);
     champion(p, 'johto');
     expect(mapUnlocked(p, mapDef('mt-silver'))).toBe(true);
     expect(regionUnlocked(p, 'hoenn')).toBe(true);
-    for (const id of ['hoenn', 'sinnoh', 'unova'] as const) champion(p, id);
+    expect(regionUnlocked(p, 'hisui')).toBe(false);
+    champion(p, 'hoenn');
+    champion(p, 'sinnoh');
+    expect(regionUnlocked(p, 'hisui')).toBe(true);
+    champion(p, 'unova');
     expect(mapUnlocked(p, mapDef('santalune-forest'))).toBe(true);
     expect(mapUnlocked(p, mapDef('glittering-cave'))).toBe(false);
     expect(regionUnlocked(p, 'alola')).toBe(false);
     for (const id of ['kalos', 'alola', 'galar'] as const) champion(p, id);
+    expect(regionUnlocked(p, 'kitakami')).toBe(false);
+    champion(p, 'paldea');
     expect(REGION_IDS.every((id) => regionUnlocked(p, id))).toBe(true);
-    expect(mapUnlocked(p, mapDef('cortondo'))).toBe(true);
-    expect(mapUnlocked(p, mapDef('area-zero'))).toBe(false);
+    expect(mapUnlocked(p, mapDef('mossui-town'))).toBe(true);
+    expect(mapUnlocked(p, mapDef('area-zero-underdepths'))).toBe(false);
+  });
+
+  it('gives Hisui’s starters with Hisui, even before the regions they come from', () => {
+    const p = freshProgress();
+    for (const id of ['kanto', 'johto', 'hoenn'] as const) champion(p, id);
+    expect(lineUnlocked(p, line('rowlet'))).toBe(false);
+    champion(p, 'sinnoh');
+    for (const id of REGIONS.hisui.starters) expect(lineUnlocked(p, line(id))).toBe(true);
+    expect(lineUnlocked(p, line('litten'))).toBe(false);
   });
 
   it('gives each region’s starters on arrival, and its badge towers with its badges', () => {
@@ -56,7 +74,7 @@ describe('regions', () => {
       expect(maps[8]!.id).toBe(REGIONS[id].league);
       expect(maps[9]!.id).toBe(REGIONS[id].endless);
     }
-    expect(MAPS).toHaveLength(90);
+    expect(MAPS).toHaveLength(120);
   });
 
   it('gives every region its three starters as towers', () => {

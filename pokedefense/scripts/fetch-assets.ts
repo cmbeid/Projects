@@ -333,13 +333,24 @@ async function drawBadge(badge: number): Promise<void> {
   const shade = (f: number): [number, number, number] => rgb.map((c) => Math.max(0, Math.min(255, Math.round(f > 1 ? c + (255 - c) * (f - 1) : c * f)))) as [number, number, number];
   const size = 32;
   const png = new PNG({ width: size, height: size });
-  const shape = badge < 110 ? 'crystal' : badge < 120 ? 'round' : 'star';
+  // Alola's trial stamps, Galar's and Paldea's badges, the Orange League's shells, Hisui's survey medals and Kitakami's leaves.
+  const shape = badge < 110 ? 'crystal' : badge < 120 ? 'round' : badge < 130 ? 'star' : badge < 140 ? 'shell' : badge < 150 ? 'hex' : 'leaf';
   const inside = (x: number, y: number): boolean => {
     const dx = x - 15.5;
     const dy = y - 15.5;
     if (shape === 'crystal') return Math.abs(dx) / 10 + Math.abs(dy) / 14.5 <= 1; // a tall diamond
     const r = Math.hypot(dx, dy);
     if (shape === 'round') return r <= 14 && !(r > 9 && r < 10.5); // a disc with a ring
+    if (shape === 'hex') return Math.max(Math.abs(dx) * 0.866 + Math.abs(dy) * 0.5, Math.abs(dy)) <= 13.5 && !(r > 7 && r < 8.3);
+    if (shape === 'leaf') return Math.hypot(dx - 9, dy) <= 15 && Math.hypot(dx + 9, dy) <= 15 && Math.abs(dx) > 0.6;
+    if (shape === 'shell') {
+      // A scallop: a fan from a hinge at the bottom, with ribs.
+      const fx = x - 15.5;
+      const fy = 27 - y;
+      const fr = Math.hypot(fx, fy);
+      const fa = Math.atan2(fx, fy);
+      return fy >= 0 && fr <= 17 && Math.abs(fa) <= 1.05 && Math.abs(Math.sin(fa * 9)) > 0.2;
+    }
 
     const a = Math.atan2(dy, dx);
     return r <= 9 + 5.5 * Math.abs(Math.cos(a * 4)); // eight points

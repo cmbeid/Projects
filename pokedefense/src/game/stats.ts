@@ -12,7 +12,7 @@ export const NO_EFFECTS: Effects = {
   splash: 0, chain: 0, burn: 0, poison: 0, slow: 0, sleep: 0, paralyse: 0, confuse: 0, flinch: 0,
   crit: 0, knockback: 0, pierceArmour: 0, weaken: 0, ohko: 0, payDay: 0, antiAir: 0,
   auraDamage: 0, auraRate: 0, income: 0, wish: 0, rewind: 0, hex: 0, random: 0,
-  lifeEvery: 0, accelerate: 0, chip: 0, adapt: 0,
+  lifeEvery: 0, accelerate: 0, chip: 0, adapt: 0, judgment: 0, smackDown: 0, bossBonus: 0,
 };
 
 export interface TowerStats {

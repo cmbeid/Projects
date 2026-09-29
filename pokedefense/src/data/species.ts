@@ -8,8 +8,12 @@
 import { ALOLA_SPECIES } from './species/alola';
 import { GALAR_SPECIES } from './species/galar';
 import { FLY, s } from './species/make';
+import { ORANGE_SPECIES } from './species/orange';
 import { PALDEA_SPECIES } from './species/paldea';
+import { HISUI_SPECIES } from './species/hisui';
 import { KALOS_SPECIES } from './species/kalos';
+import { KITAKAMI_SPECIES } from './species/kitakami';
+import { LEGEND_SPECIES } from './species/legends';
 import { SINNOH_SPECIES } from './species/sinnoh';
 import { UNOVA_SPECIES } from './species/unova';
 import type { PokeType } from './types';
@@ -376,6 +380,10 @@ const LIST: Species[] = [
   ...ALOLA_SPECIES,
   ...GALAR_SPECIES,
   ...PALDEA_SPECIES,
+  ...ORANGE_SPECIES,
+  ...HISUI_SPECIES,
+  ...KITAKAMI_SPECIES,
+  ...LEGEND_SPECIES,
 ];
 
 export const SPECIES: ReadonlyMap<number, Species> = new Map(LIST.map((sp) => [sp.dex, sp]));

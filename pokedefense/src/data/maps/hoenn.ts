@@ -332,6 +332,7 @@ export const HOENN: readonly MapDef[] = [
       { dex: 375, weight: 2, from: 3 }, { dex: 372, weight: 2, from: 5 }, { dex: 306, weight: 2, from: 5 },
       { dex: 330, weight: 1, from: 10 }, { dex: 373, weight: 1, from: 15 }, { dex: 376, weight: 1, from: 20 },
       { dex: 380, weight: 0.3, from: 10, rare: true }, { dex: 381, weight: 0.3, from: 10, rare: true },
+      { dex: 382, weight: 0.1, from: 30, rare: true }, { dex: 383, weight: 0.1, from: 30, rare: true },
     ],
     miniBoss: [],
     boss: { dex: 384, hp: 225, armor: 0.3, speed: 0.9, abilities: [{ kind: 'dash', every: 7, factor: 2, duration: 1 }, { kind: 'stun', every: 8, radius: 2.5, duration: 2 }, { kind: 'shield', every: 10, duration: 2 }, { kind: 'heal', fraction: 0.3 }], escort: [373, 376] },

@@ -39,7 +39,15 @@ export type Theme =
   // Galar
   | 'turffield' | 'hulbury' | 'motostoke' | 'stowonside' | 'ballonlea' | 'circhester' | 'spikemuth' | 'hammerlocke' | 'wyndon' | 'weald'
   // Paldea
-  | 'cortondo' | 'artazon' | 'levincia' | 'cascarrafa' | 'medali' | 'montenevera' | 'alfornada' | 'glaseado' | 'paldealeague' | 'areazero';
+  | 'cortondo' | 'artazon' | 'levincia' | 'cascarrafa' | 'medali' | 'montenevera' | 'alfornada' | 'glaseado' | 'paldealeague' | 'areazero'
+  // Orange Islands
+  | 'valencia' | 'pinkan' | 'mikan' | 'navel' | 'trovita' | 'kumquat' | 'shamouti' | 'mandarin' | 'pummelo' | 'shrine'
+  // Hisui
+  | 'obsidian' | 'crimson' | 'cobalt' | 'highlands' | 'alabaster' | 'jubilife' | 'lakevalor' | 'coronet' | 'temple' | 'origin'
+  // Kitakami and Blueberry Academy
+  | 'mossui' | 'loyalty' | 'onimountain' | 'barrens' | 'timeless' | 'coastal' | 'polar' | 'crystalpool' | 'blueberry' | 'underdepths'
+  // The Battle Frontier
+  | 'gauntlet';
 
 /**
  * Weather: rain and sun boost or weaken attack types, sandstorm and hail wear
@@ -56,6 +64,8 @@ export interface PoolEntry {
   from: number;
   /** Turns up alone, now and then, rather than in groups: the catch-only rarities. */
   rare?: boolean;
+  /** Hisui: the chance each one is an Alpha — bigger, far tougher, and worth three times the ₽. */
+  alpha?: number;
 }
 
 export interface BossDef {
@@ -77,6 +87,19 @@ export interface BossDef {
   dynamax?: boolean;
   /** Terastallized (Paldea): it has only this type. */
   tera?: PokeType;
+  /** A frenzied Noble (Hisui): at two-thirds and one-third HP it shields itself and stuns towers around it. */
+  frenzy?: boolean;
+  /** Changes as it's worn down (Ogerpon's masks): below `at` of its HP it takes this Tera type and/or form. */
+  phases?: readonly BossPhase[];
+}
+
+export interface BossPhase {
+  /** Fraction of max HP it changes below. */
+  at: number;
+  tera?: PokeType;
+  dex?: number;
+  /** Shown on the boss bar, e.g. "Wellspring Mask". */
+  name?: string;
 }
 
 export interface MapDef {
@@ -116,6 +139,34 @@ export interface MapDef {
   rotation?: readonly BossDef[];
   /** Badge awarded for clearing it (PokeAPI's badge number). */
   badge?: number;
+  /** A challenge's rules (the Orange Crew's, and the Battle Frontier's). */
+  rules?: MapRules;
+}
+
+/**
+ * Rules a challenge sets on a battle: which towers may come, how many, and
+ * what help is allowed. The Orange Islands' leaders set them on their maps;
+ * the Battle Frontier sets them on any map.
+ */
+export interface MapRules {
+  /** Only lines of these types may be placed. */
+  types?: readonly PokeType[];
+  /** At most this many towers on the field at once. */
+  maxTowers?: number;
+  /** No power-ups (Poké Balls are still allowed). */
+  noItems?: boolean;
+  /** Only Pokémon that can swim may be placed. */
+  swimmersOnly?: boolean;
+  /** Towers are placed already at this level (rentals). */
+  startLevel?: number;
+  /** Start with this many lives instead of your own. */
+  lives?: number;
+  /** Scales every Pokémon's HP (the Battle Tower's longer streaks). */
+  hpMul?: number;
+  /** Replaces the map's last boss (the Battle Tower's Tycoon). */
+  boss?: BossDef;
+  /** Shown on the map card and when the battle starts. */
+  label?: string;
 }
 
 export const warp = (x: number, y: number): Waypoint => ({ x, y, warp: true });

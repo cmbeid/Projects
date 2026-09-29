@@ -5,8 +5,9 @@ properly on tablets and desktops: when there's room beside the map, the map
 takes the full height and the controls move into columns beside it. Place Pokémon beside the path, level them up
 until they evolve, teach them signature moves, and catch the wild Pokémon
 marching past — through nine regions, **Kanto, Johto, Hoenn, Sinnoh, Unova,
-Kalos, Alola, Galar and Paldea**, each with eight Gym Leaders, a Pokémon League and an endless map of
-its own.
+Kalos, Alola, Galar and Paldea**, and three side regions, **the Orange
+Islands, Hisui and Kitakami**, each with eight Gym Leaders (or their like), a
+League and an endless map of its own. Then there's the **Battle Frontier**.
 
 ## Running it
 
@@ -58,7 +59,9 @@ Clearing a map opens its Hard mode.
 
 ### Regions
 
-Regions open in order: becoming Champion of one opens the next. Your whole
+Regions open in order: becoming Champion of one opens the next. The side
+regions open beside the mainline: the Orange Islands once you're Champion of
+Kanto, Hisui after Sinnoh, and Kitakami after Paldea. Your whole
 roster comes with you, and on arrival the region's professor hands over its
 three starters. Each region's difficulty starts a little above the last's
 (your roster gets wider, not stronger), and its endless map opens once you're
@@ -75,8 +78,11 @@ its Champion.
 | Alola | Rowlet, Litten, Popplio | Earlier regions' tracks | Altar of the Sunne — Solgaleo and Lunala in turn |
 | Galar | Grookey, Scorbunny, Sobble | Earlier regions' tracks | Energy Plant — Eternatus, and Zacian & Zamazenta |
 | Paldea | Sprigatito, Fuecoco, Quaxly | Earlier regions' tracks | Area Zero — Koraidon and Miraidon in turn, and Terapagos |
+| Orange Islands | Marill, Venonat, Vulpix | Earlier regions' tracks | Shamouti Shrine — Lugia, and the legendary birds |
+| Hisui | Rowlet, Cyndaquil, Oshawott — who can evolve into their Hisuian forms | Earlier regions' tracks | Hall of Origin — Arceus, in a different type each time |
+| Kitakami | Poltchageist, Duraludon, Dipplin | Earlier regions' tracks | Area Zero Underdepths — Stellar Terapagos, the Loyal Three and Ogerpon |
 
-141 tower lines in all. Johto brings Dark and Steel towers (Houndour,
+178 tower lines in all. Johto brings Dark and Steel towers (Houndour,
 Skarmory, Sneasel…), Hoenn a Ralts that becomes Gardevoir or Gallade, a
 Trapinch that lurks on the path until it grows wings as Flygon, and Feebas —
 that region's Magikarp. Sinnoh has Riolu and Gible, and Spiritomb to catch;
@@ -88,7 +94,19 @@ Jangmo-o, with Mimikyu, Mareanie, Salandit and Wimpod to catch; Galar,
 Rookidee, Rolycoly, Toxel, Hatenna and Dreepy, with Sinistea, Falinks, Cufant
 and Applin; Paldea, Lechonk, Pawmi, Tinkatink, Charcadet and Frigibax, with
 Gimmighoul, Tandemaus, Flittle and Orthworm. Each region's two box legends can
-be caught on its endless map.
+be caught on its endless map. The Orange Islands add the fossils Omanyte and
+Kabuto, Tauros and Electabuzz to catch; Hisui, its Growlithe, Zorua, Sneasel,
+Voltorb and Qwilfish, with Stantler, Basculin and Rufflet; Kitakami,
+Dunsparce and Snorunt, with Ogerpon and the Loyal Three to catch.
+
+**Legendary towers.** The legends that were only ever bosses can be caught
+and fielded too — Mewtwo, Lugia, Ho-Oh, Kyogre, Groudon, Rayquaza, Giratina,
+Kyurem, Zygarde, Necrozma, Eternatus, Arceus and Terapagos — each with a
+signature: Kyogre brings rain for the rest of the battle and Groudon harsh
+sun, Rayquaza clears the weather, Zygarde's Thousand Arrows hit flyers, Ho-Oh
+restores lives, Eternatus hits bosses twice as hard, and Arceus's Judgment
+and Terapagos's Tera Starstorm take whichever type each target fears most.
+Lugia and Ho-Oh turn up, rarely, on Mt. Silver; Kyogre and Groudon on Sky Pillar.
 
 Each region has a twist:
 
@@ -121,6 +139,37 @@ Each region has a twist:
   another type, shown on the boss bar, so plan for that type, not its own.
   With the Tera Orb, once a battle, a fully grown tower takes any Tera type
   you choose for the rest of the battle, and hits a fifth harder.
+- **Orange Islands — challenges, and the sea.** The Orange Crew set rules
+  instead of plain gym battles: only swimmers on Mikan Island, no more than
+  six towers on Navel Island, no items on Pinkan Island. Most of the islands
+  are sea.
+- **Hisui — Alphas and Nobles.** Alpha Pokémon roam: bigger, red-eyed, two
+  and a half times as tough and worth three times the ₽. Each wild land is
+  ruled by a frenzied Noble that, at two-thirds and one-third of its HP,
+  shields itself and stuns every tower around it.
+- **Kitakami — masks and doubles.** Kieran's Ogerpon changes mask as it's worn
+  down — Grass, then Water, Fire and Rock — and Terapagos awakens into its
+  Terastal, then Stellar, Form. The Blueberry League's Elite Four come in
+  pairs, Terastallized.
+
+### The Battle Frontier
+
+Opens once you're Champion anywhere, from the tab at the end of the region
+row. Its challenges play on the regions' own maps under rules of their own:
+no second tries against a boss, lives carried from battle to battle, and BP
+for every win.
+
+- **Battle Tower:** streaks of seven battles on maps drawn at random, Hard
+  from the fourth; the seventh is a Tower Tycoon, some region's Champion ace.
+  Each round after is a little tougher. Your best streak is kept.
+- **Battle Factory:** choose four of eight random rental Pokémon — any at
+  all, already grown to level 3 — and after each win, swap one for a
+  Pokémon from the map you beat.
+- **Mono-type Cup:** a cup for each of the 18 types: three set battles with a
+  team of that type. Win all three for its trophy.
+- **Champions' Gauntlet:** once you're Champion of all nine mainline regions,
+  every Champion's ace, one after another every third wave, each with its
+  powers — Diantha's Gardevoir Mega Evolves, Leon's Charizard Gigantamaxes.
 
 #### Kanto
 
@@ -257,6 +306,51 @@ Each region has a twist:
 | Pokémon League | Rika, Poppy, Larry, Hassel, each ace Terastallized, then Geeta | Geeta's Kingambit — Tera Rock |
 | Area Zero | Endless; paradox Pokémon roam | Koraidon and Miraidon, in turn every 25th wave |
 
+#### Orange Islands
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Valencia Island | Professor Ivy's beach; mostly sea | Tracey's Scyther |
+| Pinkan Island | 📜 No items | Officer Jenny's Rhydon |
+| Mikan Island | 📜 Swimmers only, out on the lagoon | Cissy's Seadra |
+| Navel Island | 🌨️ 📜 Six towers at most, up a snowy peak | Danny's Nidoqueen |
+| Trovita Island | 🌧️ A floating gym in a squall | Rudy's Electabuzz |
+| Kumquat Island | A double battle down two walkways | Luana's Alakazam and Marowak together |
+| Shamouti Island | The legendary birds quarrel | Articuno, Zapdos, then Moltres |
+| Mandarin Island | 🌫️ Fog off the sea | Team Rocket's Arbok and Weezing together |
+| Pummelo Stadium | The Orange League's full six | Drake's Dragonite |
+| Shamouti Shrine | Endless; the birds pass by | Lugia every 25th wave |
+
+#### Hisui
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Obsidian Fieldlands | Alphas on the plains | Noble Kleavor — frenzied |
+| Crimson Mirelands | 🌧️ Red mud, and hidden Zorua | Noble Lilligant — frenzied |
+| Cobalt Coastlands | Black sand and Hisuian Qwilfish | Noble Arcanine — frenzied |
+| Coronet Highlands | Hisuian Voltorb roll and burst | Noble Electrode — frenzied |
+| Alabaster Icelands | 🌨️ A blizzard, and ice underfoot | Noble Avalugg — frenzied |
+| Jubilife Village | The Galaxy Team's training grounds | Commander Kamado's Heracross |
+| Lake Valor | Two clan leaders, down two paths | Adaman's Leafeon and Irida's Glaceon together |
+| Mount Coronet | A space-time distortion: Pokémon from other eras | Origin Dialga and Palkia together |
+| Temple of Sinnoh | Volo's Spiritomb, Roserade, Zoroark, Garchomp | Giratina, Origin Forme — frenzied |
+| Hall of Origin | Endless | Arceus every 25th wave, in a different type each time |
+
+#### Kitakami
+
+| Map | Twist | Boss |
+| --- | --- | --- |
+| Mossui Town | Rice paddies and apples | Carmine's Sinistcha (heals) |
+| Loyalty Plaza | One of the Loyal Three is loose | Okidogi |
+| Oni Mountain | The ogre's mountain | Munkidori (teleports) |
+| Paradise Barrens | 🏜️ A sandstorm on the plateau | Fezandipiti |
+| Timeless Woods | Where Ogerpon hides | Kieran's Ogerpon — changes mask and type as it's worn down |
+| Coastal Biome | A double battle under the dome | Crispin's Blaziken and Amarys's Metagross, Terastallized |
+| Polar Biome | 🌨️ Another double, in the frozen quarter | Lacey's Excadrill and Drayton's Haxorus, Terastallized |
+| Crystal Pool | Tera shards everywhere | Kieran's Hydrapple — Tera Dragon |
+| Blueberry League | Crispin, Amarys, Lacey, Drayton, then Area Zero | Terapagos — Terastal, then Stellar Form |
+| Area Zero Underdepths | Endless; the newest paradox Pokémon | Stellar Terapagos every 25th wave |
+
 ## How it is built
 
 TypeScript, Vite, a 2D canvas and Web Audio. No framework.
@@ -264,7 +358,7 @@ TypeScript, Vite, a 2D canvas and Web Audio. No framework.
 | Path | What it holds |
 | --- | --- |
 | `src/game/` | The simulation — `game.ts` runs one battle at a fixed 60 Hz with no DOM, so it all runs under Vitest. Tower stats, paths, wave generation and a seeded RNG beside it, plus `bot.ts`, a greedy player used for balancing. |
-| `src/data/` | Type chart, species (enemy stats, traits, abilities), the 141 tower lines, the Mega Evolutions and the once-a-battle powers, items, regions, music, and the maps. Species, towers and maps from Sinnoh on each have a file per region (`species/`, `towers/`, `maps/`). |
+| `src/data/` | Type chart, species (enemy stats, traits, abilities), the 178 tower lines, the Mega Evolutions and the once-a-battle powers, items, regions, music, and the maps. Species, towers and maps from Sinnoh on each have a file per region (`species/`, `towers/`, `maps/`). |
 | `src/render/` | Sprite sheets, procedurally drawn pixel-art tiles per theme, the battle renderer and its effects. |
 | `src/audio/` | The mixer and synth effects, event → sound mapping, and the Game Boy music player. |
 | `src/ui/` | Screens (title, region map, team select, Mart, Pokédex, settings) and the battle screen. |
@@ -290,7 +384,7 @@ lines that best cover the map's wild Pokémon and bosses from what a player
 would have by then (earlier regions, this region's starters and badges, no
 catches), never uses an item, mostly spams level-1 towers, and gets two
 retries at a failed boss. Like a player seeing a gym leader coming, it brings
-out and grows something that can hurt a boss its towers can't. It clears all 81 campaign maps on Normal. Maps are
+out and grows something that can hurt a boss its towers can't. It clears all 108 campaign maps on Normal. Maps are
 tuned with each map's `hpMul` and its bosses' HP.
 
 ## Art and sound

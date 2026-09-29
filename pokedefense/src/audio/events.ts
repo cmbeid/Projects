@@ -90,6 +90,15 @@ export function playEvents(g: Game, events: readonly GameEvent[], now: number): 
         setTimeout(() => cry(e.dex, { rate: 0.7, volume: 0.9 }), 500);
         buzz([80, 40, 160]);
         break;
+      case 'frenzy':
+        sfx.bossStart();
+        buzz([60, 30, 60, 30, 120]);
+        break;
+      case 'phase':
+        sfx.evolve();
+        setTimeout(() => cry(e.dex, { volume: 0.8 }), 600);
+        buzz([30, 30, 90]);
+        break;
       case 'tera':
         sfx.evolve();
         buzz([30, 30, 30, 30, 90]);

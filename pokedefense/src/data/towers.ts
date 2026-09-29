@@ -7,10 +7,15 @@
  * Stats are for level 1; `src/game/stats.ts` applies level, evolution, move,
  * held item and buffs.
  */
+import type { Weather } from './maps/types';
 import type { RegionId } from './regions';
 import { ALOLA_LINES } from './towers/alola';
 import { GALAR_LINES } from './towers/galar';
+import { HISUI_LINES } from './towers/hisui';
 import { KALOS_LINES } from './towers/kalos';
+import { KITAKAMI_LINES } from './towers/kitakami';
+import { LEGEND_LINES } from './towers/legends';
+import { ORANGE_LINES } from './towers/orange';
 import { PALDEA_LINES } from './towers/paldea';
 import { SINNOH_LINES } from './towers/sinnoh';
 import { UNOVA_LINES } from './towers/unova';
@@ -84,6 +89,12 @@ export interface Effects {
   chip: number;
   /** Protean: each hit takes whichever of {@link PROTEAN_TYPES} hits its target hardest. */
   adapt: number;
+  /** Judgment (Arceus, Terapagos): each hit takes whichever of all eighteen types hits its target hardest. */
+  judgment: number;
+  /** Thousand Arrows: its Ground-type hits reach flyers, and Flying types aren't immune to them. */
+  smackDown: number;
+  /** Extra damage multiplier against bosses (Eternatus's Dynamax Cannon). */
+  bossBonus: number;
 }
 
 /** The types Greninja's Protean can take. */
@@ -162,6 +173,8 @@ export interface TowerLine {
   detect?: boolean;
   /** Only hits Pokémon on the ground. */
   groundOnly?: boolean;
+  /** Kyogre, Groudon, Rayquaza: placing it sets the weather for the rest of the battle ('clear' ends it). */
+  fieldWeather?: Weather | 'clear';
   unlock: Unlock;
 }
 
@@ -431,7 +444,15 @@ export const LINES: readonly TowerLine[] = [
   {
     id: 'cyndaquil', name: 'Cyndaquil', type: 'fire', attack: 'splash', role: 'Bursts of flame that burn a crowd',
     cost: 110, base: { damage: 10, range: 2.2, rate: 0.9 }, effects: { splash: 0.9, burn: 0.35 },
-    stages: [{ dex: 155, level: 1 }, { dex: 156, level: 3 }, { dex: 157, level: 5 }],
+    stages: [{ dex: 155, level: 1 }, { dex: 156, level: 3 }],
+    // Or its Hisuian form, as Professor Laventon knew it.
+    branches: {
+      level: 5,
+      options: [
+        { item: 'charcoal', dex: 157, type: 'fire', attack: 'splash', desc: 'Typhlosion: volcanic bursts, as in Johto.', effects: {} },
+        { item: 'spell-tag', dex: 10233, type: 'ghost', attack: 'splash', desc: 'Hisuian Typhlosion: ghostly flames that hex what they burn.', effects: { hex: 0.5 } },
+      ],
+    },
     moves: [
       { name: 'Eruption', desc: 'A volcanic blast: twice the damage, far wider.', damage: 2, rate: 0.7, effects: { splash: 0.6 }, cost: 500 },
       { name: 'Lava Plume', desc: 'Scorches everything around it at once.', attack: 'pulse', damage: 1.3, effects: { burn: 0.3 }, cost: 480 },
@@ -743,6 +764,10 @@ export const LINES: readonly TowerLine[] = [
   ...ALOLA_LINES,
   ...GALAR_LINES,
   ...PALDEA_LINES,
+  ...ORANGE_LINES,
+  ...HISUI_LINES,
+  ...KITAKAMI_LINES,
+  ...LEGEND_LINES,
 ];
 
 /**

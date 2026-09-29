@@ -137,6 +137,16 @@ export function ingest(g: Game, events: readonly GameEvent[], now: number, lastE
         fxs.push({ kind: 'stars', x: e.x, y: e.y - 0.4, t0: now, dur: 1.2, colour: '#ffffff', radius: 1.1 });
         fxs.push({ kind: 'text', x: e.x, y: e.y - 1.5, text: `Terastallized: ${e.type}!`, size: 0.34, t0: now, dur: 1.6, colour: colour(e.type) });
         break;
+      case 'frenzy':
+        fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.3, t0: now, dur: 0.7, colour: '#f8a030', radius: 2.5 });
+        fxs.push({ kind: 'ring', x: e.x, y: e.y, radius: 2.5, t0: now, dur: 0.6, colour: '#f86030' });
+        fxs.push({ kind: 'text', x: e.x, y: e.y - 1.6, text: 'Frenzy!', size: 0.4, t0: now, dur: 1.4, colour: '#f8a030' });
+        break;
+      case 'phase':
+        fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.4, t0: now, dur: 0.8, colour: colour(e.type), radius: 1.3 });
+        fxs.push({ kind: 'stars', x: e.x, y: e.y - 0.4, t0: now, dur: 1.1, colour: colour(e.type), radius: 1.2 });
+        fxs.push({ kind: 'text', x: e.x, y: e.y - 1.5, text: `Now ${e.type}!`, size: 0.36, t0: now, dur: 1.5, colour: colour(e.type) });
+        break;
       case 'mega':
         fxs.push({ kind: 'flash', x: e.x, y: e.y - 0.4, t0: now, dur: 0.8, colour: '#ffffff', radius: 1.4 });
         fxs.push({ kind: 'stars', x: e.x, y: e.y - 0.4, t0: now, dur: 1.2, colour: '#f8a0f8', radius: 1.3 });
@@ -187,11 +197,14 @@ function spriteScale(dex: number, shiny: boolean, base: number, maxTiles: number
 
 /** Dynamaxed Pokémon are drawn this much bigger. */
 const DYNAMAX_SCALE = 1.8;
+/** How much bigger an Alpha (Hisui) is drawn. */
+const ALPHA_SCALE = 1.4;
 
 function enemyScale(g: Game, e: Enemy): number {
   const base = SPRITE_TILE * (e.boss ? 1.45 : e.lead ? 1.15 : 0.85);
   const scale = spriteScale(e.dex, e.shiny, base, e.boss ? 2.3 : 1.5);
-  return e.dynamaxUntil > g.t ? scale * DYNAMAX_SCALE : scale;
+  const grown = e.alpha ? scale * ALPHA_SCALE : scale;
+  return e.dynamaxUntil > g.t ? grown * DYNAMAX_SCALE : grown;
 }
 
 function towerScale(g: Game, t: Tower): number {
@@ -323,6 +336,14 @@ function drawEnemy(ctx: CanvasRenderingContext2D, g: Game, e: Enemy, T: number, 
     ctx.restore();
   }
   if (e.dynamaxUntil > g.t && !hidden) ellipse(ctx, cx, by, T * 0.9, T * 0.3, 'rgba(248,72,88,0.35)');
+  if (e.alpha && !hidden) {
+    // An Alpha's glare: a pulsing red glow at its feet.
+    ctx.save();
+    ctx.globalAlpha = 0.3 + 0.15 * Math.sin(time * 4);
+    ellipse(ctx, cx, by, T * 0.55, T * 0.2, '#f83030');
+    ctx.restore();
+  }
+  if (e.frenzy > 0 && !hidden) ellipse(ctx, cx, by, T * 0.75, T * 0.26, 'rgba(248,160,48,0.3)');
   const scale = enemyScale(g, e) * T;
   const opts = {
     time: time * 1000,

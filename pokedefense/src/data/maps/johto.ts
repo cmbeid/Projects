@@ -330,7 +330,7 @@ export const JOHTO: readonly MapDef[] = [
       { dex: 208, weight: 2, from: 5 }, { dex: 227, weight: 2, from: 5 }, { dex: 67, weight: 2, from: 5 },
       { dex: 248, weight: 1, from: 10 }, { dex: 149, weight: 1, from: 20 },
       { dex: 243, weight: 0.3, from: 10, rare: true }, { dex: 244, weight: 0.3, from: 10, rare: true },
-      { dex: 245, weight: 0.3, from: 10, rare: true },
+      { dex: 245, weight: 0.3, from: 10, rare: true }, { dex: 249, weight: 0.1, from: 30, rare: true }, { dex: 250, weight: 0.1, from: 30, rare: true },
     ],
     miniBoss: [],
     boss: { dex: 25, hp: 175, armor: 0.2, speed: 1.2, abilities: [{ kind: 'stun', every: 7, radius: 2.5, duration: 2 }, { kind: 'dash', every: 6, factor: 2.2, duration: 1 }, { kind: 'shield', every: 9, duration: 2 }], escort: [6, 9, 3, 143, 196] },
