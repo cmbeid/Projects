@@ -286,8 +286,30 @@ async function laterRegions(name: string, viewport: { width: number; height: num
   await browser.close();
 }
 
+/** Buying from far down the Mart's shelf keeps the shelf where it was. */
+async function mart(name: string, viewport: { width: number; height: number }, touch: boolean): Promise<void> {
+  console.log(`${name} mart (${viewport.width}×${viewport.height})`);
+  const browser = await chromium.launch(EXECUTABLE ? { executablePath: EXECUTABLE } : {});
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('pokedefense.save.v1', JSON.stringify({ bp: 50_000, tutorialDone: true })));
+  await page.goto(URL);
+  await page.getByRole('button', { name: 'Poké Mart' }).first().click();
+  await page.waitForSelector('.ware');
+  const before = await page.locator('.screen .scroll').evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+    return el.scrollTop;
+  });
+  await page.locator('.ware button.gold').last().click();
+  await page.waitForTimeout(300);
+  const after = await page.locator('.screen .scroll').evaluate((el) => el.scrollTop);
+  check(before > 0 && Math.abs(after - before) < 2, `mart: buying keeps the shelf where it was (${after} vs ${before})`);
+  await browser.close();
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT, { recursive: true });
+  await mart('phone', { width: 390, height: 844 }, true);
   await laterRegions('phone', { width: 390, height: 844 }, true);
   await laterRegions('desktop', { width: 1440, height: 900 }, false);
   await regions('phone', { width: 390, height: 844 }, true);
