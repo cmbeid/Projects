@@ -1,0 +1,31 @@
+{
+  "name": "pokeharvest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A Pokémon farming sim for the phone: till, plant, water and harvest berries with your starter Pokémon lending a hand.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "fetch-assets": "tsx scripts/fetch-assets.ts",
+    "verify": "tsx scripts/verify-ui.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/omggif": "^1.0.5",
+    "@types/pngjs": "^6.0.5",
+    "@wasm-audio-decoders/ogg-vorbis": "^0.1.20",
+    "mpg123-decoder": "^1.0.3",
+    "omggif": "^1.0.10",
+    "playwright": "^1.62.1",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4"
+  }
+}
