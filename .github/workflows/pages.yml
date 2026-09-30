@@ -20,7 +20,7 @@ on:
        - 'simtowerweb/**'
        - 'pokefling/**'
        - 'pokedefense/**'
-      - 'pokeharvest/**'
+       - 'pokeharvest/**'
        - '.github/workflows/pages.yml'
 
 permissions:
