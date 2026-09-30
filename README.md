@@ -11,6 +11,7 @@ nothing at the root to install.
 | [`storied/`](storied/) | A phone-first reader for branching stories, driven entirely by JSON content in `storied/public/content/`. Seven demo stories ship on the shelf; a story can also be imported straight from a local file or folder, and a story already opened once stays readable with the network off. |
 | [`pokefling/`](pokefling/) | An Angry Birds–style slingshot physics game for the phone, themed on Pokémon. Sixty levels in ten Kanto and Johto locations, items, and Pokémon Crystal's music played by a Game Boy–style synth. |
 | [`pokedefense/`](pokedefense/) | A Pokémon tower defense game, portrait-first for the phone. Nine regions, Kanto to Paldea, and three side regions — the Orange Islands, Hisui and Kitakami: 108 maps with Gym Leaders and twelve Leagues, twelve endless maps, 178 evolving tower lines (legends included), catching, weather, Mega Evolution, Z-Moves, Dynamax and Terastallizing, a Battle Frontier, items, and music from the games. |
+| [`pokeharvest/`](pokeharvest/) | A Pokémon farming game, portrait-first for the phone. Till, plant, water and harvest berries on a walkable farm with a day/night clock, sell through the shipping bin or the Poké Mart, and pick a starter that helps out: Squirtle waters, Bulbasaur speeds growth, Charmander keeps the crows off. An early build: the core farming loop; battles, ranching and crafting are planned. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
 ## Working on one
@@ -39,7 +40,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 | `storied/` | http://s3.cmbeid.com/storied/index.html |
 
-`simtowerweb/`, `pokefling/` and `pokedefense/` have no S3 workflow — they publish to Pages only.
+`simtowerweb/`, `pokefling/`, `pokedefense/` and `pokeharvest/` have no S3 workflow — they publish to Pages only.
 
 ### GitHub Pages
 
@@ -55,6 +56,7 @@ them to publish.
 | `simtowerweb/` | https://cmbeid.github.io/Projects/simtowerweb/ |
 | `pokefling/` | https://cmbeid.github.io/Projects/pokefling/ |
 | `pokedefense/` | https://cmbeid.github.io/Projects/pokedefense/ |
+| `pokeharvest/` | https://cmbeid.github.io/Projects/pokeharvest/ |
 
 Pages serves from a subdirectory, so a project published there has to resolve
 its own assets relatively — `base: './'` in the Vite config, and no
