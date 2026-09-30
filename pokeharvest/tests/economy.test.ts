@@ -19,7 +19,7 @@ describe('economy', () => {
     w.inventory.pecha = 3;
     expect(ship(w, 'pecha', 2)).toBe(true);
     expect(unship(w, 'pecha', 1)).toBe(true);
-    expect(binValue(w.bin)).toBe(crop('pecha').sellPrice);
+    expect(binValue(w)).toBe(crop('pecha').sellPrice);
     const summary = sleep(w);
     expect(summary.earned).toBe(80);
     expect(w.player.gold).toBe(580);
@@ -31,8 +31,8 @@ describe('economy', () => {
     const w = world();
     w.inventory.sitrus = 1;
     expect(sellNow(w, 'sitrus')).toBe(true);
-    expect(w.player.gold).toBe(500 + martPrice('sitrus'));
-    expect(martPrice('sitrus')).toBeLessThan(crop('sitrus').sellPrice);
+    expect(w.player.gold).toBe(500 + martPrice(w, 'sitrus'));
+    expect(martPrice(w, 'sitrus')).toBeLessThan(crop('sitrus').sellPrice);
     expect(sellNow(w, 'sitrus')).toBe(false);
     expect(ship(w, 'hoe')).toBe(false);
   });

@@ -50,6 +50,36 @@ describe('save', () => {
     expect(w.helpers).toHaveLength(1);
   });
 
+  it('upgrades a Phase 1 save, which only had helper dex numbers', () => {
+    const w = parseWorld({ day: 4, helpers: [{ dex: 4 }], player: { gold: 900 }, inventory: { oran: 2 } })!;
+    expect(w.mons).toHaveLength(1);
+    expect(w.mons[0]).toMatchObject({ dex: 4, level: 5 });
+    expect(w.mons[0]!.moves.length).toBeGreaterThan(0);
+    expect(w.party).toEqual([w.mons[0]!.uid]);
+    expect(w.helpers.map((h) => h.dex)).toEqual([4]);
+    expect(w.tools).toEqual({ hoe: 0, can: 0 });
+    expect(w.map).toBe('farm');
+    expect(w.caught).toEqual([4]);
+  });
+
+  it('keeps Pokémon, party, tools, skills and perks', () => {
+    const w = world(7);
+    w.tools.hoe = 2;
+    w.skills.farming = 500;
+    w.perks.push('hardy', 'bogus');
+    w.map = 'route1';
+    Object.assign(w.player, { x: 11, y: 5 });
+    const store = memory();
+    saveWorld(w, store);
+    const back = loadWorld(store)!;
+    expect(back.mons).toEqual(w.mons);
+    expect(back.party).toEqual(w.party);
+    expect(back.tools.hoe).toBe(2);
+    expect(back.perks).toEqual(['hardy']);
+    expect(back.map).toBe('route1');
+    expect(back.player.maxEnergy).toBeGreaterThan(100);
+  });
+
   it('gives up on a save with no Pokémon', () => {
     expect(parseWorld({ helpers: [] })).toBeNull();
     expect(parseWorld('garbage')).toBeNull();

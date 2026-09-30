@@ -4,16 +4,20 @@
  */
 import { crop } from '../data/crops';
 import { ITEMS, item } from '../data/items';
-import { tileAt, walkable } from '../data/maps';
-import { CAN_SIZE, plotKey, type CropState, type World } from './model';
+import { MAPS, tileAt, walkable } from '../data/maps';
+import { CAN_CAPACITY, TOOL_TIERS, type UpgradableTool } from '../data/progress';
+import { hasPerk, plotKey, type CropState, type Dir, type World } from './model';
+import type { Point } from './path';
 import { nextRandom } from './rng';
+import { addSkillXp } from './skills';
+import { DELTA } from './walk';
 
-export type Action = 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'untill' | 'refill' | 'sleep' | 'bin' | 'mart';
+export type Action = 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'untill' | 'refill' | 'sleep' | 'bin' | 'mart' | 'smith';
 
 /** What using a tile would do: an action, nothing worth doing (just walk there), or a reason it can't. */
 export type Intent = { kind: 'use'; action: Action } | { kind: 'walk' } | { kind: 'deny'; text: string };
 
-/** Energy each action costs. */
+/** Energy each action costs with basic tools. */
 export const COST: Partial<Record<Action, number>> = { till: 3, water: 2, clear: 2, untill: 1 };
 
 export function isRipe(c: CropState): boolean {
@@ -27,23 +31,70 @@ export function stageOf(c: CropState): 0 | 1 | 2 | 3 {
   return c.growth < crop(c.id).days / 2 ? 1 : 2;
 }
 
+export function canCapacity(world: World): number {
+  return CAN_CAPACITY[world.tools.can]! * (hasPerk(world, 'deep-can') ? 2 : 1);
+}
+
+export function toolName(tool: UpgradableTool, tier: number): string {
+  const base = tool === 'hoe' ? 'Hoe' : 'Watering Can';
+  return tier === 0 ? base : `${TOOL_TIERS[tier]} ${base}`;
+}
+
+/**
+ * The tiles a hoe or can of this tier reaches from `at`: one, then three in
+ * a line away from the farmer, then a 3 × 3 square around it.
+ */
+export function toolArea(tier: number, at: Point, facing: Dir): Point[] {
+  if (tier <= 0) return [at];
+  if (tier === 1) {
+    const d = DELTA[facing];
+    return [0, 1, 2].map((i) => ({ x: at.x + d.x * i, y: at.y + d.y * i }));
+  }
+  const out: Point[] = [];
+  for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) out.push({ x: at.x + dx, y: at.y + dy });
+  return out;
+}
+
+/** Energy for a tool action: bigger tools cost a little more, gold ones and the Hardy perk less. */
+export function actionCost(world: World, action: Action): number {
+  const base = COST[action] ?? 0;
+  if (!base) return 0;
+  const tier = action === 'till' ? world.tools.hoe : action === 'water' ? world.tools.can : 0;
+  const size = tier === 0 ? 0 : tier === 3 ? 1 : tier;
+  return Math.max(1, base + size - (hasPerk(world, 'hardy') ? 1 : 0));
+}
+
+function tillable(world: World, x: number, y: number): boolean {
+  return MAPS[world.map].farmable && tileAt(world.map, x, y) === 'grass' && !world.plots[plotKey(x, y)];
+}
+
+function waterable(world: World, x: number, y: number): boolean {
+  const plot = world.map === 'farm' ? world.plots[plotKey(x, y)] : undefined;
+  return Boolean(plot && !plot.watered && !(plot.crop && isRipe(plot.crop)));
+}
+
 export function intentAt(world: World, x: number, y: number): Intent {
-  const kind = tileAt(x, y);
+  const kind = tileAt(world.map, x, y);
   const held = world.selected;
   if (kind === 'door') return { kind: 'use', action: 'sleep' };
   if (kind === 'bin') return { kind: 'use', action: 'bin' };
   if (kind === 'mart') return { kind: 'use', action: 'mart' };
+  if (kind === 'smith') return { kind: 'use', action: 'smith' };
   if (kind === 'water') {
     if (held !== 'can') return { kind: 'deny', text: 'Hold the can to fill it' };
-    return world.player.water >= CAN_SIZE ? { kind: 'deny', text: 'The can is full' } : { kind: 'use', action: 'refill' };
+    return world.player.water >= canCapacity(world) ? { kind: 'deny', text: 'The can is full' } : { kind: 'use', action: 'refill' };
   }
   if (!walkable(kind)) return { kind: 'deny', text: '' };
 
-  const plot = world.plots[plotKey(x, y)];
+  const farm = MAPS[world.map].farmable;
+  const plot = farm ? world.plots[plotKey(x, y)] : undefined;
   if (plot?.crop && isRipe(plot.crop)) return { kind: 'use', action: 'harvest' };
-  if (kind === 'path') return held === 'hoe' ? { kind: 'deny', text: "Can't dig up the path" } : { kind: 'walk' };
-
   const def = ITEMS.get(held);
+  const tool = held === 'hoe' || held === 'can' || held === 'sickle' || def?.kind === 'seed';
+  // Off the farm, tools do nothing: a tap just walks.
+  if (tool && !farm) return { kind: 'walk' };
+  if (kind !== 'grass') return { kind: 'walk' };
+
   if (held === 'hoe') return plot ? { kind: 'walk' } : { kind: 'use', action: 'till' };
   if (held === 'can') {
     if (!plot || plot.watered) return { kind: 'walk' };
@@ -61,8 +112,27 @@ export function intentAt(world: World, x: number, y: number): Intent {
 }
 
 /**
+ * Pick a ripe crop: berries to the bag (or wherever `into` says), the plant
+ * reset if it regrows. Returns what was picked.
+ */
+export function pick(world: World, x: number, y: number, into: Record<string, number> = world.inventory): { id: string; count: number } | null {
+  const plot = world.plots[plotKey(x, y)];
+  const c = plot?.crop;
+  if (!plot || !c || !isRipe(c)) return null;
+  const def = crop(c.id);
+  const bonus = hasPerk(world, 'green-thumb') ? 0.4 : 0.2;
+  const count = 1 + (nextRandom(world.rng) < bonus ? 1 : 0);
+  into[def.id] = (into[def.id] ?? 0) + count;
+  world.stats.harvested += count;
+  c.harvests += 1;
+  if (def.regrow) c.growth = def.days - def.regrow;
+  else plot.crop = null;
+  return { id: def.id, count };
+}
+
+/**
  * Use the tile with what's in hand. Returns true if something happened.
- * Menus (sleep, bin, mart) are only asked for; the UI opens them.
+ * Menus (sleep, bin, mart, smith) are only asked for; the UI opens them.
  */
 export function useAt(world: World, x: number, y: number): boolean {
   const intent = intentAt(world, x, y);
@@ -73,7 +143,7 @@ export function useAt(world: World, x: number, y: number): boolean {
   }
   if (intent.kind === 'walk') return false;
   const { action } = intent;
-  const cost = COST[action] ?? 0;
+  const cost = actionCost(world, action);
   if (p.energy < cost) {
     world.events.push({ kind: 'hint', x, y, text: 'Too tired. Get some sleep' });
     return false;
@@ -85,29 +155,45 @@ export function useAt(world: World, x: number, y: number): boolean {
     case 'sleep':
     case 'bin':
     case 'mart':
+    case 'smith':
       world.events.push({ kind: 'open', ui: action });
       return true;
     case 'refill':
-      p.water = CAN_SIZE;
+      p.water = canCapacity(world);
       world.events.push({ kind: 'refill', x, y, text: 'Filled up!' });
       return true;
-    case 'till':
-      world.plots[key] = { watered: false, crop: null };
-      world.events.push({ kind: 'till', x, y });
+    case 'till': {
+      let n = 0;
+      for (const t of toolArea(world.tools.hoe, { x, y }, p.facing)) {
+        if (!tillable(world, t.x, t.y)) continue;
+        world.plots[plotKey(t.x, t.y)] = { watered: false, crop: null };
+        world.events.push({ kind: 'till', x: t.x, y: t.y });
+        n += 1;
+      }
+      addSkillXp(world, 'farming', n);
       return true;
+    }
     case 'untill':
       delete world.plots[key];
       world.events.push({ kind: 'clear', x, y });
       return true;
-    case 'water':
-      plot!.watered = true;
-      p.water -= 1;
-      world.events.push({ kind: 'water', x, y });
+    case 'water': {
+      let n = 0;
+      for (const t of toolArea(world.tools.can, { x, y }, p.facing)) {
+        if (p.water <= 0 || !waterable(world, t.x, t.y)) continue;
+        world.plots[plotKey(t.x, t.y)]!.watered = true;
+        p.water -= 1;
+        world.events.push({ kind: 'water', x: t.x, y: t.y });
+        n += 1;
+      }
+      addSkillXp(world, 'farming', n);
       return true;
+    }
     case 'plant': {
       const seed = item(world.selected);
       plot!.crop = { id: seed.crop!, growth: 0, harvests: 0, tended: false };
       takeItem(world, seed.id, 1);
+      addSkillXp(world, 'farming', 1);
       world.events.push({ kind: 'plant', x, y });
       return true;
     }
@@ -116,19 +202,10 @@ export function useAt(world: World, x: number, y: number): boolean {
       world.events.push({ kind: 'clear', x, y });
       return true;
     case 'harvest': {
-      const c = plot!.crop!;
-      const def = crop(c.id);
-      // A good harvest now and then: one extra berry, more often from a well-tended plant.
-      const count = 1 + (nextRandom(world.rng) < 0.2 ? 1 : 0);
-      giveItem(world, def.id, count);
-      world.stats.harvested += count;
-      c.harvests += 1;
-      if (def.regrow) {
-        c.growth = def.days - def.regrow;
-      } else {
-        plot!.crop = null;
-      }
-      world.events.push({ kind: 'harvest', x, y, text: count > 1 ? `${def.name} ×${count}` : def.name });
+      const got = pick(world, x, y)!;
+      const def = crop(got.id);
+      addSkillXp(world, 'farming', 2 + Math.floor(def.days / 2));
+      world.events.push({ kind: 'harvest', x, y, text: got.count > 1 ? `${def.name} ×${got.count}` : def.name });
       return true;
     }
   }

@@ -1,34 +1,92 @@
 /**
- * The Pokémon that live on the farm. Phase 1 has the three Kanto starters
- * and their evolutions (the evolutions are fetched now so later phases can
- * level them up without another asset run).
+ * Every Pokémon that can live on the farm: the Kanto starters and the wild
+ * Pokémon of Route 1, with their evolutions.
+ *
+ * Stats are folded down to four, from the games' base stats: HP, Attack (the
+ * higher of Attack and Sp. Atk), Defense (the mean of Defense and Sp. Def) and
+ * Speed. A helper's farm job comes from its type (see `jobFor`).
  */
 import type { PokeType } from './types';
 
 /** What a helper does around the farm. */
-export type Job = 'water' | 'tend' | 'guard';
+export type Job = 'water' | 'tend' | 'guard' | 'harvest' | 'none';
+
+export interface Base {
+  hp: number;
+  atk: number;
+  def: number;
+  spe: number;
+}
 
 export interface Species {
   dex: number;
   name: string;
   types: readonly PokeType[];
+  base: Base;
+  catchRate: number;
+  evolves?: { to: number; level: number };
   job: Job;
 }
 
-function s(dex: number, name: string, types: readonly PokeType[], job: Job): Species {
-  return { dex, name, types, job };
+/** The first of a Pokémon's types that has a job decides what it does. */
+const JOB_BY_TYPE: readonly [PokeType, Job][] = [
+  ['water', 'water'], ['grass', 'tend'], ['bug', 'tend'], ['fire', 'guard'], ['flying', 'guard'],
+  ['normal', 'harvest'], ['fighting', 'harvest'], ['ground', 'harvest'], ['rock', 'harvest'],
+];
+
+export function jobFor(types: readonly PokeType[]): Job {
+  for (const [type, job] of JOB_BY_TYPE) if (types.includes(type)) return job;
+  return 'none';
+}
+
+function s(dex: number, name: string, types: PokeType[], [hp, atk, def, spe]: [number, number, number, number], catchRate: number, evolves?: [to: number, level: number]): Species {
+  return { dex, name, types, base: { hp, atk, def, spe }, catchRate, job: jobFor(types), ...(evolves ? { evolves: { to: evolves[0], level: evolves[1] } } : {}) };
 }
 
 const LIST: readonly Species[] = [
-  s(1, 'Bulbasaur', ['grass', 'poison'], 'tend'),
-  s(2, 'Ivysaur', ['grass', 'poison'], 'tend'),
-  s(3, 'Venusaur', ['grass', 'poison'], 'tend'),
-  s(4, 'Charmander', ['fire'], 'guard'),
-  s(5, 'Charmeleon', ['fire'], 'guard'),
-  s(6, 'Charizard', ['fire', 'flying'], 'guard'),
-  s(7, 'Squirtle', ['water'], 'water'),
-  s(8, 'Wartortle', ['water'], 'water'),
-  s(9, 'Blastoise', ['water'], 'water'),
+  s(1, 'Bulbasaur', ['grass', 'poison'], [45, 65, 57, 45], 45, [2, 16]),
+  s(2, 'Ivysaur', ['grass', 'poison'], [60, 80, 72, 60], 45, [3, 32]),
+  s(3, 'Venusaur', ['grass', 'poison'], [80, 100, 92, 80], 45),
+  s(4, 'Charmander', ['fire'], [39, 60, 47, 65], 45, [5, 16]),
+  s(5, 'Charmeleon', ['fire'], [58, 80, 62, 80], 45, [6, 36]),
+  s(6, 'Charizard', ['fire', 'flying'], [78, 109, 82, 100], 45),
+  s(7, 'Squirtle', ['water'], [44, 50, 65, 43], 45, [8, 16]),
+  s(8, 'Wartortle', ['water'], [59, 65, 80, 58], 45, [9, 36]),
+  s(9, 'Blastoise', ['water'], [79, 85, 103, 78], 45),
+  s(10, 'Caterpie', ['bug'], [45, 30, 28, 45], 255, [11, 7]),
+  s(11, 'Metapod', ['bug'], [50, 25, 40, 30], 120, [12, 10]),
+  s(12, 'Butterfree', ['bug', 'flying'], [60, 90, 65, 70], 45),
+  s(16, 'Pidgey', ['normal', 'flying'], [40, 45, 38, 56], 255, [17, 18]),
+  s(17, 'Pidgeotto', ['normal', 'flying'], [63, 60, 53, 71], 120, [18, 36]),
+  s(18, 'Pidgeot', ['normal', 'flying'], [83, 80, 73, 101], 45),
+  s(19, 'Rattata', ['normal'], [30, 56, 35, 72], 255, [20, 20]),
+  s(20, 'Raticate', ['normal'], [55, 81, 65, 97], 127),
+  s(25, 'Pikachu', ['electric'], [35, 55, 45, 90], 190),
+  s(27, 'Sandshrew', ['ground'], [50, 75, 58, 40], 255, [28, 22]),
+  s(28, 'Sandslash', ['ground'], [75, 100, 83, 65], 90),
+  s(43, 'Oddish', ['grass', 'poison'], [45, 75, 60, 30], 255, [44, 21]),
+  s(44, 'Gloom', ['grass', 'poison'], [60, 85, 73, 40], 120),
+  s(50, 'Diglett', ['ground'], [10, 55, 35, 95], 255, [51, 26]),
+  s(51, 'Dugtrio', ['ground'], [35, 100, 60, 120], 50),
+  s(58, 'Growlithe', ['fire'], [55, 70, 48, 60], 190),
+  s(66, 'Machop', ['fighting'], [70, 80, 43, 35], 180, [67, 28]),
+  s(67, 'Machoke', ['fighting'], [80, 100, 65, 45], 90),
+  s(69, 'Bellsprout', ['grass', 'poison'], [50, 75, 33, 40], 255, [70, 21]),
+  s(70, 'Weepinbell', ['grass', 'poison'], [65, 90, 48, 55], 120),
+  s(74, 'Geodude', ['rock', 'ground'], [40, 80, 65, 20], 255, [75, 25]),
+  s(75, 'Graveler', ['rock', 'ground'], [55, 95, 80, 35], 120),
+  s(92, 'Gastly', ['ghost', 'poison'], [30, 100, 33, 80], 190, [93, 25]),
+  s(93, 'Haunter', ['ghost', 'poison'], [45, 115, 50, 95], 90),
+  s(133, 'Eevee', ['normal'], [55, 55, 58, 55], 45),
+  s(163, 'Hoothoot', ['normal', 'flying'], [60, 36, 43, 50], 255, [164, 20]),
+  s(164, 'Noctowl', ['normal', 'flying'], [100, 86, 73, 70], 90),
+  s(179, 'Mareep', ['electric'], [55, 65, 43, 35], 235, [180, 15]),
+  s(180, 'Flaaffy', ['electric'], [70, 80, 58, 45], 120, [181, 30]),
+  s(181, 'Ampharos', ['electric'], [90, 115, 88, 55], 45),
+  s(194, 'Wooper', ['water', 'ground'], [55, 45, 35, 15], 255, [195, 20]),
+  s(195, 'Quagsire', ['water', 'ground'], [95, 85, 75, 35], 90),
+  s(270, 'Lotad', ['water', 'grass'], [40, 40, 40, 30], 255, [271, 14]),
+  s(271, 'Lombre', ['water', 'grass'], [60, 60, 60, 50], 120),
 ];
 
 export const SPECIES: ReadonlyMap<number, Species> = new Map(LIST.map((sp) => [sp.dex, sp]));
@@ -46,14 +104,13 @@ export const JOB_TEXT: Record<Job, string> = {
   water: 'Waters a thirsty crop every half hour.',
   tend: 'Tends a crop every half hour so it grows 50% faster.',
   guard: 'Keeps crows away from your field at night.',
+  harvest: 'Picks ripe crops and puts them in the shipping bin.',
+  none: 'Keeps you company. (More jobs are coming to the farm.)',
 };
 
-export function spriteUrl(dex: number, shiny = false): string {
-  return shiny ? `sprites/${dex}-shiny.png` : `sprites/${dex}.png`;
-}
-
-export function sheetUrl(dex: number, shiny = false): string {
-  return shiny ? `sprites/${dex}-shiny.json` : `sprites/${dex}.json`;
+/** Sprite sheet names: `1`, `1-shiny`, `1-back`. */
+export function sheetName(dex: number, variant: 'front' | 'shiny' | 'back' = 'front'): string {
+  return variant === 'front' ? `${dex}` : `${dex}-${variant}`;
 }
 
 export function cryUrl(dex: number): string {

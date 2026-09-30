@@ -4,7 +4,6 @@
  * MIN_ROWS down. A phone upright shows about a dozen tiles across and follows
  * the farmer; a wide monitor shows most of the farm at once.
  */
-import { MAP_H, MAP_W } from '../data/maps';
 import { T } from './tiles';
 
 export const MIN_COLS = 11;
@@ -26,14 +25,23 @@ export function tileSize(width: number, height: number): number {
   return scale * T;
 }
 
-/** Centre on (cx, cy) in tiles, clamped so the view never leaves the map; centred when the map is smaller. */
-export function follow(width: number, height: number, cx: number, cy: number): View {
+/**
+ * Centre on (cx, cy) in tiles, clamped so the view never leaves a `cols` ×
+ * `rows` map; centred when the map is smaller. `padTop` and `padBottom`
+ * (device pixels) are covered by the HUD and hotbar, so the view may scroll
+ * that far past the map's edges to keep its first and last rows in the open.
+ */
+export function follow(width: number, height: number, cx: number, cy: number, cols: number, rows: number, padTop = 0, padBottom = 0): View {
   const tile = tileSize(width, height);
-  const mapW = MAP_W * tile;
-  const mapH = MAP_H * tile;
-  const axis = (view: number, map: number, centre: number): number =>
-    map <= view ? -Math.floor((view - map) / 2) : Math.round(Math.max(0, Math.min(map - view, centre * tile + tile / 2 - view / 2)));
-  return { width, height, tile, ox: axis(width, mapW, cx), oy: axis(height, mapH, cy) };
+  const mapW = cols * tile;
+  const mapH = rows * tile;
+  const axis = (view: number, map: number, centre: number, lo: number, hi: number): number => {
+    const open = view - lo - hi;
+    if (map <= open) return -Math.floor(lo + (open - map) / 2);
+    const want = centre * tile + tile / 2 - (lo + open / 2);
+    return Math.round(Math.max(-lo, Math.min(map - view + hi, want)));
+  };
+  return { width, height, tile, ox: axis(width, mapW, cx, 0, 0), oy: axis(height, mapH, cy, padTop, padBottom) };
 }
 
 /** The tile under a canvas point (device pixels). */

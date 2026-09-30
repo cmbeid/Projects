@@ -6,8 +6,11 @@ export function faceToward(w: Walker, dx: number, dy: number): void {
   else if (dy !== 0) w.facing = dy > 0 ? 'down' : 'up';
 }
 
-/** Step `w` along its path at `speed` tiles a second. Returns true once it has arrived (or had nowhere to go). */
-export function walk(w: Walker, speed: number, dt: number): boolean {
+/**
+ * Step `w` along its path at `speed` tiles a second, calling `onTile` as it
+ * reaches each tile. Returns true once it has arrived (or had nowhere to go).
+ */
+export function walk(w: Walker, speed: number, dt: number, onTile?: (x: number, y: number) => void): boolean {
   if (!w.path.length) return true;
   let budget = speed * dt;
   while (budget > 0 && w.path.length) {
@@ -21,6 +24,7 @@ export function walk(w: Walker, speed: number, dt: number): boolean {
       w.y = next.y;
       budget -= dist;
       w.path.shift();
+      onTile?.(next.x, next.y);
     } else {
       w.x += (dx / dist) * budget;
       w.y += (dy / dist) * budget;

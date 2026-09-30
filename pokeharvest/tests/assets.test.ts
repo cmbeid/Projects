@@ -4,9 +4,9 @@ import { ITEM_ICONS } from '../src/data/items';
 import { SPECIES } from '../src/data/species';
 
 describe('assets', () => {
-  it('has a sprite sheet, shiny sheet and cry for every Pokémon', () => {
+  it('has a sprite sheet, shiny sheet, back sheet and cry for every Pokémon', () => {
     for (const dex of SPECIES.keys()) {
-      for (const name of [`${dex}`, `${dex}-shiny`]) {
+      for (const name of [`${dex}`, `${dex}-shiny`, `${dex}-back`]) {
         expect(existsSync(`public/sprites/${name}.png`), name).toBe(true);
         const sheet = JSON.parse(readFileSync(`public/sprites/${name}.json`, 'utf8')) as { delays: number[]; w: number };
         expect(sheet.delays.length).toBeGreaterThan(0);

@@ -3,7 +3,7 @@
  * and item icons from `public/items/`. Loaded on demand; until a sheet
  * arrives, nothing is drawn for it.
  */
-import { sheetUrl, spriteUrl } from '../data/species';
+import { sheetName } from '../data/species';
 import { itemIconUrl } from '../data/items';
 
 interface SheetInfo {
@@ -23,8 +23,8 @@ interface Sheet extends SheetInfo {
 const sheets = new Map<string, Sheet | null>();
 const images = new Map<string, HTMLImageElement | null>();
 
-function key(dex: number, shiny: boolean): string {
-  return shiny ? `${dex}-shiny` : `${dex}`;
+function key(dex: number, shiny: boolean, back = false): string {
+  return sheetName(dex, back ? 'back' : shiny ? 'shiny' : 'front');
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -39,12 +39,12 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const pending = new Map<string, Promise<void>>();
 
 /** Load a sheet; every caller gets the same promise, resolved once it is ready. */
-export function loadSheet(dex: number, shiny = false): Promise<void> {
-  const k = key(dex, shiny);
+export function loadSheet(dex: number, shiny = false, back = false): Promise<void> {
+  const k = key(dex, shiny, back);
   const existing = pending.get(k);
   if (existing) return existing;
   sheets.set(k, null);
-  const promise = Promise.all([fetch(sheetUrl(dex, shiny)).then((r) => r.json() as Promise<SheetInfo>), loadImage(spriteUrl(dex, shiny))])
+  const promise = Promise.all([fetch(`sprites/${k}.json`).then((r) => r.json() as Promise<SheetInfo>), loadImage(`sprites/${k}.png`)])
     .then(([info, image]) => {
       const ends: number[] = [];
       let t = 0;
@@ -75,9 +75,13 @@ export function drawPokemon(
   x: number,
   y: number,
   scale: number,
-  opts: { time: number; shiny?: boolean; flip?: boolean; alpha?: number; phase?: number; tint?: string | null; frozen?: boolean } = { time: 0 },
+  opts: { time: number; shiny?: boolean; back?: boolean; flip?: boolean; alpha?: number; phase?: number; tint?: string | null; frozen?: boolean } = { time: 0 },
 ): boolean {
-  let s = sheets.get(key(dex, Boolean(opts.shiny)));
+  let s = sheets.get(key(dex, Boolean(opts.shiny), opts.back));
+  if (!s && opts.back) {
+    void loadSheet(dex, false, true);
+    s = sheets.get(key(dex, false));
+  }
   if (!s && opts.shiny) {
     void loadSheet(dex, true);
     s = sheets.get(key(dex, false));
