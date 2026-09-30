@@ -1,6 +1,6 @@
 # PokéHarvest — design & implementation plan
 
-> **Status:** Phase 1 (core loop MVP) is built. Phases 2–4 are still to do.
+> **Status:** Phase 1 (core loop MVP) and Phase 2 (RPG and battles) are built. Phases 3–4 are still to do.
 
 ## Context
 You want a new personal-project game for the `cmbeid/Projects` monorepo: a Pokémon-themed farming sim for HTML5 mobile web. It should be built for portrait phones and still scale up well on desktop. It needs RPG progression and upgrades, a day/night cycle, an economy, crafting, and turn-based battles.

@@ -60,7 +60,7 @@ function toolUrl(id: string): string {
 export function itemIcon(id: string, className = 'icon'): HTMLElement {
   const def = item(id);
   if (def.kind === 'tool') return h('img', { className: `${className} pixel`, src: toolUrl(id), alt: def.name, draggable: false });
-  const img = h('img', { className: `${className} pixel`, src: itemIconUrl(crop(def.crop!).icon), alt: def.name, draggable: false });
+  const img = h('img', { className: `${className} pixel`, src: itemIconUrl(def.icon ?? crop(def.crop!).icon), alt: def.name, draggable: false });
   if (def.kind === 'seed') return h('span', { className: `${className} seed-packet`, title: def.name }, img);
   return img;
 }

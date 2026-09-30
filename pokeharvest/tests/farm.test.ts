@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { crop } from '../src/data/crops';
 import { seedId } from '../src/data/items';
-import { growNight, intentAt, isRipe, stageOf, useAt } from '../src/game/farm';
-import { CAN_SIZE, plotKey } from '../src/game/model';
+import { canCapacity, growNight, intentAt, isRipe, stageOf, useAt } from '../src/game/farm';
+import { plotKey } from '../src/game/model';
 import { select } from '../src/game/world';
 import { world } from './helpers';
 
@@ -64,7 +64,7 @@ describe('farm', () => {
     select(w, 'can');
     expect(intentAt(w, X, Y).kind).toBe('deny');
     expect(useAt(w, 17, 3)).toBe(true);
-    expect(w.player.water).toBe(CAN_SIZE);
+    expect(w.player.water).toBe(canCapacity(w));
   });
 
   it('refuses tool work with no energy left', () => {
@@ -79,6 +79,7 @@ describe('farm', () => {
     const w = world();
     select(w, 'hoe');
     expect(useAt(w, 11, 14)).toBe(false);
+    expect(intentAt(w, 11, 14).kind).toBe('walk');
     select(w, seedId('oran'));
     expect(useAt(w, X, Y)).toBe(false);
   });

@@ -109,6 +109,34 @@ function mart(g: Ctx, variant: number): void {
   px(g, '#f2d23c', 11, 7, 2, 2);
 }
 
+function tall(g: Ctx, variant: number, frame: number): void {
+  px(g, '#4f9a3a', 0, 0, T, T);
+  // Blades that sway a pixel with the breeze.
+  for (let i = 0; i < 8; i += 1) {
+    const x = (i * 2 + Math.floor(hash(variant, i, 5) * 2)) % 16;
+    const lean = (frame + i) % 2;
+    const h = 6 + Math.floor(hash(variant, i, 6) * 5);
+    px(g, i % 2 ? '#2f7a2a' : '#3e8a33', x, T - h, 2, h);
+    px(g, '#7cc85a', x + lean, T - h - 1, 1, 2);
+  }
+  px(g, '#2a6424', 0, T - 2, T, 2);
+}
+
+function smith(g: Ctx, variant: number): void {
+  grass(g, variant);
+  // A little forge: stone hearth, glowing coals, and an anvil in front.
+  px(g, '#6f6f78', 1, 3, 9, 9);
+  px(g, '#4e4e56', 1, 11, 9, 1);
+  px(g, '#8a8a93', 2, 4, 7, 2);
+  px(g, '#e0402c', 3, 7, 5, 2);
+  px(g, '#f7d44a', 4, 7, 2, 1);
+  px(g, '#3a3a40', 2, 0, 3, 3);
+  px(g, '#4a4a55', 10, 10, 6, 2);
+  px(g, '#4a4a55', 12, 12, 2, 3);
+  px(g, '#2e2e36', 10, 14, 6, 1);
+  px(g, '#9a9aa6', 10, 10, 6, 1);
+}
+
 export function soil(g: Ctx, wet: boolean): void {
   px(g, wet ? '#5b3b24' : '#8d5d38', 0, 0, T, T);
   const line = wet ? '#472d1b' : '#74482a';
@@ -144,6 +172,11 @@ export function tileImage(kind: TileKind, x: number, y: number, time: number): H
     case 'rock': return cached(`rock${v}`, (g) => rock(g, v));
     case 'bin': return cached(`bin${v}`, (g) => bin(g, v));
     case 'mart': return cached(`mart${v}`, (g) => mart(g, v));
+    case 'smith': return cached(`smith${v}`, (g) => smith(g, v));
+    case 'tall': {
+      const f = (Math.floor(time / 700) + x) % 2;
+      return cached(`tall${v}-${f}`, (g) => tall(g, v, f));
+    }
     default: return cached(`grass${v}`, (g) => grass(g, v));
   }
 }

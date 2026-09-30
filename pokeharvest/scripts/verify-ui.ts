@@ -13,7 +13,14 @@ const EXECUTABLE = process.env['CHROMIUM_PATH'];
 const OUT = 'screenshots';
 
 interface Hook {
+  battle(dex: number, level: number): unknown;
+  tap(x: number, y: number): void;
+  warp(map: string, x: number, y: number): void;
   world: {
+    map: string;
+    mons: unknown[];
+    battle: { wild: { hp: number } } | null;
+    pendingPerks: { skill: string; level: number }[];
     clock: number;
     player: { x: number; y: number; path: unknown[]; energy: number };
     plots: Record<string, { watered: boolean; crop: { id: string } | null }>;
@@ -133,12 +140,73 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.evaluate(() => Object.assign((window as unknown as { __farm: Hook }).__farm.world.player, { x: 12, y: 28, path: [] }));
   await page.waitForTimeout(700);
   await tap(page, 13, 29, touch);
-  await page.waitForSelector('text=Buy seeds', { timeout: 10_000 });
+  await page.waitForSelector('.sheet h2:has-text("Poké Mart")', { timeout: 10_000 });
   await page.waitForTimeout(400);
   await fits(page, 'mart');
   await page.screenshot({ path: `${OUT}/${name}-7-mart.png` });
   await page.locator('.sheet .row').first().getByRole('button', { name: '×1' }).click();
   await page.locator('.close').click();
+
+  // Out of the gate to Route 1.
+  await page.evaluate(() => Object.assign((window as unknown as { __farm: Hook }).__farm.world.player, { x: 11, y: 30, path: [] }));
+  await page.waitForTimeout(500);
+  // The gate is the map's last row, under the hotbar on a phone: tap it through the game.
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(11, 31));
+  await page.waitForFunction(() => (window as unknown as { __farm: Hook }).__farm.world.map === 'route1', undefined, { timeout: 10_000 });
+  await page.waitForTimeout(900);
+  await fits(page, 'Route 1');
+  await page.screenshot({ path: `${OUT}/${name}-8-route.png` });
+
+  // A wild Rattata: one attack, then weaken it and throw balls until it's ours (or they run out).
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.battle(19, 3));
+  await page.waitForSelector('.cmd.fight', { timeout: 15_000 });
+  await fits(page, 'battle');
+  await onScreen(page, '.poke-card.wild', 'wild HP card');
+  await onScreen(page, '.poke-card.you', 'your HP card');
+  await onScreen(page, '.commands', 'battle commands');
+  await page.screenshot({ path: `${OUT}/${name}-9-battle.png` });
+  await page.locator('.cmd.fight').click();
+  await page.locator('.cmd.move').first().click();
+  await page.waitForSelector('.cmd.fight, .cmd.primary', { timeout: 20_000 });
+  for (let i = 0; i < 6; i += 1) {
+    if (await page.locator('.cmd.primary').count()) break;
+    await page.evaluate(() => { const b = (window as unknown as { __farm: Hook }).__farm.world.battle; if (b) b.wild.hp = 1; });
+    await page.locator('.cmd.bag').click();
+    await page.locator('.cmd.item', { hasText: 'Poké Ball' }).click();
+    await page.waitForSelector('.cmd.fight, .cmd.primary', { timeout: 20_000 });
+  }
+  await page.screenshot({ path: `${OUT}/${name}-10-caught.png` });
+  const caught = await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.mons.length);
+  check(caught === 2, `befriended the wild Rattata (${caught} Pokémon)`);
+  await page.locator('.cmd.primary', { hasText: 'Continue' }).click();
+  await page.waitForSelector('.battle', { state: 'detached' });
+
+  // The Pokémon tab.
+  await page.locator('.icon-btn.bag').click();
+  await page.getByRole('button', { name: 'Pokémon', exact: true }).click();
+  await page.waitForSelector('.mon-card');
+  await page.waitForTimeout(400);
+  check(await page.locator('.mon-card').count() === 2, 'both Pokémon are in the party');
+  await page.screenshot({ path: `${OUT}/${name}-11-pokemon.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // The blacksmith, back on the farm.
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.warp('farm', 16, 28));
+  await page.waitForTimeout(700);
+  await tap(page, 16, 29, touch);
+  await page.waitForSelector('text=Blacksmith', { timeout: 10_000 });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/${name}-12-smith.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // A perk to pick.
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.pendingPerks.push({ skill: 'farming', level: 5 }));
+  await page.waitForSelector('.perk-choice', { timeout: 5_000 });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/${name}-13-perk.png` });
+  await page.locator('.perk-choice').first().click();
 
   const heard = await page.evaluate(() => (window as unknown as { __sounds: number }).__sounds);
   check(heard > 0, `sound played (${heard} sounds)`);

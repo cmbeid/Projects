@@ -258,3 +258,144 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .slot-icon { width: 30px; height: 30px; }
   .logo { margin-top: 0; }
 }
+
+/* --- banners and transitions ---------------------------------------------------------- */
+
+.banner {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -12px);
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--hud);
+  color: #fff;
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.banner.show { opacity: 1; transform: translate(-50%, 0); }
+.farm.flash::after { content: ''; position: absolute; inset: 0; background: #fff; animation: flash 0.5s steps(2) 1; pointer-events: none; }
+@keyframes flash { 0%, 100% { opacity: 0; } 25%, 75% { opacity: 0.9; } }
+
+/* --- battle ---------------------------------------------------------------------------- */
+
+.battle {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: #10160c;
+  animation: battle-in 0.3s ease-out;
+}
+.battle.leaving { opacity: 0; transition: opacity 0.25s; }
+@keyframes battle-in { from { opacity: 0; transform: scale(1.04); } }
+.arena-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.arena { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.poke-card {
+  position: absolute;
+  width: min(60%, 280px);
+  padding: 8px 12px;
+  border: 3px solid #3a2a1a;
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.3);
+  font-weight: 700;
+}
+.poke-card.wild { top: calc(12px + var(--safe-top)); left: 12px; }
+.poke-card.you { right: 12px; bottom: 12px; }
+.card-name { display: flex; justify-content: space-between; gap: 8px; }
+.lv { font-family: var(--mono); }
+.hp-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.hp-label { padding: 0 4px; border-radius: 4px; background: #3a2a1a; color: #f2c230; font: 800 0.65rem var(--mono); }
+.hp-bar { flex: 1; height: 8px; border-radius: 4px; background: #d9c49a; overflow: hidden; }
+.hp-fill { height: 100%; border-radius: 4px; }
+.hp-nums { text-align: right; font: 700 0.85rem var(--mono); }
+.xp-bar { height: 4px; margin-top: 4px; border-radius: 2px; background: #d9c49a; overflow: hidden; }
+.xp-fill { height: 100%; background: #4aa0e8; }
+.battle-bottom {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(12px + var(--safe-bottom));
+  background: #2a2018;
+}
+.battle-text {
+  min-height: 3.2em;
+  padding: 10px 14px;
+  border: 3px solid #c8905a;
+  border-radius: 12px;
+  background: var(--paper);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.commands { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 104px; align-content: start; }
+.cmd {
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff8e7;
+  color: var(--ink);
+  font-weight: 800;
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15);
+  text-align: left;
+}
+.cmd:disabled { opacity: 0.4; }
+.cmd:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.cmd.fight { background: #f06a4a; color: #fff; }
+.cmd.bag { background: #f2c230; }
+.cmd.mons { background: #58b85a; color: #fff; }
+.cmd.run { background: #6aa0e8; color: #fff; }
+.cmd.fight, .cmd.bag, .cmd.mons, .cmd.run { text-align: center; font-size: 1.1rem; }
+.cmd.back { background: #d9c49a; text-align: center; }
+.cmd.wide, .cmd.item, .cmd.party { grid-column: 1 / -1; }
+.cmd.primary { background: var(--green); color: #fff; text-align: center; }
+.move { display: flex; flex-direction: column; gap: 2px; }
+.move-meta { font: 600 0.75rem var(--mono); color: var(--ink-soft); }
+.bag-item, .party-row { display: flex; align-items: center; gap: 10px; }
+.bag-item .verb { margin-left: auto; color: var(--ink-soft); font-size: 0.85rem; }
+.cmd-icon { width: 28px; height: 28px; }
+.cmd-empty { grid-column: 1 / -1; margin: 0; color: #e9d3a0; }
+.hp-mini { flex: 1; height: 6px; border-radius: 3px; background: #d9c49a; overflow: hidden; }
+.hp-mini span { display: block; height: 100%; }
+.hp-text { font: 600 0.8rem var(--mono); }
+
+@media (min-width: 900px), (min-aspect-ratio: 1/1) and (min-width: 600px) {
+  .battle-bottom { flex-direction: row; align-items: stretch; }
+  .battle-text { flex: 1 1 50%; }
+  .commands { flex: 1 1 50%; }
+  .poke-card.you { bottom: 16px; right: 16px; }
+}
+
+/* --- bag tabs, Pokémon and the farmer ---------------------------------------------------- */
+
+.meter { height: 8px; margin: 4px 0; border-radius: 4px; background: var(--paper-2); overflow: hidden; }
+.meter > div { height: 100%; border-radius: 4px; }
+.mon-card { display: flex; gap: 12px; padding: 10px; margin: 8px 0; border-radius: 14px; background: var(--paper-2); }
+.mon-img { flex: 0 0 auto; align-self: center; }
+.mon-info { flex: 1; min-width: 0; }
+.mon-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mon-bars { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 8px; font: 600 0.75rem var(--mono); }
+.mon-moves { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.chip { padding: 1px 8px; border: 2px solid; border-radius: 999px; background: #fff; font-size: 0.75rem; font-weight: 700; }
+.mon-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.mon-actions .btn { min-height: 36px; padding: 4px 12px; }
+.perk { display: flex; flex-direction: column; padding: 8px 12px; margin: 6px 0; border-radius: 10px; background: #e3f2d6; }
+.perk-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  border: 3px solid var(--green);
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+}
+.perk-choice:active { transform: translateY(2px); }
+.warn.ok { background: #e3f2d6; color: #2d5a1a; }

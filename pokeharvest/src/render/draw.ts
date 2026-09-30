@@ -4,7 +4,8 @@
  * floating text.
  */
 import { crop } from '../data/crops';
-import { FARM, MAP_H, MAP_W, tileAt } from '../data/maps';
+import { FARM, MAP_H, MAP_W, mapSize, tileAt } from '../data/maps';
+import { species } from '../data/species';
 import { stageOf } from '../game/farm';
 import { plotKey, type World } from '../game/model';
 import type { View } from './camera';
@@ -56,23 +57,25 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
   ctx.fillStyle = '#24522a';
   ctx.fillRect(0, 0, view.width, view.height);
 
+  const size = mapSize(world.map);
+  const farm = world.map === 'farm';
   const x0 = Math.max(0, Math.floor(ox / tile));
   const y0 = Math.max(0, Math.floor(oy / tile));
-  const x1 = Math.min(MAP_W - 1, Math.floor((ox + view.width) / tile));
-  const y1 = Math.min(MAP_H - 1, Math.floor((oy + view.height) / tile));
+  const x1 = Math.min(size.w - 1, Math.floor((ox + view.width) / tile));
+  const y1 = Math.min(size.h - 1, Math.floor((oy + view.height) / tile));
   const sx = (x: number): number => Math.round(x * tile - ox);
   const sy = (y: number): number => Math.round(y * tile - oy);
 
   // Ground.
   for (let y = y0; y <= y1; y += 1) {
     for (let x = x0; x <= x1; x += 1) {
-      ctx.drawImage(tileImage(tileAt(x, y), x, y, now), sx(x), sy(y), tile, tile);
-      const plot = world.plots[plotKey(x, y)];
+      ctx.drawImage(tileImage(tileAt(world.map, x, y), x, y, now), sx(x), sy(y), tile, tile);
+      const plot = farm ? world.plots[plotKey(x, y)] : undefined;
       if (plot) ctx.drawImage(soilImage(plot.watered), sx(x), sy(y), tile, tile);
     }
   }
   // Crops, ripe ones showing their berry.
-  for (let y = y0; y <= y1; y += 1) {
+  for (let y = y0; y <= y1 && farm; y += 1) {
     for (let x = x0; x <= x1; x += 1) {
       const c = world.plots[plotKey(x, y)]?.crop;
       if (!c) continue;
@@ -85,7 +88,7 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
     }
   }
 
-  ctx.drawImage(houseImage(HOUSE.w, HOUSE.h, HOUSE.door), sx(HOUSE.x), sy(HOUSE.y), HOUSE.w * tile, HOUSE.h * tile);
+  if (farm) ctx.drawImage(houseImage(HOUSE.w, HOUSE.h, HOUSE.door), sx(HOUSE.x), sy(HOUSE.y), HOUSE.w * tile, HOUSE.h * tile);
 
   if (fx.target) {
     const pulse = 0.55 + 0.35 * Math.sin(now / 120);
@@ -113,7 +116,9 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
         const foot = sy(h.y) + tile * 0.95;
         shadow(ctx, cx, foot - scale, tile * 0.36);
         const hop = h.path.length ? Math.abs(Math.sin(now / 110)) * scale * 1.5 : 0;
-        drawPokemon(ctx, h.dex, cx, foot - hop, scale * 0.55, { time: now, flip: h.facing === 'right', phase: i * 300 });
+        const mon = world.mons.find((m) => m.uid === h.uid);
+        const fainted = (mon?.hp ?? 1) <= 0;
+        drawPokemon(ctx, h.dex, cx, foot - hop, scale * 0.55, { time: now, flip: h.facing === 'right', phase: i * 300, shiny: Boolean(mon?.shiny), alpha: fainted ? 0.5 : 1, frozen: fainted });
       },
     });
   });
@@ -185,13 +190,13 @@ function lighting(ctx: CanvasRenderingContext2D, world: World, view: View, sx: (
   };
   // The farmhouse windows.
   for (const col of [0, HOUSE.w - 1]) {
-    if (col === HOUSE.door) continue;
+    if (col === HOUSE.door || world.map !== 'farm') continue;
     glow(sx(HOUSE.x + col) + tile / 2, sy(HOUSE.y + HOUSE.h - 1), tile * 2.2, 1);
   }
   // The farmer's lantern, and the Fire starter's tail flame.
   glow(sx(world.player.x) + tile / 2, sy(world.player.y) + tile / 2, tile * 3, 0.9);
   for (const h of world.helpers) {
-    if (h.dex >= 4 && h.dex <= 6) glow(sx(h.x) + tile / 2, sy(h.y) + tile / 2, tile * 1.8, 0.8);
+    if (species(h.dex).types.includes('fire')) glow(sx(h.x) + tile / 2, sy(h.y) + tile / 2, tile * 1.8, 0.8);
   }
   ctx.restore();
 }

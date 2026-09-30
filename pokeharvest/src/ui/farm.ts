@@ -4,10 +4,13 @@
  */
 import { cry, loadCries, sfx } from '../audio/index';
 import { item } from '../data/items';
+import { MAPS, mapSize } from '../data/maps';
 import { species } from '../data/species';
-import { CAN_SIZE, tileOf, type Dir, type GameEvent, type World } from '../game/model';
+import { canCapacity } from '../game/farm';
+import { tileOf, type Dir, type GameEvent, type World } from '../game/model';
 import { clockText, dayOfSeason, seasonOf, weekdayOf } from '../game/time';
-import { actFacing, hotbar, select, sleep, step, tapTile, tick } from '../game/world';
+import { startBattle } from '../game/battle';
+import { actFacing, hotbar, select, sleep, step, tapTile, tick, warpTo } from '../game/world';
 import { follow, tileAtPoint, type View } from '../render/camera';
 import { pruneFx, render, type Fx } from '../render/draw';
 import { loadSheets } from '../render/sprites';
@@ -15,7 +18,8 @@ import { saveWorld } from '../state/save';
 import { openSettings, show } from './app';
 import { h } from './dom';
 import { itemIcon } from './icons';
-import { openBag, openBin, openHelp, openMart, openSleep, openSummary } from './menus';
+import { battleScreen } from './battle';
+import { openBag, openBin, openHelp, openMart, openPerk, openSleep, openSmith, openSummary } from './menus';
 import { closeSheet, sheetOpen } from './sheet';
 
 const STEP = 1 / 60;
@@ -51,7 +55,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   show(root);
 
   const fx: Fx = { floaters: [], splashes: [], target: null };
-  let view: View = follow(1, 1, 0, 0);
+  let view: View = follow(1, 1, 0, 0, 1, 1);
   let camX = world.player.x;
   let camY = world.player.y;
   let lastHour = Math.floor(world.clock / 60);
@@ -63,19 +67,21 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   // --- HUD ---------------------------------------------------------------------------
   let barKey = '';
   function updateHud(force = false): void {
-    dayEl.textContent = `${seasonOf(world.day)} ${dayOfSeason(world.day)} · ${weekdayOf(world.day)}`;
+    const where = world.map === 'farm' ? weekdayOf(world.day) : MAPS[world.map].name;
+    dayEl.textContent = `${seasonOf(world.day)} ${dayOfSeason(world.day)} · ${where}`;
     clockEl.textContent = `☀ ${clockText(world.clock)}`;
     goldEl.textContent = `${world.player.gold.toLocaleString('en')}g`;
     const e = world.player.energy / world.player.maxEnergy;
     energyFill.style.width = `${Math.round(e * 100)}%`;
     energyEl.classList.toggle('low', e < 0.25);
     const slots = hotbar(world);
-    const key = `${slots.join()}|${world.selected}|${slots.map((id) => world.inventory[id] ?? '').join()}|${world.player.water}`;
+    const cap = canCapacity(world);
+    const key = `${slots.join()}|${world.selected}|${slots.map((id) => world.inventory[id] ?? '').join()}|${world.player.water}/${cap}`;
     if (!force && key === barKey) return;
     barKey = key;
     bar.replaceChildren(...slots.map((id, i) => {
       const def = item(id);
-      const count = def.kind === 'tool' ? (id === 'can' ? `${world.player.water}/${CAN_SIZE}` : '') : String(world.inventory[id] ?? 0);
+      const count = def.kind === 'tool' ? (id === 'can' ? `${world.player.water}/${cap}` : '') : String(world.inventory[id] ?? 0);
       return h('button', {
         className: id === world.selected ? 'slot on' : 'slot',
         title: `${def.name} (${i + 1})`,
@@ -102,7 +108,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
 
   // --- input --------------------------------------------------------------------------
   canvas.addEventListener('pointerdown', (e) => {
-    if (sheetOpen()) return;
+    if (sheetOpen() || battleOpen) return;
     const r = canvas.getBoundingClientRect();
     const scaleX = canvas.width / r.width;
     const t = tileAtPoint(view, (e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleX);
@@ -121,7 +127,11 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
       if (sheetOpen()) closeSheet();
       return;
     }
-    if (sheetOpen()) return;
+    if (sheetOpen() || battleOpen) return;
+    if (e.code === 'KeyB') {
+      openBag(layer, world, changed);
+      return;
+    }
     if (dir) {
       held.add(dir);
       e.preventDefault();
@@ -175,7 +185,25 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
         held.clear();
         if (ev.ui === 'sleep') openSleep(layer, world, goToBed);
         else if (ev.ui === 'bin') openBin(layer, world, changed);
+        else if (ev.ui === 'smith') openSmith(layer, world, changed);
         else openMart(layer, world, changed);
+        break;
+      case 'skill': {
+        const at = tileOf(world.player);
+        fx.floaters.push({ x: at.x, y: at.y - 1, text: `${ev.skill === 'farming' ? 'Farming' : 'Battling'} Lv ${ev.level}!`, color: '#ffe08a', born: now });
+        sfx.levelUp();
+        break;
+      }
+      case 'warp':
+        held.clear();
+        camX = world.player.x;
+        camY = world.player.y;
+        toast(MAPS[ev.map].name);
+        save();
+        break;
+      case 'encounter':
+        held.clear();
+        openBattle();
         break;
       case 'day':
         held.clear();
@@ -184,11 +212,40 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
         camX = world.player.x;
         camY = world.player.y;
         if (ev.summary.earned > 0) sfx.coin();
-        openSummary(layer, ev.summary, world.day, () => updateHud(true));
+        openSummary(layer, world, ev.summary, () => updateHud(true));
         break;
     }
     if ('text' in ev && ev.text && 'x' in ev) fx.floaters.push({ x: ev.x, y: ev.y, text: ev.text, color: EVENT_COLOURS[ev.kind] ?? '#fff', born: now });
     changed();
+  }
+
+  // --- battles and banners -------------------------------------------------------------
+  let battleOpen = false;
+  function openBattle(): void {
+    if (battleOpen || !world.battle) return;
+    battleOpen = true;
+    root.classList.add('flash');
+    setTimeout(() => root.classList.remove('flash'), 500);
+    setTimeout(() => {
+      battleScreen(root, world, () => {
+        battleOpen = false;
+        camX = world.player.x;
+        camY = world.player.y;
+        handleEvents();
+        save();
+        updateHud(true);
+      });
+    }, 350);
+  }
+
+  const banner = h('div.banner', { 'aria-live': 'polite' });
+  root.append(banner);
+  let bannerTimer = 0;
+  function toast(text: string): void {
+    banner.textContent = text;
+    banner.classList.add('show');
+    clearTimeout(bannerTimer);
+    bannerTimer = window.setTimeout(() => banner.classList.remove('show'), 1800);
   }
 
   // --- loop ---------------------------------------------------------------------------
@@ -198,7 +255,8 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     if (!running || !root.isConnected) return;
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    if (!sheetOpen() && !document.hidden) {
+    if (!sheetOpen() && !battleOpen && !document.hidden) {
+      if (world.pendingPerks.length) openPerk(layer, world, () => updateHud(true));
       for (const dir of held) {
         step(world, dir);
         break;
@@ -222,7 +280,12 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     const k = 1 - Math.exp(-dt * 10);
     camX += (world.player.x - camX) * k;
     camY += (world.player.y - camY) * k;
-    view = follow(canvas.width, canvas.height, camX, camY);
+    const size = mapSize(world.map);
+    const r = canvas.getBoundingClientRect();
+    const px = r.height ? canvas.height / r.height : 1;
+    const padTop = Math.max(0, hud.getBoundingClientRect().bottom - r.top) * px;
+    const padBottom = Math.max(0, r.bottom - bar.getBoundingClientRect().top) * px;
+    view = follow(canvas.width, canvas.height, camX, camY, size.w, size.h, padTop, padBottom);
     pruneFx(fx, now);
     render(ctx, world, view, now, fx);
     updateHud();
@@ -242,6 +305,9 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   // For scripts/verify-ui.ts: where tiles are on screen, and the world to poke at.
   (window as unknown as { __farm?: unknown }).__farm = {
     world,
+    battle: (dex: number, level: number) => startBattle(world, dex, level),
+    tap: (x: number, y: number) => tapTile(world, x, y),
+    warp: (map: World['map'], x: number, y: number) => warpTo(world, map, x, y),
     tileCentre: (x: number, y: number) => {
       const r = canvas.getBoundingClientRect();
       const k = r.width / canvas.width;

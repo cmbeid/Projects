@@ -2,12 +2,13 @@
  * Downloads everything the game uses from PokeAPI into `public/`
  * (adapted from PokéDefense's):
  *
- * - `sprites/` — each Pokémon's animated Black/White sprite (and its shiny),
+ * - `sprites/` — each Pokémon's animated Black/White sprite (its shiny, and
+ *   its back for your side of a battle),
  *   decoded from GIF, trimmed, and packed into one PNG sheet per Pokémon with
  *   a JSON file of frame timings, since canvas can't step through a GIF.
  * - `cries/` — each cry, decoded by what it really is (PokeAPI's `.ogg` files
  *   are sometimes MP3s) and rewritten as a small mono WAV that plays on iOS.
- * - `items/` — berry icons.
+ * - `items/` — berry, ball and material icons.
  *
  * The result is committed. Files already present are skipped; pass `--force`
  * to fetch everything again.
@@ -23,7 +24,7 @@ import { MPEGDecoder } from 'mpg123-decoder';
 import { GifReader } from 'omggif';
 import { PNG } from 'pngjs';
 import { ITEM_ICONS } from '../src/data/items';
-import { SPECIES } from '../src/data/species';
+import { SPECIES, sheetName } from '../src/data/species';
 
 const RAW = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites';
 const ANIMATED = `${RAW}/pokemon/versions/generation-v/black-white/animated`;
@@ -244,10 +245,10 @@ function encodePng(width: number, height: number, rgba: Uint8Array): Buffer {
   ]);
 }
 
-async function fetchSprite(dex: number, shiny: boolean): Promise<void> {
-  const name = shiny ? `${dex}-shiny` : `${dex}`;
+async function fetchSprite(dex: number, variant: 'front' | 'shiny' | 'back'): Promise<void> {
+  const name = sheetName(dex, variant);
   if (!FORCE && existsSync(`public/sprites/${name}.json`)) return;
-  const dir = shiny ? '/shiny' : '';
+  const dir = variant === 'front' ? '' : `/${variant}`;
   let packed: { png: Buffer; sheet: Sheet };
   try {
     const gif = await download(`${ANIMATED}${dir}/${dex}.gif`).catch(() => download(`${SHOWDOWN}${dir}/${dex}.gif`));
@@ -314,8 +315,9 @@ async function main(): Promise<void> {
   for (const dir of ['public/sprites', 'public/cries', 'public/items']) await mkdir(dir, { recursive: true });
   const dexes = [...SPECIES.keys()].sort((a, b) => a - b);
   for (const dex of dexes) {
-    await fetchSprite(dex, false);
-    await fetchSprite(dex, true);
+    await fetchSprite(dex, 'front');
+    await fetchSprite(dex, 'shiny');
+    await fetchSprite(dex, 'back');
   }
   for (const dex of dexes) await fetchCry(dex);
   for (const icon of ITEM_ICONS) await fetchFile(`${RAW}/items/${icon}.png`, `public/items/${icon}.png`);
