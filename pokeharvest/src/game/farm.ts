@@ -19,7 +19,7 @@ import { DELTA } from './walk';
 
 export type Action =
   | 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'untill' | 'refill'
-  | 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant'
+  | 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant' | 'seedbox'
   | 'place' | 'machine' | 'pickup' | 'pet' | 'talk' | 'door' | 'gather';
 
 /** What using a tile would do: an action, nothing worth doing (just walk there), or a reason it can't. */
@@ -78,6 +78,36 @@ export function soilAt(world: World, x: number, y: number): boolean {
   return MAPS[world.map].farmable && (kind === 'grass' || (kind === 'ghsoil' && world.greenhouse));
 }
 
+export function markField(world: World, x: number, y: number): void {
+  const key = plotKey(x, y);
+  if (!world.field.includes(key)) world.field.push(key);
+}
+
+/** Turn the soil at (x, y) into an empty plot, and count it as one of your fields. */
+export function tillAt(world: World, x: number, y: number): void {
+  world.plots[plotKey(x, y)] = { watered: false, crop: null };
+  markField(world, x, y);
+  world.events.push({ kind: 'till', x, y });
+}
+
+/** Sow `cropId` in the empty plot at (x, y). */
+export function plantAt(world: World, cropId: string, x: number, y: number): void {
+  const plot = world.plots[plotKey(x, y)];
+  if (!plot || plot.crop) return;
+  plot.crop = { id: cropId, growth: 0, harvests: 0, tended: false };
+  world.events.push({ kind: 'plant', x, y });
+}
+
+/** Whether `cropId` would grow if planted at (x, y): in season, or anything under glass. */
+export function plantableAt(world: World, cropId: string, x: number, y: number): boolean {
+  return underGlass(x, y) || inSeason(cropId, seasonOf(world.day));
+}
+
+/** A field tile that has gone back to grass and could be tilled again. */
+export function retillable(world: World, x: number, y: number): boolean {
+  return world.field.includes(plotKey(x, y)) && soilAt(world, x, y) && !world.plots[plotKey(x, y)] && !world.machines[plotKey(x, y)];
+}
+
 /** Under glass, where seasons don't matter. */
 export function underGlass(x: number, y: number): boolean {
   return tileAt('farm', x, y) === 'ghsoil';
@@ -115,6 +145,7 @@ function toolIntent(world: World, x: number, y: number): Intent {
   if (kind === 'smith') return { kind: 'use', action: 'smith' };
   if (kind === 'barn' || kind === 'barndoor') return { kind: 'use', action: 'barn' };
   if (kind === 'board') return { kind: 'use', action: 'board' };
+  if (kind === 'seedbox') return { kind: 'use', action: 'seedbox' };
   if (kind === 'merchant') return { kind: 'use', action: 'merchant' };
   if (doorAt(world.map, x, y)) return { kind: 'use', action: 'door' };
   if (nodeAt(world.map, x, y)) return { kind: 'use', action: 'gather' };
@@ -207,6 +238,7 @@ export function useAt(world: World, x: number, y: number): boolean {
     case 'barn':
     case 'board':
     case 'merchant':
+    case 'seedbox':
       world.events.push({ kind: 'open', ui: action });
       return true;
     case 'machine':
@@ -241,15 +273,16 @@ export function useAt(world: World, x: number, y: number): boolean {
       let n = 0;
       for (const t of toolArea(world.tools.hoe, { x, y }, p.facing)) {
         if (!tillable(world, t.x, t.y)) continue;
-        world.plots[plotKey(t.x, t.y)] = { watered: false, crop: null };
-        world.events.push({ kind: 'till', x: t.x, y: t.y });
+        tillAt(world, t.x, t.y);
         n += 1;
       }
       addSkillXp(world, 'farming', n);
       return true;
     }
     case 'untill':
+      // Clearing a plot with the sickle takes it out of your fields, so helpers leave it be.
       delete world.plots[key];
+      world.field = world.field.filter((k) => k !== key);
       world.events.push({ kind: 'clear', x, y });
       return true;
     case 'water': {
@@ -266,10 +299,9 @@ export function useAt(world: World, x: number, y: number): boolean {
     }
     case 'plant': {
       const seed = item(world.selected);
-      plot!.crop = { id: seed.crop!, growth: 0, harvests: 0, tended: false };
+      plantAt(world, seed.crop!, x, y);
       takeItem(world, seed.id, 1);
       addSkillXp(world, 'farming', 1);
-      world.events.push({ kind: 'plant', x, y });
       return true;
     }
     case 'clear':

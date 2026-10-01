@@ -17,6 +17,7 @@ interface Hook {
   tap(x: number, y: number): void;
   challenge(id: string): void;
   warp(map: string, x: number, y: number): void;
+  sync(): void;
   world: {
     map: string;
     mons: { level: number; hp: number }[];
@@ -295,6 +296,46 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.screenshot({ path: `${OUT}/${name}-18-board.png` });
   await page.locator('.close').click();
   await page.waitForTimeout(250);
+
+  // The Seed Box: stock it, pick a seed, and watch a Diglett plant from it.
+  await page.evaluate(() => {
+    const f = (window as unknown as { __farm: Hook }).__farm;
+    const w = f.world as unknown as {
+      mons: { uid: number; dex: number }[]; farm: number[]; nextUid: number; inventory: Record<string, number>;
+      plots: Record<string, unknown>; field: string[]; helpers: { uid: number; x: number; y: number; cooldown: number }[]; clock: number;
+    };
+    const uid = w.nextUid++;
+    w.mons.push({ ...w.mons[0]!, uid, dex: 50 });
+    w.farm.push(uid);
+    w.inventory['cheri-seed'] = 5;
+    w.plots['14,6'] = { watered: false, crop: null };
+    w.field.push('14,6');
+    w.clock = 9 * 60;
+    f.sync();
+    const h = w.helpers.find((x) => x.uid === uid)!;
+    Object.assign(h, { x: 13, y: 5, cooldown: 0 });
+    f.warp('farm', 12, 5);
+  });
+  await page.waitForTimeout(600);
+  await tap(page, 12, 4, touch);
+  await page.waitForSelector('.sheet h2:has-text("Seed Box")', { timeout: 10_000 });
+  await page.locator('.row', { hasText: 'Cheri Seeds' }).getByRole('button', { name: '+5' }).click();
+  await page.waitForTimeout(300);
+  await page.locator('.sheet').getByRole('button', { name: 'Cheri', exact: true }).click();
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => {
+    const w = (window as unknown as { __farm: { world: { seedBox: Record<string, number>; seedChoice: string } } }).__farm.world;
+    return w.seedBox['cheri-seed'] === 5 && w.seedChoice === 'cheri-seed';
+  }), 'stocked the Seed Box and chose Cheri');
+  await fits(page, 'seed box');
+  await page.screenshot({ path: `${OUT}/${name}-18b-seedbox.png` });
+  await page.locator('.close').click();
+  await page.waitForFunction(() => {
+    const w = (window as unknown as { __farm: { world: { plots: Record<string, { crop: { id: string } | null }> } } }).__farm.world;
+    return w.plots['14,6']?.crop?.id === 'cheri';
+  }, undefined, { timeout: 20_000 });
+  check(await page.evaluate(() => (window as unknown as { __farm: { world: { seedBox: Record<string, number> } } }).__farm.world.seedBox['cheri-seed'] === 4), 'a Diglett planted a Cheri seed from the box');
+  await page.screenshot({ path: `${OUT}/${name}-18c-sown.png` });
 
   // The merchant, on a Saturday.
   await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.world.day = 6; f.warp('farm', 14, 26); });

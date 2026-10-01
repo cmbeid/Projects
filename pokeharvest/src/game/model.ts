@@ -70,6 +70,10 @@ export interface Helper extends Walker {
   cooldown: number;
   /** The plot it is walking to work on. */
   target: Point | null;
+  /** A Ground helper's planting trip: the plot it fetched (or is fetching) a seed for. */
+  errand: Point | null;
+  /** The seed it took from the Seed Box, on its way to plant it. */
+  carrying: string | null;
 }
 
 export interface DaySummary {
@@ -128,7 +132,7 @@ export type GameEvent =
   | { kind: 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'refill'; x: number; y: number; text?: string }
   | { kind: 'helper'; x: number; y: number; dex: number; text: string }
   | { kind: 'hint'; x: number; y: number; text: string }
-  | { kind: 'open'; ui: 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant' }
+  | { kind: 'open'; ui: 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant' | 'seedbox' }
   | { kind: 'machine'; x: number; y: number }
   | { kind: 'place' | 'collect' | 'pet'; x: number; y: number; text?: string }
   | { kind: 'coins'; amount: number }
@@ -182,6 +186,12 @@ export interface World {
   helpers: Helper[];
   /** Keyed "x,y", on the farm. */
   plots: Record<string, Plot>;
+  /** Every tile you've tilled ("x,y"): your fields, which Ground helpers keep tilled and planted. */
+  field: string[];
+  /** Seeds in the Seed Box by the house, which Ground helpers plant from. */
+  seedBox: Record<string, number>;
+  /** Which seed Ground helpers plant: a seed id, or 'auto' for the plantable seed the box has most of. */
+  seedChoice: string;
   inventory: Record<string, number>;
   /** The item in hand. */
   selected: string;

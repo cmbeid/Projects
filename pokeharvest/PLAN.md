@@ -224,3 +224,11 @@ style.css
 - **Trainers:** 12 roaming trainers with lines of sight and teams, beatable once a week; Kai's weekly rematches come after the story.
 - **Stations:** Workbench (needed for crafting machines), Furnace (ore into bars, faster with Fire Pokémon and no wood needed), Apricorn Workshop (Apricorn balls). The kitchen moved into the farmhouse.
 - **On-screen d-pad:** can be turned on or off, resized, made more or less see-through, and dragged anywhere.
+
+## Seed Box and sowing helpers (built)
+- **The Seed Box:** a fixed crate by the house that you stock with seeds. You pick what it plants: one seed, or Auto (the most plentiful seed that will grow on the tile).
+- **The Sow job:** Ground types now sow instead of harvesting.
+  - They walk to the box, take one seed, and plant it in the nearest empty plot anywhere on the farm, greenhouse included.
+  - They re-till field tiles that went back to grass.
+  - Seeds they're carrying go back into the box if a trip is called off or the game saves.
+- **Saves:** older saves count their existing plots as fields. Anything that stood where the box now is goes back to the bag.

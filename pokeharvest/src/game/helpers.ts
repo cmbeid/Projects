@@ -5,17 +5,20 @@
  * Working hours on the farm, each goes off every half hour (every hour when
  * it went to bed hungry) to do its type's job on the nearest crop that needs
  * it: Water types water it, Grass and Bug types tend it, Normal, Fighting,
- * Ground and Rock types pick it when it's ripe and put it in the shipping
- * bin. Fire and Flying types keep the crows off at night, and Electric types
+ * Rock and Steel types pick it when it's ripe and put it in the shipping
+ * bin. Ground types re-till your fields when they go back to grass, and
+ * fetch seeds from the Seed Box to plant in empty plots. Fire and Flying types keep the crows off at night, and Electric types
  * power the machines. Fainted Pokémon rest until they're healed.
  */
 import { crop } from '../data/crops';
-import { BARNYARD, SPAWN, gateAt, tileAt, walkable, type MapId } from '../data/maps';
+import { ITEMS } from '../data/items';
+import { BARNYARD, SEED_BOX, SPAWN, gateAt, tileAt, walkable, type MapId } from '../data/maps';
 import { species } from '../data/species';
-import { isRipe, pick } from './farm';
+import { isRipe, pick, plantAt, plantableAt, retillable, tillAt } from './farm';
 import { farmMons, monByUid, parseKey, partyMons, plotKey, tileOf, type Helper, type World } from './model';
 import { manhattan, pathBeside, pathTo, type Point } from './path';
 import { nextRandom } from './rng';
+import { removeSeed, returnSeed, seedFor } from './seedbox';
 import { walk } from './walk';
 
 /** In-game minutes between jobs, when fed. */
@@ -43,7 +46,7 @@ export function passableFor(world: World, map: MapId = world.map): (p: Point) =>
 export const passable = passableOn('farm');
 
 export function newHelper(uid: number, dex: number, role: Helper['role'], x: number, y: number): Helper {
-  return { uid, dex, role, x, y, path: [], facing: 'down', cooldown: JOB_INTERVAL / 2, target: null };
+  return { uid, dex, role, x, y, path: [], facing: 'down', cooldown: JOB_INTERVAL / 2, target: null, errand: null, carrying: null };
 }
 
 /** Make the helpers match the party and the barn: newcomers appear beside you or the barn; evolutions show. */
@@ -58,10 +61,12 @@ export function syncHelpers(world: World): void {
     const home = role === 'party' ? at : BARNYARD;
     return newHelper(uid, dex, role, existing && role === 'party' && world.map === 'farm' ? Math.round(existing.x) : home.x, existing && role === 'party' && world.map === 'farm' ? Math.round(existing.y) : home.y);
   };
-  world.helpers = [
+  const next = [
     ...partyMons(world).map((m) => make(m.uid, m.dex, 'party')),
     ...farmMons(world).map((m) => make(m.uid, m.dex, 'farm')),
   ];
+  for (const h of world.helpers) if (!next.includes(h)) dropErrand(world, h);
+  world.helpers = next;
 }
 
 /** Whether a conscious helper on the farm overnight scares crows. Everyone's home at night. */
@@ -69,12 +74,50 @@ export function guarded(world: World): boolean {
   return [...partyMons(world), ...farmMons(world)].some((m) => m.hp > 0 && species(m.dex).job === 'guard');
 }
 
+/** Plots other helpers are already heading for, or fetching a seed for. */
+function takenBy(world: World, h: Helper): Set<string> {
+  const out = new Set<string>();
+  for (const o of world.helpers) {
+    if (o === h) continue;
+    if (o.target) out.add(plotKey(o.target.x, o.target.y));
+    if (o.errand) out.add(plotKey(o.errand.x, o.errand.y));
+  }
+  return out;
+}
+
+/** A Ground helper's nearest job: an empty plot the Seed Box has a seed for, or a field gone back to grass. */
+function findSowing(world: World, h: Helper): Point | null {
+  const from = tileOf(h);
+  const taken = takenBy(world, h);
+  let best: Point | null = null;
+  let bestD = Infinity;
+  const consider = (p: Point): void => {
+    const d = manhattan(from, p);
+    if (d < bestD) {
+      bestD = d;
+      best = p;
+    }
+  };
+  for (const [key, plot] of Object.entries(world.plots)) {
+    if (plot.crop || taken.has(key) || world.machines[key]) continue;
+    const p = parseKey(key);
+    if (seedFor(world, p.x, p.y)) consider(p);
+  }
+  for (const key of world.field) {
+    if (taken.has(key)) continue;
+    const p = parseKey(key);
+    if (retillable(world, p.x, p.y)) consider(p);
+  }
+  return best;
+}
+
 /** The nearest crop that wants this helper's job, if any, not already someone else's target. */
 function findWork(world: World, h: Helper): Point | null {
   const job = species(h.dex).job;
+  if (job === 'sow') return findSowing(world, h);
   if (job !== 'water' && job !== 'tend' && job !== 'harvest') return null;
   const from = tileOf(h);
-  const taken = new Set(world.helpers.filter((o) => o !== h && o.target).map((o) => plotKey(o.target!.x, o.target!.y)));
+  const taken = takenBy(world, h);
   let best: Point | null = null;
   let bestD = Infinity;
   for (const [key, plot] of Object.entries(world.plots)) {
@@ -93,7 +136,38 @@ function findWork(world: World, h: Helper): Point | null {
   return best;
 }
 
+/** Arrived beside the Seed Box: pick up a seed for the errand plot. True if it's off to plant. */
+function fetchSeed(world: World, h: Helper): boolean {
+  const at = h.errand;
+  const seed = at && seedFor(world, at.x, at.y);
+  if (!at || !seed || !removeSeed(world, seed)) return false;
+  h.carrying = seed;
+  world.events.push({ kind: 'helper', x: SEED_BOX.x, y: SEED_BOX.y, dex: h.dex, text: `Took a ${crop(ITEMS.get(seed)!.crop!).name.replace(' Berry', '')} seed` });
+  return true;
+}
+
+/** Arrived at the plot with a seed: plant it, or put it back in the box if the plot's no use now. */
+function sow(world: World, h: Helper, at: Point): void {
+  const seed = h.carrying!;
+  h.carrying = null;
+  const plot = world.plots[plotKey(at.x, at.y)];
+  const cropId = ITEMS.get(seed)!.crop!;
+  if (!plot || plot.crop || !plantableAt(world, cropId, at.x, at.y)) {
+    returnSeed(world, seed);
+    return;
+  }
+  plantAt(world, cropId, at.x, at.y);
+  world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text: `Planted ${crop(cropId).name}!` });
+}
+
 function doJob(world: World, h: Helper, at: Point): void {
+  if (species(h.dex).job === 'sow' && !world.plots[plotKey(at.x, at.y)]) {
+    if (retillable(world, at.x, at.y)) {
+      tillAt(world, at.x, at.y);
+      world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text: 'Dig!' });
+    }
+    return;
+  }
   const plot = world.plots[plotKey(at.x, at.y)];
   const c = plot?.crop;
   if (!plot || !c) return;
@@ -121,18 +195,39 @@ export function updateHelpers(world: World, dt: number, minutes: number): void {
     h.cooldown -= minutes;
     if (h.target) {
       if (walk(h, SPEED, dt)) {
-        doJob(world, h, h.target);
-        h.target = null;
-        h.cooldown = mon?.fed === false ? JOB_INTERVAL * 2 : JOB_INTERVAL;
+        const done = (): void => {
+          h.target = null;
+          h.errand = null;
+          h.cooldown = mon?.fed === false ? JOB_INTERVAL * 2 : JOB_INTERVAL;
+        };
+        if (h.errand && !h.carrying) {
+          // At the Seed Box: take a seed and head for the plot.
+          const path = fetchSeed(world, h) ? pathBeside(tileOf(h), h.errand, ok, true) : null;
+          if (path) {
+            h.target = h.errand;
+            h.path = path;
+          } else {
+            dropErrand(world, h);
+            done();
+          }
+          continue;
+        }
+        if (h.carrying) sow(world, h, h.target);
+        else doJob(world, h, h.target);
+        done();
       }
       continue;
     }
     const awake = (mon?.hp ?? 0) > 0;
     if (awake && map === 'farm' && h.cooldown <= 0 && world.clock < WORK_ENDS) {
       const work = findWork(world, h);
-      const path = work && pathBeside(tileOf(h), work, ok, true);
-      if (work && path) {
-        h.target = work;
+      // Planting starts with a trip to the Seed Box; re-tilling goes straight there.
+      const fetch = work && species(h.dex).job === 'sow' && world.plots[plotKey(work.x, work.y)];
+      const first = fetch ? SEED_BOX : work;
+      const path = first && pathBeside(tileOf(h), first, ok, true);
+      if (work && first && path) {
+        h.target = first;
+        h.errand = fetch ? work : null;
         h.path = path;
         continue;
       }
@@ -158,7 +253,7 @@ export function placeParty(world: World, at: Point = SPAWN): void {
     .filter(ok);
   world.helpers.filter((h) => h.role === 'party').forEach((h, i) => {
     const spot = spots[i % Math.max(1, spots.length)] ?? at;
-    reset(h, spot);
+    reset(world, h, spot);
   });
 }
 
@@ -168,11 +263,19 @@ export function placeHelpers(world: World, at: Point = SPAWN): void {
   const ok = passableFor(world, 'farm');
   world.helpers.filter((h) => h.role === 'farm').forEach((h, i) => {
     const spot = { x: BARNYARD.x - 2 + (i % 5), y: BARNYARD.y + Math.floor(i / 5) };
-    reset(h, ok(spot) ? spot : BARNYARD);
+    reset(world, h, ok(spot) ? spot : BARNYARD);
   });
 }
 
-function reset(h: Helper, at: Point): void {
+/** Call off a helper's planting trip, putting any seed it carried back in the box. */
+export function dropErrand(world: World, h: Helper): void {
+  if (h.carrying) returnSeed(world, h.carrying);
+  h.carrying = null;
+  h.errand = null;
+}
+
+function reset(world: World, h: Helper, at: Point): void {
+  dropErrand(world, h);
   h.x = at.x;
   h.y = at.y;
   h.path = [];

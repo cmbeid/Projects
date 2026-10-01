@@ -9,7 +9,7 @@
 import type { PokeType } from './types';
 
 /** What a helper does around the farm. */
-export type Job = 'water' | 'tend' | 'guard' | 'harvest' | 'power' | 'none';
+export type Job = 'water' | 'tend' | 'guard' | 'harvest' | 'sow' | 'power' | 'none';
 
 export interface Base {
   hp: number;
@@ -31,7 +31,7 @@ export interface Species {
 /** The first of a Pokémon's types that has a job decides what it does. */
 const JOB_BY_TYPE: readonly [PokeType, Job][] = [
   ['water', 'water'], ['grass', 'tend'], ['bug', 'tend'], ['fire', 'guard'], ['flying', 'guard'],
-  ['dark', 'guard'], ['normal', 'harvest'], ['fighting', 'harvest'], ['ground', 'harvest'], ['rock', 'harvest'], ['steel', 'harvest'], ['electric', 'power'],
+  ['dark', 'guard'], ['normal', 'harvest'], ['fighting', 'harvest'], ['ground', 'sow'], ['rock', 'harvest'], ['steel', 'harvest'], ['electric', 'power'],
 ];
 
 export function jobFor(types: readonly PokeType[]): Job {
@@ -156,6 +156,7 @@ export const JOB_TEXT: Record<Job, string> = {
   tend: 'Tends a crop every half hour so it grows 50% faster.',
   guard: 'Keeps crows away from your field at night.',
   harvest: 'Picks ripe crops and puts them in the shipping bin.',
+  sow: 'Re-tills your fields when they go back to grass, and plants seeds from the Seed Box in empty plots.',
   power: 'Powers your machines: they run twice as fast while it is on the farm.',
   none: 'Keeps you company.'
 };
