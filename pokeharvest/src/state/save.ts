@@ -6,19 +6,19 @@
  * game starting. Only a save with no readable starter is thrown away.
  */
 import { isCrop } from '../data/crops';
-import { ITEMS, marketItem } from '../data/items';
+import { ITEMS, marketItem, seedId } from '../data/items';
 import { DEX_REWARDS } from '../data/dex';
 import type { Weather } from '../data/encounters';
 import { MACHINES } from '../data/crafting';
 import { BARN_LEVELS, FRIENDSHIP } from '../data/ranch';
-import { MAP_IDS, MAP_H, MAP_W, SPAWN, mapSize, tileAt, walkable, type MapId } from '../data/maps';
+import { MAP_IDS, MAP_H, MAP_W, SEED_BOX, SPAWN, mapSize, tileAt, walkable, type MapId } from '../data/maps';
 import { MOVES } from '../data/moves';
 import { PERKS, SKILLS, TOOL_TIERS, type Skill } from '../data/progress';
 import { SPECIES } from '../data/species';
 import { canCapacity } from '../game/farm';
 import { placeHelpers, syncHelpers } from '../game/helpers';
 import { maxHp, movesAt, xpForLevel } from '../game/mon';
-import { MAX_ENERGY, PARTY_SIZE, type Dir, type Machine, type Mon, type Plot, type Request, type World } from '../game/model';
+import { MAX_ENERGY, PARTY_SIZE, plotKey, type Dir, type Machine, type Mon, type Plot, type Request, type World } from '../game/model';
 import { rollMarket } from '../game/market';
 import { spawnNpcs } from '../game/npcs';
 import { catchUpStory } from '../game/story';
@@ -84,6 +84,33 @@ function plots(raw: unknown): Record<string, Plot> {
     };
   }
   return out;
+}
+
+/** Tiles you've tilled: in-bounds farm soil only. */
+function field(raw: unknown): string[] {
+  return [...new Set(arr(raw).filter((k): k is string => {
+    if (typeof k !== 'string') return false;
+    const m = /^(\d+),(\d+)$/.exec(k);
+    const kind = m ? tileAt('farm', Number(m[1]), Number(m[2])) : 'tree';
+    return kind === 'grass' || kind === 'ghsoil';
+  }))];
+}
+
+function seeds(raw: unknown): Record<string, number> {
+  return Object.fromEntries(Object.entries(bag(raw)).filter(([id]) => ITEMS.get(id)?.kind === 'seed'));
+}
+
+/** Anything on the tile the Seed Box now stands on goes back to the bag: a crop as its seed, a machine as itself. */
+function clearSeedBoxTile(r: Obj, inventory: Record<string, number>): void {
+  const key = plotKey(SEED_BOX.x, SEED_BOX.y);
+  const give = (id: unknown, n = 1): void => {
+    if (typeof id === 'string' && ITEMS.has(id)) inventory[id] = (inventory[id] ?? 0) + n;
+  };
+  const c = obj(obj(obj(r.plots)[key]).crop);
+  if (typeof c.id === 'string' && isCrop(c.id)) give(seedId(c.id));
+  const m = obj(obj(r.machines)[key]);
+  give(m.id);
+  give(m.output, int(m.count, 1, 1, 2));
 }
 
 function crops(raw: unknown): Record<string, number> {
@@ -197,6 +224,7 @@ export function parseWorld(raw: unknown): World | null {
   const onMap = walkable(tileAt(map, x, y));
   if (!onMap) ({ x, y } = SPAWN);
   const inventory = bag(r.inventory);
+  clearSeedBoxTile(r, inventory);
   const selected = typeof r.selected === 'string' && (ITEMS.get(r.selected)?.kind === 'tool' || (inventory[r.selected] ?? 0) > 0) ? r.selected : 'hoe';
   const stats = obj(r.stats);
   const toolsRaw = obj(r.tools);
@@ -238,6 +266,9 @@ export function parseWorld(raw: unknown): World | null {
     nextUid,
     helpers: [],
     plots: plots(r.plots),
+    field: [],
+    seedBox: seeds(r.seedBox),
+    seedChoice: typeof r.seedChoice === 'string' && ITEMS.get(r.seedChoice)?.kind === 'seed' ? r.seedChoice : 'auto',
     inventory,
     selected,
     bin: bag(r.bin),
@@ -265,6 +296,8 @@ export function parseWorld(raw: unknown): World | null {
     battle: null,
     events: [],
   };
+  // Older saves count the plots you have now as your fields.
+  world.field = Array.isArray(r.field) ? field(r.field) : Object.keys(world.plots);
   // Older saves: a market for the day, and a request or two on the board.
   if (!Object.keys(world.market).length) rollMarket(world);
   if (!world.requests.length) refreshRequests(world);
@@ -297,8 +330,16 @@ function serialize(world: World): unknown {
     approach: null,
     player: { ...world.player, x: Math.round(world.player.x), y: Math.round(world.player.y), path: [], pending: null },
     helpers: [],
+    // Seeds a helper is carrying go back in the box: helpers aren't saved.
+    seedBox: withCarried(world),
     battle: null,
   };
+}
+
+function withCarried(world: World): Record<string, number> {
+  const box = { ...world.seedBox };
+  for (const h of world.helpers) if (h.carrying) box[h.carrying] = (box[h.carrying] ?? 0) + 1;
+  return box;
 }
 
 export function saveWorld(world: World, store: Store | null = defaultStore()): void {

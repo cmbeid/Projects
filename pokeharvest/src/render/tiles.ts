@@ -122,6 +122,23 @@ function bin(g: Ctx, variant: number): void {
   px(g, '#b5b5c0', 1, 3, 14, 1);
 }
 
+/** A wooden crate with seed packets poking out. */
+function seedBox(g: Ctx, variant: number): void {
+  grass(g, variant);
+  // Packets.
+  px(g, '#e85a8c', 3, 3, 3, 4);
+  px(g, '#f2d23c', 7, 2, 3, 5);
+  px(g, '#5aa0e8', 10, 4, 3, 3);
+  px(g, '#ffffff', 4, 4, 1, 1);
+  px(g, '#ffffff', 8, 3, 1, 1);
+  // Crate.
+  px(g, '#5e3a1e', 1, 6, 14, 9);
+  px(g, '#a0673a', 2, 7, 12, 7);
+  px(g, '#5e3a1e', 2, 10, 12, 1);
+  px(g, '#5e3a1e', 7, 7, 1, 7);
+  px(g, '#c8905a', 2, 7, 12, 1);
+}
+
 function mart(g: Ctx, variant: number): void {
   grass(g, variant);
   // Counter.
@@ -357,6 +374,7 @@ export function tileImage(kind: TileKind, x: number, y: number, time: number): H
     case 'tree': return cached(`tree${v}`, (g) => tree(g, v));
     case 'rock': return cached(`rock${v}`, (g) => rock(g, v));
     case 'bin': return cached(`bin${v}`, (g) => bin(g, v));
+    case 'seedbox': return cached(`seedbox${v}`, (g) => seedBox(g, v));
     case 'mart': return cached(`mart${v}`, (g) => mart(g, v));
     case 'smith': return cached(`smith${v}`, (g) => smith(g, v));
     case 'board': return cached(`board${v}`, (g) => board(g, v));

@@ -35,7 +35,7 @@ import { openSettings, show } from './app';
 import { h } from './dom';
 import { itemIcon } from './icons';
 import { battleScreen } from './battle';
-import { openBarn, openBoard, openMachine, openMerchant } from './ranch';
+import { openBarn, openBoard, openMachine, openMerchant, openSeedBox } from './ranch';
 import { openBag, openBin, openHelp, openMart, openPerk, openSleep, openSmith, openSummary } from './menus';
 import { closeSheet, sheetOpen } from './sheet';
 
@@ -219,6 +219,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
         else if (ev.ui === 'barn') openBarn(layer, world, () => { syncHelpers(world); changed(); });
         else if (ev.ui === 'board') openBoard(layer, world, changed);
         else if (ev.ui === 'merchant') openMerchant(layer, world, changed);
+        else if (ev.ui === 'seedbox') openSeedBox(layer, world, changed);
         else openMart(layer, world, changed);
         break;
       case 'machine':
@@ -413,6 +414,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     tap: (x: number, y: number) => tapTile(world, x, y),
     challenge: (id: string) => challenge(id),
     warp: (map: World['map'], x: number, y: number) => warpTo(world, map, x, y),
+    sync: () => syncHelpers(world),
     tileCentre: (x: number, y: number) => {
       const r = canvas.getBoundingClientRect();
       const k = r.width / canvas.width;

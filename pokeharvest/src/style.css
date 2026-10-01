@@ -187,7 +187,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* --- sheets ------------------------------------------------------------------------ */
 
-.layer { position: absolute; inset: 0; pointer-events: none; }
+.layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; } /* above the d-pad, so sheets are never covered */
 .layer > * { pointer-events: auto; }
 .scrim { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; background: rgba(10, 16, 8, 0); transition: background 0.2s; }
 .scrim.open { background: rgba(10, 16, 8, 0.35); }
@@ -531,7 +531,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   touch-action: none;
 }
 .dpad-done { display: none; }
-.dpad.editing { outline: 3px dashed var(--gold); outline-offset: 6px; cursor: move; }
+.dpad.editing { z-index: 4; outline: 3px dashed var(--gold); outline-offset: 6px; cursor: move; }
 .dpad.editing .dpad-done { display: inline-block; position: absolute; bottom: calc(100% + 12px); left: 0; }
 
 .goal { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; margin: 6px 0; font-weight: 600; }
