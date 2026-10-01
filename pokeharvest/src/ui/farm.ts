@@ -8,6 +8,16 @@ import { isNight } from '../data/encounters';
 import { BATTLE, FARM_NIGHT, FARM_TRACKS, ROUTE_DAY, ROUTE_NIGHT, VICTORY, type TrackId } from '../data/music';
 import { WEATHER_ICONS, WEATHER_NAMES } from '../game/weather';
 import { openDex } from './dex';
+import { createDpad } from './dpad';
+import { dialogueOpen, say, setDialogueHost } from './dialogue';
+import { beatLines, houseLine, openCenter, openHall, openJournal, openShop } from './town';
+import { getSettings, setDpad } from './app';
+import { CAVE, FOREST, SPOTTED, TOWN } from '../data/music';
+import { CHAPTERS } from '../data/story';
+import { TOWNSFOLK, trainer } from '../data/people';
+import { startTrainerBattle } from '../game/battle';
+import { canChallenge } from '../game/npcs';
+import { nextGoal } from '../game/story';
 import { item } from '../data/items';
 import { MAPS, mapSize } from '../data/maps';
 import { species } from '../data/species';
@@ -58,7 +68,12 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     h('div.hud-buttons', {}, bagBtn, menuBtn));
   const bar = h('nav.hotbar', { 'aria-label': 'Tools and seeds' });
   const layer = h('div.layer');
-  const root = h('main.farm', {}, canvas, hud, bar, layer);
+  const tracker = h('button.tracker', { 'aria-label': 'Current goal' });
+  const dpad = createDpad(() => { if (!sheetOpen() && !battleOpen && !dialogueOpen()) actFacing(world); });
+  dpad.apply(getSettings().dpad);
+  const root = h('main.farm', {}, canvas, hud, tracker, dpad.el, bar, layer);
+  setDialogueHost(layer);
+  tracker.addEventListener('click', () => openJournal(layer, world));
   show(root);
 
   const fx: Fx = { floaters: [], splashes: [], target: null };
@@ -76,6 +91,9 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   function updateHud(force = false): void {
     const where = world.map === 'farm' ? weekdayOf(world.day) : MAPS[world.map].name;
     dayEl.textContent = `${seasonOf(world.day)} ${dayOfSeason(world.day)} · ${where}`;
+    const goal = nextGoal(world);
+    tracker.hidden = !goal;
+    if (goal) tracker.textContent = `Ch.${world.story.chapter + 1} · ${goal.text} ${Math.min(goal.have, goal.need)}/${goal.need}`;
     clockEl.textContent = `${WEATHER_ICONS[world.weather]} ${clockText(world.clock)}`;
     clockEl.title = WEATHER_NAMES[world.weather];
     goldEl.textContent = `${world.player.gold.toLocaleString('en')}g`;
@@ -116,7 +134,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
 
   // --- input --------------------------------------------------------------------------
   canvas.addEventListener('pointerdown', (e) => {
-    if (sheetOpen() || battleOpen) return;
+    if (sheetOpen() || battleOpen || dialogueOpen()) return;
     const r = canvas.getBoundingClientRect();
     const scaleX = canvas.width / r.width;
     const t = tileAtPoint(view, (e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleX);
@@ -135,7 +153,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
       if (sheetOpen()) closeSheet();
       return;
     }
-    if (sheetOpen() || battleOpen) return;
+    if (sheetOpen() || battleOpen || dialogueOpen()) return;
     if (e.code === 'KeyB') {
       openBag(layer, world, changed);
       return;
@@ -163,6 +181,9 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   menuBtn.addEventListener('click', () => openSettings(layer, {
     help: () => openHelp(layer),
     dex: () => openDex(layer, world, changed),
+    journal: () => openJournal(layer, world),
+    dpad: (s) => dpad.apply(s),
+    moveDpad: () => dpad.editPosition((x, y) => dpad.apply(setDpad({ x, y }))),
     quit: () => { save(); stop(); quit(); },
     restart: () => { stop(); restart(); },
   }));
@@ -192,7 +213,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
       case 'coins': sfx.coin(); break;
       case 'open':
         held.clear();
-        if (ev.ui === 'sleep') openSleep(layer, world, goToBed);
+        if (ev.ui === 'sleep') openSleep(layer, world, goToBed, changed);
         else if (ev.ui === 'bin') openBin(layer, world, changed);
         else if (ev.ui === 'smith') openSmith(layer, world, changed);
         else if (ev.ui === 'barn') openBarn(layer, world, () => { syncHelpers(world); changed(); });
@@ -216,6 +237,45 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
         const at = tileOf(world.player);
         fx.floaters.push({ x: at.x, y: at.y - 1, text: `${ev.skill === 'farming' ? 'Farming' : 'Battling'} Lv ${ev.level}!`, color: '#ffe08a', born: now });
         sfx.levelUp();
+        break;
+      }
+      case 'door':
+        held.clear();
+        if (ev.door === 'center') openCenter(layer, world, () => openBag(layer, world, changed, 'pokemon'), changed);
+        else if (ev.door === 'hall') openHall(layer, world, () => challenge('kai'), changed);
+        else if (ev.door === 'shop') openShop(layer, world, changed);
+        else void say(houseLine(world, ev.x, ev.y));
+        break;
+      case 'gather': fx.splashes.push({ x: ev.x, y: ev.y, color: '#c8905a', born: now }); sfx.pickup(); break;
+      case 'spotted':
+        held.clear();
+        playMusic(SPOTTED);
+        break;
+      case 'challenge':
+        challenge(ev.npc);
+        break;
+      case 'talk': {
+        held.clear();
+        const folk = TOWNSFOLK.find((f) => f.id === ev.npc);
+        if (folk) {
+          void say(folk.lines.map((text) => ({ name: folk.name, palette: folk.palette, text })));
+        } else if (canChallenge(world, ev.npc)) {
+          challenge(ev.npc);
+        } else {
+          const t = trainer(ev.npc);
+          void say([{ name: `${t.cls} ${t.name}`, palette: t.palette, text: `${t.outro} Come back next week for a rematch!` }]);
+        }
+        break;
+      }
+      case 'story':
+        held.clear();
+        void say(beatLines(ev.beat));
+        break;
+      case 'chapter': {
+        const c = CHAPTERS[ev.chapter];
+        toast(c ? `Chapter ${ev.chapter + 1}: ${c.title}` : 'Story complete!');
+        sfx.win();
+        save();
         break;
       }
       case 'warp':
@@ -272,6 +332,15 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     bannerTimer = window.setTimeout(() => banner.classList.remove('show'), 1800);
   }
 
+  /** A trainer's opening line, then the battle. */
+  function challenge(id: string): void {
+    const t = trainer(id);
+    void say([{ name: `${t.cls === 'Rival' ? '' : `${t.cls} `}${t.name}`, palette: t.palette, text: t.intro }]).then(() => {
+      if (startTrainerBattle(world, id)) handleEvents();
+      else void say([{ name: '', palette: null, text: 'Your Pokémon are too tired to battle. Rest them first.' }]);
+    });
+  }
+
   // --- loop ---------------------------------------------------------------------------
   let last = performance.now();
   let acc = 0;
@@ -279,12 +348,10 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     if (!running || !root.isConnected) return;
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    if (!sheetOpen() && !battleOpen && !document.hidden) {
+    if (!sheetOpen() && !battleOpen && !dialogueOpen() && !document.hidden) {
       if (world.pendingPerks.length) openPerk(layer, world, () => updateHud(true));
-      for (const dir of held) {
-        step(world, dir);
-        break;
-      }
+      const dir = [...held][0] ?? dpad.held();
+      if (dir) step(world, dir);
       acc += dt;
       while (acc >= STEP) {
         tick(world, STEP);
@@ -320,10 +387,14 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   /** The tune for where and when you are: the season's on the farm by day, a lullaby at night, Route 1's own out there. */
   function trackNow(): TrackId {
     const night = isNight(world.clock);
+    if (world.approach) return SPOTTED;
     if (world.map === 'route1') return night ? ROUTE_NIGHT : ROUTE_DAY;
+    if (world.map === 'town') return TOWN;
+    if (world.map === 'route2') return FOREST;
+    if (world.map === 'route3') return CAVE;
     return night ? FARM_NIGHT : FARM_TRACKS[seasonOf(world.day)];
   }
-  preloadMusic([trackNow(), BATTLE, VICTORY, ROUTE_DAY]);
+  preloadMusic([trackNow(), BATTLE, VICTORY, ROUTE_DAY, TOWN]);
 
   function stop(): void {
     running = false;
@@ -340,6 +411,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     world,
     battle: (dex: number, level: number) => startBattle(world, dex, level),
     tap: (x: number, y: number) => tapTile(world, x, y),
+    challenge: (id: string) => challenge(id),
     warp: (map: World['map'], x: number, y: number) => warpTo(world, map, x, y),
     tileCentre: (x: number, y: number) => {
       const r = canvas.getBoundingClientRect();

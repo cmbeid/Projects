@@ -52,7 +52,42 @@ export const ENCOUNTERS: Partial<Record<MapId, readonly Zone[]>> = {
       },
     },
   ],
+  route2: [
+    {
+      rows: [0, 16],
+      levels: [7, 12],
+      day: [{ dex: 13, weight: 20 }, { dex: 10, weight: 15 }, { dex: 46, weight: 15 }, { dex: 285, weight: 15 }, { dex: 273, weight: 15 }, { dex: 204, weight: 10 }, { dex: 43, weight: 10 }],
+      night: [{ dex: 167, weight: 30 }, { dex: 43, weight: 20 }, { dex: 163, weight: 20 }, { dex: 46, weight: 15 }, { dex: 92, weight: 10 }],
+      seasons: { Spring: { day: [{ dex: 187, weight: 10 }] }, Autumn: { day: [{ dex: 216, weight: 10 }] }, Winter: { day: [{ dex: 459, weight: 10 }] } },
+    },
+    {
+      rows: [16, 99],
+      levels: [10, 15],
+      day: [{ dex: 14, weight: 8 }, { dex: 11, weight: 8 }, { dex: 285, weight: 15 }, { dex: 273, weight: 15 }, { dex: 204, weight: 15 }, { dex: 46, weight: 10 }, { dex: 69, weight: 10 }, { dex: 133, weight: 3 }],
+      night: [{ dex: 167, weight: 25 }, { dex: 168, weight: 5 }, { dex: 198, weight: 10 }, { dex: 163, weight: 20 }, { dex: 92, weight: 10 }],
+      seasons: { Summer: { night: [{ dex: 313, weight: 10 }, { dex: 314, weight: 10 }] }, Autumn: { night: [{ dex: 198, weight: 10 }] } },
+    },
+  ],
+  route3: [
+    {
+      rows: [0, 15],
+      levels: [13, 18],
+      day: [{ dex: 41, weight: 35 }, { dex: 74, weight: 25 }, { dex: 95, weight: 8 }, { dex: 296, weight: 12 }, { dex: 206, weight: 10 }, { dex: 66, weight: 10 }],
+      night: [{ dex: 41, weight: 35 }, { dex: 74, weight: 25 }, { dex: 95, weight: 8 }, { dex: 296, weight: 12 }, { dex: 206, weight: 10 }, { dex: 66, weight: 10 }],
+      seasons: { Winter: { day: [{ dex: 220, weight: 10 }], night: [{ dex: 215, weight: 8 }] } },
+    },
+    {
+      rows: [15, 99],
+      levels: [16, 22],
+      day: [{ dex: 41, weight: 20 }, { dex: 42, weight: 8 }, { dex: 74, weight: 15 }, { dex: 75, weight: 8 }, { dex: 95, weight: 10 }, { dex: 304, weight: 12 }, { dex: 296, weight: 8 }, { dex: 302, weight: 8 }, { dex: 246, weight: 3 }],
+      night: [{ dex: 41, weight: 20 }, { dex: 42, weight: 8 }, { dex: 74, weight: 15 }, { dex: 75, weight: 8 }, { dex: 95, weight: 10 }, { dex: 304, weight: 12 }, { dex: 296, weight: 8 }, { dex: 302, weight: 8 }, { dex: 246, weight: 3 }],
+      seasons: {},
+    },
+  ],
 };
+
+/** Chance of a wild Pokémon for each step on a cave floor: lower than tall grass, but it's everywhere. */
+export const CAVE_RATE = 0.05;
 
 /** The type each weather draws out, and how strongly. */
 export const WEATHER_TYPES: Record<Weather, PokeType | null> = { sun: null, rain: 'water', storm: 'electric', snow: 'ice' };
@@ -78,7 +113,9 @@ export function habitat(dex: number): string[] {
   const out = new Set<string>();
   for (const [map, zones] of Object.entries(ENCOUNTERS)) {
     for (const z of zones ?? []) {
-      const where = `${map === 'route1' ? 'Route 1' : map}, ${z.rows[0] === 0 ? 'near the farm' : 'past the trees'}`;
+      const name = map === 'route1' ? 'Route 1' : map === 'route2' ? 'Whisperwood' : 'Granite Pass';
+      const part = map === 'route1' ? (z.rows[0] === 0 ? 'near the farm' : 'past the trees') : z.rows[0] === 0 ? 'near town' : 'deep inside';
+      const where = `${name}, ${part}`;
       if (z.day.some((s) => s.dex === dex)) out.add(`${where} by day`);
       if (z.night.some((s) => s.dex === dex)) out.add(`${where} at night`);
       for (const [season, extra] of Object.entries(z.seasons)) {

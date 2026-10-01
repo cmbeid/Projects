@@ -20,6 +20,10 @@ import { placeHelpers, syncHelpers } from '../game/helpers';
 import { maxHp, movesAt, xpForLevel } from '../game/mon';
 import { MAX_ENERGY, PARTY_SIZE, type Dir, type Machine, type Mon, type Plot, type Request, type World } from '../game/model';
 import { rollMarket } from '../game/market';
+import { spawnNpcs } from '../game/npcs';
+import { catchUpStory } from '../game/story';
+import { CHAPTERS } from '../data/story';
+import { TRAINERS } from '../data/people';
 import { refreshRequests } from '../game/requests';
 import { maxEnergyFor } from '../game/skills';
 import { DAY_END, DAY_START } from '../game/time';
@@ -112,6 +116,29 @@ function requests(raw: unknown): Request[] {
     if (typeof q.item !== 'string' || !ITEMS.has(q.item)) return [];
     return [{ id: int(q.id, 0), item: q.item, count: int(q.count, 1, 1, 99), reward: int(q.reward, 0), reputation: int(q.reputation, 1, 0, 5), due: int(q.due, 1, 1) }];
   }).slice(0, 3);
+}
+
+function story(raw: unknown): World['story'] {
+  const s = obj(raw);
+  const strs = (v: unknown): string[] => [...new Set(arr(v).filter((x): x is string => typeof x === 'string'))];
+  const delivered: Record<string, number> = {};
+  for (const [k, v] of Object.entries(obj(s.delivered))) if (ITEMS.has(k) || k.startsWith('kind:')) delivered[k] = int(v, 0, 0, 999);
+  return { chapter: int(s.chapter, 0, 0, CHAPTERS.length), flags: strs(s.flags), delivered, seen: strs(s.seen) };
+}
+
+function trainerRecords(raw: unknown): World['trainers'] {
+  const out: World['trainers'] = {};
+  for (const [id, v] of Object.entries(obj(raw))) {
+    if (id !== 'kai' && !TRAINERS.some((t) => t.id === id)) continue;
+    out[id] = { week: int(obj(v).week, 0), wins: int(obj(v).wins, 1, 1) };
+  }
+  return out;
+}
+
+function nodeDays(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(obj(raw))) if (/^[a-z0-9]+:\d+,\d+$/.test(k)) out[k] = int(v, 0);
+  return out;
 }
 
 function mon(raw: unknown, uid: number): Mon | null {
@@ -226,7 +253,15 @@ export function parseWorld(raw: unknown): World | null {
     }),
     seen: dexList(r.seen),
     caught: dexList(r.caught),
-    stats: { harvested: int(stats.harvested, 0), earned: int(stats.earned, 0), wins: int(stats.wins, 0) },
+    stats: {
+      harvested: int(stats.harvested, 0), earned: int(stats.earned, 0), wins: int(stats.wins, 0),
+      shippedBerries: int(stats.shippedBerries, 0), apricorns: int(stats.apricorns, 0), smelted: bag(stats.smelted),
+    },
+    story: story(r.story),
+    trainers: trainerRecords(r.trainers),
+    nodes: nodeDays(r.nodes),
+    npcs: [],
+    approach: null,
     battle: null,
     events: [],
   };
@@ -237,6 +272,13 @@ export function parseWorld(raw: unknown): World | null {
     if (!world.seen.includes(m.dex)) world.seen.push(m.dex);
     if (!world.caught.includes(m.dex)) world.caught.push(m.dex);
   }
+  // A farm from before the story: catch it up, and hand over the Workbench its machines would now need.
+  if (!r.story) {
+    catchUpStory(world);
+    world.inventory.workbench = (world.inventory.workbench ?? 0) + 1;
+  }
+  world.story.flags = [...new Set(['visited:farm', ...world.story.flags])];
+  spawnNpcs(world);
   const maxEnergy = maxEnergyFor(world);
   world.player.maxEnergy = maxEnergy;
   world.player.energy = int(pr.energy, maxEnergy, 0, maxEnergy);
@@ -251,6 +293,8 @@ function serialize(world: World): unknown {
   const { events: _events, ...rest } = world;
   return {
     ...rest,
+    npcs: [],
+    approach: null,
     player: { ...world.player, x: Math.round(world.player.x), y: Math.round(world.player.y), path: [], pending: null },
     helpers: [],
     battle: null,
@@ -284,21 +328,46 @@ export function clearSave(store: Store | null = defaultStore()): void {
 
 // --- settings, kept apart from the farm so a new game keeps them -----------------
 
+export interface DpadSettings {
+  enabled: boolean;
+  size: 'S' | 'M' | 'L';
+  opacity: number;
+  /** Top-left corner, as percentages of the screen. */
+  x: number;
+  y: number;
+}
+
+/** On by default on touch screens, bottom left, above the hotbar. */
+export function defaultDpad(): DpadSettings {
+  const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  return { enabled: touch, size: 'M', opacity: 80, x: 3, y: 62 };
+}
+
 export interface Settings {
   sfx: number;
   cries: number;
   music: number;
+  dpad: DpadSettings;
   muted: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { sfx: 80, cries: 70, music: 50, muted: false };
+export const DEFAULT_SETTINGS: Settings = { sfx: 80, cries: 70, music: 50, muted: false, dpad: { enabled: false, size: 'M', opacity: 80, x: 3, y: 62 } };
 
 export function loadSettings(store: Store | null = defaultStore()): Settings {
   try {
     const r = obj(JSON.parse(store?.getItem(SETTINGS_KEY) ?? '{}'));
-    return { sfx: int(r.sfx, DEFAULT_SETTINGS.sfx, 0, 100), cries: int(r.cries, DEFAULT_SETTINGS.cries, 0, 100), music: int(r.music, DEFAULT_SETTINGS.music, 0, 100), muted: r.muted === true };
+    const d = obj(r.dpad);
+    const base = defaultDpad();
+    const dpad: DpadSettings = {
+      enabled: typeof d.enabled === 'boolean' ? d.enabled : base.enabled,
+      size: d.size === 'S' || d.size === 'L' ? d.size : 'M',
+      opacity: int(d.opacity, base.opacity, 20, 100),
+      x: real(d.x, base.x, 0, 95),
+      y: real(d.y, base.y, 0, 95),
+    };
+    return { sfx: int(r.sfx, DEFAULT_SETTINGS.sfx, 0, 100), cries: int(r.cries, DEFAULT_SETTINGS.cries, 0, 100), music: int(r.music, DEFAULT_SETTINGS.music, 0, 100), muted: r.muted === true, dpad };
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, dpad: defaultDpad() };
   }
 }
 

@@ -10,7 +10,7 @@
  * power the machines. Fainted Pokémon rest until they're healed.
  */
 import { crop } from '../data/crops';
-import { BARNYARD, SPAWN, tileAt, walkable, type MapId } from '../data/maps';
+import { BARNYARD, SPAWN, gateAt, tileAt, walkable, type MapId } from '../data/maps';
 import { species } from '../data/species';
 import { isRipe, pick } from './farm';
 import { farmMons, monByUid, parseKey, partyMons, plotKey, tileOf, type Helper, type World } from './model';
@@ -29,10 +29,14 @@ export function passableOn(map: MapId): (p: Point) => boolean {
   return (p) => walkable(tileAt(map, p.x, p.y));
 }
 
-/** Walkable tiles on a map, minus placed machines. */
+/** Walkable tiles on a map, minus placed machines and gates the story hasn't opened. */
 export function passableFor(world: World, map: MapId = world.map): (p: Point) => boolean {
   const base = passableOn(map);
-  return map === 'farm' ? (p) => base(p) && !world.machines[plotKey(p.x, p.y)] : base;
+  const open = (p: Point): boolean => {
+    const gate = gateAt(map, p.x, p.y);
+    return !gate || world.story.flags.includes(gate.flag);
+  };
+  return map === 'farm' ? (p) => base(p) && !world.machines[plotKey(p.x, p.y)] : (p) => base(p) && open(p);
 }
 
 /** The farm's walkable tiles. */

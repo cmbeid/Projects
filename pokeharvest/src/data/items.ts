@@ -26,6 +26,8 @@ export interface Item {
   heals?: number;
   /** Balls: how much they multiply the catch rate. */
   ball?: number;
+  /** Apricorn balls: what makes them work better (see `game/battle.ts`). */
+  ballBonus?: 'level' | 'water' | 'fast' | 'heavy';
   /** Food: energy restored, and a buff for the rest of the day. */
   energy?: number;
   buff?: Buff;
@@ -52,6 +54,21 @@ const OTHER: Item[] = [
   { id: 'hard-stone', name: 'Hard Stone', kind: 'material', sellPrice: 40, icon: 'hard-stone', description: 'Wild Pokémon drop it. For copper tools, machines and barns.' },
   { id: 'metal-coat', name: 'Metal Coat', kind: 'material', sellPrice: 120, icon: 'metal-coat', description: 'An uncommon drop. For steel tools, machines and barns.' },
   { id: 'nugget', name: 'Nugget', kind: 'material', sellPrice: 300, icon: 'nugget', description: 'A rare drop. For gold tools and the biggest barn.' },
+  { id: 'level-ball', name: 'Level Ball', kind: 'ball', sellPrice: 150, icon: 'level-ball', ball: 1, ballBonus: 'level', description: 'Made from a Red Apricorn. Four times as good against a Pokémon well below your own level.' },
+  { id: 'lure-ball', name: 'Lure Ball', kind: 'ball', sellPrice: 150, icon: 'lure-ball', ball: 1, ballBonus: 'water', description: 'Made from a Blue Apricorn. Three times as good against Water types.' },
+  { id: 'fast-ball', name: 'Fast Ball', kind: 'ball', sellPrice: 150, icon: 'fast-ball', ball: 1, ballBonus: 'fast', description: 'Made from a Yellow Apricorn. Four times as good against fast Pokémon.' },
+  { id: 'friend-ball', name: 'Friend Ball', kind: 'ball', sellPrice: 150, icon: 'friend-ball', ball: 1.5, description: 'Made from a Green Apricorn. Half again as good, and the Pokémon starts out fond of you.' },
+  { id: 'heavy-ball', name: 'Heavy Ball', kind: 'ball', sellPrice: 150, icon: 'heavy-ball', ball: 1, ballBonus: 'heavy', description: 'Made from a Black Apricorn. Three times as good against Rock and Steel types.' },
+  { id: 'wood', name: 'Wood', kind: 'material', sellPrice: 10, buyPrice: 25, icon: 'stick', description: 'From fallen logs in Whisperwood, or the town workshop. Fuel for the Furnace, and building stuff.' },
+  { id: 'copper-ore', name: 'Copper Ore', kind: 'material', sellPrice: 25, icon: 'heat-rock', description: 'Mined in Granite Pass. The Furnace smelts five into a Copper Bar.' },
+  { id: 'iron-ore', name: 'Iron Ore', kind: 'material', sellPrice: 45, icon: 'iron-ball', description: 'Mined deeper in Granite Pass. The Furnace smelts five into an Iron Bar.' },
+  { id: 'copper-bar', name: 'Copper Bar', kind: 'material', sellPrice: 180, icon: 'flame-plate', description: 'For machines.' },
+  { id: 'iron-bar', name: 'Iron Bar', kind: 'material', sellPrice: 320, icon: 'iron-plate', description: 'For steel tools and bigger barns.' },
+  { id: 'gold-bar', name: 'Gold Bar', kind: 'material', sellPrice: 900, icon: 'zap-plate', description: 'Smelted from two Nuggets. For gold tools and the grandest barn.' },
+  ...(['red', 'blue', 'yellow', 'green', 'black'] as const).map((c): Item => ({
+    id: `${c}-apricorn`, name: `${c[0]!.toUpperCase()}${c.slice(1)} Apricorn`, kind: 'material', sellPrice: 30, icon: `${c}-apricorn`,
+    description: "Picked in Whisperwood. The Apricorn Workshop makes a ball from it.",
+  })),
   { id: 'rare-candy', name: 'Rare Candy', kind: 'candy', sellPrice: 200, icon: 'rare-candy', description: 'Give it to a Pokémon to raise its level by one.' },
   // Livestock goods.
   { id: 'moomoo-milk', name: 'Moomoo Milk', kind: 'product', sellPrice: 120, icon: 'moomoo-milk', description: "Miltank's milk. The Cheese Press turns it into cheese." },
@@ -73,6 +90,9 @@ const OTHER: Item[] = [
   { id: 'preserves-jar', name: 'Preserves Jar', kind: 'machine', sellPrice: 150, description: 'Turns a berry into jam overnight.' },
   { id: 'cheese-press', name: 'Cheese Press', kind: 'machine', sellPrice: 250, description: 'Turns Moomoo Milk into cheese in 4 hours.' },
   { id: 'loom', name: 'Loom', kind: 'machine', sellPrice: 300, description: 'Weaves Fluffy Wool into Silk Cloth overnight.' },
+  { id: 'workbench', name: 'Workbench', kind: 'machine', sellPrice: 200, buyPrice: 800, description: 'Machines and stations can only be crafted while one stands on your farm.' },
+  { id: 'furnace', name: 'Furnace', kind: 'machine', sellPrice: 250, description: 'Smelts five ore (or two Nuggets) into a bar in 4 hours. Burns a piece of Wood each time, unless a Fire Pokémon is working on the farm.' },
+  { id: 'apricorn-workshop', name: 'Apricorn Workshop', kind: 'machine', sellPrice: 250, description: 'Turns an Apricorn into a special ball in 2 hours.' },
 ];
 
 export function seedId(cropId: string): string {

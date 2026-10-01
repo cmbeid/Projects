@@ -24,8 +24,8 @@ export interface BarnLevel {
 export const BARN_LEVELS: readonly BarnLevel[] = [
   { name: 'Shed', capacity: 3, cost: null },
   { name: 'Barn', capacity: 6, cost: { gold: 2000, items: { 'hard-stone': 10 }, reputation: 2 } },
-  { name: 'Big Barn', capacity: 10, cost: { gold: 6000, items: { 'hard-stone': 10, 'metal-coat': 5 }, reputation: 3 } },
-  { name: 'Deluxe Barn', capacity: 15, cost: { gold: 15000, items: { 'metal-coat': 10, nugget: 3 }, reputation: 4 } },
+  { name: 'Big Barn', capacity: 10, cost: { gold: 6000, items: { 'hard-stone': 10, 'metal-coat': 5, 'iron-bar': 2 }, reputation: 3 } },
+  { name: 'Deluxe Barn', capacity: 15, cost: { gold: 15000, items: { 'metal-coat': 10, nugget: 3, 'gold-bar': 1 }, reputation: 4 } },
 ];
 
 /** Pokémon the ranch counter sells, once your reputation is good enough. They arrive at level 5. */

@@ -7,7 +7,7 @@
  */
 import { cry, loadCries, sfx } from '../audio/index';
 import { playMusic } from '../audio/music';
-import { BATTLE, VICTORY } from '../data/music';
+import { BATTLE, RIVAL_BATTLE, TRAINER_BATTLE, TRAINER_VICTORY, VICTORY } from '../data/music';
 import { isNight } from '../data/encounters';
 import { item } from '../data/items';
 import { move } from '../data/moves';
@@ -42,7 +42,8 @@ function hpColour(frac: number): string {
 
 export function battleScreen(host: HTMLElement, world: World, onDone: () => void): void {
   const b = world.battle!;
-  const wild = b.wild;
+  let wild = b.wild;
+  const pips = h('div.pips');
   const canvas = h('canvas.arena', { 'aria-hidden': 'true' });
   const ctx = canvas.getContext('2d')!;
   const wildCard = card();
@@ -62,6 +63,7 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
 
   void loadSheet(wild.dex, wild.shiny);
   for (const m of partyMons(world)) void loadSheet(m.dex, false, true);
+  for (const m of b.trainer?.team ?? []) void loadSheet(m.dex);
   loadCries([wild.dex, ...partyMons(world).map((m) => m.dex)]);
 
   // --- drawing ---------------------------------------------------------------------
@@ -150,6 +152,11 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
 
   function refreshCards(): void {
     wildCard.set(wild, wildHp);
+    if (b.trainer) {
+      // The trainer's team as balls: bright for those still standing.
+      pips.replaceChildren(...b.trainer.team.map((_, i) => h('span', { className: i < b.trainer!.index || (i === b.trainer!.index && wildHp <= 0) ? 'pip out' : 'pip' })));
+      if (!pips.isConnected) wildCard.el.append(pips);
+    }
     const mine = monByUid(world, shownActive);
     if (mine) youCard.set(mine, youHp);
   }
@@ -254,12 +261,22 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
           anim.ball = null;
         }
         return;
+      case 'sendWild':
+        wild = b.trainer!.team[ev.index]!;
+        wildHp = wild.hp;
+        anim.wildDrop = 0;
+        anim.wildAlpha = 0;
+        refreshCards();
+        await sleep(300);
+        cry(wild.dex, { volume: 0.5 });
+        await tween(0, 1, 300, (v) => (anim.wildAlpha = v));
+        return;
       case 'caught':
         sfx.caught();
         await sleep(700);
         return;
       case 'end':
-        if (ev.result === 'win' || ev.result === 'caught') playMusic(VICTORY);
+        if (ev.result === 'win' || ev.result === 'caught') playMusic(b.trainer ? TRAINER_VICTORY : VICTORY);
         if (ev.result === 'lose') sfx.lose();
         return;
     }
@@ -299,7 +316,7 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
       button('Fight', showMoves, 'fight'),
       button('Bag', showBag, 'bag'),
       button('Pokémon', () => showParty(false), 'mons'),
-      button('Run', () => void run({ kind: 'run' }), 'run'),
+      button('Run', () => void run({ kind: 'run' }), 'run', Boolean(b.trainer)),
     );
   }
 
@@ -323,7 +340,8 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
   }
 
   function showBag(): void {
-    const ids = battleItems(world);
+    // No catching another trainer's Pokémon: leave the balls in the bag.
+    const ids = battleItems(world).filter((id) => !b.trainer || item(id).kind !== 'ball');
     const rows = ids.map((id) => {
       const def = item(id);
       const verb = def.kind === 'ball' ? 'Throw' : def.heals ? 'Heal' : 'Offer';
@@ -361,14 +379,19 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
   resize();
   refreshCards();
   requestAnimationFrame(draw);
-  playMusic(BATTLE);
+  playMusic(b.trainer ? (b.trainer.id === 'kai' ? RIVAL_BATTLE : TRAINER_BATTLE) : BATTLE);
   void (async () => {
     busy = true;
     anim.wildAlpha = 0;
     await sleep(350);
     cry(wild.dex, { volume: 0.5 });
     await tween(0, 1, 300, (v) => (anim.wildAlpha = v));
-    await say(`A wild ${species(wild.dex).name} appeared!${wild.shiny ? ' It sparkles!' : ''}`, 1100);
+    if (b.trainer) {
+      await say(`${b.trainer.name} wants to battle!`, 1000);
+      await say(`${b.trainer.name} sent out ${species(wild.dex).name}!`, 900);
+    } else {
+      await say(`A wild ${species(wild.dex).name} appeared!${wild.shiny ? ' It sparkles!' : ''}`, 1100);
+    }
     if (wild.shiny) sfx.shiny();
     await say(`Go, ${species(activeMon(world, b).dex).name}!`, 700);
     cry(activeMon(world, b).dex, { volume: 0.4 });

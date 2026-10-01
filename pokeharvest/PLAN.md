@@ -1,6 +1,6 @@
 # PokéHarvest — design & implementation plan
 
-> **Status:** All four phases are built. Phase 3 also added a Farm role, as requested: Pokémon assigned to the farm live in the barn and work all day while you're away.
+> **Status:** All five phases are built. Phase 3 also added a Farm role, as requested: Pokémon assigned to the farm live in the barn and work all day while you're away. Phase 5 (below) added the story, the town, two routes, trainers, crafting stations and the on-screen d-pad.
 
 ## Context
 You want a new personal-project game for the `cmbeid/Projects` monorepo: a Pokémon-themed farming sim for HTML5 mobile web. It should be built for portrait phones and still scale up well on desktop. It needs RPG progression and upgrades, a day/night cycle, an economy, crafting, and turn-based battles.
@@ -215,3 +215,12 @@ style.css
   - `npm run preview` works.
   - `scripts/verify-ui.ts` (Playwright on the preinstalled Chromium) screenshots phone portrait at 390×844, a tablet and 1440×900 desktop. It checks nothing overflows and the hotbar and HUD are visible.
   - A manual pass covers tap-to-move, a full day, a battle and a save reload.
+
+---
+
+## Phase 5: town, routes, trainers, stations, d-pad and story (built)
+- **Story, "Revive Cobblevale":** five chapters with goals and dialogue. Each one finished opens more of the world: the road to town, the Pokémon Center, Granite Pass, and the Harvest Festival, which ends with a battle against your rival Kai.
+- **Maps:** Cobblevale Town (Pokémon Center, Mayor's Hall, workshop, townsfolk), Whisperwood (forest: Apricorns and wood) and Granite Pass (cave: ore).
+- **Trainers:** 12 roaming trainers with lines of sight and teams, beatable once a week; Kai's weekly rematches come after the story.
+- **Stations:** Workbench (needed for crafting machines), Furnace (ore into bars, faster with Fire Pokémon and no wood needed), Apricorn Workshop (Apricorn balls). The kitchen moved into the farmhouse.
+- **On-screen d-pad:** can be turned on or off, resized, made more or less see-through, and dragged anywhere.

@@ -8,16 +8,15 @@ export const TOOL_TIERS = ['Basic', 'Copper', 'Steel', 'Gold'] as const;
 
 export interface UpgradeCost {
   gold: number;
-  material: string;
-  count: number;
+  items: Record<string, number>;
 }
 
 /** What it costs to reach each tier from the one before. */
 export const UPGRADE_COSTS: readonly (UpgradeCost | null)[] = [
   null,
-  { gold: 500, material: 'hard-stone', count: 5 },
-  { gold: 1500, material: 'metal-coat', count: 5 },
-  { gold: 4000, material: 'nugget', count: 3 },
+  { gold: 500, items: { 'hard-stone': 5 } },
+  { gold: 1500, items: { 'metal-coat': 5, 'iron-bar': 1 } },
+  { gold: 4000, items: { nugget: 3, 'gold-bar': 1 } },
 ];
 
 /** Watering can capacity at each tier. */

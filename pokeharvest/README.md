@@ -2,11 +2,12 @@
 
 A Pokémon farming game for the phone. It's built for portrait and scales up to tablets and desktop monitors. Pick a starter, then till, plant, water and harvest berries on a walkable farm. Sell them through the shipping bin or the Poké Mart, and sleep before 2 AM.
 
-All four phases of [`PLAN.md`](PLAN.md) are built:
+All five phases of [`PLAN.md`](PLAN.md) are built:
 1. The core farming loop.
 2. RPG progression and battles.
 3. Ranching, crafting and a living economy.
 4. Seasons, weather, a greenhouse, a Pokédex with rewards, more Pokémon and Game Boy music.
+5. A story, a town, two more routes, trainers, crafting stations and an on-screen d-pad.
 
 ## Playing
 
@@ -61,8 +62,29 @@ All four phases of [`PLAN.md`](PLAN.md) are built:
 - **Route 1 by season:** every season brings new Pokémon, like Hoppip in spring, Psyduck and Volbeat in summer, Phanpy and Murkrow in autumn, and Swinub, Snover and Sneasel in winter. There are 69 species in all.
 - **Pokédex:** in the ☰ menu. It shows everything seen and befriended and where to find each one, with rewards at 5, 10, 15, 20, 30, 40 and 50 befriended.
 - **Music:** Pokémon Crystal's own songs on a Game Boy-style synth: a tune for each season on the farm, a lullaby at night, Route 1's own, and the wild battle theme.
+- **Story: "Revive Cobblevale".** Five chapters guide you from a run-down farm to the town's Harvest Festival.
+  - Each chapter has a few goals: ship berries, befriend Pokémon, rebuild the Pokémon Center, beat trainers, craft stations, smelt iron, earn reputation. The final goal is beating your rival Kai.
+  - Finishing a chapter opens up more of the world.
+  - The current goal shows under the HUD; tap it for the Journal.
+  - Story scenes play as dialogue.
+- **Cobblevale Town:** south of Route 1, once the fallen tree is cleared.
+  - The Pokémon Center heals your Pokémon for free and has a PC for your box.
+  - The Mayor's Hall is where the story happens.
+  - The workshop sells Wood and Workbenches.
+  - Townsfolk wander about with tips.
+- **Whisperwood (Route 2):** a forest east of town. Pick Apricorns from the trees, which regrow every few days, and collect Wood from fallen logs, which refill daily.
+- **Granite Pass (Route 3):** a dark cave south of town, opened in Chapter 3. Mine copper and iron ore, plus the odd Nugget. Wild Pokémon lurk anywhere on its floor.
+- **Pokémon:** 25 more species, 94 in all, including the Weedle, Paras, Spinarak, Pineco, Shroomish, Seedot, Zubat, Aron, Makuhita and Larvitar lines, plus Onix, Dunsparce and Sableye.
+- **Trainers:** 12 roam Routes 1–3 and challenge you when you walk into their line of sight. You can also tap one to battle.
+  - Each has a team of up to three. You can't catch their Pokémon or run away.
+  - Winning pays gold. Each trainer can be beaten once a week, and rematches are a little stronger.
+- **Crafting stations:** placed on the farm. Machines and stations can only be crafted while a **Workbench** stands there.
+  - **Furnace:** smelts five ore (or two Nuggets) into a bar. It burns Wood for each batch, unless a Fire-type Pokémon is working on the farm, which also doubles its speed. Bars go into steel and gold tools, bigger barns and the fancier machines.
+  - **Apricorn Workshop:** turns Apricorns into special balls. Level Ball (vs. lower levels), Lure Ball (Water types), Fast Ball (fast Pokémon), Friend Ball (better odds, and the Pokémon starts out fond of you) and Heavy Ball (Rock and Steel types).
+  - **Kitchen:** now part of the farmhouse: tap the door for Sleep and Kitchen tabs.
+- **On-screen d-pad:** on by default on touch screens. Hold a direction to walk, and press A to use the tile you're facing. In the ☰ menu you can turn it on or off, pick its size and opacity, drag it anywhere with "Move d-pad", or reset it.
 - **Energy:** tool work costs energy. Sleep to restore it. If you're still up at 2 AM you pass out and lose 10% of your gold.
-- **Keyboard:** WASD or the arrow keys to walk, Space or E to use the tile you're facing, 1–8 to pick a hotbar slot, B for the bag, Esc to close menus.
+- **Keyboard:** WASD or the arrow keys to walk, Space or E to use the tile you're facing (and to move dialogue on), 1–8 to pick a hotbar slot, B for the bag, Esc to close menus.
 
 The farm saves when you sleep, every in-game hour, and when the tab is hidden.
 
@@ -96,6 +118,9 @@ It uses the same stack as [`pokedefense/`](../pokedefense/): Vite, TypeScript an
   - `market.ts` and `requests.ts` cover daily prices, flooding, the merchant and the request board.
   - `weather.ts` and `dex.ts` cover the weather and Pokédex rewards.
   - `bot.ts` is a simple farmer, used by the tests and `npm run playtest`.
+  - `story.ts` tracks chapters and goals.
+  - `npcs.ts` covers trainers and townsfolk: patrols and lines of sight.
+  - `forage.ts` covers Apricorn trees, logs and ore.
   - `economy.ts`, `time.ts` and `path.ts` (A*) cover the rest.
   - The UI changes the world only through commands, and reads back `world.events`.
 - `src/render/`: Canvas 2D.
@@ -105,7 +130,7 @@ It uses the same stack as [`pokedefense/`](../pokedefense/): Vite, TypeScript an
   - `light.ts` tints for the time of day and adds lamplight at night.
 - `src/ui/`: the DOM HUD, hotbar and menus. Menus slide up as bottom sheets on a phone and dock to the side on wide screens.
 - `src/state/save.ts`: `localStorage`. Loading is forgiving: every field is validated and repaired.
-- `src/data/`: species with stats, catch rates and evolutions; moves and type-based learnsets; the maps; Route 1's encounter tables; tool tiers, skills and perks; recipes and machines; livestock, barns, reputation and the merchant's wares.
+- `src/data/`: the story and its dialogue (`story.ts`); trainers, townsfolk and their palettes (`people.ts`); species with stats, catch rates and evolutions; moves and type-based learnsets; the maps; Route 1's encounter tables; tool tiers, skills and perks; recipes and machines; livestock, barns, reputation and the merchant's wares.
 - `src/audio/music.ts` and `scripts/fetch-music.ts`: PokéDefense's Game Boy synth and Pokémon Crystal converter, trimmed to the tracks PokéHarvest uses.
 - `scripts/fetch-assets.ts`: adapted from PokéDefense's. It downloads Black/White animated sprites (front, shiny and back) and cries from PokeAPI's GitHub repos and commits them under `public/`.
 

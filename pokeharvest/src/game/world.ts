@@ -4,7 +4,9 @@
  * reads back `world.events` to animate and play sounds.
  */
 import { CROPS } from '../data/crops';
-import { ENCOUNTERS, ENCOUNTER_RATE, WEATHER_BOOST, WEATHER_TYPES, isNight, slotsFor } from '../data/encounters';
+import { CAVE_RATE, ENCOUNTERS, ENCOUNTER_RATE, WEATHER_BOOST, WEATHER_TYPES, isNight, slotsFor } from '../data/encounters';
+import { checkSight, spawnNpcs, updateNpcs } from './npcs';
+import { beginStory, checkStory, visit } from './story';
 import { species } from '../data/species';
 import { ITEMS, TOOLS, seedId } from '../data/items';
 import { MAPS, SPAWN, tileAt, walkable, warpAt } from '../data/maps';
@@ -73,7 +75,12 @@ export function createWorld(seed: number, starter: number): World {
     pendingPerks: [],
     seen: [],
     caught: [],
-    stats: { harvested: 0, earned: 0, wins: 0 },
+    stats: { harvested: 0, earned: 0, wins: 0, shippedBerries: 0, apricorns: 0, smelted: {} },
+    story: { chapter: 0, flags: ['visited:farm'], delivered: {}, seen: [] },
+    trainers: {},
+    nodes: {},
+    npcs: [],
+    approach: null,
     battle: null,
     events: [],
   };
@@ -89,6 +96,7 @@ export function createWorld(seed: number, starter: number): World {
   world.tomorrow = rollWeather(world, seasonOf(2));
   syncHelpers(world);
   placeHelpers(world, SPAWN);
+  beginStory(world);
   return world;
 }
 
@@ -109,7 +117,7 @@ export function select(world: World, id: string): void {
  * can't be stood on (the bin, the door, the pond) are walked up to.
  */
 export function tapTile(world: World, x: number, y: number): void {
-  if (world.battle) return;
+  if (world.battle || world.approach) return;
   const p = world.player;
   const at = tileOf(p);
   const intent = intentAt(world, x, y);
@@ -142,7 +150,7 @@ export function tapTile(world: World, x: number, y: number): void {
 /** Keyboard: one step in a direction, or just turn if the way is blocked. */
 export function step(world: World, dir: Dir): void {
   const p = world.player;
-  if (p.path.length || world.battle) return;
+  if (p.path.length || world.battle || world.approach) return;
   p.facing = dir;
   p.pending = null;
   const at = tileOf(p);
@@ -167,7 +175,9 @@ export function warpTo(world: World, map: World['map'], x: number, y: number): v
   p.path = [];
   p.pending = null;
   placeParty(world, { x, y });
+  spawnNpcs(world);
   world.events.push({ kind: 'warp', map });
+  visit(world, map);
 }
 
 /** Each new tile stepped on: a warp, or maybe a wild Pokémon in the tall grass. */
@@ -177,9 +187,11 @@ function onStep(world: World, at: Point): void {
     warpTo(world, warp.to, warp.tx, warp.ty);
     return;
   }
-  if (tileAt(world.map, at.x, at.y) !== 'tall') return;
+  if (checkSight(world)) return;
+  const tile = tileAt(world.map, at.x, at.y);
+  if (tile !== 'tall' && tile !== 'cavefloor') return;
   const zones = ENCOUNTERS[world.map];
-  if (!zones || nextRandom(world.rng) >= ENCOUNTER_RATE) return;
+  if (!zones || nextRandom(world.rng) >= (tile === 'cavefloor' ? CAVE_RATE : ENCOUNTER_RATE)) return;
   if (!healthyParty(world).length) {
     world.events.push({ kind: 'hint', x: at.x, y: at.y, text: 'Something rustles, but your Pokémon need rest' });
     return;
@@ -188,7 +200,7 @@ function onStep(world: World, at: Point): void {
   if (!zone) return;
   // The weather draws out its own types.
   const boosted = WEATHER_TYPES[world.weather];
-  const slots = slotsFor(zone, seasonOf(world.day), isNight(world.clock))
+  const slots = slotsFor(zone, seasonOf(world.day), !MAPS[world.map].cave && isNight(world.clock))
     .map((s) => ({ ...s, weight: boosted && species(s.dex).types.includes(boosted) ? s.weight * WEATHER_BOOST : s.weight }));
   let r = nextRandom(world.rng) * slots.reduce((a, s) => a + s.weight, 0);
   const slot = slots.find((s) => (r -= s.weight) < 0) ?? slots[0]!;
@@ -204,8 +216,9 @@ export function tick(world: World, dt: number): void {
   world.clock += minutes;
   const p = world.player;
   const speed = (p.energy > 0 ? WALK_SPEED : TIRED_SPEED) * (hasBuff(world, 'swift') ? 1.3 : 1);
-  const arrived = walk(p, speed, dt, (x, y) => onStep(world, { x, y }));
-  if (world.battle) return;
+  updateNpcs(world, dt);
+  const arrived = world.approach ? false : walk(p, speed, dt, (x, y) => onStep(world, { x, y }));
+  if (world.battle || world.approach) return;
   if (arrived && p.pending) {
     const target = p.pending;
     p.pending = null;
@@ -215,6 +228,7 @@ export function tick(world: World, dt: number): void {
   }
   updateHelpers(world, dt, minutes);
   runMachines(world, minutes);
+  checkStory(world);
   if (world.clock >= DAY_END) endDay(world, true);
 }
 
@@ -269,7 +283,9 @@ function endDay(world: World, passedOut: boolean): DaySummary {
   p.facing = 'down';
   syncHelpers(world);
   placeHelpers(world, SPAWN);
+  spawnNpcs(world);
   world.events.push({ kind: 'day', summary });
+  checkStory(world);
   return summary;
 }
 

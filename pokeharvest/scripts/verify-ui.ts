@@ -15,19 +15,21 @@ const OUT = 'screenshots';
 interface Hook {
   battle(dex: number, level: number): unknown;
   tap(x: number, y: number): void;
+  challenge(id: string): void;
   warp(map: string, x: number, y: number): void;
   world: {
     map: string;
-    mons: unknown[];
+    mons: { level: number; hp: number }[];
     battle: { wild: { hp: number } } | null;
     pendingPerks: { skill: string; level: number }[];
     farm: number[];
     day: number;
     inventory: Record<string, number>;
-    machines: Record<string, { output: string | null }>;
+    machines: Record<string, { output: string | null; id?: string }>;
     barn: { trough: Record<string, number> };
     weather: string;
     greenhouse: boolean;
+    story: { chapter: number; flags: string[] };
     clock: number;
     player: { x: number; y: number; path: unknown[]; energy: number };
     plots: Record<string, { watered: boolean; crop: { id: string } | null }>;
@@ -79,6 +81,16 @@ async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(150);
 }
 
+/** Click through any dialogue showing. */
+async function dismissTalk(page: Page): Promise<void> {
+  for (let i = 0; i < 20; i += 1) {
+    await page.waitForTimeout(150);
+    const talk = page.locator('.talk');
+    if (!(await talk.count())) return;
+    await talk.click();
+  }
+}
+
 async function hold(page: Page, label: string): Promise<void> {
   await page.locator(`.slot[aria-label="${label}"]`).click();
 }
@@ -110,7 +122,13 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/${name}-3-help.png` });
   await page.getByRole('button', { name: "Let's farm!" }).click();
-  await page.waitForTimeout(500);
+  // The Mayor's letter: the story begins.
+  await page.waitForSelector('.talk', { timeout: 5_000 });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/${name}-3b-story.png` });
+  await dismissTalk(page);
+  check(await page.locator('.tracker').isVisible(), 'the quest tracker shows the first goal');
+  await page.waitForTimeout(300);
   await fits(page, 'farm');
   await onScreen(page, '.hud', 'HUD');
   await onScreen(page, '.hotbar', 'hotbar');
@@ -139,7 +157,7 @@ async function run(name: string, viewport: { width: number; height: number }, to
 
   // Bed, and the morning report.
   await tap(page, 4, 4, touch);
-  await page.getByRole('button', { name: 'Sleep' }).click({ timeout: 10_000 });
+  await page.locator('.btn.primary', { hasText: 'Sleep' }).click({ timeout: 10_000 });
   await page.waitForSelector('text=Start the day');
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/${name}-6-morning.png` });
@@ -226,7 +244,12 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.screenshot({ path: `${OUT}/${name}-14-roles.png` });
 
   // Craft a Berry Press.
-  await page.evaluate(() => Object.assign((window as unknown as { __farm: Hook }).__farm.world.inventory, { 'hard-stone': 4, oran: 12 }));
+  await page.evaluate(() => {
+    const f = (window as unknown as { __farm: Hook }).__farm;
+    Object.assign(f.world.inventory, { 'hard-stone': 4, oran: 12 });
+    // Machines are crafted at a Workbench on the farm.
+    f.world.machines['20,24'] = { id: 'workbench', output: null, count: 0, progress: 0, needed: 0 } as { output: string | null };
+  });
   await page.getByRole('button', { name: 'Craft', exact: true }).click();
   await page.locator('.row', { hasText: 'Berry Press' }).getByRole('button', { name: 'Craft' }).click();
   await page.waitForTimeout(250);
@@ -280,6 +303,117 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.waitForSelector('.sheet h2:has-text("Travelling merchant")', { timeout: 10_000 });
   check(await page.locator('.sheet .row').count() === 4, 'the merchant has four things for sale');
   await page.screenshot({ path: `${OUT}/${name}-19-merchant.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // Phase 5. The d-pad, on touch screens.
+  if (touch) {
+    check(await page.locator('.dpad').isVisible(), 'the d-pad shows on a touch screen');
+    await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.warp('farm', 8, 14); });
+    await page.waitForTimeout(500);
+    const before = await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.player.x);
+    const right = (await page.locator('.dpad-btn.right').boundingBox())!;
+    await page.mouse.move(right.x + right.width / 2, right.y + right.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(700);
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.player.x);
+    check(after > before, `walked right with the d-pad (${before} → ${after})`);
+    await page.screenshot({ path: `${OUT}/${name}-23-dpad.png` });
+    // Move it.
+    await page.locator('.icon-btn.menu').click();
+    await page.getByRole('button', { name: 'Move d-pad' }).click();
+    const box = (await page.locator('.dpad').boundingBox())!;
+    await page.mouse.move(box.x + 20, box.y + box.height - 10);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 120, box.y + box.height - 160, { steps: 6 });
+    await page.mouse.up();
+    await page.getByRole('button', { name: 'Done' }).click();
+    const moved = (await page.locator('.dpad').boundingBox())!;
+    check(Math.abs(moved.x - box.x) > 50, 'dragged the d-pad somewhere new');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pokeharvest.settings.v1') ?? '{}').dpad?.x);
+    check(typeof saved === 'number' && saved > 5, 'saved the d-pad position');
+  }
+
+  // Cobblevale: the Pokémon Center and the Mayor's Hall.
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.world.story.flags.push('road-open', 'center-open', 'pass-open'); f.warp('town', 4, 6); });
+  await page.waitForTimeout(500);
+  await dismissTalk(page);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/${name}-24-town.png` });
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(4, 4));
+  await page.waitForSelector('.sheet h2:has-text("Pokémon Center")', { timeout: 10_000 });
+  await page.getByRole('button', { name: 'Heal my Pokémon' }).click();
+  await dismissTalk(page);
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.mons.every((m) => m.hp > 0)), 'healed at the Pokémon Center');
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.warp('town', 18, 6); });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(18, 4));
+  await page.waitForSelector(".sheet h2:has-text(\"Mayor's Hall\")", { timeout: 10_000 });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/${name}-25-hall.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // Whisperwood: a trainer battle, and an Apricorn.
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.warp('route2', 1, 13); f.world.mons[0]!.level = 50; f.world.mons[0]!.hp = 400; });
+  await page.waitForTimeout(600);
+  await dismissTalk(page);
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.challenge('wade'));
+  await page.waitForSelector('.talk', { timeout: 5_000 });
+  await dismissTalk(page);
+  await page.waitForSelector('.cmd.fight', { timeout: 15_000 });
+  check(await page.locator('.pips .pip').count() === 3, 'the trainer\'s team shows as three balls');
+  await page.screenshot({ path: `${OUT}/${name}-26-trainer.png` });
+  for (let i = 0; i < 12; i += 1) {
+    if (await page.locator('.cmd.primary', { hasText: 'Continue' }).count()) break;
+    await page.locator('.cmd.fight').click();
+    await page.locator('.cmd.move').first().click();
+    await page.waitForSelector('.cmd.fight, .cmd.primary', { timeout: 30_000 });
+  }
+  await page.locator('.cmd.primary', { hasText: 'Continue' }).click();
+  await page.waitForSelector('.battle', { state: 'detached' });
+  check(await page.evaluate(() => Boolean((window as unknown as { __farm: { world: { trainers: Record<string, unknown> } } }).__farm.world.trainers['wade'])), 'beat Bug Catcher Wade');
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.warp('route2', 3, 7));
+  await page.waitForTimeout(500);
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(3, 6));
+  await settle(page);
+  check(await page.evaluate(() => (window as unknown as { __farm: { world: { stats: { apricorns: number } } } }).__farm.world.stats.apricorns > 0), 'picked an Apricorn');
+  await page.screenshot({ path: `${OUT}/${name}-27-forest.png` });
+
+  // Granite Pass: mine some ore.
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.warp('route3', 4, 2); });
+  await page.waitForTimeout(600);
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(5, 2));
+  await settle(page);
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => { const inv = (window as unknown as { __farm: Hook }).__farm.world.inventory; return (inv['copper-ore'] ?? 0) + (inv['iron-ore'] ?? 0) + (inv.nugget ?? 0) > 0; }), 'mined ore in Granite Pass');
+  await page.screenshot({ path: `${OUT}/${name}-28-cave.png` });
+  if (await page.locator('.battle').count()) {
+    await page.evaluate(() => { const f = (window as unknown as { __farm: { world: { battle: unknown } } }).__farm; f.world.battle = null; });
+  }
+
+  // A Furnace on the farm.
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; Object.assign(f.world.inventory, { furnace: 1, 'iron-ore': 5, wood: 2 }); f.warp('farm', 6, 26); });
+  await page.waitForTimeout(600);
+  await hold(page, 'Furnace');
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(7, 26));
+  await settle(page);
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(7, 26));
+  await page.waitForSelector('.sheet h2:has-text("Furnace")', { timeout: 10_000 });
+  await page.locator('.row', { hasText: 'Iron Ore' }).getByRole('button', { name: 'Load' }).click();
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.machines['7,26']?.output === 'iron-bar'), 'loaded the Furnace with iron ore');
+  await page.screenshot({ path: `${OUT}/${name}-29-furnace.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // The journal.
+  await page.locator('.tracker').click();
+  await page.waitForSelector('.sheet h2:has-text("Journal")');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/${name}-30-journal.png` });
   await page.locator('.close').click();
   await page.waitForTimeout(250);
 

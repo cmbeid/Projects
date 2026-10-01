@@ -5,7 +5,9 @@
  */
 import { crop } from '../data/crops';
 import { item } from '../data/items';
-import { FARM, MAP_H, MAP_W, mapSize, tileAt } from '../data/maps';
+import { MAPS, gateAt, mapSize, nodesOn, tileAt, type MapId } from '../data/maps';
+import { PALETTES, TOWNSFOLK, trainer } from '../data/people';
+import { nodeReady } from '../game/forage';
 import { isDone } from '../game/machines';
 import { merchantHere } from '../game/market';
 import { species } from '../data/species';
@@ -15,7 +17,8 @@ import type { View } from './camera';
 import { farmerImage } from './farmer';
 import { darkness, skyTint } from './light';
 import { drawIcon, drawPokemon } from './sprites';
-import { T, barnImage, cartImage, cropImage, houseImage, machineImage, setTileState, soilImage, tileImage } from './tiles';
+import { T, barnImage, cartImage, cropImage, gateImage, houseImage, machineImage, nodeImage, setTileState, soilImage, tileImage, type Roof } from './tiles';
+import { personImage } from './farmer';
 import { seasonOf } from '../game/time';
 import type { Weather } from '../data/encounters';
 
@@ -44,19 +47,54 @@ export interface Fx {
 const FLOAT_MS = 1100;
 const SPLASH_MS = 450;
 
-/** A building's footprint and door column, read from the farm map. */
-function footprint(wall: string, doorCh: string): { x: number; y: number; w: number; h: number; door: number } {
-  let x0 = MAP_W, y0 = MAP_H, x1 = -1, y1 = -1, door = 0;
-  FARM.forEach((row, y) => [...row].forEach((ch, x) => {
-    if (ch !== wall && ch !== doorCh) return;
-    x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
-    if (ch === doorCh) door = x;
-  }));
-  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, door: door - x0 };
+interface Building {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  door: number;
+  roof: Roof | 'barn';
 }
 
-const HOUSE = footprint('H', 'D');
-const BARN = footprint('A', 'a');
+/** Wall and door characters for each kind of building. */
+const BUILDING_CHARS: [wall: string, door: string, roof: Building['roof']][] = [
+  ['H', 'D', 'farmhouse'], ['A', 'a', 'barn'], ['P', 'p', 'center'], ['Y', 'y', 'hall'], ['S', 's', 'shop'], ['U', 'u', 'house'],
+];
+
+/** Every building on a map, each block of wall and door found by flood fill, so neighbours stay apart. */
+function buildingsOn(map: MapId): Building[] {
+  const rows = MAPS[map].rows;
+  const seen = new Set<string>();
+  const out: Building[] = [];
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const kind = BUILDING_CHARS.find(([w, d]) => ch === w || ch === d);
+    if (!kind || seen.has(`${x},${y}`)) return;
+    const [wall, doorCh, roof] = kind;
+    let x0 = x, y0 = y, x1 = x, y1 = y, door = x;
+    const stack = [[x, y] as [number, number]];
+    while (stack.length) {
+      const [cx, cy] = stack.pop()!;
+      const c = rows[cy]?.[cx];
+      if ((c !== wall && c !== doorCh) || seen.has(`${cx},${cy}`)) continue;
+      seen.add(`${cx},${cy}`);
+      x0 = Math.min(x0, cx); y0 = Math.min(y0, cy); x1 = Math.max(x1, cx); y1 = Math.max(y1, cy);
+      if (c === doorCh) door = cx;
+      stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+    }
+    out.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, door: door - x0, roof });
+  }));
+  return out;
+}
+
+const BUILDINGS = new Map<MapId, Building[]>();
+function buildings(map: MapId): Building[] {
+  let list = BUILDINGS.get(map);
+  if (!list) BUILDINGS.set(map, (list = buildingsOn(map)));
+  return list;
+}
+
+const HOUSE = buildingsOn('farm').find((b) => b.roof === 'farmhouse')!;
+const BARN = buildingsOn('farm').find((b) => b.roof === 'barn')!;
 
 export function render(ctx: CanvasRenderingContext2D, world: World, view: View, now: number, fx: Fx): void {
   const { tile, ox, oy } = view;
@@ -79,7 +117,11 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
   for (let y = y0; y <= y1; y += 1) {
     for (let x = x0; x <= x1; x += 1) {
       const kind = tileAt(world.map, x, y);
-      ctx.drawImage(kind === 'merchant' ? cartImage(merchantHere(world), x, y) : tileImage(kind, x, y, now), sx(x), sy(y), tile, tile);
+      const gate = gateAt(world.map, x, y);
+      const img = kind === 'merchant' ? cartImage(merchantHere(world), x, y)
+        : gate && !world.story.flags.includes(gate.flag) ? gateImage(gate.look, x, y)
+        : tileImage(kind, x, y, now);
+      ctx.drawImage(img, sx(x), sy(y), tile, tile);
       const plot = farm ? world.plots[plotKey(x, y)] : undefined;
       if (plot) ctx.drawImage(soilImage(plot.watered), sx(x), sy(y), tile, tile);
     }
@@ -98,9 +140,15 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
     }
   }
 
-  if (farm) {
-    ctx.drawImage(houseImage(HOUSE.w, HOUSE.h, HOUSE.door), sx(HOUSE.x), sy(HOUSE.y), HOUSE.w * tile, HOUSE.h * tile);
-    ctx.drawImage(barnImage(BARN.w, BARN.h, BARN.door), sx(BARN.x), sy(BARN.y), BARN.w * tile, BARN.h * tile);
+  // Apricorn trees, logs and ore rocks, ripe or picked.
+  for (const n of nodesOn(world.map)) {
+    if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
+    ctx.drawImage(nodeImage(n.kind, n.x, n.y, nodeReady(world, world.map, n.x, n.y), n.apricorn), sx(n.x), sy(n.y), tile, tile);
+  }
+
+  for (const b of buildings(world.map)) {
+    const img = b.roof === 'barn' ? barnImage(b.w, b.h, b.door) : houseImage(b.w, b.h, b.door, b.roof);
+    ctx.drawImage(img, sx(b.x), sy(b.y), b.w * tile, b.h * tile);
   }
 
   if (fx.target) {
@@ -145,6 +193,27 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
       ctx.drawImage(farmerImage(p.facing, frame), sx(p.x), sy(p.y) - Math.round(scale * 2), tile, tile);
     },
   });
+  for (const n of world.npcs) {
+    actors.push({
+      y: n.y,
+      draw: () => {
+        const pal = PALETTES[n.kind === 'trainer' ? trainer(n.id).palette : (TOWNSFOLK.find((f) => f.id === n.id)?.palette ?? 'folkA')];
+        shadow(ctx, sx(n.x) + tile / 2, sy(n.y) + tile * 0.92, tile * 0.32);
+        const frame = n.path.length ? Math.floor(now / 160) % 2 : 0;
+        ctx.drawImage(personImage(pal, n.facing, frame), sx(n.x), sy(n.y) - Math.round(scale * 2), tile, tile);
+        if (world.approach === n.id) {
+          // The trainer has seen you!
+          ctx.font = `900 ${Math.round(tile * 0.6)}px ui-monospace, monospace`;
+          ctx.textAlign = 'center';
+          ctx.lineWidth = Math.max(2, scale);
+          ctx.strokeStyle = '#2a2a30';
+          ctx.fillStyle = '#ffe08a';
+          ctx.strokeText('!', sx(n.x) + tile / 2, sy(n.y) - tile * 0.25);
+          ctx.fillText('!', sx(n.x) + tile / 2, sy(n.y) - tile * 0.25);
+        }
+      },
+    });
+  }
   world.helpers.forEach((h, i) => {
     if (h.role === 'farm' && !farm) return;
     actors.push({
@@ -176,7 +245,7 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
   }
 
   lighting(ctx, world, view, sx, sy);
-  weather(ctx, world.weather, view, now);
+  if (!MAPS[world.map].cave) weather(ctx, world.weather, view, now);
 
   // Floating text over everything, even at night.
   ctx.textAlign = 'center';
@@ -273,11 +342,13 @@ function shadow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number):
 }
 
 function lighting(ctx: CanvasRenderingContext2D, world: World, view: View, sx: (x: number) => number, sy: (y: number) => number): void {
-  const sky = skyTint(world.clock);
+  // Caves are always dim, whatever the hour.
+  const cave = Boolean(MAPS[world.map].cave);
+  const sky = cave ? { r: 12, g: 8, b: 20, a: 0.5 } : skyTint(world.clock);
   if (sky.a <= 0.001) return;
   ctx.fillStyle = `rgba(${sky.r | 0},${sky.g | 0},${sky.b | 0},${sky.a.toFixed(3)})`;
   ctx.fillRect(0, 0, view.width, view.height);
-  const dark = darkness(world.clock);
+  const dark = cave ? 1 : darkness(world.clock);
   if (dark <= 0) return;
   const { tile } = view;
   ctx.save();
