@@ -232,3 +232,7 @@ style.css
   - They re-till field tiles that went back to grass.
   - Seeds they're carrying go back into the box if a trip is called off or the game saves.
 - **Saves:** older saves count their existing plots as fields. Anything that stood where the box now is goes back to the bag.
+
+## Rest bars and the bench (built)
+- **Rest bars:** a bar over each crop-working Pokémon (water, tend, harvest, sow) counts down to its next job. It's amber when the Pokémon is hungry, and hidden while it's walking to a job or off duty.
+- **The bench:** a fixed bench by the house. Sitting on it runs the whole sim six times faster, crops, helpers and machines alike. Any input gets you up, and so does midnight. Saves store you standing beside it.

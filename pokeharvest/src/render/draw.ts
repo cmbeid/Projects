@@ -12,12 +12,13 @@ import { isDone } from '../game/machines';
 import { merchantHere } from '../game/market';
 import { species } from '../data/species';
 import { stageOf } from '../game/farm';
+import { restProgress } from '../game/helpers';
 import { plotKey, type World } from '../game/model';
 import type { View } from './camera';
 import { farmerImage } from './farmer';
 import { darkness, skyTint } from './light';
 import { drawIcon, drawPokemon } from './sprites';
-import { T, barnImage, cartImage, cropImage, gateImage, houseImage, machineImage, nodeImage, setTileState, soilImage, tileImage, type Roof } from './tiles';
+import { T, barnImage, benchFront, cartImage, cropImage, gateImage, houseImage, machineImage, nodeImage, setTileState, soilImage, tileImage, type Roof } from './tiles';
 import { personImage } from './farmer';
 import { seasonOf } from '../game/time';
 import type { Weather } from '../data/encounters';
@@ -188,6 +189,14 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
   actors.push({
     y: p.y,
     draw: () => {
+      if (p.seat) {
+        // Sitting on the bench: legs hidden behind the seat.
+        const img = farmerImage('down', 0);
+        const cut = Math.round(img.height * 0.72);
+        ctx.drawImage(img, 0, 0, img.width, cut, sx(p.x), sy(p.y) - Math.round(scale * 3), tile, Math.round((tile * cut) / img.height));
+        ctx.drawImage(benchFront(), sx(p.x), sy(p.y), tile, tile);
+        return;
+      }
       shadow(ctx, sx(p.x) + tile / 2, sy(p.y) + tile * 0.92, tile * 0.32);
       const frame = p.path.length ? Math.floor(now / 140) % 2 : 0;
       ctx.drawImage(farmerImage(p.facing, frame), sx(p.x), sy(p.y) - Math.round(scale * 2), tile, tile);
@@ -246,6 +255,13 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
 
   lighting(ctx, world, view, sx, sy);
   if (!MAPS[world.map].cave) weather(ctx, world.weather, view, now);
+
+  // How long each working Pokémon has left before its next job.
+  for (const h of world.helpers) {
+    if (h.role === 'farm' && !farm) continue;
+    const rest = restProgress(world, h);
+    if (rest) restBar(ctx, sx(h.x) + tile / 2, sy(h.y) - tile * 0.4, tile, scale, rest.progress, rest.hungry);
+  }
 
   // Floating text over everything, even at night.
   ctx.textAlign = 'center';
@@ -332,6 +348,20 @@ function bubble(ctx: CanvasRenderingContext2D, icon: string, x: number, y: numbe
   ctx.fill();
   ctx.stroke();
   drawIcon(ctx, icon, x, y - r + bob, r * 1.6);
+}
+
+/** A little bar over a helper's head, filling up until it goes back to work. Amber when it's hungry and slow. */
+function restBar(ctx: CanvasRenderingContext2D, cx: number, y: number, tile: number, scale: number, progress: number, hungry: boolean): void {
+  const w = Math.round(tile * 0.7);
+  const hgt = Math.max(4, Math.round(scale * 1.5));
+  const x = Math.round(cx - w / 2);
+  const b = Math.max(1, Math.round(scale / 2));
+  ctx.fillStyle = 'rgba(42,42,48,0.85)';
+  ctx.fillRect(x - b, Math.round(y) - b, w + b * 2, hgt + b * 2);
+  ctx.fillStyle = 'rgba(255,248,231,0.35)';
+  ctx.fillRect(x, Math.round(y), w, hgt);
+  ctx.fillStyle = hungry ? '#f0a030' : '#7cd85a';
+  ctx.fillRect(x, Math.round(y), Math.round(w * progress), hgt);
 }
 
 function shadow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {

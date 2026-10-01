@@ -337,6 +337,20 @@ async function run(name: string, viewport: { width: number; height: number }, to
   check(await page.evaluate(() => (window as unknown as { __farm: { world: { seedBox: Record<string, number> } } }).__farm.world.seedBox['cheri-seed'] === 4), 'a Diglett planted a Cheri seed from the box');
   await page.screenshot({ path: `${OUT}/${name}-18c-sown.png` });
 
+  // The bench: sit, watch time fly, and tap to get up.
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.warp('farm', 6, 7));
+  await page.waitForTimeout(500);
+  await tap(page, 6, 6, touch);
+  await page.waitForSelector('.resting:not([hidden])', { timeout: 10_000 });
+  const sat = await page.evaluate(() => (window as unknown as { __farm: { world: { clock: number } } }).__farm.world.clock);
+  await page.waitForTimeout(2100);
+  const later = await page.evaluate(() => (window as unknown as { __farm: { world: { clock: number } } }).__farm.world.clock);
+  check(later - sat > 12, `time runs faster on the bench (${(later - sat).toFixed(0)} min in 2s)`);
+  await page.screenshot({ path: `${OUT}/${name}-18d-bench.png` });
+  await tap(page, 8, 10, touch);
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => (window as unknown as { __farm: { world: { player: { seat: unknown } } } }).__farm.world.player.seat === null), 'a tap gets you up off the bench');
+
   // The merchant, on a Saturday.
   await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.world.day = 6; f.warp('farm', 14, 26); });
   await page.waitForTimeout(600);

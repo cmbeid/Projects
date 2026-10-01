@@ -46,7 +46,7 @@ export function passableFor(world: World, map: MapId = world.map): (p: Point) =>
 export const passable = passableOn('farm');
 
 export function newHelper(uid: number, dex: number, role: Helper['role'], x: number, y: number): Helper {
-  return { uid, dex, role, x, y, path: [], facing: 'down', cooldown: JOB_INTERVAL / 2, target: null, errand: null, carrying: null };
+  return { uid, dex, role, x, y, path: [], facing: 'down', cooldown: JOB_INTERVAL / 2, rest: JOB_INTERVAL / 2, target: null, errand: null, carrying: null };
 }
 
 /** Make the helpers match the party and the barn: newcomers appear beside you or the barn; evolutions show. */
@@ -72,6 +72,22 @@ export function syncHelpers(world: World): void {
 /** Whether a conscious helper on the farm overnight scares crows. Everyone's home at night. */
 export function guarded(world: World): boolean {
   return [...partyMons(world), ...farmMons(world)].some((m) => m.hp > 0 && species(m.dex).job === 'guard');
+}
+
+/** Jobs done at a crop, on a timer. Guards and power work just by being there. */
+const ACTIVE_JOBS = new Set(['water', 'tend', 'harvest', 'sow']);
+
+/**
+ * How far through its rest a working helper is (0 to 1), for the bar over its
+ * head, or null when there's no countdown to show: off duty, asleep, idle,
+ * already on its way to a job, or not a crop worker at all.
+ */
+export function restProgress(world: World, h: Helper): { progress: number; hungry: boolean } | null {
+  const mon = monByUid(world, h.uid);
+  const map: MapId = h.role === 'farm' ? 'farm' : world.map;
+  if (!ACTIVE_JOBS.has(species(h.dex).job) || map !== 'farm' || (mon?.hp ?? 0) <= 0) return null;
+  if (h.target || h.rest <= 0 || world.clock >= WORK_ENDS) return null;
+  return { progress: Math.max(0, Math.min(1, 1 - h.cooldown / h.rest)), hungry: mon?.fed === false };
 }
 
 /** Plots other helpers are already heading for, or fetching a seed for. */
@@ -199,6 +215,7 @@ export function updateHelpers(world: World, dt: number, minutes: number): void {
           h.target = null;
           h.errand = null;
           h.cooldown = mon?.fed === false ? JOB_INTERVAL * 2 : JOB_INTERVAL;
+          h.rest = h.cooldown;
         };
         if (h.errand && !h.carrying) {
           // At the Seed Box: take a seed and head for the plot.
@@ -232,6 +249,7 @@ export function updateHelpers(world: World, dt: number, minutes: number): void {
         continue;
       }
       h.cooldown = 10; // nothing to do: look again in a bit
+      h.rest = 0;
     }
     if (h.role === 'party') {
       // Keep close to the farmer.
@@ -282,4 +300,5 @@ function reset(world: World, h: Helper, at: Point): void {
   h.target = null;
   h.facing = 'down';
   h.cooldown = JOB_INTERVAL / 2;
+  h.rest = JOB_INTERVAL / 2;
 }

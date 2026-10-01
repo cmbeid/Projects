@@ -2,6 +2,7 @@
  * The farm screen: the canvas, the HUD along the top, the hotbar along the
  * bottom, and the loop that runs the sim at a fixed step and draws it.
  */
+import { BENCH_SPEED } from '../game/bench';
 import { cry, loadCries, sfx } from '../audio/index';
 import { playMusic, preloadMusic } from '../audio/music';
 import { isNight } from '../data/encounters';
@@ -45,7 +46,7 @@ const KEYS: Record<string, Dir> = {
 };
 
 const EVENT_COLOURS: Record<string, string> = {
-  harvest: '#b6f28a', refill: '#8cc4f2', hint: '#ffe08a', helper: '#ffffff', pet: '#ff7aa8', collect: '#b6f28a',
+  harvest: '#b6f28a', refill: '#8cc4f2', hint: '#ffe08a', sit: '#8cc4f2', stand: '#ffe08a', helper: '#ffffff', pet: '#ff7aa8', collect: '#b6f28a',
 };
 
 export function farmScreen(world: World, isNew: boolean, quit: () => void, restart: () => void): void {
@@ -69,9 +70,10 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   const bar = h('nav.hotbar', { 'aria-label': 'Tools and seeds' });
   const layer = h('div.layer');
   const tracker = h('button.tracker', { 'aria-label': 'Current goal' });
+  const resting = h('div.resting', { hidden: true }, `⏩ Time ×${BENCH_SPEED} · tap to get up`);
   const dpad = createDpad(() => { if (!sheetOpen() && !battleOpen && !dialogueOpen()) actFacing(world); });
   dpad.apply(getSettings().dpad);
-  const root = h('main.farm', {}, canvas, hud, tracker, dpad.el, bar, layer);
+  const root = h('main.farm', {}, canvas, hud, tracker, resting, dpad.el, bar, layer);
   setDialogueHost(layer);
   tracker.addEventListener('click', () => openJournal(layer, world));
   show(root);
@@ -93,6 +95,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     dayEl.textContent = `${seasonOf(world.day)} ${dayOfSeason(world.day)} · ${where}`;
     const goal = nextGoal(world);
     tracker.hidden = !goal;
+    resting.hidden = !world.player.seat;
     if (goal) tracker.textContent = `Ch.${world.story.chapter + 1} · ${goal.text} ${Math.min(goal.have, goal.need)}/${goal.need}`;
     clockEl.textContent = `${WEATHER_ICONS[world.weather]} ${clockText(world.clock)}`;
     clockEl.title = WEATHER_NAMES[world.weather];
@@ -210,6 +213,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
         break;
       }
       case 'hint': sfx.deny(); break;
+      case 'sit': case 'stand': sfx.click(); break;
       case 'coins': sfx.coin(); break;
       case 'open':
         held.clear();

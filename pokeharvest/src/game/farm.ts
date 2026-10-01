@@ -6,6 +6,7 @@ import { crop, inSeason } from '../data/crops';
 import { ITEMS, item } from '../data/items';
 import { MAPS, doorAt, gateAt, nodeAt, tileAt, walkable } from '../data/maps';
 import { gather } from './forage';
+import { BENCH_UNTIL, sitDown } from './bench';
 import { npcAt } from './npcs';
 import { CAN_CAPACITY, TOOL_TIERS, type UpgradableTool } from '../data/progress';
 import { pet } from './barn';
@@ -20,7 +21,7 @@ import { DELTA } from './walk';
 export type Action =
   | 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'untill' | 'refill'
   | 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant' | 'seedbox'
-  | 'place' | 'machine' | 'pickup' | 'pet' | 'talk' | 'door' | 'gather';
+  | 'place' | 'machine' | 'pickup' | 'pet' | 'talk' | 'door' | 'gather' | 'sit';
 
 /** What using a tile would do: an action, nothing worth doing (just walk there), or a reason it can't. */
 export type Intent = { kind: 'use'; action: Action } | { kind: 'walk' } | { kind: 'deny'; text: string };
@@ -146,6 +147,7 @@ function toolIntent(world: World, x: number, y: number): Intent {
   if (kind === 'barn' || kind === 'barndoor') return { kind: 'use', action: 'barn' };
   if (kind === 'board') return { kind: 'use', action: 'board' };
   if (kind === 'seedbox') return { kind: 'use', action: 'seedbox' };
+  if (kind === 'bench') return world.clock >= BENCH_UNTIL ? { kind: 'deny', text: "It's late. Time for bed" } : { kind: 'use', action: 'sit' };
   if (kind === 'merchant') return { kind: 'use', action: 'merchant' };
   if (doorAt(world.map, x, y)) return { kind: 'use', action: 'door' };
   if (nodeAt(world.map, x, y)) return { kind: 'use', action: 'gather' };
@@ -257,6 +259,8 @@ export function useAt(world: World, x: number, y: number): boolean {
       return true;
     case 'gather':
       return gather(world, x, y);
+    case 'sit':
+      return sitDown(world);
     case 'place':
       return placeMachine(world, world.selected, x, y);
     case 'pet': {
