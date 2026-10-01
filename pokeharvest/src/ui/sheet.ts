@@ -48,7 +48,14 @@ export function openSheet(
     h('header.sheet-head', {}, h('h2', {}, title), dismissable ? h('button.close', { 'aria-label': 'Close', onclick: closeSheet }, '✕') : null),
     body,
   );
-  const scrim = h('div.scrim', { onclick: (e: Event) => { if (e.target === scrim && dismissable) closeSheet(); } }, panel);
+  // Close on a tap outside the panel, but only one that began there: on touch
+  // screens the click from the tap that opened this sheet can land on the
+  // backdrop while the panel is still sliding in.
+  let pressedOutside = false;
+  const scrim = h('div.scrim', {
+    onpointerdown: (e: Event) => { pressedOutside = e.target === scrim; },
+    onclick: (e: Event) => { if (e.target === scrim && pressedOutside && dismissable) closeSheet(); pressedOutside = false; },
+  }, panel);
   host.append(scrim);
   current = { el: scrim, onClose: opts.onClose ?? (() => undefined) };
   refresh();

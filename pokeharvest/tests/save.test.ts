@@ -45,7 +45,7 @@ describe('save', () => {
     expect(w.player.x).toBe(4); // (0,0) is a tree: back to the door
     expect(Object.keys(w.plots)).toEqual(['5,14']);
     expect(w.plots['5,14']!.crop).toBeNull();
-    expect(w.inventory).toEqual({ oran: 3 });
+    expect(w.inventory).toEqual({ oran: 3, workbench: 1 }); // a farm from before the story gets a Workbench
     expect(w.selected).toBe('hoe');
     expect(w.helpers).toHaveLength(1);
   });
@@ -88,7 +88,11 @@ describe('save', () => {
 
   it('keeps settings', () => {
     const store = memory();
-    saveSettings({ sfx: 10, cries: 20, music: 30, muted: true }, store);
-    expect(loadSettings(store)).toEqual({ sfx: 10, cries: 20, music: 30, muted: true });
+    const dpad = { enabled: true, size: 'L' as const, opacity: 60, x: 70, y: 40 };
+    saveSettings({ sfx: 10, cries: 20, music: 30, muted: true, dpad }, store);
+    expect(loadSettings(store)).toEqual({ sfx: 10, cries: 20, music: 30, muted: true, dpad });
+    // A bad position is clamped back on screen.
+    store.setItem('pokeharvest.settings.v1', JSON.stringify({ dpad: { x: 500, size: 'XL' } }));
+    expect(loadSettings(store).dpad).toMatchObject({ x: 95, size: 'M' });
   });
 });

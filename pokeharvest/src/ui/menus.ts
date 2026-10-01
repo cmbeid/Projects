@@ -5,7 +5,7 @@ import { WEATHER_NAMES } from '../game/weather';
 import { BUFF_TEXT, MART_STOCK, item, sellable } from '../data/items';
 import { RECIPES } from '../data/crafting';
 import { productOf, setRole } from '../game/barn';
-import { craft, craftBlocker, eat, giveCandy } from '../game/craft';
+import { craft, craftBlocker, eat, giveCandy, hasWorkbench } from '../game/craft';
 import { roleOf } from '../game/model';
 import { PERKS, SKILLS, SKILL_TEXT, SKILL_XP, TOOL_TEXT, UPGRADE_COSTS, type Skill, type UpgradableTool } from '../data/progress';
 import { JOB_TEXT, SPECIES, species } from '../data/species';
@@ -149,11 +149,11 @@ export function openSmith(host: HTMLElement, world: World, changed: Changed): vo
         body.append(h('p', {}, 'This is the finest there is.'));
         continue;
       }
-      const have = world.inventory[cost.material] ?? 0;
+      const items = Object.entries(cost.items).map(([id, n]) => `${n} ${item(id).name} (have ${world.inventory[id] ?? 0})`).join(', ');
       body.append(row(
         itemIcon(tool),
         toolName(tool, tier + 1),
-        `${TOOL_TEXT[tool][tier + 1]} · ${gold(cost.gold)} + ${cost.count} ${item(cost.material).name} (have ${have})`,
+        `${TOOL_TEXT[tool][tier + 1]} · ${gold(cost.gold)} + ${items}`,
         button('Upgrade', () => {
           if (startUpgrade(world, tool)) sfx.powerup();
           else sfx.deny();
@@ -278,21 +278,24 @@ function pokemonTab(body: HTMLElement, world: World, changed: Changed): void {
 }
 
 function craftTab(body: HTMLElement, world: World, changed: Changed): void {
-  body.append(h('p.note', {}, `Crafting level ${levelOf(world, 'crafting')}. Machines are placed on the farm; dishes are cooked in the farmhouse kitchen, so only at home.`));
-  for (const [title, kitchen] of [['Machines', false], ['Kitchen', true]] as const) {
-    body.append(h('h3', {}, title));
-    for (const recipe of RECIPES.filter((r) => Boolean(r.kitchen) === kitchen)) {
-      const def = item(recipe.id);
-      const blocker = craftBlocker(world, recipe.id);
-      const inputs = Object.entries(recipe.inputs).map(([id, n]) => `${n} ${item(id).name} (${world.inventory[id] ?? 0})`).join(', ');
-      const what = def.kind === 'food' ? `+${def.energy! >= 999 ? 'all' : def.energy} energy${def.buff ? `, ${BUFF_TEXT[def.buff].toLowerCase()}` : ''}` : def.description ?? '';
-      const locked = levelOf(world, 'crafting') < recipe.level;
-      body.append(row(itemIcon(recipe.id), locked ? `${def.name} · Crafting ${recipe.level}` : def.name, `${what} · ${inputs}`,
-        button(kitchen ? 'Cook' : 'Craft', () => {
-          (craft(world, recipe.id) ? sfx.powerup : sfx.deny)();
-          changed();
-        }, Boolean(blocker), 'primary')));
-    }
+  body.append(h('p.note', {}, `Crafting level ${levelOf(world, 'crafting')}. Machines and stations are crafted at a Workbench on your farm${hasWorkbench(world) ? '' : " (you haven't placed one yet)"}, then placed by holding them and tapping open grass. Dishes are cooked in the farmhouse kitchen.`));
+  recipeList(body, world, false, changed);
+}
+
+/** The recipes for machines and stations, or for the kitchen. */
+function recipeList(body: HTMLElement, world: World, kitchen: boolean, changed: Changed): void {
+  body.append(h('h3', {}, kitchen ? 'Recipes' : 'Machines and stations'));
+  for (const recipe of RECIPES.filter((r) => Boolean(r.kitchen) === kitchen)) {
+    const def = item(recipe.id);
+    const blocker = craftBlocker(world, recipe.id);
+    const inputs = Object.entries(recipe.inputs).map(([id, n]) => `${n} ${item(id).name} (${world.inventory[id] ?? 0})`).join(', ');
+    const what = def.kind === 'food' ? `+${def.energy! >= 999 ? 'all' : def.energy} energy${def.buff ? `, ${BUFF_TEXT[def.buff].toLowerCase()}` : ''}` : def.description ?? '';
+    const locked = levelOf(world, 'crafting') < recipe.level;
+    body.append(row(itemIcon(recipe.id), locked ? `${def.name} · Crafting ${recipe.level}` : def.name, `${what} · ${inputs}`,
+      button(kitchen ? 'Cook' : 'Craft', () => {
+        (craft(world, recipe.id) ? sfx.powerup : sfx.deny)();
+        changed();
+      }, Boolean(blocker), 'primary')));
   }
 }
 
@@ -336,8 +339,15 @@ export function openPerk(host: HTMLElement, world: World, onDone: () => void): v
   }, { onClose: onDone, dismissable: false });
 }
 
-export function openSleep(host: HTMLElement, world: World, onSleep: () => void): void {
-  openSheet(host, 'Farmhouse', (body) => {
+export function openSleep(host: HTMLElement, world: World, onSleep: () => void, changed: Changed = () => undefined): void {
+  let tab: 'sleep' | 'cook' = 'sleep';
+  openSheet(host, 'Farmhouse', (body, refresh) => {
+    body.append(tabs(tab, [['sleep', 'Sleep'], ['cook', 'Kitchen']], (t) => { tab = t; refresh(); }));
+    if (tab === 'cook') {
+      body.append(h('p.note', {}, `Cook a dish, then eat it from the Bag for energy and a buff for the day. Crafting level ${levelOf(world, 'crafting')}.`));
+      recipeList(body, world, true, () => { changed(); refresh(); });
+      return;
+    }
     const late = world.clock >= 24 * 60;
     body.append(
       h('p', {}, `It's ${clockText(world.clock)}. Go to bed and end the day?`),

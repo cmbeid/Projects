@@ -6,7 +6,8 @@ import { BARN_LEVELS, RANCH_STOCK, REPUTATION, REPUTATION_NAMES, reputationLevel
 import { JOB_TEXT, species } from '../data/species';
 import { barnCapacity, barnUpgradeBlocker, buyLivestock, collectBarn, fillTrough, greenhouseBlocker, hearts, productOf, ranchBlocker, repairGreenhouse, setRole, troughCount, upgradeBarn } from '../game/barn';
 import { GREENHOUSE_COST } from '../data/ranch';
-import { isDone, loadMachine, machineSpeed, outputFor, pickUpMachine, powered } from '../game/machines';
+import { isDone, loadBlocker, loadCost, loadMachine, machineSpeed, outputFor, pickUpMachine, powered } from '../game/machines';
+import { MACHINES } from '../data/crafting';
 import { buyFromMerchant, merchantHere, merchantStock } from '../game/market';
 import { farmMons, plotKey, type World } from '../game/model';
 import { canDeliver, deliver } from '../game/requests';
@@ -168,23 +169,34 @@ export function openMachine(host: HTMLElement, world: World, x: number, y: numbe
       closeSheet();
       return;
     }
-    const speed = machineSpeed(world);
-    body.append(h('p.note', {}, `${item(m.id).description ?? ''} ${powered(world) ? 'An Electric Pokémon on the farm is powering it: twice as fast!' : 'An Electric Pokémon on the farm would make it run twice as fast.'}`));
+    const speed = machineSpeed(world, m.id);
+    const type = MACHINES[m.id]?.poweredBy;
+    const name = type === 'fire' ? 'A Fire' : 'An Electric';
+    const power = !type ? '' : powered(world, m.id)
+      ? `${name} Pokémon on the farm is powering it: twice as fast${m.id === 'furnace' ? ', and no wood needed' : ''}!`
+      : `${name} Pokémon working on the farm would make it run twice as fast${m.id === 'furnace' ? ' with no wood' : ''}.`;
+    body.append(h('p.note', {}, `${item(m.id).description ?? ''} ${power}`));
+    if (m.id === 'workbench') {
+      body.append(h('p', {}, "Craft machines and stations in the Bag's Craft tab while this stands on your farm."));
+    }
     if (m.output && !isDone(world, key)) {
       const minutes = Math.ceil((m.needed - m.progress) / speed);
       body.append(h('p', {}, `Making ${item(m.output).name}… about ${minutes >= 60 ? `${Math.round(minutes / 60)} hours` : `${minutes} minutes`} to go.`));
-    } else if (!m.output) {
+    } else if (!m.output && m.id !== 'workbench') {
       const inputs = [...ITEMS.keys()].filter((id) => (world.inventory[id] ?? 0) > 0 && outputFor(m.id, id));
       body.append(h('h3', {}, 'Put something in'));
       if (!inputs.length) body.append(h('p.empty', {}, 'Nothing in your bag that this machine takes.'));
       for (const id of inputs) {
         const out = outputFor(m.id, id)!;
-        body.append(row(itemIcon(id), `${item(id).name} ×${world.inventory[id]}`, `Makes ${item(out).name} (${gold(item(out).sellPrice)})`,
+        const cost = loadCost(world, m.id, id)!;
+        const blocker = loadBlocker(world, x, y, id);
+        const uses = `${cost.uses > 1 ? `${cost.uses} make` : 'Makes'} ${item(out).name} (${gold(item(out).sellPrice)})${cost.fuel ? ` · burns 1 ${item(cost.fuel).name}` : ''}`;
+        body.append(row(itemIcon(id), `${item(id).name} ×${world.inventory[id]}`, blocker ? `${uses} · ${blocker}` : uses,
           button('Load', () => {
             (loadMachine(world, x, y, id) ? sfx.place : sfx.deny)();
             changed();
             refresh();
-          }, false, 'primary')));
+          }, Boolean(blocker), 'primary')));
       }
     }
     body.append(h('div.buttons', {}, button('Pick it up', () => {

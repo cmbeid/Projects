@@ -1,14 +1,21 @@
-/** The farmer: a 16 × 16 sprite in four directions with a two-frame walk, drawn in code. */
+/**
+ * People: a 16 × 16 sprite in four directions with a two-frame walk, drawn
+ * in code from a palette. The farmer is one palette; trainers and townsfolk
+ * are others (see `data/people.ts`).
+ */
+import type { Palette } from '../data/people';
 import type { Dir } from '../game/model';
 import { T } from './tiles';
 
-const SKIN = '#f2c79a';
-const HAT = '#d03a2a';
-const BRIM = '#a02a20';
-const HAIR = '#4a2f1f';
-const SHIRT = '#3a78d0';
-const PANTS = '#34405a';
+const FARMER: Palette = { hat: '#d03a2a', hair: '#4a2f1f', skin: '#f2c79a', shirt: '#3a78d0', pants: '#34405a' };
 const BOOT = '#3a2414';
+
+/** A darker shade of a colour, for the cap's brim. */
+function shade(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v: number): string => Math.floor(v * 0.75).toString(16).padStart(2, '0');
+  return `#${f((n >> 16) & 255)}${f((n >> 8) & 255)}${f(n & 255)}`;
+}
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -17,7 +24,9 @@ function px(g: Ctx, color: string, x: number, y: number, w = 1, h = 1): void {
   g.fillRect(x, y, w, h);
 }
 
-function paint(g: Ctx, dir: Dir, frame: number): void {
+function paint(g: Ctx, dir: Dir, frame: number, pal: Palette): void {
+  const { hat: HAT, hair: HAIR, skin: SKIN, shirt: SHIRT, pants: PANTS } = pal;
+  const BRIM = shade(HAT);
   const side = dir === 'left' || dir === 'right';
   // Legs, alternating while walking.
   const lift = frame === 1 ? 1 : 0;
@@ -63,8 +72,12 @@ function paint(g: Ctx, dir: Dir, frame: number): void {
 const frames = new Map<string, HTMLCanvasElement>();
 
 export function farmerImage(dir: Dir, frame: number): HTMLCanvasElement {
+  return personImage(FARMER, dir, frame);
+}
+
+export function personImage(pal: Palette, dir: Dir, frame: number): HTMLCanvasElement {
   // Left is right, mirrored.
-  const key = `${dir}${frame}`;
+  const key = `${pal.hat}${pal.shirt}${pal.hair}${dir}${frame}`;
   let c = frames.get(key);
   if (!c) {
     c = document.createElement('canvas');
@@ -74,9 +87,9 @@ export function farmerImage(dir: Dir, frame: number): HTMLCanvasElement {
     if (dir === 'left') {
       g.translate(T, 0);
       g.scale(-1, 1);
-      paint(g, 'right', frame);
+      paint(g, 'right', frame, pal);
     } else {
-      paint(g, dir, frame);
+      paint(g, dir, frame, pal);
     }
     frames.set(key, c);
   }

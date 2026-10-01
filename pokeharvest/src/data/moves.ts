@@ -39,6 +39,7 @@ const LIST: readonly Move[] = [
   m('confusion', 'Confusion', 'psychic', 50), m('psybeam', 'Psybeam', 'psychic', 65), m('zen-headbutt', 'Zen Headbutt', 'psychic', 80, 90), m('psychic', 'Psychic', 'psychic', 90),
   m('powder-snow', 'Powder Snow', 'ice', 40), m('icy-wind', 'Icy Wind', 'ice', 55, 95), m('ice-beam', 'Ice Beam', 'ice', 90), m('blizzard', 'Blizzard', 'ice', 110, 70),
   m('pursuit', 'Pursuit', 'dark', 40), m('bite', 'Bite', 'dark', 60), m('knock-off', 'Knock Off', 'dark', 65), m('crunch', 'Crunch', 'dark', 80),
+  m('metal-claw', 'Metal Claw', 'steel', 50, 95), m('steel-wing', 'Steel Wing', 'steel', 70, 90), m('iron-head', 'Iron Head', 'steel', 80), m('flash-cannon', 'Flash Cannon', 'steel', 80),
   m('acid', 'Acid', 'poison', 40), m('sludge', 'Sludge', 'poison', 65), m('poison-jab', 'Poison Jab', 'poison', 80), m('sludge-bomb', 'Sludge Bomb', 'poison', 90),
 ];
 
@@ -67,6 +68,7 @@ const TYPE_MOVES: Partial<Record<PokeType, readonly string[]>> = {
   psychic: ['confusion', 'psybeam', 'zen-headbutt', 'psychic'],
   ice: ['powder-snow', 'icy-wind', 'ice-beam', 'blizzard'],
   dark: ['pursuit', 'bite', 'knock-off', 'crunch'],
+  steel: ['metal-claw', 'steel-wing', 'iron-head', 'flash-cannon'],
 };
 
 /** Levels the main type's moves come at, and the second type's. */

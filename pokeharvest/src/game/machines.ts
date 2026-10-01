@@ -12,14 +12,27 @@ import { farmMons, hasPerk, partyMons, plotKey, type World } from './model';
 import { nextRandom } from './rng';
 import { addSkillXp } from './skills';
 
-/** Whether an Electric helper is working on the farm. */
-export function powered(world: World): boolean {
+/** Whether a conscious Pokémon of this type is working on the farm (the barn's, or your party while you're home). */
+export function poweredBy(world: World, type: 'electric' | 'fire'): boolean {
   const onFarm = [...farmMons(world), ...(world.map === 'farm' ? partyMons(world) : [])];
-  return onFarm.some((m) => m.hp > 0 && species(m.dex).job === 'power');
+  return onFarm.some((m) => m.hp > 0 && species(m.dex).types.includes(type));
 }
 
-export function machineSpeed(world: World): number {
-  return (powered(world) ? 2 : 1) * (hasPerk(world, 'tinkerer') ? 1.25 : 1);
+/** Whether this machine's power type is working on the farm. */
+export function powered(world: World, machineId = 'berry-press'): boolean {
+  const type = MACHINES[machineId]?.poweredBy;
+  return type ? poweredBy(world, type) : false;
+}
+
+export function machineSpeed(world: World, machineId = 'berry-press'): number {
+  return (powered(world, machineId) ? 2 : 1) * (hasPerk(world, 'tinkerer') ? 1.25 : 1);
+}
+
+/** What loading this would take: the input count, and fuel if unpowered. Null if it won't take it. */
+export function loadCost(world: World, machineId: string, input: string): { uses: number; fuel: string | null } | null {
+  const def = MACHINES[machineId];
+  if (!def?.output(input)) return null;
+  return { uses: def.uses?.(input) ?? 1, fuel: def.fuel && !powered(world, machineId) ? def.fuel : null };
 }
 
 export function canPlace(world: World, x: number, y: number): boolean {
@@ -45,11 +58,24 @@ export function outputFor(machineId: string, input: string): string | null {
   return MACHINES[machineId]?.output(input) ?? null;
 }
 
+/** Why it can't be loaded with this, or null if it can. */
+export function loadBlocker(world: World, x: number, y: number, input: string): string | null {
+  const m = world.machines[plotKey(x, y)];
+  if (!m || m.output) return 'It\'s busy.';
+  const cost = loadCost(world, m.id, input);
+  if (!cost) return "It won't take that.";
+  if ((world.inventory[input] ?? 0) < cost.uses) return `Needs ${cost.uses} ${item(input).name}.`;
+  if (cost.fuel && (world.inventory[cost.fuel] ?? 0) < (cost.fuel === input ? cost.uses + 1 : 1)) return `Needs a ${item(cost.fuel).name} to burn.`;
+  return null;
+}
+
 export function loadMachine(world: World, x: number, y: number, input: string): boolean {
   const m = world.machines[plotKey(x, y)];
-  if (!m || m.output) return false;
-  const output = outputFor(m.id, input);
-  if (!output || !takeItem(world, input, 1)) return false;
+  if (!m || loadBlocker(world, x, y, input)) return false;
+  const output = outputFor(m.id, input)!;
+  const cost = loadCost(world, m.id, input)!;
+  takeItem(world, input, cost.uses);
+  if (cost.fuel) takeItem(world, cost.fuel, 1);
   m.output = output;
   m.count = hasPerk(world, 'bulk') && nextRandom(world.rng) < 0.3 ? 2 : 1;
   m.progress = 0;
@@ -62,6 +88,7 @@ export function collectMachine(world: World, x: number, y: number): boolean {
   const m = world.machines[key];
   if (!m || !isDone(world, key)) return false;
   giveItem(world, m.output!, m.count);
+  if (m.id === 'furnace') world.stats.smelted[m.output!] = (world.stats.smelted[m.output!] ?? 0) + m.count;
   world.events.push({ kind: 'collect', x, y, text: m.count > 1 ? `${item(m.output!).name} ×${m.count}` : item(m.output!).name });
   addSkillXp(world, 'crafting', 3);
   m.output = null;
@@ -85,8 +112,7 @@ export function pickUpMachine(world: World, x: number, y: number): boolean {
 
 /** Let every machine work for `minutes` of in-game time. */
 export function runMachines(world: World, minutes: number): void {
-  const speed = machineSpeed(world);
   for (const m of Object.values(world.machines)) {
-    if (m.output && m.progress < m.needed) m.progress = Math.min(m.needed, m.progress + minutes * speed);
+    if (m.output && m.progress < m.needed) m.progress = Math.min(m.needed, m.progress + minutes * machineSpeed(world, m.id));
   }
 }

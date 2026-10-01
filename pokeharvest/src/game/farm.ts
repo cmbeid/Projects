@@ -4,7 +4,9 @@
  */
 import { crop, inSeason } from '../data/crops';
 import { ITEMS, item } from '../data/items';
-import { MAPS, tileAt, walkable } from '../data/maps';
+import { MAPS, doorAt, gateAt, nodeAt, tileAt, walkable } from '../data/maps';
+import { gather } from './forage';
+import { npcAt } from './npcs';
 import { CAN_CAPACITY, TOOL_TIERS, type UpgradableTool } from '../data/progress';
 import { pet } from './barn';
 import { canPlace, collectMachine, isDone, pickUpMachine, placeMachine } from './machines';
@@ -18,7 +20,7 @@ import { DELTA } from './walk';
 export type Action =
   | 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'untill' | 'refill'
   | 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant'
-  | 'place' | 'machine' | 'pickup' | 'pet';
+  | 'place' | 'machine' | 'pickup' | 'pet' | 'talk' | 'door' | 'gather';
 
 /** What using a tile would do: an action, nothing worth doing (just walk there), or a reason it can't. */
 export type Intent = { kind: 'use'; action: Action } | { kind: 'walk' } | { kind: 'deny'; text: string };
@@ -95,6 +97,9 @@ function waterable(world: World, x: number, y: number): boolean {
  * only when what's in hand has nothing better to do on that tile.
  */
 export function intentAt(world: World, x: number, y: number): Intent {
+  if (npcAt(world, x, y)) return { kind: 'use', action: 'talk' };
+  const gate = gateAt(world.map, x, y);
+  if (gate && !world.story.flags.includes(gate.flag)) return { kind: 'deny', text: gate.text };
   const base = toolIntent(world, x, y);
   if (base.kind !== 'walk') return base;
   const friend = helperAt(world, x, y);
@@ -111,6 +116,8 @@ function toolIntent(world: World, x: number, y: number): Intent {
   if (kind === 'barn' || kind === 'barndoor') return { kind: 'use', action: 'barn' };
   if (kind === 'board') return { kind: 'use', action: 'board' };
   if (kind === 'merchant') return { kind: 'use', action: 'merchant' };
+  if (doorAt(world.map, x, y)) return { kind: 'use', action: 'door' };
+  if (nodeAt(world.map, x, y)) return { kind: 'use', action: 'gather' };
   if (world.map === 'farm' && world.machines[plotKey(x, y)]) return { kind: 'use', action: held === 'sickle' ? 'pickup' : 'machine' };
   if (kind === 'water') {
     if (held !== 'can') return { kind: 'deny', text: 'Hold the can to fill it' };
@@ -208,6 +215,16 @@ export function useAt(world: World, x: number, y: number): boolean {
       return true;
     case 'pickup':
       return pickUpMachine(world, x, y);
+    case 'talk': {
+      const npc = npcAt(world, x, y);
+      if (npc) world.events.push({ kind: 'talk', npc: npc.id });
+      return Boolean(npc);
+    }
+    case 'door':
+      world.events.push({ kind: 'door', door: doorAt(world.map, x, y)!, x, y });
+      return true;
+    case 'gather':
+      return gather(world, x, y);
     case 'place':
       return placeMachine(world, world.selected, x, y);
     case 'pet': {

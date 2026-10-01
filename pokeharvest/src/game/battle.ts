@@ -5,13 +5,15 @@
  * order, for the battle screen to play back.
  */
 import { ITEMS, item, seedId } from '../data/items';
+import { KAI, kaiTeam, trainer as trainerData } from '../data/people';
+import { spawnNpcs, weekOf } from './npcs';
 import { move, type Move } from '../data/moves';
 import { species } from '../data/species';
 import { effectiveness } from '../data/types';
 import { adopt, gainXp, healthyParty, makeMon, maxHp, statsOf, xpYield } from './mon';
 import { SPAWN } from '../data/maps';
 import { placeHelpers, syncHelpers } from './helpers';
-import { hasPerk, monByUid, type Mon, type World } from './model';
+import { hasBuff, hasPerk, monByUid, type Mon, type World } from './model';
 import { nextRandom } from './rng';
 import { addSkillXp } from './skills';
 import { DAY_END } from './time';
@@ -35,6 +37,8 @@ export interface Battle {
   fought: number[];
   /** Your Pokémon fainted and you must send out another. */
   mustSwitch: boolean;
+  /** A trainer battle: their team, and which one is out (as `wild`). */
+  trainer: { id: string; name: string; team: Mon[]; index: number } | null;
   over: null | 'win' | 'lose' | 'run' | 'caught';
 }
 
@@ -47,6 +51,7 @@ export type BattleEvent =
   | { kind: 'throw'; ball: string }
   | { kind: 'shake'; count: number }
   | { kind: 'caught' }
+  | { kind: 'sendWild'; index: number }
   | { kind: 'end'; result: NonNullable<Battle['over']> };
 
 export type BattleAction =
@@ -59,19 +64,41 @@ const MAX_LURE = 3;
 const TAMER_MAX_LURE = 4;
 
 export function startBattle(world: World, dex: number, level: number): Battle | null {
+  return begin(world, makeMon(dex, level, world.rng), null);
+}
+
+function begin(world: World, wild: Mon, trainer: Battle['trainer']): Battle | null {
   const lead = healthyParty(world)[0];
   if (!lead) return null;
-  const wild = makeMon(dex, level, world.rng);
   const battle: Battle = {
     wild, active: lead.uid, stages: { you: { atk: 0, def: 0 }, wild: { atk: 0, def: 0 } },
-    lure: 1, runs: 0, fought: [lead.uid], mustSwitch: false, over: null,
+    lure: 1, runs: 0, fought: [lead.uid], mustSwitch: false, over: null, trainer,
   };
-  if (!world.seen.includes(dex)) world.seen.push(dex);
+  if (!world.seen.includes(wild.dex)) world.seen.push(wild.dex);
   world.battle = battle;
   world.player.path = [];
   world.player.pending = null;
-  world.events.push({ kind: 'encounter', dex, level });
+  world.events.push({ kind: 'encounter', dex: wild.dex, level: wild.level });
   return battle;
+}
+
+/** Your first starter's line, by its first form (1, 4 or 7). */
+export function starterOf(world: World): number {
+  const first = world.mons.reduce((a, m) => (m.uid < a.uid ? m : a), world.mons[0]!);
+  return first.dex <= 3 ? 1 : first.dex <= 6 ? 4 : 7;
+}
+
+/** Battle a trainer. Rematches in later weeks are a little stronger each time. */
+export function startTrainerBattle(world: World, id: string): Battle | null {
+  const t = id === 'kai' ? KAI : trainerData(id);
+  const wins = world.trainers[id]?.wins ?? 0;
+  const roster = id === 'kai' ? kaiTeam(starterOf(world), wins) : t.team.map(([d, l]): [number, number] => [d, l + Math.min(12, wins * 3)]);
+  const team = roster.map(([d, l]) => {
+    const mon = makeMon(d, l, world.rng);
+    mon.shiny = false;
+    return mon;
+  });
+  return begin(world, team[0]!, { id, name: `${t.cls === 'Rival' ? '' : `${t.cls} `}${t.name}`, team, index: 0 });
 }
 
 export function activeMon(world: World, b: Battle): Mon {
@@ -151,7 +178,18 @@ function wildMove(world: World, b: Battle): string {
 /** After a hit: check for fainting, and settle the battle if it's decided. */
 function checkFaints(world: World, b: Battle, out: BattleEvent[]): boolean {
   if (b.wild.hp <= 0) {
-    out.push({ kind: 'faint', side: 'wild' }, { kind: 'text', text: `The wild ${species(b.wild.dex).name} fainted!` });
+    const whose = b.trainer ? `${b.trainer.name}'s` : 'The wild';
+    out.push({ kind: 'faint', side: 'wild' }, { kind: 'text', text: `${whose} ${species(b.wild.dex).name} fainted!` });
+    if (b.trainer && b.trainer.index < b.trainer.team.length - 1) {
+      // Experience for this one, then their next Pokémon.
+      award(world, b, out);
+      b.trainer.index += 1;
+      b.wild = b.trainer.team[b.trainer.index]!;
+      b.stages.wild = { atk: 0, def: 0 };
+      if (!world.seen.includes(b.wild.dex)) world.seen.push(b.wild.dex);
+      out.push({ kind: 'sendWild', index: b.trainer.index }, { kind: 'text', text: `${b.trainer.name} sent out ${species(b.wild.dex).name}!` });
+      return true;
+    }
     win(world, b, out);
     return true;
   }
@@ -189,8 +227,9 @@ function drops(world: World, b: Battle, out: BattleEvent[]): void {
   }
 }
 
-function win(world: World, b: Battle, out: BattleEvent[]): void {
-  const xp = Math.floor(xpYield(b.wild.dex, b.wild.level) * (hasPerk(world, 'trainer') ? 1.25 : 1));
+/** Experience for beating the Pokémon in front of you. Trainers' Pokémon are worth half as much again. */
+function award(world: World, b: Battle, out: BattleEvent[]): void {
+  const xp = Math.floor(xpYield(b.wild.dex, b.wild.level) * (hasPerk(world, 'trainer') ? 1.25 : 1) * (hasBuff(world, 'coach') ? 1.5 : 1) * (b.trainer ? 1.5 : 1));
   for (const uid of b.fought) {
     const mon = monByUid(world, uid);
     if (!mon || mon.hp <= 0) continue;
@@ -198,17 +237,46 @@ function win(world: World, b: Battle, out: BattleEvent[]): void {
     for (const line of gainXp(mon, xp)) out.push({ kind: 'text', text: line });
     if (uid === b.active) out.push({ kind: 'hp', side: 'you', hp: mon.hp, max: maxHp(mon) });
   }
-  drops(world, b, out);
+}
+
+function win(world: World, b: Battle, out: BattleEvent[]): void {
+  award(world, b, out);
   world.stats.wins += 1;
-  addSkillXp(world, 'battling', b.wild.level * 3);
+  if (b.trainer) {
+    const t = b.trainer.id === 'kai' ? KAI : trainerData(b.trainer.id);
+    const record = world.trainers[b.trainer.id];
+    world.trainers[b.trainer.id] = { week: weekOf(world.day), wins: (record?.wins ?? 0) + 1 };
+    world.player.gold += t.reward;
+    world.stats.earned += t.reward;
+    out.push({ kind: 'text', text: `${b.trainer.name}: "${t.outro}"` }, { kind: 'text', text: `You got ${t.reward}g for winning!` });
+    addSkillXp(world, 'battling', b.wild.level * 5);
+  } else {
+    drops(world, b, out);
+    addSkillXp(world, 'battling', b.wild.level * 3);
+  }
   finish(b, 'win', out);
+}
+
+/** Apricorn balls: much better against the right target. */
+export function ballBonus(world: World, b: Battle, ballId: string): number {
+  const types = species(b.wild.dex).types;
+  switch (item(ballId).ballBonus) {
+    case 'level': {
+      const mine = activeMon(world, b).level;
+      return mine >= b.wild.level * 2 ? 4 : mine > b.wild.level ? 2 : 1;
+    }
+    case 'water': return types.includes('water') ? 3 : 1;
+    case 'fast': return species(b.wild.dex).base.spe >= 80 ? 4 : 1;
+    case 'heavy': return types.includes('rock') || types.includes('steel') ? 3 : 1;
+    default: return 1;
+  }
 }
 
 /** The chance a ball works this throw, 0–1. */
 export function catchChance(world: World, b: Battle, ballId: string): number {
   const max = maxHp(b.wild);
   const rate = species(b.wild.dex).catchRate;
-  const ball = item(ballId).ball ?? 1;
+  const ball = (item(ballId).ball ?? 1) * ballBonus(world, b, ballId);
   const perk = hasPerk(world, 'catcher') ? 1.5 : 1;
   const a = ((3 * max - 2 * b.wild.hp) * rate * ball * b.lure * perk) / (3 * max);
   return Math.min(1, a / 255);
@@ -228,6 +296,7 @@ function throwBall(world: World, b: Battle, ballId: string, out: BattleEvent[]):
     out.push({ kind: 'text', text: ['Oh no! It broke free!', 'Aww! It appeared to be caught!', 'Aargh! Almost had it!', 'Shoot! It was so close, too!'][shakes]! });
     return false;
   }
+  if (ballId === 'friend-ball') b.wild.friendship = 200;
   const where = adopt(world, b.wild);
   out.push({ kind: 'caught' }, { kind: 'text', text: `Gotcha! ${name} is now your friend!` });
   out.push({ kind: 'text', text: where === 'party' ? `${name} joined your party.` : `Your party is full, so ${name} is waiting in the box at the farmhouse.` });
@@ -289,6 +358,11 @@ export function act(world: World, action: BattleAction): BattleEvent[] {
     return out;
   }
 
+  if (action.kind === 'run' && b.trainer) {
+    out.push({ kind: 'text', text: "There's no running from a trainer battle!" });
+    return out;
+  }
+
   if (action.kind === 'run') {
     const faster = statsOf(activeMon(world, b)).spe >= statsOf(b.wild).spe;
     b.runs += 1;
@@ -307,6 +381,10 @@ export function act(world: World, action: BattleAction): BattleEvent[] {
     const def = ITEMS.get(action.id);
     if (!def || (world.inventory[action.id] ?? 0) <= 0) return out;
     if (def.kind === 'ball') {
+      if (b.trainer) {
+        out.push({ kind: 'text', text: "You can't catch another trainer's Pokémon!" });
+        return out;
+      }
       if (throwBall(world, b, action.id, out)) return out;
     } else if (def.kind === 'crop') {
       if (!useItem(world, b, action.id, out)) return out;
@@ -355,4 +433,5 @@ export function endBattle(world: World): void {
   world.clock = Math.min(DAY_END - 1, world.clock + 60);
   for (const mon of world.mons) if (world.party.includes(mon.uid)) mon.hp = Math.max(1, Math.floor(maxHp(mon) / 2));
   placeHelpers(world, SPAWN);
+  spawnNpcs(world);
 }

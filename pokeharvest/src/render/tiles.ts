@@ -241,6 +241,86 @@ function ghFloor(g: Ctx, variant: number, doorway: boolean): void {
   }
 }
 
+function caveFloor(g: Ctx, variant: number): void {
+  px(g, '#8a7a68', 0, 0, T, T);
+  for (let i = 0; i < 6; i += 1) {
+    px(g, i % 2 ? '#766858' : '#9a8a76', Math.floor(hash(variant, i, 21) * 15), Math.floor(hash(variant, i, 22) * 15), 2, 1);
+  }
+}
+
+function caveWall(g: Ctx, variant: number): void {
+  px(g, '#4a3a2e', 0, 0, T, T);
+  px(g, '#5e4a3a', 1, 1, 14, 9);
+  px(g, '#6e5a48', 2, 2, 6, 3);
+  px(g, '#3a2c22', 0, 12, T, 4);
+  if (variant % 3 === 0) px(g, '#7e6a56', 10, 4, 3, 2);
+}
+
+/** An ore rock: grey stone flecked with copper and iron, dull once mined for the day. */
+function oreRock(g: Ctx, variant: number, ready: boolean): void {
+  caveFloor(g, variant);
+  px(g, '#5e5e66', 2, 5, 12, 9);
+  px(g, '#5e5e66', 4, 3, 8, 12);
+  px(g, '#8a8a93', 4, 4, 6, 4);
+  px(g, '#3e3e46', 3, 13, 11, 2);
+  if (ready) {
+    px(g, '#d8803a', 6, 7, 2, 2);
+    px(g, '#c8c8d8', 10, 9, 2, 2);
+    px(g, '#f2d23c', 8, 11, 1, 1);
+  }
+}
+
+function logTile(g: Ctx, variant: number, ready: boolean): void {
+  grass(g, variant);
+  px(g, '#6e4a2a', 1, 8, 14, 6);
+  px(g, '#8d5d38', 1, 8, 14, 2);
+  px(g, '#c8905a', 13, 8, 2, 6);
+  px(g, '#a0673a', 14, 10, 1, 2);
+  if (ready) px(g, '#5aa83e', 4, 7, 3, 1);
+}
+
+const APRICORN_COLOURS: Record<string, string> = {
+  'red-apricorn': '#e0402c', 'blue-apricorn': '#3c6fd8', 'yellow-apricorn': '#f2d23c', 'green-apricorn': '#58b85a', 'black-apricorn': '#3a3a40',
+};
+
+function apricornTree(g: Ctx, variant: number, apricorn: string, ready: boolean): void {
+  tree(g, variant);
+  if (!ready) return;
+  const c = APRICORN_COLOURS[apricorn] ?? '#e0402c';
+  for (const [x, y] of [[4, 4], [10, 3], [7, 8], [11, 8]] as const) {
+    px(g, c, x, y, 2, 2);
+    px(g, '#ffffff', x, y);
+  }
+}
+
+/** A gate the story hasn't opened: a fallen trunk across the path, or a heap of rocks. */
+function gateTile(g: Ctx, variant: number, look: 'log' | 'rocks'): void {
+  path(g, variant);
+  if (look === 'log') {
+    px(g, '#5a3a20', 0, 6, T, 6);
+    px(g, '#8d5d38', 0, 6, T, 2);
+    px(g, '#c8905a', 0, 6, 2, 6);
+    px(g, '#3a8a3b', 5, 4, 4, 2);
+  } else {
+    for (const [x, y, w] of [[1, 7, 6], [7, 5, 7], [4, 10, 8], [10, 10, 5]] as const) {
+      px(g, '#6f6f78', x, y, w, 5);
+      px(g, '#9a9aa6', x + 1, y, w - 2, 2);
+    }
+  }
+}
+
+export function nodeImage(kind: 'apricorn' | 'log' | 'ore', x: number, y: number, ready: boolean, apricorn = ''): HTMLCanvasElement {
+  const v = Math.floor(hash(x, y) * VARIANTS);
+  if (kind === 'apricorn') return cached(`apri${v}${apricorn}${ready}`, (g) => apricornTree(g, v, apricorn, ready));
+  if (kind === 'log') return cached(`log${v}${ready}`, (g) => logTile(g, v, ready));
+  return cached(`ore${v}${ready}`, (g) => oreRock(g, v, ready));
+}
+
+export function gateImage(look: 'log' | 'rocks', x: number, y: number): HTMLCanvasElement {
+  const v = Math.floor(hash(x, y) * VARIANTS);
+  return cached(`gate${look}${v}`, (g) => gateTile(g, v, look));
+}
+
 export function soil(g: Ctx, wet: boolean): void {
   px(g, wet ? '#5b3b24' : '#8d5d38', 0, 0, T, T);
   const line = wet ? '#472d1b' : '#74482a';
@@ -281,6 +361,8 @@ export function tileImage(kind: TileKind, x: number, y: number, time: number): H
     case 'smith': return cached(`smith${v}`, (g) => smith(g, v));
     case 'board': return cached(`board${v}`, (g) => board(g, v));
     case 'glass': return cached(`glass${v}`, (g) => glass(g, x, y));
+    case 'cavefloor': return cached(`cf${v}`, (g) => caveFloor(g, v));
+    case 'cavewall': return cached(`cw${v}`, (g) => caveWall(g, v));
     case 'ghsoil':
     case 'ghdoor': return cached(`ghfloor${v}${kind}`, (g) => ghFloor(g, v, kind === 'ghdoor'));
     case 'tall': {
@@ -297,9 +379,13 @@ export function soilImage(wet: boolean): HTMLCanvasElement {
 
 const houses = new Map<string, HTMLCanvasElement>();
 
-/** The farmhouse, `w` × `h` tiles, door at column `door`. */
-export function houseImage(w: number, h: number, door: number): HTMLCanvasElement {
-  const key = `${w},${h},${door}`;
+/** Roof colours for each kind of building. */
+export const ROOFS = { farmhouse: ['#cf4436', '#a8302a'], center: ['#e04030', '#b02a20'], hall: ['#3a6fd8', '#274f9e'], shop: ['#8d5d38', '#6e4424'], house: ['#58a840', '#3e8a33'] } as const;
+export type Roof = keyof typeof ROOFS;
+
+/** A building, `w` × `h` tiles, door at column `door`: the farmhouse, or one of the town's. */
+export function houseImage(w: number, h: number, door: number, roof: Roof = 'farmhouse'): HTMLCanvasElement {
+  const key = `${w},${h},${door},${roof}`;
   const hit = houses.get(key);
   if (hit) return hit;
   const W = w * T;
@@ -311,9 +397,18 @@ export function houseImage(w: number, h: number, door: number): HTMLCanvasElemen
   for (let y = roofH + 3; y < H; y += 4) px(g, '#d6c29a', 1, y, W - 2, 1);
   px(g, '#8d6a44', 1, H - 2, W - 2, 2);
   // Roof: red tiles, the ridge darker.
+  const [roofLight, roofDark] = ROOFS[roof];
   for (let y = 0; y < roofH + 2; y += 1) {
     const inset = Math.max(0, 3 - y);
-    px(g, y % 3 === 2 ? '#a8302a' : '#cf4436', inset, y, W - inset * 2, 1);
+    px(g, y % 3 === 2 ? roofDark : roofLight, inset, y, W - inset * 2, 1);
+  }
+  if (roof === 'center') {
+    // A Poké Ball sign on the roof.
+    const cx = Math.floor(W / 2);
+    px(g, '#f4f4f8', cx - 4, 2, 8, 8);
+    px(g, '#e04030', cx - 4, 2, 8, 4);
+    px(g, '#2a2a30', cx - 4, 5, 8, 1);
+    px(g, '#f4f4f8', cx - 1, 4, 2, 3);
   }
   px(g, '#7e2420', 0, roofH + 2, W, 1);
   // Chimney.

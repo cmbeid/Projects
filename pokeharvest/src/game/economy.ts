@@ -65,6 +65,7 @@ export function collectBin(world: World): { shipped: Record<string, number>; ear
   for (const [id, n] of Object.entries(shipped)) {
     earned += saleValue(world, id, n);
     recordSale(world, id, n);
+    if (item(id).kind === 'crop') world.stats.shippedBerries += n;
   }
   world.bin = {};
   world.player.gold += earned;
@@ -79,7 +80,7 @@ export function upgradeBlocker(world: World, tool: UpgradableTool): string | nul
   const cost = UPGRADE_COSTS[next];
   if (!cost) return 'Already the finest there is.';
   if (world.player.gold < cost.gold) return `Needs ${cost.gold}g.`;
-  if ((world.inventory[cost.material] ?? 0) < cost.count) return `Needs ${cost.count} ${item(cost.material).name}.`;
+  for (const [id, n] of Object.entries(cost.items)) if ((world.inventory[id] ?? 0) < n) return `Needs ${n} ${item(id).name}.`;
   return null;
 }
 
@@ -89,7 +90,7 @@ export function startUpgrade(world: World, tool: UpgradableTool): boolean {
   const tier = world.tools[tool] + 1;
   const cost = UPGRADE_COSTS[tier]!;
   world.player.gold -= cost.gold;
-  takeItem(world, cost.material, cost.count);
+  for (const [id, n] of Object.entries(cost.items)) takeItem(world, id, n);
   world.upgrade = { tool, tier, day: world.day };
   return true;
 }

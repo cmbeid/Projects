@@ -1,7 +1,7 @@
 /** The shape of a farm in progress: everything the save holds. */
 import type { Weather } from '../data/encounters';
 import type { Buff } from '../data/items';
-import type { MapId } from '../data/maps';
+import type { DoorKind, MapId } from '../data/maps';
 import type { Skill, UpgradableTool } from '../data/progress';
 import type { Battle } from './battle';
 import type { Point } from './path';
@@ -135,7 +135,12 @@ export type GameEvent =
   | { kind: 'day'; summary: DaySummary }
   | { kind: 'skill'; skill: Skill; level: number }
   | { kind: 'warp'; map: MapId }
-  | { kind: 'encounter'; dex: number; level: number };
+  | { kind: 'encounter'; dex: number; level: number }
+  | { kind: 'gather'; x: number; y: number; text: string }
+  | { kind: 'door'; door: DoorKind; x: number; y: number }
+  | { kind: 'talk' | 'spotted' | 'challenge'; npc: string }
+  | { kind: 'story'; beat: string }
+  | { kind: 'chapter'; chapter: number };
 
 export interface World {
   day: number;
@@ -191,11 +196,39 @@ export interface World {
   pendingPerks: { skill: Skill; level: 5 | 10 }[];
   seen: number[];
   caught: number[];
-  stats: { harvested: number; earned: number; wins: number };
+  stats: { harvested: number; earned: number; wins: number; shippedBerries: number; apricorns: number; smelted: Record<string, number> };
+  story: StoryState;
+  /** Trainers beaten: the week of the last win, and how many times. */
+  trainers: Record<string, { week: number; wins: number }>;
+  /** Resource spots picked, keyed "map:x,y": the day each is ready again. */
+  nodes: Record<string, number>;
+  /** People on the current map; rebuilt on arrival, not saved. */
+  npcs: Npc[];
+  /** A trainer who has spotted you and is walking over; not saved. */
+  approach: string | null;
   /** A wild battle under way; not saved. */
   battle: Battle | null;
   /** Things that happened since the renderer last looked; not saved. */
   events: GameEvent[];
+}
+
+export interface StoryState {
+  /** Index into CHAPTERS; CHAPTERS.length once the story is done. */
+  chapter: number;
+  flags: string[];
+  /** What's been handed to the Mayor for the current chapter. */
+  delivered: Record<string, number>;
+  /** Dialogue beats already shown. */
+  seen: string[];
+}
+
+/** A person walking about the current map: a trainer or one of the townsfolk. */
+export interface Npc extends Walker {
+  id: string;
+  kind: 'trainer' | 'folk';
+  home: { x: number; y: number };
+  /** Seconds until it next looks round or moves. */
+  timer: number;
 }
 
 export const MAX_ENERGY = 100;

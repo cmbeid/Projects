@@ -15,6 +15,8 @@ describe('the bot farmer', () => {
       const start = w.player.gold;
       for (let day = 0; day < 7; day += 1) botDay(w);
       expect(w.stats.harvested).toBeGreaterThan(15);
+      // Enough shipped for the story's first goal.
+      expect(w.stats.shippedBerries).toBeGreaterThanOrEqual(10);
       expect(w.player.gold).toBeGreaterThan(start);
     });
   }

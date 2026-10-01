@@ -9,6 +9,7 @@ import type { Season } from '../game/time';
 export const TRACKS = [
   'titlescreen', 'newbarktown', 'cherrygrovecity', 'ecruteakcity', 'lakeofrage', 'pokemonlullaby',
   'route29', 'route37', 'johtowildbattle', 'wildpokemonvictory',
+  'violetcity', 'azaleatown', 'darkcave', 'johtotrainerbattle', 'trainervictory', 'rivalbattle', 'lookyoungster',
 ] as const;
 export type TrackId = (typeof TRACKS)[number];
 
@@ -26,6 +27,13 @@ export const ROUTE_DAY: TrackId = 'route29';
 export const ROUTE_NIGHT: TrackId = 'route37';
 export const BATTLE: TrackId = 'johtowildbattle';
 export const VICTORY: TrackId = 'wildpokemonvictory';
+export const TOWN: TrackId = 'violetcity';
+export const FOREST: TrackId = 'azaleatown';
+export const CAVE: TrackId = 'darkcave';
+export const TRAINER_BATTLE: TrackId = 'johtotrainerbattle';
+export const TRAINER_VICTORY: TrackId = 'trainervictory';
+export const RIVAL_BATTLE: TrackId = 'rivalbattle';
+export const SPOTTED: TrackId = 'lookyoungster';
 
 export function musicUrl(id: TrackId): string {
   return `music/${id}.json`;

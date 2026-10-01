@@ -11,10 +11,15 @@ export function craftBlocker(world: World, id: string): string | null {
   if (!recipe) return 'No such recipe.';
   if (levelOf(world, 'crafting') < recipe.level) return `Needs Crafting level ${recipe.level}.`;
   if (recipe.kitchen && world.map !== 'farm') return 'Cook at home, in the farmhouse kitchen.';
+  if (!recipe.kitchen && !hasWorkbench(world)) return 'Needs a Workbench placed on your farm.';
   for (const [input, n] of Object.entries(recipe.inputs)) {
     if ((world.inventory[input] ?? 0) < n) return `Needs ${n} ${item(input).name}.`;
   }
   return null;
+}
+
+export function hasWorkbench(world: World): boolean {
+  return Object.values(world.machines).some((m) => m.id === 'workbench');
 }
 
 export function craft(world: World, id: string): boolean {

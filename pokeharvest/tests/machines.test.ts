@@ -10,6 +10,8 @@ import { run, stand, world } from './helpers';
 
 function withPress() {
   const w = world();
+  w.inventory.workbench = 1;
+  expect(placeMachine(w, 'workbench', 20, 24)).toBe(true);
   w.inventory['hard-stone'] = 4;
   w.inventory.oran = 5;
   expect(craft(w, 'berry-press')).toBe(true);
@@ -20,6 +22,9 @@ function withPress() {
 describe('crafting and machines', () => {
   it('crafts a machine from its recipe, and earns Crafting XP', () => {
     const w = world();
+    expect(craftBlocker(w, 'berry-press')).toMatch(/Workbench/);
+    w.inventory.workbench = 1;
+    placeMachine(w, 'workbench', 20, 24);
     expect(craftBlocker(w, 'berry-press')).toMatch(/Hard Stone/);
     expect(craftBlocker(w, 'loom')).toMatch(/Crafting level/);
     const p = withPress();
@@ -63,7 +68,7 @@ describe('crafting and machines', () => {
     const w = withPress();
     expect(pickUpMachine(w, 8, 14)).toBe(true);
     expect(w.inventory['berry-press']).toBe(1);
-    expect(w.machines).toEqual({});
+    expect(Object.keys(w.machines)).toEqual(['20,24']);
   });
 });
 
