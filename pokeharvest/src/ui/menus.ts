@@ -1,6 +1,7 @@
 /** What's in each sheet: the Poké Mart, the shipping bin, the blacksmith, the bag, bedtime and the morning report. */
 import { sfx } from '../audio/index';
-import { CROPS, crop } from '../data/crops';
+import { CROPS, crop, inSeason } from '../data/crops';
+import { WEATHER_NAMES } from '../game/weather';
 import { BUFF_TEXT, MART_STOCK, item, sellable } from '../data/items';
 import { RECIPES } from '../data/crafting';
 import { productOf, setRole } from '../game/barn';
@@ -76,13 +77,15 @@ export function openMart(host: HTMLElement, world: World, changed: Changed): voi
       refresh();
     };
     if (tab === 'buy') {
-      for (const id of MART_STOCK) {
+      const season = seasonOf(world.day);
+      body.append(h('p.note', {}, `${season} seeds are in. Out-of-season seeds only grow in a repaired greenhouse.`));
+      for (const id of MART_STOCK.filter((i) => item(i).kind !== 'seed' || inSeason(item(i).crop!, season))) {
         const def = item(id);
         const price = def.buyPrice!;
         let detail = `${gold(price)}`;
         if (def.kind === 'seed') {
           const c = crop(def.crop!);
-          detail += ` · ripe in ${c.days} days${c.regrow ? `, then every ${c.regrow}` : ''} · sells for ${gold(sellPrice(world, c.id))}`;
+          detail += ` · ripe in ${c.days} days${c.regrow ? `, then every ${c.regrow}` : ''} · sells for ${gold(sellPrice(world, c.id))} · ${c.seasons.join(' & ')}`;
         } else if (def.description) {
           detail += ` · ${def.description}`;
         }
@@ -193,7 +196,7 @@ function itemsTab(body: HTMLElement, world: World, changed: Changed): void {
       : def.kind === 'food'
         ? button('Eat', () => { (eat(world, id) ? sfx.pickup : sfx.deny)(); changed(); }, world.player.energy >= world.player.maxEnergy && !def.buff)
         : null;
-    const detail = def.kind === 'seed' ? `Plant on tilled soil · ${crop(def.crop!).days} days`
+    const detail = def.kind === 'seed' ? `Plant on tilled soil · ${crop(def.crop!).days} days · ${crop(def.crop!).seasons.join(' & ')}`
       : def.kind === 'crop' ? `Ships for ${gold(sellPrice(world, id))}${def.heals ? ' · heals in battle' : ' · offer it to calm wild Pokémon'}`
       : def.kind === 'food' ? `+${def.energy! >= 999 ? 'all' : def.energy} energy${def.buff ? ` · ${BUFF_TEXT[def.buff]}` : ''}`
       : def.kind === 'machine' ? `${def.description} Hold it and tap open grass to place it.`
@@ -360,7 +363,9 @@ export function openSummary(host: HTMLElement, world: World, s: DaySummary, onDo
     if (s.expired) body.append(h('p.note', {}, `${s.expired} request${s.expired > 1 ? 's' : ''} on the board ran out of time.`));
     if (s.crowAte) body.append(h('p.warn', {}, `A crow ate ${/^[AEIOU]/.test(s.crowAte) ? 'an' : 'a'} ${s.crowAte} plant in the night! A Fire or Flying helper would scare them off.`));
     if (s.dried) body.append(h('p.note', {}, `${s.dried} empty plot${s.dried > 1 ? 's' : ''} went back to grass.`));
-    body.append(h('p.note', {}, `Good morning! It's ${seasonOf(world.day)} ${dayOfSeason(world.day)}. Your Pokémon are rested.`));
+    if (s.newSeason) body.append(h('p.warn.ok', {}, `${seasonOf(world.day)} is here! New seeds are in at the Mart, and new Pokémon are out on Route 1.`));
+    if (s.withered) body.append(h('p.warn', {}, `${s.withered} crop${s.withered > 1 ? 's' : ''} withered as the season changed.`));
+    body.append(h('p.note', {}, `Good morning! It's ${seasonOf(world.day)} ${dayOfSeason(world.day)}, ${WEATHER_NAMES[world.weather].toLowerCase()}${world.weather === 'rain' || world.weather === 'storm' ? ': the rain has watered your crops' : ''}. Tomorrow: ${WEATHER_NAMES[world.tomorrow].toLowerCase()}. Your Pokémon are rested.`));
     body.append(h('div.buttons', {}, button('Start the day', closeSheet, false, 'primary')));
   }, { onClose: onDone, dismissable: false });
 }
@@ -378,7 +383,7 @@ export function openHelp(host: HTMLElement, onDone: () => void = () => undefined
     ];
     for (const [id, text] of tips) body.append(h('div.tip', {}, itemIcon(id), h('span', {}, text)));
     body.append(
-      h('p', {}, 'Crops grow one day for each night they spend watered. Put berries in the shipping bin by the house to sell them overnight; prices change daily. Buy seeds and balls at the Poké Mart by the gate, and better tools from the blacksmith next to it. The request board by the house pays extra and earns reputation, and a merchant visits at weekends.'),
+      h('p', {}, 'Each season has its own berries; crops still out when their season ends wither, and rain waters everything for you. A repaired greenhouse grows anything all year. Crops grow one day for each night they spend watered. Put berries in the shipping bin by the house to sell them overnight; prices change daily. Buy seeds and balls at the Poké Mart by the gate, and better tools from the blacksmith next to it. The request board by the house pays extra and earns reputation, and a merchant visits at weekends.'),
       h('p', {}, "Your Pokémon help out on the farm by type: Water types water, Grass and Bug types tend, Normal, Fighting and Ground types harvest, Fire and Flying types keep crows away, and Electric types power machines. Tap one to give it a pat. Sleep in the farmhouse before 2 AM, or you'll pass out!"),
       h('p.note', {}, 'Keyboard: WASD or arrows to walk, Space to use, 1–8 to pick a tool, B for the bag.'),
       h('div.buttons', {}, button("Let's farm!", closeSheet, false, 'primary')),

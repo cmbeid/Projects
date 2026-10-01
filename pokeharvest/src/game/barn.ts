@@ -6,7 +6,7 @@
  * bigger barn.
  */
 import { item } from '../data/items';
-import { BARN_LEVELS, FRIENDSHIP, PRODUCTS, RANCH_STOCK, reputationLevel } from '../data/ranch';
+import { BARN_LEVELS, FRIENDSHIP, GREENHOUSE_COST, PRODUCTS, RANCH_STOCK, reputationLevel } from '../data/ranch';
 import { adopt, makeMon } from './mon';
 import { PARTY_SIZE, farmMons, monByUid, roleOf, type Role, type World } from './model';
 import { nextRandom } from './rng';
@@ -140,4 +140,21 @@ export function hearts(friendship: number): number {
 
 export function productOf(dex: number): string | null {
   return PRODUCTS[dex] ?? null;
+}
+
+export function greenhouseBlocker(world: World): string | null {
+  if (world.greenhouse) return 'The greenhouse is already repaired.';
+  if (reputationLevel(world.reputation) < GREENHOUSE_COST.reputation) return `The carpenter only takes this on for folk with reputation level ${GREENHOUSE_COST.reputation}.`;
+  if (world.player.gold < GREENHOUSE_COST.gold) return `Needs ${GREENHOUSE_COST.gold}g.`;
+  for (const [id, n] of Object.entries(GREENHOUSE_COST.items)) if ((world.inventory[id] ?? 0) < n) return `Needs ${n} ${item(id).name}.`;
+  return null;
+}
+
+/** The carpenter fixes the greenhouse: its beds take any seed, all year, and crows can't get in. */
+export function repairGreenhouse(world: World): boolean {
+  if (greenhouseBlocker(world)) return false;
+  world.player.gold -= GREENHOUSE_COST.gold;
+  for (const [id, n] of Object.entries(GREENHOUSE_COST.items)) takeItem(world, id, n);
+  world.greenhouse = true;
+  return true;
 }

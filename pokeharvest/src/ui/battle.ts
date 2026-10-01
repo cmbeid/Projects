@@ -6,6 +6,8 @@
  * command.
  */
 import { cry, loadCries, sfx } from '../audio/index';
+import { playMusic } from '../audio/music';
+import { BATTLE, VICTORY } from '../data/music';
 import { isNight } from '../data/encounters';
 import { item } from '../data/items';
 import { move } from '../data/moves';
@@ -257,7 +259,7 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
         await sleep(700);
         return;
       case 'end':
-        if (ev.result === 'win' || ev.result === 'caught') sfx.win();
+        if (ev.result === 'win' || ev.result === 'caught') playMusic(VICTORY);
         if (ev.result === 'lose') sfx.lose();
         return;
     }
@@ -359,6 +361,7 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
   resize();
   refreshCards();
   requestAnimationFrame(draw);
+  playMusic(BATTLE);
   void (async () => {
     busy = true;
     anim.wildAlpha = 0;

@@ -6,8 +6,9 @@ export const DAY_END = 26 * 60;
 export const SECONDS_PER_MINUTE = 0.7;
 export const DAYS_PER_SEASON = 28;
 export const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'] as const;
+export type Season = (typeof SEASONS)[number];
 
-export function seasonOf(day: number): (typeof SEASONS)[number] {
+export function seasonOf(day: number): Season {
   return SEASONS[Math.floor((day - 1) / DAYS_PER_SEASON) % SEASONS.length]!;
 }
 

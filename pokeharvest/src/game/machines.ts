@@ -24,7 +24,8 @@ export function machineSpeed(world: World): number {
 
 export function canPlace(world: World, x: number, y: number): boolean {
   const key = plotKey(x, y);
-  return MAPS[world.map].farmable && tileAt(world.map, x, y) === 'grass' && !world.plots[key] && !world.machines[key];
+  const kind = tileAt(world.map, x, y);
+  return MAPS[world.map].farmable && (kind === 'grass' || (kind === 'ghsoil' && world.greenhouse)) && !world.plots[key] && !world.machines[key];
 }
 
 export function placeMachine(world: World, id: string, x: number, y: number): boolean {

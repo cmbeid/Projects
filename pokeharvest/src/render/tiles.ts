@@ -5,6 +5,7 @@
  */
 import { crop } from '../data/crops';
 import type { TileKind } from '../data/maps';
+import type { Season } from '../game/time';
 
 export const T = 16;
 
@@ -29,14 +30,41 @@ function px(g: Ctx, color: string, x: number, y: number, w = 1, h = 1): void {
   g.fillRect(x, y, w, h);
 }
 
+/** The season the tiles are painted for; set each frame by the renderer. */
+let season: Season = 'Spring';
+/** Whether the greenhouse has been repaired. */
+let repaired = false;
+
+export function setTileState(s: Season, greenhouse: boolean): void {
+  season = s;
+  repaired = greenhouse;
+}
+
+/** Ground colours by season: base, dark speckle, light speckle. */
+const GROUND: Record<Season, [string, string, string]> = {
+  Spring: ['#6cbf4b', '#5aa83e', '#84d15f'],
+  Summer: ['#5cb83c', '#4a9e30', '#7ad04e'],
+  Autumn: ['#a8b048', '#d8903a', '#c8c060'],
+  Winter: ['#e6eef4', '#c4d2e0', '#ffffff'],
+};
+
+/** Tree canopies by season: outline, body, highlight. */
+const CANOPY: Record<Season, [string, string, string]> = {
+  Spring: ['#2f6b30', '#3e8a3b', '#52a64a'],
+  Summer: ['#24602a', '#2f7a30', '#44963e'],
+  Autumn: ['#8a3a1a', '#c8601e', '#e8a03a'],
+  Winter: ['#2a5a40', '#3a6a4a', '#f4f8fc'],
+};
+
 function grass(g: Ctx, variant: number): void {
-  px(g, '#6cbf4b', 0, 0, T, T);
+  const [base, dark, light] = GROUND[season];
+  px(g, base, 0, 0, T, T);
   for (let i = 0; i < 7; i += 1) {
     const x = Math.floor(hash(variant, i, 1) * 15);
     const y = Math.floor(hash(variant, i, 2) * 14);
-    px(g, i % 2 ? '#5aa83e' : '#84d15f', x, y, 1, 2);
+    px(g, i % 2 ? dark : light, x, y, 1, 2);
   }
-  if (variant % 4 === 0) {
+  if (variant % 4 === 0 && (season === 'Spring' || season === 'Summer')) {
     // A little flower.
     const x = 3 + Math.floor(hash(variant, 9) * 9);
     const y = 3 + Math.floor(hash(variant, 8) * 9);
@@ -65,12 +93,14 @@ function water(g: Ctx, frame: number): void {
 
 function tree(g: Ctx, variant: number): void {
   grass(g, variant);
+  const [edge, body, light] = CANOPY[season];
   px(g, '#6e4a2a', 6, 11, 4, 5);
-  px(g, '#2f6b30', 1, 1, 14, 11);
-  px(g, '#2f6b30', 3, 0, 10, 13);
-  px(g, '#3e8a3b', 3, 2, 9, 7);
-  px(g, '#52a64a', 4, 3, 4, 3);
-  px(g, '#24522a', 2, 10, 12, 2);
+  px(g, edge, 1, 1, 14, 11);
+  px(g, edge, 3, 0, 10, 13);
+  px(g, body, 3, 2, 9, 7);
+  px(g, light, 4, 3, 4, 3);
+  if (season === 'Winter') px(g, '#f4f8fc', 2, 0, 12, 2); // snow on top
+  else px(g, '#24522a', 2, 10, 12, 2);
 }
 
 function rock(g: Ctx, variant: number): void {
@@ -110,7 +140,18 @@ function mart(g: Ctx, variant: number): void {
 }
 
 function tall(g: Ctx, variant: number, frame: number): void {
-  px(g, '#4f9a3a', 0, 0, T, T);
+  if (season === 'Winter') {
+    // Frosted, snow-heavy grass.
+    px(g, '#cfdbe6', 0, 0, T, T);
+    for (let i = 0; i < 8; i += 1) {
+      const x = (i * 2 + Math.floor(hash(variant, i, 5) * 2)) % 16;
+      const h = 5 + Math.floor(hash(variant, i, 6) * 5);
+      px(g, i % 2 ? '#6a8a7a' : '#86a494', x, T - h, 2, h);
+      px(g, '#ffffff', x, T - h - 1, 2, 1);
+    }
+    return;
+  }
+  px(g, season === 'Autumn' ? '#8a9a3a' : '#4f9a3a', 0, 0, T, T);
   // Blades that sway a pixel with the breeze.
   for (let i = 0; i < 8; i += 1) {
     const x = (i * 2 + Math.floor(hash(variant, i, 5) * 2)) % 16;
@@ -170,6 +211,36 @@ function cart(g: Ctx, variant: number, open: boolean): void {
   }
 }
 
+/** A greenhouse pane: clean glass in a white frame, or cracked and missing until it's repaired. */
+function glass(g: Ctx, x: number, y: number): void {
+  px(g, '#e8eef0', 0, 0, T, T);
+  px(g, repaired ? '#a8d8f0' : '#9ab0b8', 1, 1, T - 2, T - 2);
+  px(g, repaired ? '#d8f0fc' : '#c0ccd0', 2, 2, 4, 2);
+  px(g, '#e8eef0', 7, 0, 2, T);
+  px(g, '#e8eef0', 0, 7, T, 2);
+  if (!repaired) {
+    // Cracks, and a pane missing here and there.
+    if (hash(x, y, 7) < 0.4) px(g, '#5a6a50', 9, 9, 6, 6);
+    px(g, '#5a6a6e', 3, 10, 1, 4);
+    px(g, '#5a6a6e', 4, 12, 2, 1);
+    px(g, '#5a6a6e', 11, 2, 1, 3);
+  }
+}
+
+/** The greenhouse floor: tidy boards when repaired, weeds through them when not. */
+function ghFloor(g: Ctx, variant: number, doorway: boolean): void {
+  px(g, '#b8946a', 0, 0, T, T);
+  for (let y = 3; y < T; y += 4) px(g, '#9a7a52', 0, y, T, 1);
+  if (!repaired && !doorway) {
+    for (let i = 0; i < 4; i += 1) {
+      const x = Math.floor(hash(variant, i, 11) * 14);
+      const y = Math.floor(hash(variant, i, 12) * 12);
+      px(g, '#5a9a3a', x, y, 1, 3);
+      px(g, '#5a9a3a', x + 1, y + 1, 1, 2);
+    }
+  }
+}
+
 export function soil(g: Ctx, wet: boolean): void {
   px(g, wet ? '#5b3b24' : '#8d5d38', 0, 0, T, T);
   const line = wet ? '#472d1b' : '#74482a';
@@ -179,7 +250,9 @@ export function soil(g: Ctx, wet: boolean): void {
 
 const cache = new Map<string, HTMLCanvasElement>();
 
-function cached(key: string, paint: (g: Ctx) => void): HTMLCanvasElement {
+/** Tiles painted once per season (and greenhouse state), then reused. */
+function cached(name: string, paint: (g: Ctx) => void): HTMLCanvasElement {
+  const key = `${season}:${repaired ? 'g' : ''}:${name}`;
   let c = cache.get(key);
   if (!c) {
     const [cv, g] = canvas(T, T);
@@ -207,6 +280,9 @@ export function tileImage(kind: TileKind, x: number, y: number, time: number): H
     case 'mart': return cached(`mart${v}`, (g) => mart(g, v));
     case 'smith': return cached(`smith${v}`, (g) => smith(g, v));
     case 'board': return cached(`board${v}`, (g) => board(g, v));
+    case 'glass': return cached(`glass${v}`, (g) => glass(g, x, y));
+    case 'ghsoil':
+    case 'ghdoor': return cached(`ghfloor${v}${kind}`, (g) => ghFloor(g, v, kind === 'ghdoor'));
     case 'tall': {
       const f = (Math.floor(time / 700) + x) % 2;
       return cached(`tall${v}-${f}`, (g) => tall(g, v, f));

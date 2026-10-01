@@ -3,6 +3,11 @@
  * bottom, and the loop that runs the sim at a fixed step and draws it.
  */
 import { cry, loadCries, sfx } from '../audio/index';
+import { playMusic, preloadMusic } from '../audio/music';
+import { isNight } from '../data/encounters';
+import { BATTLE, FARM_NIGHT, FARM_TRACKS, ROUTE_DAY, ROUTE_NIGHT, VICTORY, type TrackId } from '../data/music';
+import { WEATHER_ICONS, WEATHER_NAMES } from '../game/weather';
+import { openDex } from './dex';
 import { item } from '../data/items';
 import { MAPS, mapSize } from '../data/maps';
 import { species } from '../data/species';
@@ -71,7 +76,8 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   function updateHud(force = false): void {
     const where = world.map === 'farm' ? weekdayOf(world.day) : MAPS[world.map].name;
     dayEl.textContent = `${seasonOf(world.day)} ${dayOfSeason(world.day)} · ${where}`;
-    clockEl.textContent = `☀ ${clockText(world.clock)}`;
+    clockEl.textContent = `${WEATHER_ICONS[world.weather]} ${clockText(world.clock)}`;
+    clockEl.title = WEATHER_NAMES[world.weather];
     goldEl.textContent = `${world.player.gold.toLocaleString('en')}g`;
     const e = world.player.energy / world.player.maxEnergy;
     energyFill.style.width = `${Math.round(e * 100)}%`;
@@ -156,6 +162,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   };
   menuBtn.addEventListener('click', () => openSettings(layer, {
     help: () => openHelp(layer),
+    dex: () => openDex(layer, world, changed),
     quit: () => { save(); stop(); quit(); },
     restart: () => { stop(); restart(); },
   }));
@@ -303,11 +310,20 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     const padTop = Math.max(0, hud.getBoundingClientRect().bottom - r.top) * px;
     const padBottom = Math.max(0, r.bottom - bar.getBoundingClientRect().top) * px;
     view = follow(canvas.width, canvas.height, camX, camY, size.w, size.h, padTop, padBottom);
+    if (!battleOpen) playMusic(trackNow());
     pruneFx(fx, now);
     render(ctx, world, view, now, fx);
     updateHud();
     requestAnimationFrame(frame);
   }
+
+  /** The tune for where and when you are: the season's on the farm by day, a lullaby at night, Route 1's own out there. */
+  function trackNow(): TrackId {
+    const night = isNight(world.clock);
+    if (world.map === 'route1') return night ? ROUTE_NIGHT : ROUTE_DAY;
+    return night ? FARM_NIGHT : FARM_TRACKS[seasonOf(world.day)];
+  }
+  preloadMusic([trackNow(), BATTLE, VICTORY, ROUTE_DAY]);
 
   function stop(): void {
     running = false;

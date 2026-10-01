@@ -26,6 +26,8 @@ interface Hook {
     inventory: Record<string, number>;
     machines: Record<string, { output: string | null }>;
     barn: { trough: Record<string, number> };
+    weather: string;
+    greenhouse: boolean;
     clock: number;
     player: { x: number; y: number; path: unknown[]; energy: number };
     plots: Record<string, { watered: boolean; crop: { id: string } | null }>;
@@ -88,6 +90,8 @@ async function run(name: string, viewport: { width: number; height: number }, to
   const page = await context.newPage();
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  const music = new Set<string>();
+  page.on('response', (r) => { if (r.url().includes('/music/') && r.ok()) music.add(r.url().split('/music/')[1]!); });
   await listenForSound(page);
   await page.goto(URL);
   await page.waitForSelector('.title');
@@ -278,6 +282,31 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.screenshot({ path: `${OUT}/${name}-19-merchant.png` });
   await page.locator('.close').click();
   await page.waitForTimeout(250);
+
+  // Weather and seasons.
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.world.weather = 'rain'; f.warp('farm', 8, 14); });
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${OUT}/${name}-20-rain.png` });
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.world.day = 90; f.world.weather = 'snow'; f.world.greenhouse = true; f.warp('farm', 17, 24); });
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${OUT}/${name}-21-winter.png` });
+  check(await page.locator('.hud-day', { hasText: 'Winter' }).count() === 1, 'the HUD shows winter');
+
+  // The Pokédex.
+  await page.locator('.icon-btn.menu').click();
+  await page.getByRole('button', { name: 'Pokédex' }).click();
+  await page.waitForSelector('.dex-grid');
+  await page.locator('.dex-cell.caught').first().click();
+  await page.waitForSelector('.dex-detail');
+  await page.waitForTimeout(400);
+  const cells = await page.locator('.dex-cell').count();
+  check(cells >= 60, `the Pokédex lists every species (${cells})`);
+  await fits(page, 'Pokédex');
+  await page.screenshot({ path: `${OUT}/${name}-22-dex.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  check(music.size >= 3, `music loaded (${[...music].join(', ')})`);
 
   const heard = await page.evaluate(() => (window as unknown as { __sounds: number }).__sounds);
   check(heard > 0, `sound played (${heard} sounds)`);

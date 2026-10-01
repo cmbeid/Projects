@@ -2,7 +2,7 @@
  * The field: what a tap on a tile does with what's in hand, and how the
  * crops grow overnight.
  */
-import { crop } from '../data/crops';
+import { crop, inSeason } from '../data/crops';
 import { ITEMS, item } from '../data/items';
 import { MAPS, tileAt, walkable } from '../data/maps';
 import { CAN_CAPACITY, TOOL_TIERS, type UpgradableTool } from '../data/progress';
@@ -12,6 +12,7 @@ import { hasBuff, hasPerk, plotKey, tileOf, type CropState, type Dir, type World
 import type { Point } from './path';
 import { nextRandom } from './rng';
 import { addSkillXp } from './skills';
+import { seasonOf } from './time';
 import { DELTA } from './walk';
 
 export type Action =
@@ -69,8 +70,19 @@ export function actionCost(world: World, action: Action): number {
   return Math.max(1, base + size - (hasPerk(world, 'hardy') ? 1 : 0) - (hasBuff(world, 'steady') ? 1 : 0));
 }
 
+/** Soil you can dig: open grass, or the greenhouse beds once it's repaired. */
+export function soilAt(world: World, x: number, y: number): boolean {
+  const kind = tileAt(world.map, x, y);
+  return MAPS[world.map].farmable && (kind === 'grass' || (kind === 'ghsoil' && world.greenhouse));
+}
+
+/** Under glass, where seasons don't matter. */
+export function underGlass(x: number, y: number): boolean {
+  return tileAt('farm', x, y) === 'ghsoil';
+}
+
 function tillable(world: World, x: number, y: number): boolean {
-  return MAPS[world.map].farmable && tileAt(world.map, x, y) === 'grass' && !world.plots[plotKey(x, y)] && !world.machines[plotKey(x, y)];
+  return soilAt(world, x, y) && !world.plots[plotKey(x, y)] && !world.machines[plotKey(x, y)];
 }
 
 function waterable(world: World, x: number, y: number): boolean {
@@ -113,7 +125,10 @@ function toolIntent(world: World, x: number, y: number): Intent {
   const tool = held === 'hoe' || held === 'can' || held === 'sickle' || def?.kind === 'seed' || def?.kind === 'machine';
   // Off the farm, tools do nothing: a tap just walks.
   if (tool && !farm) return { kind: 'walk' };
-  if (kind !== 'grass') return { kind: 'walk' };
+  if (kind === 'ghsoil' && !world.greenhouse) {
+    return held === 'hoe' ? { kind: 'deny', text: 'The greenhouse needs repairs. Ask the carpenter at the barn' } : { kind: 'walk' };
+  }
+  if (kind !== 'grass' && kind !== 'ghsoil') return { kind: 'walk' };
 
   if (held === 'hoe') return plot ? { kind: 'walk' } : { kind: 'use', action: 'till' };
   if (held === 'can') {
@@ -129,7 +144,10 @@ function toolIntent(world: World, x: number, y: number): Intent {
   }
   if (def?.kind === 'seed') {
     if (!plot) return { kind: 'deny', text: 'Till the soil first' };
-    return plot.crop ? { kind: 'walk' } : { kind: 'use', action: 'plant' };
+    if (plot.crop) return { kind: 'walk' };
+    const season = seasonOf(world.day);
+    if (!underGlass(x, y) && !inSeason(def.crop!, season)) return { kind: 'deny', text: `${crop(def.crop!).name} won't grow in ${season}` };
+    return { kind: 'use', action: 'plant' };
   }
   return { kind: 'walk' };
 }
@@ -285,6 +303,20 @@ export const REVERT_CHANCE = 0.2;
 /** Chance a crow comes for a crop overnight when nothing scares it off. */
 export const CROW_CHANCE = 0.3;
 
+/** When a new season starts, outdoor crops that don't belong in it wither. */
+export function witherOutOfSeason(world: World): number {
+  const season = seasonOf(world.day);
+  let n = 0;
+  for (const [key, plot] of Object.entries(world.plots)) {
+    if (!plot.crop || inSeason(plot.crop.id, season)) continue;
+    const [x, y] = key.split(',').map(Number) as [number, number];
+    if (underGlass(x, y)) continue;
+    plot.crop = null;
+    n += 1;
+  }
+  return n;
+}
+
 /** Overnight: watered crops grow, the soil dries, and crows may visit. */
 export function growNight(world: World, guarded: boolean): { grown: number; ripe: number; dried: number; crowAte: string | null } {
   let grown = 0;
@@ -306,7 +338,8 @@ export function growNight(world: World, guarded: boolean): { grown: number; ripe
   }
   let crowAte: string | null = null;
   if (!guarded && nextRandom(world.rng) < CROW_CHANCE) {
-    const growing = Object.values(world.plots).filter((p) => p.crop && !isRipe(p.crop));
+    // Crows can't get into the greenhouse.
+    const growing = Object.entries(world.plots).filter(([k, p]) => p.crop && !isRipe(p.crop) && !underGlass(...(k.split(',').map(Number) as [number, number]))).map(([, p]) => p);
     if (growing.length) {
       const victim = growing[Math.floor(nextRandom(world.rng) * growing.length)]!;
       crowAte = crop(victim.crop!.id).name;

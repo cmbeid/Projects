@@ -4,11 +4,15 @@
  * floods the market: past the first 15, each one fetches a little less.
  * At weekends a travelling merchant visits with things no shop stocks.
  */
+import { inSeason } from '../data/crops';
 import { ITEMS, item, marketItem } from '../data/items';
 import { MERCHANT_POOL } from '../data/ranch';
 import { hasPerk, type World } from './model';
 import { nextRandom } from './rng';
-import { weekdayOf } from './time';
+import { seasonOf, weekdayOf } from './time';
+
+/** Berries out of season are scarce: they fetch this much more. */
+export const OUT_OF_SEASON = 1.25;
 
 /** Units of an item you can sell in a day at full price. */
 export const SATURATION_FREE = 15;
@@ -29,6 +33,7 @@ export function unitPrice(world: World, id: string): number {
   const def = item(id);
   let price = def.sellPrice;
   if (def.kind === 'crop' && hasPerk(world, 'berry-master')) price *= 1.2;
+  if (def.kind === 'crop' && !inSeason(id, seasonOf(world.day))) price *= OUT_OF_SEASON;
   if (def.kind === 'artisan' && hasPerk(world, 'artisan')) price *= 1.25;
   return price * (world.market[id] ?? 1);
 }

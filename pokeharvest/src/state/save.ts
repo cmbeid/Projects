@@ -7,6 +7,8 @@
  */
 import { isCrop } from '../data/crops';
 import { ITEMS, marketItem } from '../data/items';
+import { DEX_REWARDS } from '../data/dex';
+import type { Weather } from '../data/encounters';
 import { MACHINES } from '../data/crafting';
 import { BARN_LEVELS, FRIENDSHIP } from '../data/ranch';
 import { MAP_IDS, MAP_H, MAP_W, SPAWN, mapSize, tileAt, walkable, type MapId } from '../data/maps';
@@ -47,6 +49,7 @@ const int = (v: unknown, fallback: number, min = 0, max = 1e9): number =>
 const real = (v: unknown, fallback: number, min = 0, max = 1e9): number =>
   typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
 const DIRS: readonly Dir[] = ['up', 'down', 'left', 'right'];
+const WEATHERS: readonly Weather[] = ['sun', 'rain', 'storm', 'snow'];
 const ALL_PERKS = new Set(Object.values(PERKS).flatMap((byLevel) => Object.values(byLevel).flatMap((pair) => pair.map((p) => p.id))));
 
 /** Item counts, dropping unknown items and tools. */
@@ -66,7 +69,8 @@ function plots(raw: unknown): Record<string, Plot> {
     if (!m) continue;
     const x = Number(m[1]);
     const y = Number(m[2]);
-    if (x >= MAP_W || y >= MAP_H || tileAt('farm', x, y) !== 'grass') continue;
+    const kind = tileAt('farm', x, y);
+    if (x >= MAP_W || y >= MAP_H || (kind !== 'grass' && kind !== 'ghsoil')) continue;
     const p = obj(value);
     const c = obj(p.crop);
     const id = typeof c.id === 'string' && isCrop(c.id) ? c.id : null;
@@ -87,7 +91,8 @@ function machines(raw: unknown): Record<string, Machine> {
   for (const [key, value] of Object.entries(obj(raw))) {
     const m = /^(\d+),(\d+)$/.exec(key);
     const v = obj(value);
-    if (!m || typeof v.id !== 'string' || !MACHINES[v.id] || tileAt('farm', Number(m[1]), Number(m[2])) !== 'grass') continue;
+    const kind = m ? tileAt('farm', Number(m[1]), Number(m[2])) : 'tree';
+    if (!m || typeof v.id !== 'string' || !MACHINES[v.id] || (kind !== 'grass' && kind !== 'ghsoil')) continue;
     const output = typeof v.output === 'string' && ITEMS.has(v.output) ? v.output : null;
     const needed = output ? real(v.needed, MACHINES[v.id]!.minutes, 1, 1e6) : 0;
     out[key] = { id: v.id, output, count: output ? int(v.count, 1, 1, 2) : 0, progress: output ? real(v.progress, 0, 0, needed) : 0, needed };
@@ -199,6 +204,10 @@ export function parseWorld(raw: unknown): World | null {
     merchant: null,
     buffs: arr(r.buffs).filter((b): b is World['buffs'][number] => b === 'swift' || b === 'lucky' || b === 'coach' || b === 'steady'),
     petted: arr(r.petted).filter((u): u is number => typeof u === 'number'),
+    weather: WEATHERS.includes(r.weather as Weather) ? (r.weather as Weather) : 'sun',
+    tomorrow: WEATHERS.includes(r.tomorrow as Weather) ? (r.tomorrow as Weather) : 'sun',
+    greenhouse: r.greenhouse === true,
+    dexClaimed: arr(r.dexClaimed).filter((n): n is number => typeof n === 'number' && DEX_REWARDS.some((d) => d.caught === n)),
     nextUid,
     helpers: [],
     plots: plots(r.plots),
@@ -278,15 +287,16 @@ export function clearSave(store: Store | null = defaultStore()): void {
 export interface Settings {
   sfx: number;
   cries: number;
+  music: number;
   muted: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { sfx: 80, cries: 70, muted: false };
+export const DEFAULT_SETTINGS: Settings = { sfx: 80, cries: 70, music: 50, muted: false };
 
 export function loadSettings(store: Store | null = defaultStore()): Settings {
   try {
     const r = obj(JSON.parse(store?.getItem(SETTINGS_KEY) ?? '{}'));
-    return { sfx: int(r.sfx, DEFAULT_SETTINGS.sfx, 0, 100), cries: int(r.cries, DEFAULT_SETTINGS.cries, 0, 100), muted: r.muted === true };
+    return { sfx: int(r.sfx, DEFAULT_SETTINGS.sfx, 0, 100), cries: int(r.cries, DEFAULT_SETTINGS.cries, 0, 100), music: int(r.music, DEFAULT_SETTINGS.music, 0, 100), muted: r.muted === true };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
