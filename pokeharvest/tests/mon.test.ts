@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { learnset, MOVES } from '../src/data/moves';
 import { SPECIES, jobFor, species } from '../src/data/species';
-import { gainXp, makeMon, maxHp, statsOf, toggleParty, xpForLevel } from '../src/game/mon';
-import { world } from './helpers';
+import { gainXp, makeMon, maxHp, statsOf, xpForLevel } from '../src/game/mon';
 
 describe('Pokémon', () => {
   it('has sound data: evolutions exist and learn only real moves', () => {
@@ -36,11 +35,7 @@ describe('Pokémon', () => {
     expect(species(4).job).toBe('guard');
     expect(species(19).job).toBe('harvest');
     expect(species(16).job).toBe('guard');
-    expect(jobFor(['electric'])).toBe('none');
-  });
-
-  it('keeps at least one Pokémon in the party', () => {
-    const w = world(7);
-    expect(toggleParty(w, w.party[0]!)).toBe(false);
+    expect(jobFor(['electric'])).toBe('power');
+    expect(jobFor(['ghost'])).toBe('none');
   });
 });

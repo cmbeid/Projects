@@ -5,14 +5,18 @@
  */
 import { CROPS } from '../data/crops';
 import { ENCOUNTERS, ENCOUNTER_RATE, isNight } from '../data/encounters';
-import { TOOLS, seedId } from '../data/items';
+import { ITEMS, TOOLS, seedId } from '../data/items';
 import { MAPS, SPAWN, tileAt, walkable, warpAt } from '../data/maps';
 import { startBattle } from './battle';
 import { collectBin } from './economy';
 import { canCapacity, growNight, intentAt, toolName, useAt } from './farm';
-import { guarded, passableOn, placeHelpers, syncHelpers, updateHelpers } from './helpers';
+import { feedAndProduce } from './barn';
+import { guarded, passableFor, placeHelpers, placeParty, syncHelpers, updateHelpers } from './helpers';
+import { runMachines } from './machines';
+import { rollMarket } from './market';
+import { refreshRequests } from './requests';
 import { healAll, healthyParty, makeMon } from './mon';
-import { MAX_ENERGY, START_GOLD, tileOf, type DaySummary, type Dir, type World } from './model';
+import { MAX_ENERGY, START_GOLD, hasBuff, tileOf, type DaySummary, type Dir, type World } from './model';
 import { manhattan, pathBeside, pathTo, type Point } from './path';
 import { nextRandom } from './rng';
 import { maxEnergyFor } from './skills';
@@ -39,6 +43,17 @@ export function createWorld(seed: number, starter: number): World {
     player: { x: SPAWN.x, y: SPAWN.y, path: [], facing: 'down', energy: MAX_ENERGY, maxEnergy: MAX_ENERGY, gold: START_GOLD, water: 20, pending: null },
     mons: [],
     party: [],
+    farm: [],
+    barn: { level: 0, trough: {}, output: {} },
+    machines: {},
+    market: {},
+    sold: {},
+    reputation: 0,
+    requests: [],
+    nextRequestId: 1,
+    merchant: null,
+    buffs: [],
+    petted: [],
     nextUid: 1,
     helpers: [],
     plots: {},
@@ -47,7 +62,7 @@ export function createWorld(seed: number, starter: number): World {
     bin: {},
     tools: { hoe: 0, can: 0 },
     upgrade: null,
-    skills: { farming: 0, battling: 0 },
+    skills: { farming: 0, battling: 0, crafting: 0 },
     perks: [],
     pendingPerks: [],
     seen: [],
@@ -63,14 +78,19 @@ export function createWorld(seed: number, starter: number): World {
   world.party.push(mon.uid);
   world.seen.push(starter);
   world.caught.push(starter);
+  rollMarket(world);
+  refreshRequests(world);
   syncHelpers(world);
   placeHelpers(world, SPAWN);
   return world;
 }
 
-/** What sits in the hotbar: the tools, then every kind of seed you have. */
+const MACHINE_IDS = [...ITEMS.values()].filter((i) => i.kind === 'machine').map((i) => i.id);
+
+/** What sits in the hotbar: the tools, then every kind of seed you have, then machines to place. */
 export function hotbar(world: World): string[] {
-  return [...TOOLS, ...CROPS.map((c) => seedId(c.id)).filter((id) => (world.inventory[id] ?? 0) > 0)];
+  const owned = (id: string): boolean => (world.inventory[id] ?? 0) > 0;
+  return [...TOOLS, ...CROPS.map((c) => seedId(c.id)).filter(owned), ...MACHINE_IDS.filter(owned)];
 }
 
 export function select(world: World, id: string): void {
@@ -87,7 +107,7 @@ export function tapTile(world: World, x: number, y: number): void {
   const at = tileOf(p);
   const intent = intentAt(world, x, y);
   const kind = tileAt(world.map, x, y);
-  const ok = passableOn(world.map);
+  const ok = passableFor(world);
   if (intent.kind === 'deny' && !walkable(kind)) {
     if (intent.text) world.events.push({ kind: 'hint', x, y, text: intent.text });
     return;
@@ -100,7 +120,7 @@ export function tapTile(world: World, x: number, y: number): void {
       useAt(world, x, y);
       return;
     }
-    const path = pathBeside(at, { x, y }, ok, walkable(kind));
+    const path = pathBeside(at, { x, y }, ok, walkable(kind) && ok({ x, y }));
     if (!path) return;
     p.path = path;
     p.pending = { x, y };
@@ -120,7 +140,7 @@ export function step(world: World, dir: Dir): void {
   p.pending = null;
   const at = tileOf(p);
   const next = { x: at.x + DELTA[dir].x, y: at.y + DELTA[dir].y };
-  if (passableOn(world.map)(next)) p.path = [next];
+  if (passableFor(world)(next)) p.path = [next];
 }
 
 /** Keyboard: use the tile being faced. */
@@ -139,7 +159,7 @@ export function warpTo(world: World, map: World['map'], x: number, y: number): v
   p.y = y;
   p.path = [];
   p.pending = null;
-  placeHelpers(world, { x, y });
+  placeParty(world, { x, y });
   world.events.push({ kind: 'warp', map });
 }
 
@@ -173,7 +193,8 @@ export function tick(world: World, dt: number): void {
   const minutes = dt / SECONDS_PER_MINUTE;
   world.clock += minutes;
   const p = world.player;
-  const arrived = walk(p, p.energy > 0 ? WALK_SPEED : TIRED_SPEED, dt, (x, y) => onStep(world, { x, y }));
+  const speed = (p.energy > 0 ? WALK_SPEED : TIRED_SPEED) * (hasBuff(world, 'swift') ? 1.3 : 1);
+  const arrived = walk(p, speed, dt, (x, y) => onStep(world, { x, y }));
   if (world.battle) return;
   if (arrived && p.pending) {
     const target = p.pending;
@@ -183,6 +204,7 @@ export function tick(world: World, dt: number): void {
     useAt(world, target.x, target.y);
   }
   updateHelpers(world, dt, minutes);
+  runMachines(world, minutes);
   if (world.clock >= DAY_END) endDay(world, true);
 }
 
@@ -211,11 +233,19 @@ function endDay(world: World, passedOut: boolean): DaySummary {
   // Staying up late costs you in the morning.
   const late = world.clock > 24 * 60;
   p.energy = passedOut ? Math.floor(p.maxEnergy / 2) : late ? Math.floor(p.maxEnergy * 0.75) : p.maxEnergy;
-  const summary: DaySummary = { day: world.day, shipped, earned, ...night, passedOut, lost, upgraded };
+  const { produced, hungry } = feedAndProduce(world);
+  // Everyone sleeps at home, and the machines keep going through the night.
+  world.map = 'farm';
+  runMachines(world, 24 * 60 + DAY_START - world.clock);
   world.day += 1;
   world.clock = DAY_START;
-  world.map = 'farm';
   world.battle = null;
+  world.buffs = [];
+  world.petted = [];
+  world.sold = {};
+  rollMarket(world);
+  const expired = refreshRequests(world);
+  const summary: DaySummary = { day: world.day - 1, shipped, earned, ...night, passedOut, lost, upgraded, produced, hungry, expired };
   p.x = SPAWN.x;
   p.y = SPAWN.y;
   p.path = [];

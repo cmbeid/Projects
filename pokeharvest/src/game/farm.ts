@@ -6,13 +6,18 @@ import { crop } from '../data/crops';
 import { ITEMS, item } from '../data/items';
 import { MAPS, tileAt, walkable } from '../data/maps';
 import { CAN_CAPACITY, TOOL_TIERS, type UpgradableTool } from '../data/progress';
-import { hasPerk, plotKey, type CropState, type Dir, type World } from './model';
+import { pet } from './barn';
+import { canPlace, collectMachine, isDone, pickUpMachine, placeMachine } from './machines';
+import { hasBuff, hasPerk, plotKey, tileOf, type CropState, type Dir, type World } from './model';
 import type { Point } from './path';
 import { nextRandom } from './rng';
 import { addSkillXp } from './skills';
 import { DELTA } from './walk';
 
-export type Action = 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'untill' | 'refill' | 'sleep' | 'bin' | 'mart' | 'smith';
+export type Action =
+  | 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'untill' | 'refill'
+  | 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant'
+  | 'place' | 'machine' | 'pickup' | 'pet';
 
 /** What using a tile would do: an action, nothing worth doing (just walk there), or a reason it can't. */
 export type Intent = { kind: 'use'; action: Action } | { kind: 'walk' } | { kind: 'deny'; text: string };
@@ -61,11 +66,11 @@ export function actionCost(world: World, action: Action): number {
   if (!base) return 0;
   const tier = action === 'till' ? world.tools.hoe : action === 'water' ? world.tools.can : 0;
   const size = tier === 0 ? 0 : tier === 3 ? 1 : tier;
-  return Math.max(1, base + size - (hasPerk(world, 'hardy') ? 1 : 0));
+  return Math.max(1, base + size - (hasPerk(world, 'hardy') ? 1 : 0) - (hasBuff(world, 'steady') ? 1 : 0));
 }
 
 function tillable(world: World, x: number, y: number): boolean {
-  return MAPS[world.map].farmable && tileAt(world.map, x, y) === 'grass' && !world.plots[plotKey(x, y)];
+  return MAPS[world.map].farmable && tileAt(world.map, x, y) === 'grass' && !world.plots[plotKey(x, y)] && !world.machines[plotKey(x, y)];
 }
 
 function waterable(world: World, x: number, y: number): boolean {
@@ -73,13 +78,28 @@ function waterable(world: World, x: number, y: number): boolean {
   return Boolean(plot && !plot.watered && !(plot.crop && isRipe(plot.crop)));
 }
 
+/**
+ * What tapping (x, y) would do. A Pokémon standing there gets a pat, but
+ * only when what's in hand has nothing better to do on that tile.
+ */
 export function intentAt(world: World, x: number, y: number): Intent {
+  const base = toolIntent(world, x, y);
+  if (base.kind !== 'walk') return base;
+  const friend = helperAt(world, x, y);
+  return friend !== null && !world.petted.includes(friend) ? { kind: 'use', action: 'pet' } : base;
+}
+
+function toolIntent(world: World, x: number, y: number): Intent {
   const kind = tileAt(world.map, x, y);
   const held = world.selected;
   if (kind === 'door') return { kind: 'use', action: 'sleep' };
   if (kind === 'bin') return { kind: 'use', action: 'bin' };
   if (kind === 'mart') return { kind: 'use', action: 'mart' };
   if (kind === 'smith') return { kind: 'use', action: 'smith' };
+  if (kind === 'barn' || kind === 'barndoor') return { kind: 'use', action: 'barn' };
+  if (kind === 'board') return { kind: 'use', action: 'board' };
+  if (kind === 'merchant') return { kind: 'use', action: 'merchant' };
+  if (world.map === 'farm' && world.machines[plotKey(x, y)]) return { kind: 'use', action: held === 'sickle' ? 'pickup' : 'machine' };
   if (kind === 'water') {
     if (held !== 'can') return { kind: 'deny', text: 'Hold the can to fill it' };
     return world.player.water >= canCapacity(world) ? { kind: 'deny', text: 'The can is full' } : { kind: 'use', action: 'refill' };
@@ -90,7 +110,7 @@ export function intentAt(world: World, x: number, y: number): Intent {
   const plot = farm ? world.plots[plotKey(x, y)] : undefined;
   if (plot?.crop && isRipe(plot.crop)) return { kind: 'use', action: 'harvest' };
   const def = ITEMS.get(held);
-  const tool = held === 'hoe' || held === 'can' || held === 'sickle' || def?.kind === 'seed';
+  const tool = held === 'hoe' || held === 'can' || held === 'sickle' || def?.kind === 'seed' || def?.kind === 'machine';
   // Off the farm, tools do nothing: a tap just walks.
   if (tool && !farm) return { kind: 'walk' };
   if (kind !== 'grass') return { kind: 'walk' };
@@ -103,6 +123,9 @@ export function intentAt(world: World, x: number, y: number): Intent {
   if (held === 'sickle') {
     if (plot?.crop) return { kind: 'use', action: 'clear' };
     return plot ? { kind: 'use', action: 'untill' } : { kind: 'walk' };
+  }
+  if (def?.kind === 'machine') {
+    return canPlace(world, x, y) ? { kind: 'use', action: 'place' } : { kind: 'deny', text: 'Place it on open grass' };
   }
   if (def?.kind === 'seed') {
     if (!plot) return { kind: 'deny', text: 'Till the soil first' };
@@ -120,7 +143,7 @@ export function pick(world: World, x: number, y: number, into: Record<string, nu
   const c = plot?.crop;
   if (!plot || !c || !isRipe(c)) return null;
   const def = crop(c.id);
-  const bonus = hasPerk(world, 'green-thumb') ? 0.4 : 0.2;
+  const bonus = (hasPerk(world, 'green-thumb') ? 0.4 : 0.2) + (hasBuff(world, 'lucky') ? 0.2 : 0);
   const count = 1 + (nextRandom(world.rng) < bonus ? 1 : 0);
   into[def.id] = (into[def.id] ?? 0) + count;
   world.stats.harvested += count;
@@ -156,8 +179,25 @@ export function useAt(world: World, x: number, y: number): boolean {
     case 'bin':
     case 'mart':
     case 'smith':
+    case 'barn':
+    case 'board':
+    case 'merchant':
       world.events.push({ kind: 'open', ui: action });
       return true;
+    case 'machine':
+      if (isDone(world, key)) return collectMachine(world, x, y);
+      world.events.push({ kind: 'machine', x, y });
+      return true;
+    case 'pickup':
+      return pickUpMachine(world, x, y);
+    case 'place':
+      return placeMachine(world, world.selected, x, y);
+    case 'pet': {
+      const uid = helperAt(world, x, y);
+      if (uid === null || !pet(world, uid)) return false;
+      world.events.push({ kind: 'pet', x, y, text: '♥' });
+      return true;
+    }
     case 'refill':
       p.water = canCapacity(world);
       world.events.push({ kind: 'refill', x, y, text: 'Filled up!' });
@@ -209,6 +249,16 @@ export function useAt(world: World, x: number, y: number): boolean {
       return true;
     }
   }
+}
+
+/** The Pokémon standing on (x, y), if any is out on this map. */
+export function helperAt(world: World, x: number, y: number): number | null {
+  for (const h of world.helpers) {
+    if (h.role === 'farm' && world.map !== 'farm') continue;
+    const t = tileOf(h);
+    if (t.x === x && t.y === y) return h.uid;
+  }
+  return null;
 }
 
 export function giveItem(world: World, id: string, count: number): void {

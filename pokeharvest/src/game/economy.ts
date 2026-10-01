@@ -1,8 +1,9 @@
 /** Gold: the Poké Mart's shelves, its buy-back counter, the shipping bin, and the blacksmith. */
-import { MART_SELL_RATE, item } from '../data/items';
+import { MART_SELL_RATE, item, sellable } from '../data/items';
 import { UPGRADE_COSTS, type UpgradableTool } from '../data/progress';
 import { giveItem, takeItem } from './farm';
-import { hasPerk, type World } from './model';
+import { recordSale, saleValue } from './market';
+import type { World } from './model';
 
 export function buy(world: World, id: string, count = 1): boolean {
   const def = item(id);
@@ -14,29 +15,31 @@ export function buy(world: World, id: string, count = 1): boolean {
   return true;
 }
 
-/** What the shipping bin pays for one: berries earn more with Berry Master. */
+/** What the shipping bin would pay for the next one, rounded down. */
 export function sellPrice(world: World, id: string): number {
-  const def = item(id);
-  return Math.floor(def.sellPrice * (def.kind === 'crop' && hasPerk(world, 'berry-master') ? 1.2 : 1));
+  return saleValue(world, id, 1);
 }
 
-/** What the Mart pays on the spot for one. */
+/** What the Mart pays on the spot for the next one. */
 export function martPrice(world: World, id: string): number {
   return Math.floor(sellPrice(world, id) * MART_SELL_RATE);
 }
 
 export function sellNow(world: World, id: string, count = 1): boolean {
-  const price = martPrice(world, id);
-  if (price <= 0 || !takeItem(world, id, count)) return false;
-  world.player.gold += price * count;
-  world.stats.earned += price * count;
-  world.events.push({ kind: 'coins', amount: price * count });
+  if (!sellable(id) || count <= 0 || (world.inventory[id] ?? 0) < count) return false;
+  const pay = Math.floor(saleValue(world, id, count) * MART_SELL_RATE);
+  if (pay <= 0) return false;
+  takeItem(world, id, count);
+  recordSale(world, id, count);
+  world.player.gold += pay;
+  world.stats.earned += pay;
+  world.events.push({ kind: 'coins', amount: pay });
   return true;
 }
 
-/** Put items in the shipping bin; they are paid for, in full, overnight. */
+/** Put items in the shipping bin; they are paid for overnight at that day's prices. */
 export function ship(world: World, id: string, count = 1): boolean {
-  if (item(id).sellPrice <= 0 || !takeItem(world, id, count)) return false;
+  if (!sellable(id) || !takeItem(world, id, count)) return false;
   world.bin[id] = (world.bin[id] ?? 0) + count;
   return true;
 }
@@ -52,13 +55,17 @@ export function unship(world: World, id: string, count = 1): boolean {
 }
 
 export function binValue(world: World): number {
-  return Object.entries(world.bin).reduce((sum, [id, n]) => sum + sellPrice(world, id) * n, 0);
+  return Object.entries(world.bin).reduce((sum, [id, n]) => sum + saleValue(world, id, n), 0);
 }
 
-/** Overnight: pay for the bin and empty it. */
+/** Overnight: pay for the bin at today's prices and empty it. */
 export function collectBin(world: World): { shipped: Record<string, number>; earned: number } {
   const shipped = world.bin;
-  const earned = binValue(world);
+  let earned = 0;
+  for (const [id, n] of Object.entries(shipped)) {
+    earned += saleValue(world, id, n);
+    recordSale(world, id, n);
+  }
   world.bin = {};
   world.player.gold += earned;
   world.stats.earned += earned;

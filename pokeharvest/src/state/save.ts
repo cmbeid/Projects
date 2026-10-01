@@ -6,7 +6,9 @@
  * game starting. Only a save with no readable starter is thrown away.
  */
 import { isCrop } from '../data/crops';
-import { ITEMS } from '../data/items';
+import { ITEMS, marketItem } from '../data/items';
+import { MACHINES } from '../data/crafting';
+import { BARN_LEVELS, FRIENDSHIP } from '../data/ranch';
 import { MAP_IDS, MAP_H, MAP_W, SPAWN, mapSize, tileAt, walkable, type MapId } from '../data/maps';
 import { MOVES } from '../data/moves';
 import { PERKS, SKILLS, TOOL_TIERS, type Skill } from '../data/progress';
@@ -14,7 +16,9 @@ import { SPECIES } from '../data/species';
 import { canCapacity } from '../game/farm';
 import { placeHelpers, syncHelpers } from '../game/helpers';
 import { maxHp, movesAt, xpForLevel } from '../game/mon';
-import { MAX_ENERGY, PARTY_SIZE, type Dir, type Mon, type Plot, type World } from '../game/model';
+import { MAX_ENERGY, PARTY_SIZE, type Dir, type Machine, type Mon, type Plot, type Request, type World } from '../game/model';
+import { rollMarket } from '../game/market';
+import { refreshRequests } from '../game/requests';
 import { maxEnergyFor } from '../game/skills';
 import { DAY_END, DAY_START } from '../game/time';
 
@@ -74,6 +78,37 @@ function plots(raw: unknown): Record<string, Plot> {
   return out;
 }
 
+function crops(raw: unknown): Record<string, number> {
+  return Object.fromEntries(Object.entries(bag(raw)).filter(([id]) => ITEMS.get(id)?.kind === 'crop'));
+}
+
+function machines(raw: unknown): Record<string, Machine> {
+  const out: Record<string, Machine> = {};
+  for (const [key, value] of Object.entries(obj(raw))) {
+    const m = /^(\d+),(\d+)$/.exec(key);
+    const v = obj(value);
+    if (!m || typeof v.id !== 'string' || !MACHINES[v.id] || tileAt('farm', Number(m[1]), Number(m[2])) !== 'grass') continue;
+    const output = typeof v.output === 'string' && ITEMS.has(v.output) ? v.output : null;
+    const needed = output ? real(v.needed, MACHINES[v.id]!.minutes, 1, 1e6) : 0;
+    out[key] = { id: v.id, output, count: output ? int(v.count, 1, 1, 2) : 0, progress: output ? real(v.progress, 0, 0, needed) : 0, needed };
+  }
+  return out;
+}
+
+function market(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, v] of Object.entries(obj(raw))) if (marketItem(id)) out[id] = real(v, 1, 0.5, 1.5);
+  return out;
+}
+
+function requests(raw: unknown): Request[] {
+  return arr(raw).flatMap((v) => {
+    const q = obj(v);
+    if (typeof q.item !== 'string' || !ITEMS.has(q.item)) return [];
+    return [{ id: int(q.id, 0), item: q.item, count: int(q.count, 1, 1, 99), reward: int(q.reward, 0), reputation: int(q.reputation, 1, 0, 5), due: int(q.due, 1, 1) }];
+  }).slice(0, 3);
+}
+
 function mon(raw: unknown, uid: number): Mon | null {
   const r = obj(raw);
   if (typeof r.dex !== 'number' || !SPECIES.has(r.dex)) return null;
@@ -88,6 +123,8 @@ function mon(raw: unknown, uid: number): Mon | null {
     hp: int(r.hp, maxHp(base), 0, maxHp(base)),
     moves: moves.length ? moves : movesAt(r.dex, level),
     shiny: r.shiny === true,
+    friendship: int(r.friendship, FRIENDSHIP.start, 0, FRIENDSHIP.max),
+    fed: r.fed !== false,
   };
 }
 
@@ -115,6 +152,10 @@ export function parseWorld(raw: unknown): World | null {
   let party = arr(r.party).filter((u): u is number => typeof u === 'number' && mons.some((m) => m.uid === u));
   party = [...new Set(party)].slice(0, PARTY_SIZE);
   if (!party.length) party = mons.slice(0, PARTY_SIZE).map((m) => m.uid);
+  const barnRaw = obj(r.barn);
+  const barnLevel = int(barnRaw.level, 0, 0, BARN_LEVELS.length - 1);
+  const farm = [...new Set(arr(r.farm).filter((u): u is number => typeof u === 'number' && mons.some((m) => m.uid === u) && !party.includes(u)))]
+    .slice(0, BARN_LEVELS[barnLevel]!.capacity);
 
   const map: MapId = MAP_IDS.includes(r.map as MapId) ? (r.map as MapId) : 'farm';
   const size = mapSize(map);
@@ -147,6 +188,17 @@ export function parseWorld(raw: unknown): World | null {
     },
     mons,
     party,
+    farm,
+    barn: { level: barnLevel, trough: crops(barnRaw.trough), output: bag(barnRaw.output) },
+    machines: machines(r.machines),
+    market: market(r.market),
+    sold: bag(r.sold),
+    reputation: int(r.reputation, 0),
+    requests: requests(r.requests),
+    nextRequestId: int(r.nextRequestId, 1, 1),
+    merchant: null,
+    buffs: arr(r.buffs).filter((b): b is World['buffs'][number] => b === 'swift' || b === 'lucky' || b === 'coach' || b === 'steady'),
+    petted: arr(r.petted).filter((u): u is number => typeof u === 'number'),
     nextUid,
     helpers: [],
     plots: plots(r.plots),
@@ -169,6 +221,9 @@ export function parseWorld(raw: unknown): World | null {
     battle: null,
     events: [],
   };
+  // Older saves: a market for the day, and a request or two on the board.
+  if (!Object.keys(world.market).length) rollMarket(world);
+  if (!world.requests.length) refreshRequests(world);
   for (const m of mons) {
     if (!world.seen.includes(m.dex)) world.seen.push(m.dex);
     if (!world.caught.includes(m.dex)) world.caught.push(m.dex);

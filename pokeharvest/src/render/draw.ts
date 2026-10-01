@@ -4,7 +4,10 @@
  * floating text.
  */
 import { crop } from '../data/crops';
+import { item } from '../data/items';
 import { FARM, MAP_H, MAP_W, mapSize, tileAt } from '../data/maps';
+import { isDone } from '../game/machines';
+import { merchantHere } from '../game/market';
 import { species } from '../data/species';
 import { stageOf } from '../game/farm';
 import { plotKey, type World } from '../game/model';
@@ -12,7 +15,7 @@ import type { View } from './camera';
 import { farmerImage } from './farmer';
 import { darkness, skyTint } from './light';
 import { drawIcon, drawPokemon } from './sprites';
-import { T, cropImage, houseImage, soilImage, tileImage } from './tiles';
+import { T, barnImage, cartImage, cropImage, houseImage, machineImage, soilImage, tileImage } from './tiles';
 
 export interface Floater {
   x: number;
@@ -39,16 +42,19 @@ export interface Fx {
 const FLOAT_MS = 1100;
 const SPLASH_MS = 450;
 
-/** The farmhouse's footprint and door column, read from the map. */
-const HOUSE = (() => {
+/** A building's footprint and door column, read from the farm map. */
+function footprint(wall: string, doorCh: string): { x: number; y: number; w: number; h: number; door: number } {
   let x0 = MAP_W, y0 = MAP_H, x1 = -1, y1 = -1, door = 0;
   FARM.forEach((row, y) => [...row].forEach((ch, x) => {
-    if (ch !== 'H' && ch !== 'D') return;
+    if (ch !== wall && ch !== doorCh) return;
     x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
-    if (ch === 'D') door = x;
+    if (ch === doorCh) door = x;
   }));
   return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, door: door - x0 };
-})();
+}
+
+const HOUSE = footprint('H', 'D');
+const BARN = footprint('A', 'a');
 
 export function render(ctx: CanvasRenderingContext2D, world: World, view: View, now: number, fx: Fx): void {
   const { tile, ox, oy } = view;
@@ -69,7 +75,8 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
   // Ground.
   for (let y = y0; y <= y1; y += 1) {
     for (let x = x0; x <= x1; x += 1) {
-      ctx.drawImage(tileImage(tileAt(world.map, x, y), x, y, now), sx(x), sy(y), tile, tile);
+      const kind = tileAt(world.map, x, y);
+      ctx.drawImage(kind === 'merchant' ? cartImage(merchantHere(world), x, y) : tileImage(kind, x, y, now), sx(x), sy(y), tile, tile);
       const plot = farm ? world.plots[plotKey(x, y)] : undefined;
       if (plot) ctx.drawImage(soilImage(plot.watered), sx(x), sy(y), tile, tile);
     }
@@ -88,7 +95,10 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
     }
   }
 
-  if (farm) ctx.drawImage(houseImage(HOUSE.w, HOUSE.h, HOUSE.door), sx(HOUSE.x), sy(HOUSE.y), HOUSE.w * tile, HOUSE.h * tile);
+  if (farm) {
+    ctx.drawImage(houseImage(HOUSE.w, HOUSE.h, HOUSE.door), sx(HOUSE.x), sy(HOUSE.y), HOUSE.w * tile, HOUSE.h * tile);
+    ctx.drawImage(barnImage(BARN.w, BARN.h, BARN.door), sx(BARN.x), sy(BARN.y), BARN.w * tile, BARN.h * tile);
+  }
 
   if (fx.target) {
     const pulse = 0.55 + 0.35 * Math.sin(now / 120);
@@ -97,8 +107,32 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
     ctx.strokeRect(sx(fx.target.x) + scale, sy(fx.target.y) + scale, tile - scale * 2, tile - scale * 2);
   }
 
-  // Everyone on the farm, back to front.
+  // Everyone and everything on the farm, back to front.
   const actors: { y: number; draw: () => void }[] = [];
+  if (farm) {
+    for (const [key, m] of Object.entries(world.machines)) {
+      const [mx, my] = key.split(',').map(Number) as [number, number];
+      if (mx < x0 - 1 || mx > x1 + 1 || my < y0 - 1 || my > y1 + 1) continue;
+      actors.push({
+        y: my,
+        draw: () => {
+          const working = m.output && !isDone(world, key);
+          const shake = working ? Math.round(Math.sin(now / 90) * scale * 0.5) : 0;
+          ctx.drawImage(machineImage(m.id), sx(mx) + shake, sy(my), tile, tile);
+          if (isDone(world, key)) bubble(ctx, item(m.output!).icon!, sx(mx) + tile / 2, sy(my) - tile * 0.15, tile, now);
+          else if (working) {
+            // A progress bar under it.
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(sx(mx) + scale * 2, sy(my) + tile - scale * 2, tile - scale * 4, scale * 1.5);
+            ctx.fillStyle = '#7ed957';
+            ctx.fillRect(sx(mx) + scale * 2, sy(my) + tile - scale * 2, (tile - scale * 4) * (m.progress / m.needed), scale * 1.5);
+          }
+        },
+      });
+    }
+    const waiting = Object.keys(world.barn.output)[0];
+    if (waiting) actors.push({ y: BARN.y + BARN.h, draw: () => bubble(ctx, item(waiting).icon!, sx(BARN.x + BARN.door) + tile / 2, sy(BARN.y + BARN.h - 1) - tile * 0.2, tile, now) });
+  }
   const p = world.player;
   actors.push({
     y: p.y,
@@ -109,6 +143,7 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
     },
   });
   world.helpers.forEach((h, i) => {
+    if (h.role === 'farm' && !farm) return;
     actors.push({
       y: h.y,
       draw: () => {
@@ -162,6 +197,20 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
 export function pruneFx(fx: Fx, now: number): void {
   fx.floaters = fx.floaters.filter((f) => now - f.born < FLOAT_MS);
   fx.splashes = fx.splashes.filter((s) => now - s.born < SPLASH_MS);
+}
+
+/** A speech bubble with an item in it, bobbing: something's ready to collect. */
+function bubble(ctx: CanvasRenderingContext2D, icon: string, x: number, y: number, tile: number, now: number): void {
+  const bob = Math.sin(now / 250) * tile * 0.05;
+  const r = tile * 0.36;
+  ctx.fillStyle = 'rgba(255,248,231,0.95)';
+  ctx.strokeStyle = 'rgba(58,42,26,0.8)';
+  ctx.lineWidth = Math.max(1, tile / 32);
+  ctx.beginPath();
+  ctx.arc(x, y - r + bob, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  drawIcon(ctx, icon, x, y - r + bob, r * 1.6);
 }
 
 function shadow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {

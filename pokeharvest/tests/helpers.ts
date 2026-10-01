@@ -1,8 +1,11 @@
 /** Test helpers: a quiet world and a way to run it. */
 import { createWorld, tick, type World } from '../src/game/world';
 
+/** A new farm with a flat market, so prices are the plain base prices. */
 export function world(starter = 7, seed = 1): World {
-  return createWorld(seed, starter);
+  const w = createWorld(seed, starter);
+  w.market = {};
+  return w;
 }
 
 /** Run the sim for `seconds` of real time in small steps. */

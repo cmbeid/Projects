@@ -29,7 +29,7 @@ export const ENCOUNTERS: Partial<Record<MapId, readonly Zone[]>> = {
     {
       rows: [12, 99],
       levels: [5, 10],
-      day: [{ dex: 179, weight: 18 }, { dex: 50, weight: 15 }, { dex: 74, weight: 15 }, { dex: 194, weight: 12 }, { dex: 270, weight: 12 }, { dex: 66, weight: 10 }, { dex: 58, weight: 10 }, { dex: 16, weight: 5 }, { dex: 133, weight: 3 }],
+      day: [{ dex: 179, weight: 18 }, { dex: 50, weight: 15 }, { dex: 74, weight: 15 }, { dex: 194, weight: 12 }, { dex: 270, weight: 12 }, { dex: 66, weight: 10 }, { dex: 58, weight: 10 }, { dex: 16, weight: 5 }, { dex: 415, weight: 6 }, { dex: 133, weight: 3 }],
       night: [{ dex: 92, weight: 30 }, { dex: 163, weight: 25 }, { dex: 43, weight: 20 }, { dex: 194, weight: 15 }, { dex: 179, weight: 10 }],
     },
   ],
