@@ -40,6 +40,8 @@ export interface Player extends Walker {
   water: number;
   /** A tile to use once the walk there ends. */
   pending: Point | null;
+  /** Sitting on the bench: where to stand back up. */
+  seat: Point | null;
 }
 
 /** One Pokémon you own. */
@@ -68,6 +70,8 @@ export interface Helper extends Walker {
   role: 'party' | 'farm';
   /** In-game minutes until it looks for its next job. */
   cooldown: number;
+  /** How long this rest between jobs is, in in-game minutes (0 when it found nothing to do). */
+  rest: number;
   /** The plot it is walking to work on. */
   target: Point | null;
   /** A Ground helper's planting trip: the plot it fetched (or is fetching) a seed for. */
@@ -135,6 +139,7 @@ export type GameEvent =
   | { kind: 'open'; ui: 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant' | 'seedbox' }
   | { kind: 'machine'; x: number; y: number }
   | { kind: 'place' | 'collect' | 'pet'; x: number; y: number; text?: string }
+  | { kind: 'sit' | 'stand'; x: number; y: number; text?: string }
   | { kind: 'coins'; amount: number }
   | { kind: 'day'; summary: DaySummary }
   | { kind: 'skill'; skill: Skill; level: number }

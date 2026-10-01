@@ -11,7 +11,7 @@ import { DEX_REWARDS } from '../data/dex';
 import type { Weather } from '../data/encounters';
 import { MACHINES } from '../data/crafting';
 import { BARN_LEVELS, FRIENDSHIP } from '../data/ranch';
-import { MAP_IDS, MAP_H, MAP_W, SEED_BOX, SPAWN, mapSize, tileAt, walkable, type MapId } from '../data/maps';
+import { BENCH, MAP_IDS, MAP_H, MAP_W, SEED_BOX, SPAWN, mapSize, tileAt, walkable, type MapId } from '../data/maps';
 import { MOVES } from '../data/moves';
 import { PERKS, SKILLS, TOOL_TIERS, type Skill } from '../data/progress';
 import { SPECIES } from '../data/species';
@@ -100,9 +100,12 @@ function seeds(raw: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(bag(raw)).filter(([id]) => ITEMS.get(id)?.kind === 'seed'));
 }
 
-/** Anything on the tile the Seed Box now stands on goes back to the bag: a crop as its seed, a machine as itself. */
-function clearSeedBoxTile(r: Obj, inventory: Record<string, number>): void {
-  const key = plotKey(SEED_BOX.x, SEED_BOX.y);
+/** Anything on a tile the Seed Box or the bench now stands on goes back to the bag: a crop as its seed, a machine as itself. */
+function clearFixedTiles(r: Obj, inventory: Record<string, number>): void {
+  for (const at of [SEED_BOX, BENCH]) clearTile(r, plotKey(at.x, at.y), inventory);
+}
+
+function clearTile(r: Obj, key: string, inventory: Record<string, number>): void {
   const give = (id: unknown, n = 1): void => {
     if (typeof id === 'string' && ITEMS.has(id)) inventory[id] = (inventory[id] ?? 0) + n;
   };
@@ -224,7 +227,7 @@ export function parseWorld(raw: unknown): World | null {
   const onMap = walkable(tileAt(map, x, y));
   if (!onMap) ({ x, y } = SPAWN);
   const inventory = bag(r.inventory);
-  clearSeedBoxTile(r, inventory);
+  clearFixedTiles(r, inventory);
   const selected = typeof r.selected === 'string' && (ITEMS.get(r.selected)?.kind === 'tool' || (inventory[r.selected] ?? 0) > 0) ? r.selected : 'hoe';
   const stats = obj(r.stats);
   const toolsRaw = obj(r.tools);
@@ -242,7 +245,7 @@ export function parseWorld(raw: unknown): World | null {
     player: {
       x, y, path: [], pending: null,
       facing: DIRS.includes(pr.facing as Dir) ? (pr.facing as Dir) : 'down',
-      energy: 0, maxEnergy: MAX_ENERGY,
+      energy: 0, maxEnergy: MAX_ENERGY, seat: null,
       gold: int(pr.gold, 0),
       water: 0,
     },
@@ -328,7 +331,8 @@ function serialize(world: World): unknown {
     ...rest,
     npcs: [],
     approach: null,
-    player: { ...world.player, x: Math.round(world.player.x), y: Math.round(world.player.y), path: [], pending: null },
+    // Sitting on the bench? Saved standing up beside it.
+    player: { ...world.player, x: Math.round(world.player.seat?.x ?? world.player.x), y: Math.round(world.player.seat?.y ?? world.player.y), path: [], pending: null, seat: null },
     helpers: [],
     // Seeds a helper is carrying go back in the box: helpers aren't saved.
     seedBox: withCarried(world),

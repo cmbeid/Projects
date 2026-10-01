@@ -8,7 +8,7 @@
  *   H  farmhouse wall    D  door (sleep)     B  shipping bin
  *   M  Poké Mart stall   K  blacksmith's stall
  *   A  barn wall         a  barn door        Q  request board
- *   W  travelling merchant's cart (weekends)   O  seed box
+ *   W  travelling merchant's cart (weekends)   O  seed box   b  bench
  *   #  greenhouse glass  G  greenhouse soil   _  greenhouse doorway
  */
 export type MapId = 'farm' | 'route1' | 'town' | 'route2' | 'route3';
@@ -50,7 +50,7 @@ const FARM_ROWS: readonly string[] = [
   'T.HHHHH.........~~~~~..T',
   'T.HHDHH.B.Q.O...~~~~~..T',
   'T...=...........~~~~...T',
-  'T...=..........R.......T',
+  'T...=.b........R.......T',
   'T...=................T.T',
   'T...========...........T',
   'T..........=.....AAAAA.T',
@@ -254,18 +254,20 @@ export function mapSize(id: MapId): { w: number; h: number } {
 export const SPAWN = { x: 4, y: 5 } as const;
 /** The Seed Box by the house, which Ground helpers plant from. */
 export const SEED_BOX = { x: 12, y: 4 } as const;
+/** The bench by the house: sit on it and time flies. */
+export const BENCH = { x: 6, y: 6 } as const;
 /** Where farm Pokémon gather when they've nothing to do: outside the barn door. */
 export const BARNYARD = { x: 19, y: 12 } as const;
 
 export type TileKind =
   | 'grass' | 'tall' | 'path' | 'tree' | 'rock' | 'water' | 'house' | 'door' | 'bin' | 'mart' | 'smith'
-  | 'barn' | 'barndoor' | 'board' | 'merchant' | 'glass' | 'ghsoil' | 'ghdoor' | 'seedbox'
+  | 'barn' | 'barndoor' | 'board' | 'merchant' | 'glass' | 'ghsoil' | 'ghdoor' | 'seedbox' | 'bench'
   | 'center' | 'centerdoor' | 'hall' | 'halldoor' | 'shop' | 'shopdoor' | 'townhouse' | 'housedoor'
   | 'cavewall' | 'cavefloor' | 'apricorn' | 'log' | 'ore';
 
 const KINDS: Record<string, TileKind> = {
   '.': 'grass', g: 'tall', '=': 'path', T: 'tree', R: 'rock', '~': 'water', H: 'house', D: 'door', B: 'bin', M: 'mart', K: 'smith',
-  A: 'barn', a: 'barndoor', Q: 'board', W: 'merchant', '#': 'glass', G: 'ghsoil', _: 'ghdoor', O: 'seedbox',
+  A: 'barn', a: 'barndoor', Q: 'board', W: 'merchant', '#': 'glass', G: 'ghsoil', _: 'ghdoor', O: 'seedbox', b: 'bench',
   P: 'center', p: 'centerdoor', Y: 'hall', y: 'halldoor', S: 'shop', s: 'shopdoor', U: 'townhouse', u: 'housedoor',
   X: 'cavewall', ',': 'cavefloor', '%': 'apricorn', '&': 'log', $: 'ore',
 };

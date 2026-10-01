@@ -460,6 +460,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
   text-overflow: ellipsis;
 }
 .tracker[hidden] { display: none; }
+.resting {
+  position: absolute;
+  top: calc(104px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(42, 42, 48, 0.85);
+  color: #cfe8ff;
+  font: 700 0.78rem var(--mono);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.resting[hidden] { display: none; }
 
 .talk {
   position: absolute;

@@ -122,6 +122,38 @@ function bin(g: Ctx, variant: number): void {
   px(g, '#b5b5c0', 1, 3, 14, 1);
 }
 
+/** A wooden garden bench: backrest, seat and legs. */
+function bench(g: Ctx, variant: number): void {
+  grass(g, variant);
+  // Back legs and backrest.
+  px(g, '#5e3a1e', 2, 3, 1, 8);
+  px(g, '#5e3a1e', 13, 3, 1, 8);
+  px(g, '#a0673a', 1, 3, 14, 2);
+  px(g, '#a0673a', 1, 6, 14, 2);
+  px(g, '#c8905a', 1, 3, 14, 1);
+  benchSeat(g);
+}
+
+/** The seat and front legs, which also go over the farmer sitting on it. */
+function benchSeat(g: Ctx): void {
+  px(g, '#5e3a1e', 2, 12, 1, 3);
+  px(g, '#5e3a1e', 13, 12, 1, 3);
+  px(g, '#5e3a1e', 0, 10, 16, 3);
+  px(g, '#b67b48', 1, 10, 14, 2);
+  px(g, '#d9a066', 1, 10, 14, 1);
+}
+
+let benchFrontImage: HTMLCanvasElement | null = null;
+/** Just the bench's seat and front legs, drawn over the farmer when sitting. */
+export function benchFront(): HTMLCanvasElement {
+  if (!benchFrontImage) {
+    const [cv, g] = canvas(T, T);
+    benchSeat(g);
+    benchFrontImage = cv;
+  }
+  return benchFrontImage;
+}
+
 /** A wooden crate with seed packets poking out. */
 function seedBox(g: Ctx, variant: number): void {
   grass(g, variant);
@@ -375,6 +407,7 @@ export function tileImage(kind: TileKind, x: number, y: number, time: number): H
     case 'rock': return cached(`rock${v}`, (g) => rock(g, v));
     case 'bin': return cached(`bin${v}`, (g) => bin(g, v));
     case 'seedbox': return cached(`seedbox${v}`, (g) => seedBox(g, v));
+    case 'bench': return cached(`bench${v}`, (g) => bench(g, v));
     case 'mart': return cached(`mart${v}`, (g) => mart(g, v));
     case 'smith': return cached(`smith${v}`, (g) => smith(g, v));
     case 'board': return cached(`board${v}`, (g) => board(g, v));

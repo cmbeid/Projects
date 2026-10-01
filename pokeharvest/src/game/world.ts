@@ -3,6 +3,7 @@
  * commands below (and those in `battle.ts`, `economy.ts` and `mon.ts`), and
  * reads back `world.events` to animate and play sounds.
  */
+import { BENCH_SPEED, BENCH_UNTIL, standUp } from './bench';
 import { CROPS } from '../data/crops';
 import { CAVE_RATE, ENCOUNTERS, ENCOUNTER_RATE, WEATHER_BOOST, WEATHER_TYPES, isNight, slotsFor } from '../data/encounters';
 import { checkSight, spawnNpcs, updateNpcs } from './npcs';
@@ -44,7 +45,7 @@ export function createWorld(seed: number, starter: number): World {
     clock: DAY_START,
     rng: { seed: seed | 0 },
     map: 'farm',
-    player: { x: SPAWN.x, y: SPAWN.y, path: [], facing: 'down', energy: MAX_ENERGY, maxEnergy: MAX_ENERGY, gold: START_GOLD, water: 20, pending: null },
+    player: { x: SPAWN.x, y: SPAWN.y, path: [], facing: 'down', energy: MAX_ENERGY, maxEnergy: MAX_ENERGY, gold: START_GOLD, water: 20, pending: null, seat: null },
     mons: [],
     party: [],
     farm: [],
@@ -121,6 +122,8 @@ export function select(world: World, id: string): void {
  */
 export function tapTile(world: World, x: number, y: number): void {
   if (world.battle || world.approach) return;
+  // On the bench, any tap just gets you up.
+  if (standUp(world)) return;
   const p = world.player;
   const at = tileOf(p);
   const intent = intentAt(world, x, y);
@@ -153,7 +156,7 @@ export function tapTile(world: World, x: number, y: number): void {
 /** Keyboard: one step in a direction, or just turn if the way is blocked. */
 export function step(world: World, dir: Dir): void {
   const p = world.player;
-  if (p.path.length || world.battle || world.approach) return;
+  if (p.path.length || world.battle || world.approach || standUp(world)) return;
   p.facing = dir;
   p.pending = null;
   const at = tileOf(p);
@@ -164,7 +167,7 @@ export function step(world: World, dir: Dir): void {
 /** Keyboard: use the tile being faced. */
 export function actFacing(world: World): void {
   const p = world.player;
-  if (p.path.length || world.battle) return;
+  if (p.path.length || world.battle || standUp(world)) return;
   const at = tileOf(p);
   useAt(world, at.x + DELTA[p.facing].x, at.y + DELTA[p.facing].y);
 }
@@ -172,6 +175,7 @@ export function actFacing(world: World): void {
 /** Go to another map, arriving at (x, y) with the party around you. */
 export function warpTo(world: World, map: World['map'], x: number, y: number): void {
   const p = world.player;
+  p.seat = null;
   world.map = map;
   p.x = x;
   p.y = y;
@@ -213,8 +217,15 @@ function onStep(world: World, at: Point): void {
 }
 
 /** Advance by `dt` real seconds. Paused screens, and battles, simply don't call this. */
+/** Advance the world by `dt` real seconds: six times as fast while you sit on the bench. */
 export function tick(world: World, dt: number): void {
+  const n = world.player.seat ? BENCH_SPEED : 1;
+  for (let i = 0; i < n && (i === 0 || world.player.seat); i += 1) advance(world, dt);
+}
+
+function advance(world: World, dt: number): void {
   if (world.battle) return;
+  if (world.player.seat && world.clock >= BENCH_UNTIL) standUp(world, "It's late. Time for bed!");
   const minutes = dt / SECONDS_PER_MINUTE;
   world.clock += minutes;
   const p = world.player;
@@ -242,6 +253,7 @@ export function sleep(world: World): DaySummary {
 
 function endDay(world: World, passedOut: boolean): DaySummary {
   const p = world.player;
+  p.seat = null;
   const { shipped, earned } = collectBin(world);
   // Crows only find a new farm once it's a few days old.
   const night = growNight(world, guarded(world) || world.day < CROWS_FROM_DAY);
