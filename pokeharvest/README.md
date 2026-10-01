@@ -40,6 +40,7 @@ All five phases of [`PLAN.md`](PLAN.md) are built:
 - **The Seed Box:** the crate by the house, next to the request board. Tap it to put seeds in from your bag, take them back, and choose what gets planted: one kind of seed, or Auto (the in-season seed it holds most of, and anything in the greenhouse).
   - Ground-type Pokémon working the farm fetch seeds from it one at a time and plant them in your empty plots. They never touch the seeds in your bag.
   - They also re-till any of your fields that went back to grass. Clear a plot with the sickle and they'll leave that tile alone.
+- **Work XP:** Pokémon earn XP for every job they finish on the farm (watering, tending, harvesting, planting, re-tilling), more as they level, so they can level up and evolve without battling. Guards and Electric helpers earn a day's XP at bedtime instead, Electric types only when there's a machine to power.
 - **Rest bars:** a bar over each working Pokémon's head fills up while it rests between jobs (half an in-game hour, or an hour when it went to bed hungry, when the bar turns amber). When it's full, the Pokémon goes back to work.
 - **The bench:** tap the bench by the house to sit down, and time runs six times faster. Tap anywhere, step or press A to get up. You get up by yourself at midnight.
 - **The barn:** farm Pokémon eat one berry each night from its trough. Fed ones work at full pace and grow fonder of you; hungry ones work at half pace.

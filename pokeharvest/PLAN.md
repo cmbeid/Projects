@@ -236,3 +236,8 @@ style.css
 ## Rest bars and the bench (built)
 - **Rest bars:** a bar over each crop-working Pokémon (water, tend, harvest, sow) counts down to its next job. It's amber when the Pokémon is hungry, and hidden while it's walking to a job or off duty.
 - **The bench:** a fixed bench by the house. Sitting on it runs the whole sim six times faster, crops, helpers and machines alike. Any input gets you up, and so does midnight. Saves store you standing beside it.
+
+## Work XP (built)
+- **Crop workers:** each finished job (water, tend, harvest, plant, re-till) gives the Pokémon that did it 4 + level/2 XP. Fetching a seed doesn't count.
+- **Guards and power helpers:** at bedtime they earn 12 jobs' worth, if they didn't faint. Power helpers only earn it when a machine is placed.
+- **Feedback:** level-ups and evolutions float over the Pokémon with their sounds, and an evolved helper changes on the spot.

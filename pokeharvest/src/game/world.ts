@@ -15,7 +15,7 @@ import { startBattle } from './battle';
 import { collectBin } from './economy';
 import { canCapacity, growNight, intentAt, toolName, useAt, witherOutOfSeason } from './farm';
 import { feedAndProduce } from './barn';
-import { guarded, passableFor, placeHelpers, placeParty, syncHelpers, updateHelpers } from './helpers';
+import { guarded, passableFor, payStandingJobs, placeHelpers, placeParty, syncHelpers, updateHelpers } from './helpers';
 import { runMachines } from './machines';
 import { rollMarket } from './market';
 import { refreshRequests } from './requests';
@@ -267,6 +267,7 @@ function endDay(world: World, passedOut: boolean): DaySummary {
     upgraded = toolName(tool, tier);
     if (tool === 'can') p.water = canCapacity(world);
   }
+  payStandingJobs(world);
   healAll(world);
   p.maxEnergy = maxEnergyFor(world);
   // Staying up late costs you in the morning.
