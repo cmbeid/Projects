@@ -137,6 +137,39 @@ function smith(g: Ctx, variant: number): void {
   px(g, '#9a9aa6', 10, 10, 6, 1);
 }
 
+function board(g: Ctx, variant: number): void {
+  grass(g, variant);
+  px(g, '#6e4424', 3, 8, 2, 8);
+  px(g, '#6e4424', 11, 8, 2, 8);
+  px(g, '#8d5a30', 1, 2, 14, 9);
+  px(g, '#c8905a', 2, 3, 12, 7);
+  // Pinned notes.
+  px(g, '#fff8e7', 3, 4, 4, 3);
+  px(g, '#fff8e7', 8, 5, 4, 4);
+  px(g, '#e0402c', 4, 4);
+  px(g, '#e0402c', 9, 5);
+}
+
+/** The travelling merchant's cart: a striped canopy when open, a covered cart on weekdays. */
+function cart(g: Ctx, variant: number, open: boolean): void {
+  grass(g, variant);
+  px(g, '#8d5a30', 1, 8, 14, 5);
+  px(g, '#6e4424', 1, 12, 14, 1);
+  px(g, '#3a2414', 2, 13, 3, 3);
+  px(g, '#3a2414', 11, 13, 3, 3);
+  if (open) {
+    for (let x = 0; x < T; x += 1) px(g, Math.floor(x / 2) % 2 ? '#f7d44a' : '#9a3ac8', x, 1, 1, 4);
+    px(g, '#e8e8f0', 1, 5, 1, 3);
+    px(g, '#e8e8f0', 14, 5, 1, 3);
+    px(g, '#f28bb5', 3, 6, 2, 2);
+    px(g, '#7cc8f2', 7, 6, 2, 2);
+    px(g, '#f2c230', 11, 6, 2, 2);
+  } else {
+    px(g, '#a89a80', 1, 4, 14, 5);
+    px(g, '#8a7c62', 1, 4, 14, 1);
+  }
+}
+
 export function soil(g: Ctx, wet: boolean): void {
   px(g, wet ? '#5b3b24' : '#8d5d38', 0, 0, T, T);
   const line = wet ? '#472d1b' : '#74482a';
@@ -173,6 +206,7 @@ export function tileImage(kind: TileKind, x: number, y: number, time: number): H
     case 'bin': return cached(`bin${v}`, (g) => bin(g, v));
     case 'mart': return cached(`mart${v}`, (g) => mart(g, v));
     case 'smith': return cached(`smith${v}`, (g) => smith(g, v));
+    case 'board': return cached(`board${v}`, (g) => board(g, v));
     case 'tall': {
       const f = (Math.floor(time / 700) + x) % 2;
       return cached(`tall${v}-${f}`, (g) => tall(g, v, f));
@@ -223,6 +257,80 @@ export function houseImage(w: number, h: number, door: number): HTMLCanvasElemen
   }
   houses.set(key, c);
   return c;
+}
+
+export function cartImage(open: boolean, x: number, y: number): HTMLCanvasElement {
+  const v = Math.floor(hash(x, y) * VARIANTS);
+  return cached(`cart${v}${open ? 'o' : 'c'}`, (g) => cart(g, v, open));
+}
+
+const barns = new Map<string, HTMLCanvasElement>();
+
+/** A red barn, `w` × `h` tiles, its big door at column `door`. */
+export function barnImage(w: number, h: number, door: number): HTMLCanvasElement {
+  const key = `${w},${h},${door}`;
+  const hit = barns.get(key);
+  if (hit) return hit;
+  const W = w * T;
+  const H = h * T;
+  const [c, g] = canvas(W, H);
+  const roofH = Math.floor(H * 0.4);
+  px(g, '#b8402e', 1, roofH, W - 2, H - roofH);
+  for (let x = 4; x < W - 2; x += 5) px(g, '#9a3424', x, roofH, 1, H - roofH);
+  px(g, '#f4f4f8', 1, roofH, W - 2, 1);
+  for (let y = 0; y < roofH + 1; y += 1) {
+    const inset = Math.max(0, Math.round((roofH - y) * 0.9));
+    px(g, y % 3 === 0 ? '#4a4a55' : '#5e5e6a', inset, y, W - inset * 2, 1);
+  }
+  // Hay loft window.
+  px(g, '#f4f4f8', W / 2 - 4, 3, 8, 6);
+  px(g, '#e8c45a', W / 2 - 3, 4, 6, 4);
+  // The big door, with its white cross.
+  const dx = door * T + 1;
+  const dw = T - 2;
+  const top = H - 14;
+  px(g, '#f4f4f8', dx - 1, top - 1, dw + 2, 15);
+  px(g, '#8a2a20', dx, top, dw, 14);
+  for (let i = 0; i < dw; i += 1) {
+    px(g, '#f4f4f8', dx + i, top + Math.round((i * 13) / dw), 1, 1);
+    px(g, '#f4f4f8', dx + i, top + 13 - Math.round((i * 13) / dw), 1, 1);
+  }
+  barns.set(key, c);
+  return c;
+}
+
+/** The four machines, drawn in code. */
+export function machineImage(id: string): HTMLCanvasElement {
+  return cached(`machine-${id}`, (g) => {
+    if (id === 'berry-press') {
+      px(g, '#6e4424', 3, 6, 10, 9);
+      px(g, '#a0673a', 4, 7, 8, 7);
+      px(g, '#6e4424', 4, 10, 8, 1);
+      px(g, '#8a8a93', 7, 1, 2, 6);
+      px(g, '#b5b5c0', 4, 1, 8, 2);
+      px(g, '#c04a8a', 5, 12, 6, 2);
+    } else if (id === 'preserves-jar') {
+      px(g, '#c8e8f8', 4, 4, 8, 11);
+      px(g, '#e8f4fc', 5, 5, 2, 8);
+      px(g, '#e0402c', 5, 8, 6, 6);
+      px(g, '#8d5a30', 3, 2, 10, 3);
+      px(g, '#f4f4f8', 3, 4, 10, 1);
+    } else if (id === 'cheese-press') {
+      px(g, '#8a8a93', 2, 12, 12, 3);
+      px(g, '#b5b5c0', 3, 6, 10, 6);
+      px(g, '#f2d23c', 4, 7, 8, 4);
+      px(g, '#5e5e66', 7, 1, 2, 5);
+      px(g, '#5e5e66', 4, 1, 8, 1);
+    } else {
+      // Loom.
+      px(g, '#8d5a30', 2, 2, 2, 13);
+      px(g, '#8d5a30', 12, 2, 2, 13);
+      px(g, '#6e4424', 2, 2, 12, 2);
+      px(g, '#6e4424', 2, 12, 12, 2);
+      for (let x = 4; x < 12; x += 2) px(g, '#f4f0e0', x, 4, 1, 8);
+      px(g, '#7cc8f2', 4, 7, 8, 2);
+    }
+  });
 }
 
 /** A crop at a growth stage (0 seed – 3 ripe), without the ripe berry icon. */

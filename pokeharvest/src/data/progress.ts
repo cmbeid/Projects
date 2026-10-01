@@ -28,8 +28,8 @@ export const TOOL_TEXT: Record<UpgradableTool, readonly string[]> = {
   can: ['Waters one tile; holds 20.', 'Waters three tiles in a row; holds 30.', 'Waters a 3 × 3 square; holds 40.', 'Waters a 3 × 3 square for less energy; holds 60.'],
 };
 
-export type Skill = 'farming' | 'battling';
-export const SKILLS: readonly Skill[] = ['farming', 'battling'];
+export type Skill = 'farming' | 'battling' | 'crafting';
+export const SKILLS: readonly Skill[] = ['farming', 'battling', 'crafting'];
 
 /** Total XP to reach each level, from level 1. */
 export const SKILL_XP = [0, 0, 60, 150, 280, 450, 680, 980, 1360, 1830, 2400] as const;
@@ -59,6 +59,16 @@ export const PERKS: Record<Skill, Record<5 | 10, readonly [Perk, Perk]>> = {
       { id: 'deep-can', name: 'Deep Can', text: 'Your watering can holds twice as much.' },
     ],
   },
+  crafting: {
+    5: [
+      { id: 'artisan', name: 'Artisan', text: 'Juice, jam, cheese and cloth sell for 25% more.' },
+      { id: 'tinkerer', name: 'Tinkerer', text: 'Your machines work 25% faster.' },
+    ],
+    10: [
+      { id: 'master-chef', name: 'Master Chef', text: 'Dishes restore twice the energy.' },
+      { id: 'bulk', name: 'Bulk', text: 'Machines sometimes make two instead of one.' },
+    ],
+  },
   battling: {
     5: [
       { id: 'trainer', name: 'Trainer', text: 'Your Pokémon earn 25% more XP.' },
@@ -74,4 +84,5 @@ export const PERKS: Record<Skill, Record<5 | 10, readonly [Perk, Perk]>> = {
 export const SKILL_TEXT: Record<Skill, string> = {
   farming: 'Grows as you till, water and harvest. Each level adds 3 to your max energy.',
   battling: 'Grows as your Pokémon win battles and you befriend wild ones.',
+  crafting: 'Grows as you craft, cook and collect from machines. Higher levels unlock new recipes.',
 };

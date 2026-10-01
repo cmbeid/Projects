@@ -9,7 +9,7 @@
 import type { PokeType } from './types';
 
 /** What a helper does around the farm. */
-export type Job = 'water' | 'tend' | 'guard' | 'harvest' | 'none';
+export type Job = 'water' | 'tend' | 'guard' | 'harvest' | 'power' | 'none';
 
 export interface Base {
   hp: number;
@@ -31,7 +31,7 @@ export interface Species {
 /** The first of a Pokémon's types that has a job decides what it does. */
 const JOB_BY_TYPE: readonly [PokeType, Job][] = [
   ['water', 'water'], ['grass', 'tend'], ['bug', 'tend'], ['fire', 'guard'], ['flying', 'guard'],
-  ['normal', 'harvest'], ['fighting', 'harvest'], ['ground', 'harvest'], ['rock', 'harvest'],
+  ['normal', 'harvest'], ['fighting', 'harvest'], ['ground', 'harvest'], ['rock', 'harvest'], ['electric', 'power'],
 ];
 
 export function jobFor(types: readonly PokeType[]): Job {
@@ -75,8 +75,11 @@ const LIST: readonly Species[] = [
   s(70, 'Weepinbell', ['grass', 'poison'], [65, 90, 48, 55], 120),
   s(74, 'Geodude', ['rock', 'ground'], [40, 80, 65, 20], 255, [75, 25]),
   s(75, 'Graveler', ['rock', 'ground'], [55, 95, 80, 35], 120),
+  s(79, 'Slowpoke', ['water', 'psychic'], [90, 65, 53, 15], 190, [80, 37]),
+  s(80, 'Slowbro', ['water', 'psychic'], [95, 100, 95, 30], 75),
   s(92, 'Gastly', ['ghost', 'poison'], [30, 100, 33, 80], 190, [93, 25]),
   s(93, 'Haunter', ['ghost', 'poison'], [45, 115, 50, 95], 90),
+  s(113, 'Chansey', ['normal'], [250, 35, 55, 50], 30),
   s(133, 'Eevee', ['normal'], [55, 55, 58, 55], 45),
   s(163, 'Hoothoot', ['normal', 'flying'], [60, 36, 43, 50], 255, [164, 20]),
   s(164, 'Noctowl', ['normal', 'flying'], [100, 86, 73, 70], 90),
@@ -85,8 +88,12 @@ const LIST: readonly Species[] = [
   s(181, 'Ampharos', ['electric'], [90, 115, 88, 55], 45),
   s(194, 'Wooper', ['water', 'ground'], [55, 45, 35, 15], 255, [195, 20]),
   s(195, 'Quagsire', ['water', 'ground'], [95, 85, 75, 35], 90),
+  s(241, 'Miltank', ['normal'], [95, 80, 88, 100], 45),
   s(270, 'Lotad', ['water', 'grass'], [40, 40, 40, 30], 255, [271, 14]),
   s(271, 'Lombre', ['water', 'grass'], [60, 60, 60, 50], 120),
+  s(415, 'Combee', ['bug', 'flying'], [30, 30, 42, 70], 120),
+  s(831, 'Wooloo', ['normal'], [42, 40, 50, 48], 255, [832, 24]),
+  s(832, 'Dubwool', ['normal'], [72, 80, 95, 88], 127),
 ];
 
 export const SPECIES: ReadonlyMap<number, Species> = new Map(LIST.map((sp) => [sp.dex, sp]));
@@ -105,7 +112,8 @@ export const JOB_TEXT: Record<Job, string> = {
   tend: 'Tends a crop every half hour so it grows 50% faster.',
   guard: 'Keeps crows away from your field at night.',
   harvest: 'Picks ripe crops and puts them in the shipping bin.',
-  none: 'Keeps you company. (More jobs are coming to the farm.)',
+  power: 'Powers your machines: they run twice as fast while it is on the farm.',
+  none: 'Keeps you company.'
 };
 
 /** Sprite sheet names: `1`, `1-shiny`, `1-back`. */

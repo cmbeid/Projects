@@ -21,6 +21,11 @@ interface Hook {
     mons: unknown[];
     battle: { wild: { hp: number } } | null;
     pendingPerks: { skill: string; level: number }[];
+    farm: number[];
+    day: number;
+    inventory: Record<string, number>;
+    machines: Record<string, { output: string | null }>;
+    barn: { trough: Record<string, number> };
     clock: number;
     player: { x: number; y: number; path: unknown[]; energy: number };
     plots: Record<string, { watered: boolean; crop: { id: string } | null }>;
@@ -208,12 +213,78 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.screenshot({ path: `${OUT}/${name}-13-perk.png` });
   await page.locator('.perk-choice').first().click();
 
+  // Send the Rattata to live on the farm.
+  await page.locator('.icon-btn.bag').click();
+  await page.getByRole('button', { name: 'Pokémon', exact: true }).click();
+  await page.locator('.mon-card').nth(1).locator('.seg', { hasText: 'Farm' }).click();
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.farm.length) === 1, 'sent a Pokémon to live on the farm');
+  await page.screenshot({ path: `${OUT}/${name}-14-roles.png` });
+
+  // Craft a Berry Press.
+  await page.evaluate(() => Object.assign((window as unknown as { __farm: Hook }).__farm.world.inventory, { 'hard-stone': 4, oran: 12 }));
+  await page.getByRole('button', { name: 'Craft', exact: true }).click();
+  await page.locator('.row', { hasText: 'Berry Press' }).getByRole('button', { name: 'Craft' }).click();
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: `${OUT}/${name}-15-craft.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // The barn: put berries in the trough.
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.warp('farm', 19, 13));
+  await page.waitForTimeout(700);
+  await tap(page, 19, 11, touch);
+  await page.waitForSelector('.sheet h2:has-text("Shed")', { timeout: 10_000 });
+  await page.locator('.row', { hasText: 'Oran Berry' }).getByRole('button', { name: '+5' }).click();
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.barn.trough.oran) === 5, 'filled the trough');
+  await fits(page, 'barn');
+  await page.screenshot({ path: `${OUT}/${name}-16-barn.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // Place the press and load it.
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.warp('farm', 14, 14));
+  await page.waitForTimeout(600);
+  await hold(page, 'Berry Press');
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(15, 14));
+  await settle(page);
+  check(await page.evaluate(() => Boolean((window as unknown as { __farm: Hook }).__farm.world.machines['15,14'])), 'placed the Berry Press');
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(15, 14));
+  await page.waitForSelector('.sheet h2:has-text("Berry Press")', { timeout: 10_000 });
+  await page.locator('.row', { hasText: 'Oran Berry' }).getByRole('button', { name: 'Load' }).click();
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.machines['15,14']?.output === 'oran-juice'), 'loaded the press with an Oran Berry');
+  await page.locator('.close').click();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${OUT}/${name}-17-press.png` });
+
+  // The request board.
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.warp('farm', 10, 5));
+  await page.waitForTimeout(600);
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(10, 4));
+  await page.waitForSelector('.sheet h2:has-text("Request board")', { timeout: 10_000 });
+  check(await page.locator('.sheet .row').count() === 3, 'three requests on the board');
+  await page.screenshot({ path: `${OUT}/${name}-18-board.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
+  // The merchant, on a Saturday.
+  await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.world.day = 6; f.warp('farm', 14, 26); });
+  await page.waitForTimeout(600);
+  await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(14, 27));
+  await page.waitForSelector('.sheet h2:has-text("Travelling merchant")', { timeout: 10_000 });
+  check(await page.locator('.sheet .row').count() === 4, 'the merchant has four things for sale');
+  await page.screenshot({ path: `${OUT}/${name}-19-merchant.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
+
   const heard = await page.evaluate(() => (window as unknown as { __sounds: number }).__sounds);
   check(heard > 0, `sound played (${heard} sounds)`);
 
   await page.reload();
   await page.waitForSelector('.title');
-  check(await page.getByRole('button', { name: /Continue · Day 2/ }).isVisible(), 'the farm was saved');
+  check(await page.getByRole('button', { name: /Continue · Day \d/ }).isVisible(), 'the farm was saved');
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join('; ')}` : ''}`);
   await browser.close();
 }

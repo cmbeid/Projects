@@ -7,6 +7,7 @@ import { item } from '../data/items';
 import { MAPS, mapSize } from '../data/maps';
 import { species } from '../data/species';
 import { canCapacity } from '../game/farm';
+import { syncHelpers } from '../game/helpers';
 import { tileOf, type Dir, type GameEvent, type World } from '../game/model';
 import { clockText, dayOfSeason, seasonOf, weekdayOf } from '../game/time';
 import { startBattle } from '../game/battle';
@@ -19,6 +20,7 @@ import { openSettings, show } from './app';
 import { h } from './dom';
 import { itemIcon } from './icons';
 import { battleScreen } from './battle';
+import { openBarn, openBoard, openMachine, openMerchant } from './ranch';
 import { openBag, openBin, openHelp, openMart, openPerk, openSleep, openSmith, openSummary } from './menus';
 import { closeSheet, sheetOpen } from './sheet';
 
@@ -28,7 +30,7 @@ const KEYS: Record<string, Dir> = {
 };
 
 const EVENT_COLOURS: Record<string, string> = {
-  harvest: '#b6f28a', refill: '#8cc4f2', hint: '#ffe08a', helper: '#ffffff',
+  harvest: '#b6f28a', refill: '#8cc4f2', hint: '#ffe08a', helper: '#ffffff', pet: '#ff7aa8', collect: '#b6f28a',
 };
 
 export function farmScreen(world: World, isNew: boolean, quit: () => void, restart: () => void): void {
@@ -186,8 +188,23 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
         if (ev.ui === 'sleep') openSleep(layer, world, goToBed);
         else if (ev.ui === 'bin') openBin(layer, world, changed);
         else if (ev.ui === 'smith') openSmith(layer, world, changed);
+        else if (ev.ui === 'barn') openBarn(layer, world, () => { syncHelpers(world); changed(); });
+        else if (ev.ui === 'board') openBoard(layer, world, changed);
+        else if (ev.ui === 'merchant') openMerchant(layer, world, changed);
         else openMart(layer, world, changed);
         break;
+      case 'machine':
+        held.clear();
+        openMachine(layer, world, ev.x, ev.y, changed);
+        break;
+      case 'place': fx.splashes.push({ x: ev.x, y: ev.y, color: '#c8905a', born: now }); sfx.place(); break;
+      case 'collect': fx.splashes.push({ x: ev.x, y: ev.y, color: '#f7d44a', born: now }); sfx.pickup(); break;
+      case 'pet': {
+        const uid = world.helpers.find((hp) => Math.round(hp.x) === ev.x && Math.round(hp.y) === ev.y)?.uid;
+        const mon = world.mons.find((m) => m.uid === uid);
+        if (mon) cry(mon.dex, { volume: 0.4 });
+        break;
+      }
       case 'skill': {
         const at = tileOf(world.player);
         fx.floaters.push({ x: at.x, y: at.y - 1, text: `${ev.skill === 'farming' ? 'Farming' : 'Battling'} Lv ${ev.level}!`, color: '#ffe08a', born: now });
@@ -239,7 +256,7 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   }
 
   const banner = h('div.banner', { 'aria-live': 'polite' });
-  root.append(banner);
+  root.insertBefore(banner, layer);
   let bannerTimer = 0;
   function toast(text: string): void {
     banner.textContent = text;

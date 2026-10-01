@@ -4,6 +4,7 @@
  */
 import { crop } from '../data/crops';
 import { item, itemIconUrl } from '../data/items';
+import { machineImage } from '../render/tiles';
 import { h } from './dom';
 
 type Ctx = CanvasRenderingContext2D;
@@ -56,10 +57,22 @@ function toolUrl(id: string): string {
   return url;
 }
 
+const machineUrls = new Map<string, string>();
+
+function machineUrl(id: string): string {
+  let url = machineUrls.get(id);
+  if (!url) {
+    url = machineImage(id).toDataURL();
+    machineUrls.set(id, url);
+  }
+  return url;
+}
+
 /** An icon for any item. */
 export function itemIcon(id: string, className = 'icon'): HTMLElement {
   const def = item(id);
   if (def.kind === 'tool') return h('img', { className: `${className} pixel`, src: toolUrl(id), alt: def.name, draggable: false });
+  if (def.kind === 'machine') return h('img', { className: `${className} pixel`, src: machineUrl(id), alt: def.name, draggable: false });
   const img = h('img', { className: `${className} pixel`, src: itemIconUrl(def.icon ?? crop(def.crop!).icon), alt: def.name, draggable: false });
   if (def.kind === 'seed') return h('span', { className: `${className} seed-packet`, title: def.name }, img);
   return img;

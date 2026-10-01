@@ -7,6 +7,8 @@
  *   R  rock                                  ~  pond (refills the can)
  *   H  farmhouse wall    D  door (sleep)     B  shipping bin
  *   M  Poké Mart stall   K  blacksmith's stall
+ *   A  barn wall         a  barn door        Q  request board
+ *   W  travelling merchant's cart (weekends)
  */
 export type MapId = 'farm' | 'route1';
 
@@ -32,14 +34,14 @@ const FARM_ROWS: readonly string[] = [
   'T......................T',
   'T.HHHHH..........~~~...T',
   'T.HHHHH.........~~~~~..T',
-  'T.HHDHH.B.......~~~~~..T',
+  'T.HHDHH.B.Q.....~~~~~..T',
   'T...=...........~~~~...T',
   'T...=..........R.......T',
   'T...=................T.T',
   'T...========...........T',
-  'T..........=...........T',
-  'T..........=......R....T',
-  'T..........=...........T',
+  'T..........=.....AAAAA.T',
+  'T..........=.....AAAAA.T',
+  'T..........=.....AAaAA.T',
   'T..........=...........T',
   'T..........=...........T',
   'T..........=...........T',
@@ -55,7 +57,7 @@ const FARM_ROWS: readonly string[] = [
   'T..........=...........T',
   'T..........=...........T',
   'T..........=.........R.T',
-  'T..........=...........T',
+  'T..........=..W........T',
   'T..........=...........T',
   'T..........=.M..K......T',
   'T..........=...........T',
@@ -117,11 +119,14 @@ export function mapSize(id: MapId): { w: number; h: number } {
 
 /** Where you wake up: just outside the farmhouse door. */
 export const SPAWN = { x: 4, y: 5 } as const;
+/** Where farm Pokémon gather when they've nothing to do: outside the barn door. */
+export const BARNYARD = { x: 19, y: 12 } as const;
 
-export type TileKind = 'grass' | 'tall' | 'path' | 'tree' | 'rock' | 'water' | 'house' | 'door' | 'bin' | 'mart' | 'smith';
+export type TileKind = 'grass' | 'tall' | 'path' | 'tree' | 'rock' | 'water' | 'house' | 'door' | 'bin' | 'mart' | 'smith' | 'barn' | 'barndoor' | 'board' | 'merchant';
 
 const KINDS: Record<string, TileKind> = {
   '.': 'grass', g: 'tall', '=': 'path', T: 'tree', R: 'rock', '~': 'water', H: 'house', D: 'door', B: 'bin', M: 'mart', K: 'smith',
+  A: 'barn', a: 'barndoor', Q: 'board', W: 'merchant',
 };
 
 export function tileAt(map: MapId, x: number, y: number): TileKind {

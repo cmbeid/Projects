@@ -1,7 +1,8 @@
 /** Pokémon you own: stats, experience, learning moves and evolving. */
 import { learnset, move } from '../data/moves';
+import { FRIENDSHIP } from '../data/ranch';
 import { species, type Base } from '../data/species';
-import { PARTY_SIZE, monByUid, partyMons, type Mon, type World } from './model';
+import { PARTY_SIZE, partyMons, type Mon, type World } from './model';
 import { nextRandom, type Rng } from './rng';
 
 export const MAX_LEVEL = 100;
@@ -29,18 +30,18 @@ export function movesAt(dex: number, level: number): string[] {
 
 /** A Pokémon, not yet anyone's: `uid` 0 until it joins you. */
 export function makeMon(dex: number, level: number, rng: Rng): Mon {
-  const mon: Mon = { uid: 0, dex, level, xp: xpForLevel(level), hp: 0, moves: movesAt(dex, level), shiny: nextRandom(rng) < 1 / 256 };
+  const mon: Mon = { uid: 0, dex, level, xp: xpForLevel(level), hp: 0, moves: movesAt(dex, level), shiny: nextRandom(rng) < 1 / 256, friendship: FRIENDSHIP.start, fed: true };
   mon.hp = maxHp(mon);
   return mon;
 }
 
-/** Give a Pokémon to the player: into the party if there's room, else the box. */
-export function adopt(world: World, mon: Mon): 'party' | 'box' {
+/** Give a Pokémon to the player: into the party if there's room (and `toParty`), else the box. */
+export function adopt(world: World, mon: Mon, toParty = true): 'party' | 'box' {
   mon.uid = world.nextUid++;
   world.mons.push(mon);
   if (!world.seen.includes(mon.dex)) world.seen.push(mon.dex);
   if (!world.caught.includes(mon.dex)) world.caught.push(mon.dex);
-  if (world.party.length < PARTY_SIZE) {
+  if (toParty && world.party.length < PARTY_SIZE) {
     world.party.push(mon.uid);
     return 'party';
   }
@@ -100,18 +101,4 @@ export function healAll(world: World): void {
 
 export function healthyParty(world: World): Mon[] {
   return partyMons(world).filter((m) => m.hp > 0);
-}
-
-/** Move a Pokémon between the party and the box. Returns false if that would leave the party empty or overfull. */
-export function toggleParty(world: World, uid: number): boolean {
-  if (!monByUid(world, uid)) return false;
-  const i = world.party.indexOf(uid);
-  if (i >= 0) {
-    if (world.party.length <= 1) return false;
-    world.party.splice(i, 1);
-    return true;
-  }
-  if (world.party.length >= PARTY_SIZE) return false;
-  world.party.push(uid);
-  return true;
 }

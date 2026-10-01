@@ -1,4 +1,5 @@
 /** The shape of a farm in progress: everything the save holds. */
+import type { Buff } from '../data/items';
 import type { MapId } from '../data/maps';
 import type { Skill, UpgradableTool } from '../data/progress';
 import type { Battle } from './battle';
@@ -50,12 +51,20 @@ export interface Mon {
   hp: number;
   moves: string[];
   shiny: boolean;
+  /** 0–255: grows when a farm Pokémon is fed and patted; more of it means more produce. */
+  friendship: number;
+  /** Ate from the trough last night: works at full pace, and livestock produce. */
+  fed: boolean;
 }
+
+export type Role = 'party' | 'farm' | 'box';
 
 /** A party Pokémon out on the map, following you and doing its job. */
 export interface Helper extends Walker {
   uid: number;
   dex: number;
+  /** Party Pokémon follow you; farm Pokémon stay home and work even while you're away. */
+  role: 'party' | 'farm';
   /** In-game minutes until it looks for its next job. */
   cooldown: number;
   /** The plot it is walking to work on. */
@@ -74,13 +83,49 @@ export interface DaySummary {
   lost: number;
   /** A tool the blacksmith finished overnight, e.g. "Copper Hoe". */
   upgraded: string | null;
+  /** What the barn's Pokémon made overnight. */
+  produced: Record<string, number>;
+  /** Farm Pokémon who went to bed hungry. */
+  hungry: number;
+  /** Requests that ran out of time. */
+  expired: number;
+}
+
+/** A placed machine. */
+export interface Machine {
+  id: string;
+  /** What it's making, if anything, and how far along (in-game minutes). */
+  output: string | null;
+  count: number;
+  progress: number;
+  needed: number;
+}
+
+/** A town request on the board: deliver `count` of `item` by the end of day `due`. */
+export interface Request {
+  id: number;
+  item: string;
+  count: number;
+  reward: number;
+  reputation: number;
+  due: number;
+}
+
+export interface Barn {
+  level: number;
+  /** Berries put out for the farm Pokémon: each eats one a night. */
+  trough: Record<string, number>;
+  /** Produce waiting to be collected. */
+  output: Record<string, number>;
 }
 
 export type GameEvent =
   | { kind: 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'refill'; x: number; y: number; text?: string }
   | { kind: 'helper'; x: number; y: number; dex: number; text: string }
   | { kind: 'hint'; x: number; y: number; text: string }
-  | { kind: 'open'; ui: 'sleep' | 'bin' | 'mart' | 'smith' }
+  | { kind: 'open'; ui: 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant' }
+  | { kind: 'machine'; x: number; y: number }
+  | { kind: 'place' | 'collect' | 'pet'; x: number; y: number; text?: string }
   | { kind: 'coins'; amount: number }
   | { kind: 'day'; summary: DaySummary }
   | { kind: 'skill'; skill: Skill; level: number }
@@ -96,8 +141,26 @@ export interface World {
   player: Player;
   /** Every Pokémon you own. */
   mons: Mon[];
-  /** Up to three uids: they follow you, work the farm and battle. The rest wait in the box. */
+  /** Up to three uids: they follow you, work the farm and battle. */
   party: number[];
+  /** Uids living in the barn, working the farm all day. Anyone in neither list waits in the box. */
+  farm: number[];
+  barn: Barn;
+  /** Placed machines, keyed "x,y", on the farm. */
+  machines: Record<string, Machine>;
+  /** Today's price multiplier for each market item. */
+  market: Record<string, number>;
+  /** How many of each item you've sold today: flooding the market lowers the price. */
+  sold: Record<string, number>;
+  reputation: number;
+  requests: Request[];
+  nextRequestId: number;
+  /** The travelling merchant's stock, for the weekend day it was drawn. */
+  merchant: { day: number; stock: { id: string; price: number; left: number }[] } | null;
+  /** Food buffs, until you sleep. */
+  buffs: Buff[];
+  /** Pokémon patted today. */
+  petted: number[];
   nextUid: number;
   helpers: Helper[];
   /** Keyed "x,y", on the farm. */
@@ -147,6 +210,18 @@ export function monByUid(world: World, uid: number): Mon | undefined {
 
 export function partyMons(world: World): Mon[] {
   return world.party.flatMap((uid) => monByUid(world, uid) ?? []);
+}
+
+export function farmMons(world: World): Mon[] {
+  return world.farm.flatMap((uid) => monByUid(world, uid) ?? []);
+}
+
+export function roleOf(world: World, uid: number): Role {
+  return world.party.includes(uid) ? 'party' : world.farm.includes(uid) ? 'farm' : 'box';
+}
+
+export function hasBuff(world: World, buff: Buff): boolean {
+  return world.buffs.includes(buff);
 }
 
 export function hasPerk(world: World, id: string): boolean {
