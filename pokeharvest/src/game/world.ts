@@ -4,12 +4,13 @@
  * reads back `world.events` to animate and play sounds.
  */
 import { CROPS } from '../data/crops';
-import { ENCOUNTERS, ENCOUNTER_RATE, isNight } from '../data/encounters';
+import { ENCOUNTERS, ENCOUNTER_RATE, WEATHER_BOOST, WEATHER_TYPES, isNight, slotsFor } from '../data/encounters';
+import { species } from '../data/species';
 import { ITEMS, TOOLS, seedId } from '../data/items';
 import { MAPS, SPAWN, tileAt, walkable, warpAt } from '../data/maps';
 import { startBattle } from './battle';
 import { collectBin } from './economy';
-import { canCapacity, growNight, intentAt, toolName, useAt } from './farm';
+import { canCapacity, growNight, intentAt, toolName, useAt, witherOutOfSeason } from './farm';
 import { feedAndProduce } from './barn';
 import { guarded, passableFor, placeHelpers, placeParty, syncHelpers, updateHelpers } from './helpers';
 import { runMachines } from './machines';
@@ -20,7 +21,8 @@ import { MAX_ENERGY, START_GOLD, hasBuff, tileOf, type DaySummary, type Dir, typ
 import { manhattan, pathBeside, pathTo, type Point } from './path';
 import { nextRandom } from './rng';
 import { maxEnergyFor } from './skills';
-import { DAY_END, DAY_START, SECONDS_PER_MINUTE } from './time';
+import { DAY_END, DAY_START, SECONDS_PER_MINUTE, seasonOf } from './time';
+import { rainOnFarm, rollWeather } from './weather';
 import { DELTA, faceToward, walk } from './walk';
 
 export * from './model';
@@ -54,6 +56,10 @@ export function createWorld(seed: number, starter: number): World {
     merchant: null,
     buffs: [],
     petted: [],
+    weather: 'sun',
+    tomorrow: 'sun',
+    greenhouse: false,
+    dexClaimed: [],
     nextUid: 1,
     helpers: [],
     plots: {},
@@ -80,6 +86,7 @@ export function createWorld(seed: number, starter: number): World {
   world.caught.push(starter);
   rollMarket(world);
   refreshRequests(world);
+  world.tomorrow = rollWeather(world, seasonOf(2));
   syncHelpers(world);
   placeHelpers(world, SPAWN);
   return world;
@@ -179,7 +186,10 @@ function onStep(world: World, at: Point): void {
   }
   const zone = zones.find((z) => at.y >= z.rows[0] && at.y < z.rows[1]);
   if (!zone) return;
-  const slots = isNight(world.clock) ? zone.night : zone.day;
+  // The weather draws out its own types.
+  const boosted = WEATHER_TYPES[world.weather];
+  const slots = slotsFor(zone, seasonOf(world.day), isNight(world.clock))
+    .map((s) => ({ ...s, weight: boosted && species(s.dex).types.includes(boosted) ? s.weight * WEATHER_BOOST : s.weight }));
   let r = nextRandom(world.rng) * slots.reduce((a, s) => a + s.weight, 0);
   const slot = slots.find((s) => (r -= s.weight) < 0) ?? slots[0]!;
   const [lo, hi] = zone.levels;
@@ -237,15 +247,21 @@ function endDay(world: World, passedOut: boolean): DaySummary {
   // Everyone sleeps at home, and the machines keep going through the night.
   world.map = 'farm';
   runMachines(world, 24 * 60 + DAY_START - world.clock);
+  const oldSeason = seasonOf(world.day);
   world.day += 1;
   world.clock = DAY_START;
   world.battle = null;
+  const newSeason = seasonOf(world.day) !== oldSeason;
+  const withered = newSeason ? witherOutOfSeason(world) : 0;
+  world.weather = world.tomorrow;
+  world.tomorrow = rollWeather(world, seasonOf(world.day + 1));
+  rainOnFarm(world);
   world.buffs = [];
   world.petted = [];
   world.sold = {};
   rollMarket(world);
   const expired = refreshRequests(world);
-  const summary: DaySummary = { day: world.day - 1, shipped, earned, ...night, passedOut, lost, upgraded, produced, hungry, expired };
+  const summary: DaySummary = { day: world.day - 1, shipped, earned, ...night, passedOut, lost, upgraded, produced, hungry, expired, withered, newSeason };
   p.x = SPAWN.x;
   p.y = SPAWN.y;
   p.path = [];

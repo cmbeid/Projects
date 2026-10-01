@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "fetch-assets": "tsx scripts/fetch-assets.ts",
-    "verify": "tsx scripts/verify-ui.ts"
+    "fetch-music": "tsx scripts/fetch-music.ts",
+    "verify": "tsx scripts/verify-ui.ts",
+    "playtest": "tsx scripts/playtest.ts"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

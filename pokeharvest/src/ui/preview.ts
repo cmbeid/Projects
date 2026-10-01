@@ -29,3 +29,29 @@ export function loadSprite(dex: number, scale: number, className: string): HTMLC
   void loadSheet(dex).then(() => requestAnimationFrame(frame));
   return c;
 }
+
+/**
+ * One still frame of a Pokémon, drawn once: for grids of many, where an
+ * animated canvas each would be wasteful. A silhouette for ones only seen.
+ */
+export function stillSprite(dex: number, scale: number, className: string, silhouette = false): HTMLCanvasElement {
+  const c = h('canvas', { className: `${className} pixel` });
+  void loadSheet(dex).then(() => {
+    const size = sheetSize(dex);
+    if (!size) return;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    c.width = Math.ceil(size.w * scale * dpr);
+    c.height = Math.ceil(size.h * scale * dpr);
+    c.style.width = `${c.width / dpr}px`;
+    c.style.height = `${c.height / dpr}px`;
+    const g = c.getContext('2d')!;
+    g.imageSmoothingEnabled = false;
+    drawPokemon(g, dex, c.width / 2, c.height, scale * dpr, { time: 0, frozen: true });
+    if (silhouette) {
+      g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = '#3a2a1a';
+      g.fillRect(0, 0, c.width, c.height);
+    }
+  });
+  return c;
+}

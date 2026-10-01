@@ -88,7 +88,7 @@ describe('save', () => {
 
   it('keeps settings', () => {
     const store = memory();
-    saveSettings({ sfx: 10, cries: 20, muted: true }, store);
-    expect(loadSettings(store)).toEqual({ sfx: 10, cries: 20, muted: true });
+    saveSettings({ sfx: 10, cries: 20, music: 30, muted: true }, store);
+    expect(loadSettings(store)).toEqual({ sfx: 10, cries: 20, music: 30, muted: true });
   });
 });

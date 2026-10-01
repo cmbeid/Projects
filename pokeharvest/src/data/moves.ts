@@ -37,6 +37,8 @@ const LIST: readonly Move[] = [
   m('karate-chop', 'Karate Chop', 'fighting', 50), m('low-sweep', 'Low Sweep', 'fighting', 65), m('brick-break', 'Brick Break', 'fighting', 75), m('cross-chop', 'Cross Chop', 'fighting', 100, 80),
   m('lick', 'Lick', 'ghost', 30), m('shadow-sneak', 'Shadow Sneak', 'ghost', 40, 100, { priority: 1 }), m('shadow-punch', 'Shadow Punch', 'ghost', 60), m('shadow-ball', 'Shadow Ball', 'ghost', 80),
   m('confusion', 'Confusion', 'psychic', 50), m('psybeam', 'Psybeam', 'psychic', 65), m('zen-headbutt', 'Zen Headbutt', 'psychic', 80, 90), m('psychic', 'Psychic', 'psychic', 90),
+  m('powder-snow', 'Powder Snow', 'ice', 40), m('icy-wind', 'Icy Wind', 'ice', 55, 95), m('ice-beam', 'Ice Beam', 'ice', 90), m('blizzard', 'Blizzard', 'ice', 110, 70),
+  m('pursuit', 'Pursuit', 'dark', 40), m('bite', 'Bite', 'dark', 60), m('knock-off', 'Knock Off', 'dark', 65), m('crunch', 'Crunch', 'dark', 80),
   m('acid', 'Acid', 'poison', 40), m('sludge', 'Sludge', 'poison', 65), m('poison-jab', 'Poison Jab', 'poison', 80), m('sludge-bomb', 'Sludge Bomb', 'poison', 90),
 ];
 
@@ -63,6 +65,8 @@ const TYPE_MOVES: Partial<Record<PokeType, readonly string[]>> = {
   ghost: ['lick', 'shadow-sneak', 'shadow-punch', 'shadow-ball'],
   poison: ['acid', 'sludge', 'poison-jab', 'sludge-bomb'],
   psychic: ['confusion', 'psybeam', 'zen-headbutt', 'psychic'],
+  ice: ['powder-snow', 'icy-wind', 'ice-beam', 'blizzard'],
+  dark: ['pursuit', 'bite', 'knock-off', 'crunch'],
 };
 
 /** Levels the main type's moves come at, and the second type's. */

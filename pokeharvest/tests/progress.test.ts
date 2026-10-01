@@ -32,7 +32,7 @@ describe('tools', () => {
     useAt(w, 5, 13);
     expect(['5,13', '5,14', '5,15'].every((k) => w.plots[k])).toBe(true);
     w.tools.hoe = 2;
-    useAt(w, 15, 20);
+    useAt(w, 8, 21);
     expect(Object.keys(w.plots)).toHaveLength(3 + 9);
     expect(actionCost(w, 'till')).toBe(5);
   });

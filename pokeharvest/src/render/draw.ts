@@ -15,7 +15,9 @@ import type { View } from './camera';
 import { farmerImage } from './farmer';
 import { darkness, skyTint } from './light';
 import { drawIcon, drawPokemon } from './sprites';
-import { T, barnImage, cartImage, cropImage, houseImage, machineImage, soilImage, tileImage } from './tiles';
+import { T, barnImage, cartImage, cropImage, houseImage, machineImage, setTileState, soilImage, tileImage } from './tiles';
+import { seasonOf } from '../game/time';
+import type { Weather } from '../data/encounters';
 
 export interface Floater {
   x: number;
@@ -60,6 +62,7 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
   const { tile, ox, oy } = view;
   const scale = tile / T;
   ctx.imageSmoothingEnabled = false;
+  setTileState(seasonOf(world.day), world.greenhouse);
   ctx.fillStyle = '#24522a';
   ctx.fillRect(0, 0, view.width, view.height);
 
@@ -173,6 +176,7 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
   }
 
   lighting(ctx, world, view, sx, sy);
+  weather(ctx, world.weather, view, now);
 
   // Floating text over everything, even at night.
   ctx.textAlign = 'center';
@@ -197,6 +201,54 @@ export function render(ctx: CanvasRenderingContext2D, world: World, view: View, 
 export function pruneFx(fx: Fx, now: number): void {
   fx.floaters = fx.floaters.filter((f) => now - f.born < FLOAT_MS);
   fx.splashes = fx.splashes.filter((s) => now - s.born < SPLASH_MS);
+}
+
+/**
+ * Rain, storms and snow over the whole view. The drops are a fixed pattern
+ * scrolled with time, so they cost nothing to keep track of.
+ */
+function weather(ctx: CanvasRenderingContext2D, w: Weather, view: View, now: number): void {
+  if (w === 'sun') return;
+  const { width: W, height: H, tile } = view;
+  ctx.save();
+  if (w === 'snow') {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const size = Math.max(2, tile / 12);
+    for (let i = 0; i < 90; i += 1) {
+      const fx = hash01(i, 1) * W;
+      const speed = 0.02 + hash01(i, 2) * 0.03;
+      const y = ((hash01(i, 3) * H + now * speed * (H / 900)) % (H + 20)) - 10;
+      const x = fx + Math.sin(now / 900 + i) * tile * 0.3;
+      ctx.fillRect(x, y, size, size);
+    }
+  } else {
+    ctx.fillStyle = w === 'storm' ? 'rgba(20,24,40,0.28)' : 'rgba(40,50,70,0.15)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(190,210,240,0.55)';
+    ctx.lineWidth = Math.max(1, tile / 40);
+    const len = tile * 0.45;
+    const count = w === 'storm' ? 140 : 90;
+    for (let i = 0; i < count; i += 1) {
+      const speed = 0.6 + hash01(i, 4) * 0.4;
+      const x = (hash01(i, 5) * (W + H * 0.3) - ((now * speed * 0.15) % (W + H * 0.3)) * 0.25 + W) % (W + H * 0.3) - H * 0.15;
+      const y = (hash01(i, 6) * H + now * speed * (H / 700)) % H;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - len * 0.3, y + len);
+      ctx.stroke();
+    }
+    // Lightning, now and then.
+    if (w === 'storm' && now % 9000 < 140) {
+      ctx.fillStyle = 'rgba(255,255,240,0.55)';
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+  ctx.restore();
+}
+
+function hash01(i: number, salt: number): number {
+  const v = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
+  return v - Math.floor(v);
 }
 
 /** A speech bubble with an item in it, bobbing: something's ready to collect. */

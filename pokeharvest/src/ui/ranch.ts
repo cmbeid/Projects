@@ -4,7 +4,8 @@ import { CROPS } from '../data/crops';
 import { ITEMS, item } from '../data/items';
 import { BARN_LEVELS, RANCH_STOCK, REPUTATION, REPUTATION_NAMES, reputationLevel } from '../data/ranch';
 import { JOB_TEXT, species } from '../data/species';
-import { barnCapacity, barnUpgradeBlocker, buyLivestock, collectBarn, fillTrough, hearts, productOf, ranchBlocker, setRole, troughCount, upgradeBarn } from '../game/barn';
+import { barnCapacity, barnUpgradeBlocker, buyLivestock, collectBarn, fillTrough, greenhouseBlocker, hearts, productOf, ranchBlocker, repairGreenhouse, setRole, troughCount, upgradeBarn } from '../game/barn';
+import { GREENHOUSE_COST } from '../data/ranch';
 import { isDone, loadMachine, machineSpeed, outputFor, pickUpMachine, powered } from '../game/machines';
 import { buyFromMerchant, merchantHere, merchantStock } from '../game/market';
 import { farmMons, plotKey, type World } from '../game/model';
@@ -108,6 +109,13 @@ export function openBarn(host: HTMLElement, world: World, changed: Changed): voi
       const items = Object.entries(next.cost.items).map(([id, n]) => `${n} ${item(id).name} (have ${world.inventory[id] ?? 0})`).join(', ');
       body.append(row(h('span.icon.emoji-icon', {}, '🔨'), `Build a ${next.name}`, `Room for ${next.capacity} · ${gold(next.cost.gold)} + ${items} · reputation level ${next.cost.reputation}`,
         button('Build', () => done(upgradeBarn(world), sfx.powerup), Boolean(blocker), 'primary')));
+      if (blocker) body.append(h('p.note', {}, blocker));
+    }
+    if (!world.greenhouse) {
+      const blocker = greenhouseBlocker(world);
+      const items = Object.entries(GREENHOUSE_COST.items).map(([id, n]) => `${n} ${item(id).name} (have ${world.inventory[id] ?? 0})`).join(', ');
+      body.append(row(h('span.icon.emoji-icon', {}, '🪴'), 'Repair the greenhouse', `Anything grows in it, all year, and crows can't get in · ${gold(GREENHOUSE_COST.gold)} + ${items} · reputation level ${GREENHOUSE_COST.reputation}`,
+        button('Repair', () => done(repairGreenhouse(world), sfx.powerup), Boolean(blocker), 'primary')));
       if (blocker) body.append(h('p.note', {}, blocker));
     }
   });

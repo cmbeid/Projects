@@ -3,12 +3,13 @@
  * before its deadline for a bonus over the market price, and for reputation,
  * which the ranch and the carpenter care about.
  */
-import { CROPS } from '../data/crops';
+import { CROPS, inSeason } from '../data/crops';
 import { ITEMS, item } from '../data/items';
 import { PRODUCTS, reputationLevel } from '../data/ranch';
 import { takeItem } from './farm';
 import { farmMons, type World } from './model';
 import { nextRandom } from './rng';
+import { seasonOf } from './time';
 
 export const MAX_REQUESTS = 3;
 /** How much more than the base price a request pays. */
@@ -16,7 +17,7 @@ export const REQUEST_BONUS = 1.6;
 
 /** What townsfolk might ask for: berries always; goods once you can make them. */
 function wanted(world: World): string[] {
-  const out: string[] = CROPS.map((c) => c.id);
+  const out: string[] = CROPS.filter((c) => inSeason(c.id, seasonOf(world.day))).map((c) => c.id);
   for (const m of farmMons(world)) {
     const p = PRODUCTS[m.dex];
     if (p && !out.includes(p)) out.push(p);

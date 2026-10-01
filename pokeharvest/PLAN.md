@@ -1,6 +1,6 @@
 # PokéHarvest — design & implementation plan
 
-> **Status:** Phases 1–3 are built. Phase 3 also added a Farm role, as requested: Pokémon assigned to the farm live in the barn and work all day while you're away. Phase 4 is still to do.
+> **Status:** All four phases are built. Phase 3 also added a Farm role, as requested: Pokémon assigned to the farm live in the barn and work all day while you're away.
 
 ## Context
 You want a new personal-project game for the `cmbeid/Projects` monorepo: a Pokémon-themed farming sim for HTML5 mobile web. It should be built for portrait phones and still scale up well on desktop. It needs RPG progression and upgrades, a day/night cycle, an economy, crafting, and turn-based battles.

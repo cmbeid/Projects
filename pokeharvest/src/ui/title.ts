@@ -6,10 +6,13 @@ import { createWorld, type World } from '../game/world';
 import { loadSprite } from './preview';
 import { clearSave, loadWorld } from '../state/save';
 import { show } from './app';
+import { playMusic } from '../audio/music';
+import { TITLE_TRACK } from '../data/music';
 import { h } from './dom';
 import { fullscreenButton } from './fullscreen';
 
 export function titleScreen(start: (world: World, isNew: boolean) => void): void {
+  playMusic(TITLE_TRACK);
   const saved = loadWorld();
   const starters = h('div.title-mons', {}, ...STARTERS.map((dex, i) => loadSprite(dex, 2, `title-mon d${i}`)));
   show(h('main.title', {},

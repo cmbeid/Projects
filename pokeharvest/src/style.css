@@ -414,3 +414,29 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .collect .btn { margin-left: auto; }
 .row-mon { flex: 0 0 auto; }
 .emoji-icon { display: grid; place-items: center; font-size: 1.5rem; }
+
+/* --- Phase 4: the Pokédex -------------------------------------------------------------- */
+
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.dex-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-height: 72px;
+  padding: 4px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.dex-cell.seen { background: var(--paper-2); }
+.dex-cell.caught { border-color: var(--green); }
+.dex-cell.on { box-shadow: 0 0 0 3px var(--gold); }
+.dex-img { max-width: 56px; max-height: 48px; object-fit: contain; }
+.dex-unknown { font: 800 1.4rem var(--mono); color: var(--line); }
+.dex-num { font: 700 0.65rem var(--mono); color: var(--ink-soft); }
+.dex-detail { display: flex; align-items: center; gap: 12px; padding: 10px; margin: 8px 0; border-radius: 14px; background: var(--paper-2); }
+.dex-big { flex: 0 0 auto; }
+.dex-goal { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--paper-2); font: 800 0.9rem var(--mono); }
+.claimed { color: var(--green); font-weight: 700; }

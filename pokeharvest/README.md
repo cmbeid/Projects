@@ -2,7 +2,11 @@
 
 A Pokémon farming game for the phone. It's built for portrait and scales up to tablets and desktop monitors. Pick a starter, then till, plant, water and harvest berries on a walkable farm. Sell them through the shipping bin or the Poké Mart, and sleep before 2 AM.
 
-It has the core farming loop (Phase 1 in [`PLAN.md`](PLAN.md)), RPG progression and battles (Phase 2), and ranching, crafting and a living economy (Phase 3). More seasons, weather and polish come in Phase 4.
+All four phases of [`PLAN.md`](PLAN.md) are built:
+1. The core farming loop.
+2. RPG progression and battles.
+3. Ranching, crafting and a living economy.
+4. Seasons, weather, a greenhouse, a Pokédex with rewards, more Pokémon and Game Boy music.
 
 ## Playing
 
@@ -48,6 +52,15 @@ It has the core farming loop (Phase 1 in [`PLAN.md`](PLAN.md)), RPG progression 
 - **Travelling merchant:** her cart by the gate opens on Saturdays and Sundays with Rare Candy, Metal Coats, Nuggets, cheap rare seeds and more.
 - **Blacksmith:** the stall next to the Mart upgrades the hoe and the can. Copper works three tiles in a row, Steel a 3×3 square and Gold does that for less energy. Upgrades cost gold plus the Hard Stones, Metal Coats and Nuggets that wild Pokémon drop.
 - **Skills:** Farming, Battling and Crafting level up with use. Each Farming level adds 3 max energy, and levels 5 and 10 offer a choice of two perks.
+- **Seasons:** each 28-day season has its own berries: 14 kinds in all, with Aspear and Chesto for winter.
+  - Seeds only take outdoors in their season, and the Mart stocks what's in season.
+  - Outdoor crops still in the ground when their season ends wither.
+  - A berry sells for 25% more out of season.
+- **Greenhouse:** the carpenter (in the barn) can repair the old greenhouse. Its beds grow anything all year, and crows can't get in.
+- **Weather:** rolled a day ahead and forecast in the morning report. Rain and storms water every outdoor crop for you, and winter brings snow. Each kind of weather brings out its own type on Route 1: Water types in the rain, Electric in storms, Ice in the snow.
+- **Route 1 by season:** every season brings new Pokémon, like Hoppip in spring, Psyduck and Volbeat in summer, Phanpy and Murkrow in autumn, and Swinub, Snover and Sneasel in winter. There are 69 species in all.
+- **Pokédex:** in the ☰ menu. It shows everything seen and befriended and where to find each one, with rewards at 5, 10, 15, 20, 30, 40 and 50 befriended.
+- **Music:** Pokémon Crystal's own songs on a Game Boy-style synth: a tune for each season on the farm, a lullaby at night, Route 1's own, and the wild battle theme.
 - **Energy:** tool work costs energy. Sleep to restore it. If you're still up at 2 AM you pass out and lose 10% of your gold.
 - **Keyboard:** WASD or the arrow keys to walk, Space or E to use the tile you're facing, 1–8 to pick a hotbar slot, B for the bag, Esc to close menus.
 
@@ -61,6 +74,8 @@ npm run dev           # play locally
 npm test              # rules, battles, save, assets, and a bot playing a week with each starter
 npm run build         # typecheck + production build into dist/
 npm run fetch-assets  # re-download sprites, cries and item icons from PokeAPI
+npm run fetch-music   # re-convert the Pokémon Crystal tracks (pret/pokecrystal)
+npm run playtest      # a bot farms a whole year and reports each season
 npm run preview       # then, in another shell:
 CHROMIUM_PATH=/opt/pw-browsers/chromium npm run verify   # phone, tablet and desktop screenshots + checks
 ```
@@ -79,6 +94,8 @@ It uses the same stack as [`pokedefense/`](../pokedefense/): Vite, TypeScript an
   - `barn.ts` covers roles, the trough, livestock produce, the ranch and the carpenter.
   - `machines.ts` and `craft.ts` cover machines, recipes, cooking and Rare Candy.
   - `market.ts` and `requests.ts` cover daily prices, flooding, the merchant and the request board.
+  - `weather.ts` and `dex.ts` cover the weather and Pokédex rewards.
+  - `bot.ts` is a simple farmer, used by the tests and `npm run playtest`.
   - `economy.ts`, `time.ts` and `path.ts` (A*) cover the rest.
   - The UI changes the world only through commands, and reads back `world.events`.
 - `src/render/`: Canvas 2D.
@@ -89,6 +106,7 @@ It uses the same stack as [`pokedefense/`](../pokedefense/): Vite, TypeScript an
 - `src/ui/`: the DOM HUD, hotbar and menus. Menus slide up as bottom sheets on a phone and dock to the side on wide screens.
 - `src/state/save.ts`: `localStorage`. Loading is forgiving: every field is validated and repaired.
 - `src/data/`: species with stats, catch rates and evolutions; moves and type-based learnsets; the maps; Route 1's encounter tables; tool tiers, skills and perks; recipes and machines; livestock, barns, reputation and the merchant's wares.
+- `src/audio/music.ts` and `scripts/fetch-music.ts`: PokéDefense's Game Boy synth and Pokémon Crystal converter, trimmed to the tracks PokéHarvest uses.
 - `scripts/fetch-assets.ts`: adapted from PokéDefense's. It downloads Black/White animated sprites (front, shiny and back) and cries from PokeAPI's GitHub repos and commits them under `public/`.
 
-Pokémon, its sprites and its cries are © Nintendo / Creatures / GAME FREAK. This is a personal, non-commercial fan project.
+Pokémon, its sprites, cries and music are © Nintendo / Creatures / GAME FREAK. This is a personal, non-commercial fan project.

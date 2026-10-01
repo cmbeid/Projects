@@ -9,6 +9,7 @@
  *   M  Poké Mart stall   K  blacksmith's stall
  *   A  barn wall         a  barn door        Q  request board
  *   W  travelling merchant's cart (weekends)
+ *   #  greenhouse glass  G  greenhouse soil   _  greenhouse doorway
  */
 export type MapId = 'farm' | 'route1';
 
@@ -47,13 +48,13 @@ const FARM_ROWS: readonly string[] = [
   'T..........=...........T',
   'TT.........=..........TT',
   'T..........=...........T',
-  'T..........=...........T',
-  'T..........=...........T',
-  'T..........=...........T',
-  'T...R......=...........T',
-  'T..........=...........T',
-  'T..........=...........T',
-  'T..........=...........T',
+  'T..........=..########.T',
+  'T..........=..#GGGGGG#.T',
+  'T..........=..#GGGGGG#.T',
+  'T...R......=..#GGGGGG#.T',
+  'T..........=..#GGGGGG#.T',
+  'T..........=..#GGGGGG#.T',
+  'T..........=..###__###.T',
   'T..........=...........T',
   'T..........=...........T',
   'T..........=.........R.T',
@@ -122,11 +123,11 @@ export const SPAWN = { x: 4, y: 5 } as const;
 /** Where farm Pokémon gather when they've nothing to do: outside the barn door. */
 export const BARNYARD = { x: 19, y: 12 } as const;
 
-export type TileKind = 'grass' | 'tall' | 'path' | 'tree' | 'rock' | 'water' | 'house' | 'door' | 'bin' | 'mart' | 'smith' | 'barn' | 'barndoor' | 'board' | 'merchant';
+export type TileKind = 'grass' | 'tall' | 'path' | 'tree' | 'rock' | 'water' | 'house' | 'door' | 'bin' | 'mart' | 'smith' | 'barn' | 'barndoor' | 'board' | 'merchant' | 'glass' | 'ghsoil' | 'ghdoor';
 
 const KINDS: Record<string, TileKind> = {
   '.': 'grass', g: 'tall', '=': 'path', T: 'tree', R: 'rock', '~': 'water', H: 'house', D: 'door', B: 'bin', M: 'mart', K: 'smith',
-  A: 'barn', a: 'barndoor', Q: 'board', W: 'merchant',
+  A: 'barn', a: 'barndoor', Q: 'board', W: 'merchant', '#': 'glass', G: 'ghsoil', _: 'ghdoor',
 };
 
 export function tileAt(map: MapId, x: number, y: number): TileKind {
@@ -138,7 +139,7 @@ export function tileAt(map: MapId, x: number, y: number): TileKind {
 
 /** Tiles you can walk on. Everything else is walked up to and used. */
 export function walkable(kind: TileKind): boolean {
-  return kind === 'grass' || kind === 'path' || kind === 'tall';
+  return kind === 'grass' || kind === 'path' || kind === 'tall' || kind === 'ghsoil' || kind === 'ghdoor';
 }
 
 export function warpAt(map: MapId, x: number, y: number): Warp | undefined {

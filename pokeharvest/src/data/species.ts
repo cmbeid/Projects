@@ -31,7 +31,7 @@ export interface Species {
 /** The first of a Pokémon's types that has a job decides what it does. */
 const JOB_BY_TYPE: readonly [PokeType, Job][] = [
   ['water', 'water'], ['grass', 'tend'], ['bug', 'tend'], ['fire', 'guard'], ['flying', 'guard'],
-  ['normal', 'harvest'], ['fighting', 'harvest'], ['ground', 'harvest'], ['rock', 'harvest'], ['electric', 'power'],
+  ['dark', 'guard'], ['normal', 'harvest'], ['fighting', 'harvest'], ['ground', 'harvest'], ['rock', 'harvest'], ['electric', 'power'],
 ];
 
 export function jobFor(types: readonly PokeType[]): Job {
@@ -68,6 +68,8 @@ const LIST: readonly Species[] = [
   s(44, 'Gloom', ['grass', 'poison'], [60, 85, 73, 40], 120),
   s(50, 'Diglett', ['ground'], [10, 55, 35, 95], 255, [51, 26]),
   s(51, 'Dugtrio', ['ground'], [35, 100, 60, 120], 50),
+  s(54, 'Psyduck', ['water'], [50, 65, 49, 55], 190, [55, 33]),
+  s(55, 'Golduck', ['water'], [80, 95, 79, 85], 75),
   s(58, 'Growlithe', ['fire'], [55, 70, 48, 60], 190),
   s(66, 'Machop', ['fighting'], [70, 80, 43, 35], 180, [67, 28]),
   s(67, 'Machoke', ['fighting'], [80, 100, 65, 45], 90),
@@ -86,12 +88,29 @@ const LIST: readonly Species[] = [
   s(179, 'Mareep', ['electric'], [55, 65, 43, 35], 235, [180, 15]),
   s(180, 'Flaaffy', ['electric'], [70, 80, 58, 45], 120, [181, 30]),
   s(181, 'Ampharos', ['electric'], [90, 115, 88, 55], 45),
+  s(187, 'Hoppip', ['grass', 'flying'], [35, 35, 48, 50], 255, [188, 18]),
+  s(188, 'Skiploom', ['grass', 'flying'], [55, 45, 58, 80], 120, [189, 27]),
+  s(189, 'Jumpluff', ['grass', 'flying'], [75, 55, 83, 110], 45),
+  s(191, 'Sunkern', ['grass'], [30, 30, 30, 30], 235),
   s(194, 'Wooper', ['water', 'ground'], [55, 45, 35, 15], 255, [195, 20]),
   s(195, 'Quagsire', ['water', 'ground'], [95, 85, 75, 35], 90),
+  s(198, 'Murkrow', ['dark', 'flying'], [60, 85, 42, 91], 30),
+  s(215, 'Sneasel', ['dark', 'ice'], [55, 95, 65, 115], 60),
+  s(216, 'Teddiursa', ['normal'], [60, 80, 50, 40], 120, [217, 30]),
+  s(217, 'Ursaring', ['normal'], [90, 130, 75, 55], 60),
+  s(220, 'Swinub', ['ice', 'ground'], [50, 50, 35, 50], 225, [221, 33]),
+  s(221, 'Piloswine', ['ice', 'ground'], [100, 100, 70, 50], 75),
+  s(225, 'Delibird', ['ice', 'flying'], [45, 65, 45, 75], 45),
+  s(231, 'Phanpy', ['ground'], [90, 60, 50, 40], 120, [232, 25]),
+  s(232, 'Donphan', ['ground'], [90, 120, 90, 50], 60),
   s(241, 'Miltank', ['normal'], [95, 80, 88, 100], 45),
   s(270, 'Lotad', ['water', 'grass'], [40, 40, 40, 30], 255, [271, 14]),
   s(271, 'Lombre', ['water', 'grass'], [60, 60, 60, 50], 120),
+  s(313, 'Volbeat', ['bug'], [65, 73, 80, 85], 150),
+  s(314, 'Illumise', ['bug'], [65, 73, 80, 85], 150),
   s(415, 'Combee', ['bug', 'flying'], [30, 30, 42, 70], 120),
+  s(459, 'Snover', ['grass', 'ice'], [60, 62, 55, 40], 120, [460, 40]),
+  s(460, 'Abomasnow', ['grass', 'ice'], [90, 92, 80, 60], 60),
   s(831, 'Wooloo', ['normal'], [42, 40, 50, 48], 255, [832, 24]),
   s(832, 'Dubwool', ['normal'], [72, 80, 95, 88], 127),
 ];

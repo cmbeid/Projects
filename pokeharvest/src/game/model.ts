@@ -1,4 +1,5 @@
 /** The shape of a farm in progress: everything the save holds. */
+import type { Weather } from '../data/encounters';
 import type { Buff } from '../data/items';
 import type { MapId } from '../data/maps';
 import type { Skill, UpgradableTool } from '../data/progress';
@@ -89,6 +90,10 @@ export interface DaySummary {
   hungry: number;
   /** Requests that ran out of time. */
   expired: number;
+  /** Outdoor crops lost because their season ended. */
+  withered: number;
+  /** A new season started this morning. */
+  newSeason: boolean;
 }
 
 /** A placed machine. */
@@ -161,6 +166,13 @@ export interface World {
   buffs: Buff[];
   /** Pokémon patted today. */
   petted: number[];
+  weather: Weather;
+  /** Tomorrow's weather, as forecast. */
+  tomorrow: Weather;
+  /** The greenhouse has been repaired: anything grows in it, all year. */
+  greenhouse: boolean;
+  /** Pokédex milestones already claimed (by caught count). */
+  dexClaimed: number[];
   nextUid: number;
   helpers: Helper[];
   /** Keyed "x,y", on the farm. */

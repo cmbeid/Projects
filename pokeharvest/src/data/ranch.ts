@@ -62,3 +62,6 @@ export const MERCHANT_POOL: readonly { id: string; price: number; count: number 
   { id: 'lucky-egg', price: 450, count: 2 },
   { id: 'honey', price: 140, count: 4 },
 ];
+
+/** Fixing up the old greenhouse, so anything grows in it all year round. */
+export const GREENHOUSE_COST = { gold: 5000, items: { 'metal-coat': 5, 'hard-stone': 10 } as Record<string, number>, reputation: 3 };
