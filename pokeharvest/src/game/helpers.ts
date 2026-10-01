@@ -17,6 +17,7 @@ import { species } from '../data/species';
 import { isRipe, pick, plantAt, plantableAt, retillable, tillAt } from './farm';
 import { farmMons, monByUid, parseKey, partyMons, plotKey, tileOf, type Helper, type World } from './model';
 import { manhattan, pathBeside, pathTo, type Point } from './path';
+import { gainXp } from './mon';
 import { nextRandom } from './rng';
 import { removeSeed, returnSeed, seedFor } from './seedbox';
 import { walk } from './walk';
@@ -152,6 +153,51 @@ function findWork(world: World, h: Helper): Point | null {
   return best;
 }
 
+/** Experience a Pokémon earns for one job done on the farm: more as it grows. */
+export function workXp(level: number): number {
+  return 4 + Math.floor(level / 2);
+}
+
+/**
+ * Give a Pokémon XP for its work and say so over its head. Levels and
+ * evolutions show too, and an evolved helper changes on the spot.
+ */
+export function rewardWork(world: World, uid: number, at: Point, xp: number): void {
+  const mon = monByUid(world, uid);
+  if (!mon) return;
+  for (const line of gainXp(mon, xp)) {
+    if (!line.includes('grew to') && !line.includes('evolved')) continue; // moves learned show in the Bag
+    world.events.push({ kind: 'levelup', x: at.x, y: at.y, dex: mon.dex, text: line, evolved: line.includes('evolved') });
+  }
+  const h = world.helpers.find((o) => o.uid === uid);
+  if (h) h.dex = mon.dex;
+}
+
+/** Shifts' worth of XP a guard or power helper earns for a day on the farm: about what a crop worker makes. */
+export const STANDING_SHIFTS = 12;
+
+/**
+ * At bedtime, the helpers whose job is just being there get paid in XP:
+ * guards for keeping watch through the night, Electric types for powering
+ * machines (if there are any). Fainted ones missed out.
+ */
+export function payStandingJobs(world: World): void {
+  const machines = Object.keys(world.machines).length > 0;
+  for (const mon of [...partyMons(world), ...farmMons(world)]) {
+    const job = species(mon.dex).job;
+    if (mon.hp <= 0 || !(job === 'guard' || (job === 'power' && machines))) continue;
+    const h = world.helpers.find((o) => o.uid === mon.uid);
+    rewardWork(world, mon.uid, h ? tileOf(h) : BARNYARD, workXp(mon.level) * STANDING_SHIFTS);
+  }
+}
+
+/** A job done: its line over the plot, and XP for the Pokémon that did it. */
+function worked(world: World, h: Helper, at: Point, text: string): void {
+  world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text });
+  const mon = monByUid(world, h.uid);
+  if (mon) rewardWork(world, h.uid, tileOf(h), workXp(mon.level));
+}
+
 /** Arrived beside the Seed Box: pick up a seed for the errand plot. True if it's off to plant. */
 function fetchSeed(world: World, h: Helper): boolean {
   const at = h.errand;
@@ -173,14 +219,14 @@ function sow(world: World, h: Helper, at: Point): void {
     return;
   }
   plantAt(world, cropId, at.x, at.y);
-  world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text: `Planted ${crop(cropId).name}!` });
+  worked(world, h, at, `Planted ${crop(cropId).name}!`);
 }
 
 function doJob(world: World, h: Helper, at: Point): void {
   if (species(h.dex).job === 'sow' && !world.plots[plotKey(at.x, at.y)]) {
     if (retillable(world, at.x, at.y)) {
       tillAt(world, at.x, at.y);
-      world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text: 'Dig!' });
+      worked(world, h, at, 'Dig!');
     }
     return;
   }
@@ -190,15 +236,15 @@ function doJob(world: World, h: Helper, at: Point): void {
   const job = species(h.dex).job;
   if (job === 'harvest' && isRipe(c)) {
     const name = crop(c.id).name;
-    if (pick(world, at.x, at.y, world.bin)) world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text: `${name} → bin` });
+    if (pick(world, at.x, at.y, world.bin)) worked(world, h, at, `${name} → bin`);
   } else if (isRipe(c)) {
     return;
   } else if (job === 'water' && !plot.watered) {
     plot.watered = true;
-    world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text: 'Water Gun!' });
+    worked(world, h, at, 'Water Gun!');
   } else if (job === 'tend' && !c.tended) {
     c.tended = true;
-    world.events.push({ kind: 'helper', x: at.x, y: at.y, dex: h.dex, text: 'Growth!' });
+    worked(world, h, at, 'Growth!');
   }
 }
 

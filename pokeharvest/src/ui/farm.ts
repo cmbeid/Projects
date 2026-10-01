@@ -46,7 +46,7 @@ const KEYS: Record<string, Dir> = {
 };
 
 const EVENT_COLOURS: Record<string, string> = {
-  harvest: '#b6f28a', refill: '#8cc4f2', hint: '#ffe08a', sit: '#8cc4f2', stand: '#ffe08a', helper: '#ffffff', pet: '#ff7aa8', collect: '#b6f28a',
+  harvest: '#b6f28a', refill: '#8cc4f2', levelup: '#ffd23c', hint: '#ffe08a', sit: '#8cc4f2', stand: '#ffe08a', helper: '#ffffff', pet: '#ff7aa8', collect: '#b6f28a',
 };
 
 export function farmScreen(world: World, isNew: boolean, quit: () => void, restart: () => void): void {
@@ -212,6 +212,15 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
         else (species(ev.dex).job === 'water' ? sfx.water : sfx.grass)();
         break;
       }
+      case 'levelup':
+        if (ev.evolved) {
+          void loadSheets([ev.dex]);
+          loadCries([ev.dex]);
+          sfx.evolve();
+        } else {
+          sfx.levelUp();
+        }
+        break;
       case 'hint': sfx.deny(); break;
       case 'sit': case 'stand': sfx.click(); break;
       case 'coins': sfx.coin(); break;

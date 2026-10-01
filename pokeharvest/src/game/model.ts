@@ -135,6 +135,7 @@ export interface Barn {
 export type GameEvent =
   | { kind: 'till' | 'water' | 'plant' | 'harvest' | 'clear' | 'refill'; x: number; y: number; text?: string }
   | { kind: 'helper'; x: number; y: number; dex: number; text: string }
+  | { kind: 'levelup'; x: number; y: number; dex: number; text: string; evolved: boolean }
   | { kind: 'hint'; x: number; y: number; text: string }
   | { kind: 'open'; ui: 'sleep' | 'bin' | 'mart' | 'smith' | 'barn' | 'board' | 'merchant' | 'seedbox' }
   | { kind: 'machine'; x: number; y: number }

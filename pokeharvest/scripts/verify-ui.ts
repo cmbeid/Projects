@@ -335,6 +335,11 @@ async function run(name: string, viewport: { width: number; height: number }, to
     return w.plots['14,6']?.crop?.id === 'cheri';
   }, undefined, { timeout: 20_000 });
   check(await page.evaluate(() => (window as unknown as { __farm: { world: { seedBox: Record<string, number> } } }).__farm.world.seedBox['cheri-seed'] === 4), 'a Diglett planted a Cheri seed from the box');
+  check(await page.evaluate(() => {
+    const w = (window as unknown as { __farm: { world: { mons: { dex: number; level: number; xp: number }[] } } }).__farm.world;
+    const d = w.mons.find((m) => m.dex === 50)!;
+    return d.xp > d.level ** 3;
+  }), 'the Diglett earned XP for planting');
   await page.screenshot({ path: `${OUT}/${name}-18c-sown.png` });
 
   // The bench: sit, watch time fly, and tap to get up.
