@@ -1,6 +1,7 @@
 /** Crafting machines, cooking, eating, and Rare Candy. */
 import { RECIPES } from '../data/crafting';
 import { item } from '../data/items';
+import { SKILL_XP } from '../data/progress';
 import { giveItem, takeItem } from './farm';
 import { gainXp, xpForLevel } from './mon';
 import { hasPerk, monByUid, type World } from './model';
@@ -9,7 +10,9 @@ import { addSkillXp, levelOf } from './skills';
 export function craftBlocker(world: World, id: string): string | null {
   const recipe = RECIPES.find((r) => r.id === id);
   if (!recipe) return 'No such recipe.';
-  if (levelOf(world, 'crafting') < recipe.level) return `Needs Crafting level ${recipe.level}.`;
+  if (levelOf(world, 'crafting') < recipe.level) {
+    return `Needs Crafting level ${recipe.level}: ${world.skills.crafting}/${SKILL_XP[recipe.level]} XP. Craft, cook or collect from machines to earn it.`;
+  }
   if (recipe.kitchen && world.map !== 'farm') return 'Cook at home, in the farmhouse kitchen.';
   if (!recipe.kitchen && !hasWorkbench(world)) return 'Needs a Workbench placed on your farm.';
   for (const [input, n] of Object.entries(recipe.inputs)) {
