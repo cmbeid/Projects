@@ -32,7 +32,7 @@ interface Hook {
     greenhouse: boolean;
     story: { chapter: number; flags: string[] };
     clock: number;
-    player: { x: number; y: number; path: unknown[]; energy: number };
+    player: { x: number; y: number; path: unknown[]; energy: number; gold: number };
     plots: Record<string, { watered: boolean; crop: { id: string } | null }>;
     selected: string;
   };
@@ -156,11 +156,16 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/${name}-5-night.png` });
 
-  // Bed, and the morning report.
+  // Bed, and the morning report (with a day's work logged for the starter).
+  await page.evaluate(() => {
+    const w = (window as unknown as { __farm: { world: { mons: { uid: number }[]; workLog: Record<string, unknown> } } }).__farm.world;
+    w.workLog[w.mons[0]!.uid] = { jobs: { tend: 3 }, xp: 18, levels: [] };
+  });
   await tap(page, 4, 4, touch);
   await page.locator('.btn.primary', { hasText: 'Sleep' }).click({ timeout: 10_000 });
   await page.waitForSelector('text=Start the day');
   await page.waitForTimeout(400);
+  check(await page.locator('.sheet h3', { hasText: 'Your Pokémon' }).count() === 1, "the morning report shows the Pokémon's work");
   await page.screenshot({ path: `${OUT}/${name}-6-morning.png` });
   await page.getByRole('button', { name: 'Start the day' }).click();
 
@@ -173,6 +178,8 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await fits(page, 'mart');
   await page.screenshot({ path: `${OUT}/${name}-7-mart.png` });
   await page.locator('.sheet .row').first().getByRole('button', { name: '×1' }).click();
+  await page.locator('.sheet .row', { hasText: 'Potion' }).getByRole('button', { name: '×1' }).click();
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.inventory.potion === 1), 'bought a Potion at the Mart');
   await page.locator('.close').click();
 
   // Out of the gate to Route 1.
@@ -193,9 +200,18 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await onScreen(page, '.poke-card.you', 'your HP card');
   await onScreen(page, '.commands', 'battle commands');
   await page.screenshot({ path: `${OUT}/${name}-9-battle.png` });
+  // A boost move first, then a Potion.
+  await page.evaluate(() => { const m = (window as unknown as { __farm: Hook }).__farm.world.mons[0] as unknown as { moves: string[] }; m.moves = ['swords-dance', ...m.moves.slice(0, 3)]; });
   await page.locator('.cmd.fight').click();
-  await page.locator('.cmd.move').first().click();
+  await page.locator('.cmd.move', { hasText: 'Swords Dance' }).click();
+  await page.waitForSelector('text=rose sharply', { timeout: 15_000 });
+  check(true, 'Swords Dance raised Attack sharply');
   await page.waitForSelector('.cmd.fight, .cmd.primary', { timeout: 20_000 });
+  await page.evaluate(() => { (window as unknown as { __farm: Hook }).__farm.world.mons[0]!.hp = 1; });
+  await page.locator('.cmd.bag').click();
+  await page.locator('.cmd.item', { hasText: 'Potion' }).click();
+  await page.waitForSelector('.cmd.fight, .cmd.primary', { timeout: 20_000 });
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.mons[0]!.hp > 1 && !(window as unknown as { __farm: Hook }).__farm.world.inventory.potion), 'used a Potion in battle');
   for (let i = 0; i < 6; i += 1) {
     if (await page.locator('.cmd.primary').count()) break;
     await page.evaluate(() => { const b = (window as unknown as { __farm: Hook }).__farm.world.battle; if (b) b.wild.hp = 1; });
@@ -308,8 +324,10 @@ async function run(name: string, viewport: { width: number; height: number }, to
     w.mons.push({ ...w.mons[0]!, uid, dex: 50 });
     w.farm.push(uid);
     w.inventory['cheri-seed'] = 5;
-    w.plots['14,6'] = { watered: false, crop: null };
-    w.field.push('14,6');
+    for (const k of ['12,6', '13,6', '14,6']) {
+      w.plots[k] = { watered: false, crop: null };
+      w.field.push(k);
+    }
     w.clock = 9 * 60;
     f.sync();
     const h = w.helpers.find((x) => x.uid === uid)!;
@@ -332,15 +350,31 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.locator('.close').click();
   await page.waitForFunction(() => {
     const w = (window as unknown as { __farm: { world: { plots: Record<string, { crop: { id: string } | null }> } } }).__farm.world;
-    return w.plots['14,6']?.crop?.id === 'cheri';
-  }, undefined, { timeout: 20_000 });
-  check(await page.evaluate(() => (window as unknown as { __farm: { world: { seedBox: Record<string, number> } } }).__farm.world.seedBox['cheri-seed'] === 4), 'a Diglett planted a Cheri seed from the box');
+    return ['12,6', '13,6', '14,6'].every((k) => w.plots[k]?.crop?.id === 'cheri');
+  }, undefined, { timeout: 25_000 });
+  check(await page.evaluate(() => (window as unknown as { __farm: { world: { seedBox: Record<string, number> } } }).__farm.world.seedBox['cheri-seed'] === 2), 'a Diglett planted three Cheri seeds from one trip to the box');
   check(await page.evaluate(() => {
     const w = (window as unknown as { __farm: { world: { mons: { dex: number; level: number; xp: number }[] } } }).__farm.world;
     const d = w.mons.find((m) => m.dex === 50)!;
     return d.xp > d.level ** 3;
   }), 'the Diglett earned XP for planting');
   await page.screenshot({ path: `${OUT}/${name}-18c-sown.png` });
+
+  // The status chip: a ripe crop shows up, and a tap lists everything.
+  await page.evaluate(() => {
+    const w = (window as unknown as { __farm: { world: { plots: Record<string, { crop: { growth: number } | null }> } } }).__farm.world;
+    w.plots['14,6']!.crop!.growth = 99;
+  });
+  await page.waitForFunction(() => document.querySelector('.status-chip')?.textContent?.includes('1 ripe'), undefined, { timeout: 5_000 });
+  check(true, 'the status chip shows the ripe crop');
+  await page.screenshot({ path: `${OUT}/${name}-18e-status.png` });
+  await page.locator('.status-chip').click();
+  await page.waitForSelector('.sheet h2:has-text("Farm status")', { timeout: 10_000 });
+  check(await page.locator('.sheet', { hasText: 'Ripe and ready to pick' }).count() === 1, 'the status sheet lists the ripe crop');
+  await fits(page, 'status sheet');
+  await page.screenshot({ path: `${OUT}/${name}-18f-status-sheet.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
 
   // The bench: sit, watch time fly, and tap to get up.
   await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.warp('farm', 6, 7));
@@ -407,6 +441,14 @@ async function run(name: string, viewport: { width: number; height: number }, to
   await page.getByRole('button', { name: 'Heal my Pokémon' }).click();
   await dismissTalk(page);
   check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.mons.every((m) => m.hp > 0)), 'healed at the Pokémon Center');
+  await page.evaluate(() => { (window as unknown as { __farm: Hook }).__farm.world.player.gold += 1000; (window as unknown as { __farm: Hook }).__farm.tap(4, 4); });
+  await page.waitForSelector('.sheet h2:has-text("Pokémon Center")', { timeout: 10_000 });
+  await page.locator('.sheet .row', { hasText: 'Super Potion' }).getByRole('button', { name: 'Buy' }).click();
+  check(await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.world.inventory['super-potion'] === 1), 'bought a Super Potion at the Center counter');
+  await fits(page, 'center counter');
+  await page.screenshot({ path: `${OUT}/${name}-24b-center.png` });
+  await page.locator('.close').click();
+  await page.waitForTimeout(250);
   await page.evaluate(() => { const f = (window as unknown as { __farm: Hook }).__farm; f.warp('town', 18, 6); });
   await page.waitForTimeout(400);
   await page.evaluate(() => (window as unknown as { __farm: Hook }).__farm.tap(18, 4));
@@ -429,7 +471,7 @@ async function run(name: string, viewport: { width: number; height: number }, to
   for (let i = 0; i < 12; i += 1) {
     if (await page.locator('.cmd.primary', { hasText: 'Continue' }).count()) break;
     await page.locator('.cmd.fight').click();
-    await page.locator('.cmd.move').first().click();
+    await page.locator('.cmd.move').filter({ hasNotText: 'status' }).first().click();
     await page.waitForSelector('.cmd.fight, .cmd.primary', { timeout: 30_000 });
   }
   await page.locator('.cmd.primary', { hasText: 'Continue' }).click();

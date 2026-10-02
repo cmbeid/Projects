@@ -28,6 +28,10 @@ All five phases of [`PLAN.md`](PLAN.md) are built:
 - **Route 1:** walk out of the farm gate to reach it.
   - Wild Pokémon hide in the tall grass, with stronger ones past the tree line and different ones at night.
   - Battles are turn-based: Fight, Bag, Pokémon or Run.
+  - Potions (Mart), Super Potions and Revives (Pokémon Center), and Hyper and Max Potions once your reputation grows. Use them in battle or from the Bag's Pokémon tab.
+  - At level 16 each Pokémon learns a stat-boost move for its type (Swords Dance, Agility, Iron Defense...), raising Attack, Defense or Speed for the rest of the battle.
+  - The Mayor's Exp. Share (a Chapter 2 reward) gives party Pokémon who sit out a battle half its XP.
+  - Trainers fight smarter: they pick moves that hit hard, boost when they can, use a Potion when low, and Kai switches out of a bad matchup.
   - Weaken a wild Pokémon, offer it berries to calm it, then throw a Poké Ball to befriend it.
   - Up to three Pokémon follow you, fight and work the farm; the rest wait in the box.
 - **Pokémon:** they gain XP, learn moves as they level and evolve.
@@ -38,9 +42,12 @@ All five phases of [`PLAN.md`](PLAN.md) are built:
   - Farm Pokémon live in the barn and work the farm all day, even while you're out on Route 1.
   - The barn starts as a Shed for 3; the carpenter builds bigger ones (6, 10, 15) once your reputation is high enough.
 - **The Seed Box:** the crate by the house, next to the request board. Tap it to put seeds in from your bag, take them back, and choose what gets planted: one kind of seed, or Auto (the in-season seed it holds most of, and anything in the greenhouse).
-  - Ground-type Pokémon working the farm fetch seeds from it one at a time and plant them in your empty plots. They never touch the seeds in your bag.
+  - Ground-type Pokémon working the farm fetch a handful of seeds at a time (3, then 4 from level 20, 5 from level 35) and plant them in nearby empty plots one after another, resting only once the trip's done. They never touch the seeds in your bag.
   - They also re-till any of your fields that went back to grass. Clear a plot with the sickle and they'll leave that tile alone.
 - **Work XP:** Pokémon earn XP for every job they finish on the farm (watering, tending, harvesting, planting, re-tilling), more as they level, so they can level up and evolve without battling. Guards and Electric helpers earn a day's XP at bedtime instead, Electric types only when there's a machine to power.
+- **Farm status:** a chip under the HUD shows what needs you: ripe crops, finished machines, barn produce, an empty Seed Box or trough, requests due today. Tap it for the details.
+- **Seeds in hand:** run out of the seed you're planting and you're handed the next one that would grow, instead of the hoe. Out-of-season seeds are dimmed on the hotbar.
+- **Day report:** the morning summary lists what each Pokémon did on the farm yesterday, the XP it earned and any level-ups.
 - **Rest bars:** a bar over each working Pokémon's head fills up while it rests between jobs (half an in-game hour, or an hour when it went to bed hungry, when the bar turns amber). When it's full, the Pokémon goes back to work.
 - **The bench:** tap the bench by the house to sit down, and time runs six times faster. Tap anywhere, step or press A to get up. You get up by yourself at midnight.
 - **The barn:** farm Pokémon eat one berry each night from its trough. Fed ones work at full pace and grow fonder of you; hungry ones work at half pace.
