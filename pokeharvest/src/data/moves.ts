@@ -16,6 +16,8 @@ export interface Move {
   priority?: number;
   drain?: boolean;
   lowers?: 'atk' | 'def';
+  /** Boost moves: raise the user's own stat by one or two stages. */
+  raises?: { stat: 'atk' | 'def' | 'spe'; by: 1 | 2 };
 }
 
 function m(id: string, name: string, type: PokeType, power: number, accuracy = 100, extra: Partial<Move> = {}): Move {
@@ -40,6 +42,14 @@ const LIST: readonly Move[] = [
   m('powder-snow', 'Powder Snow', 'ice', 40), m('icy-wind', 'Icy Wind', 'ice', 55, 95), m('ice-beam', 'Ice Beam', 'ice', 90), m('blizzard', 'Blizzard', 'ice', 110, 70),
   m('pursuit', 'Pursuit', 'dark', 40), m('bite', 'Bite', 'dark', 60), m('knock-off', 'Knock Off', 'dark', 65), m('crunch', 'Crunch', 'dark', 80),
   m('metal-claw', 'Metal Claw', 'steel', 50, 95), m('steel-wing', 'Steel Wing', 'steel', 70, 90), m('iron-head', 'Iron Head', 'steel', 80), m('flash-cannon', 'Flash Cannon', 'steel', 80),
+  m('swords-dance', 'Swords Dance', 'normal', 0, 100, { raises: { stat: 'atk', by: 2 } }),
+  m('growth', 'Growth', 'normal', 0, 100, { raises: { stat: 'atk', by: 1 } }),
+  m('work-up', 'Work Up', 'normal', 0, 100, { raises: { stat: 'atk', by: 1 } }),
+  m('nasty-plot', 'Nasty Plot', 'dark', 0, 100, { raises: { stat: 'atk', by: 2 } }),
+  m('harden', 'Harden', 'normal', 0, 100, { raises: { stat: 'def', by: 1 } }),
+  m('withdraw', 'Withdraw', 'water', 0, 100, { raises: { stat: 'def', by: 1 } }),
+  m('iron-defense', 'Iron Defense', 'steel', 0, 100, { raises: { stat: 'def', by: 2 } }),
+  m('agility', 'Agility', 'psychic', 0, 100, { raises: { stat: 'spe', by: 2 } }),
   m('acid', 'Acid', 'poison', 40), m('sludge', 'Sludge', 'poison', 65), m('poison-jab', 'Poison Jab', 'poison', 80), m('sludge-bomb', 'Sludge Bomb', 'poison', 90),
 ];
 
@@ -71,6 +81,15 @@ const TYPE_MOVES: Partial<Record<PokeType, readonly string[]>> = {
   steel: ['metal-claw', 'steel-wing', 'iron-head', 'flash-cannon'],
 };
 
+/** Each type's stat-boost move, learned at `BOOST_LEVEL`. */
+const TYPE_BOOST: Partial<Record<PokeType, string>> = {
+  fighting: 'swords-dance', normal: 'swords-dance', grass: 'growth',
+  bug: 'harden', rock: 'harden', ground: 'harden', water: 'withdraw', steel: 'iron-defense',
+  electric: 'agility', flying: 'agility', psychic: 'agility',
+  dark: 'nasty-plot', ghost: 'nasty-plot', poison: 'nasty-plot',
+};
+const BOOST_LEVEL = 16;
+
 /** Levels the main type's moves come at, and the second type's. */
 const MAIN_LEVELS = [5, 13, 24, 36];
 const SECOND_LEVELS = [9, 20, 31];
@@ -88,6 +107,7 @@ export function learnset(dex: number): [level: number, move: string][] {
     const id = mainMoves[i];
     if (id && id !== 'tackle') out.push([lvl, id]);
   });
+  out.push([BOOST_LEVEL, TYPE_BOOST[main!] ?? 'work-up']);
   const secondMoves = second ? TYPE_MOVES[second] ?? [] : [];
   SECOND_LEVELS.forEach((lvl, i) => {
     const id = secondMoves[i];

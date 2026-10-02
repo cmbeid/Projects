@@ -328,6 +328,9 @@ export function parseWorld(raw: unknown): World | null {
     world.inventory.workbench = (world.inventory.workbench ?? 0) + 1;
   }
   world.story.flags = [...new Set(['visited:farm', ...world.story.flags])];
+  // The Exp. Share came in later as a Chapter 2 reward: farms already past it get theirs now. One only.
+  if (world.story.chapter >= 2) world.inventory['exp-share'] = 1;
+  else delete world.inventory['exp-share'];
   spawnNpcs(world);
   const maxEnergy = maxEnergyFor(world);
   world.player.maxEnergy = maxEnergy;

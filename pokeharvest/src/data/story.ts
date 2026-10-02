@@ -45,7 +45,7 @@ export const CHAPTERS: readonly Chapter[] = [
     title: 'Cobblevale',
     summary: 'The town has seen better days, and its Pokémon Center is boarded up. The Mayor needs wood and berries to fix it.',
     objectives: [{ kind: 'visit', map: 'town' }, { kind: 'deliver', item: 'wood', count: 20 }, { kind: 'deliverKind', itemKind: 'crop', count: 10 }],
-    start: 'ch2-start', end: 'ch2-done', flag: 'center-open', items: { workbench: 1 },
+    start: 'ch2-start', end: 'ch2-done', flag: 'center-open', items: { workbench: 1, 'exp-share': 1 },
   },
   {
     title: 'Whisperwood',
@@ -97,6 +97,7 @@ export const BEATS: Record<string, readonly Line[]> = {
   'ch2-done': [
     { speaker: 'nurse', text: 'The Pokémon Center is open again! Bring your Pokémon to me any time, and I\'ll make them good as new.' },
     { speaker: 'mayor', text: "Take this Workbench as thanks. Put it on your farm and you can build machines and stations." },
+    { speaker: 'mayor', text: "And this Exp. Share. Your Pokémon who sit out a battle will still learn from watching." },
   ],
   'ch3-start': [
     { speaker: 'mayor', text: 'The trainers of Whisperwood respect strength. Win a few battles, and learn to make Apricorn balls like the old farmers did.' },

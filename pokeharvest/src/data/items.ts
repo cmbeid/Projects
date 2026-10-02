@@ -5,7 +5,7 @@
  */
 import { CROPS } from './crops';
 
-export type ItemKind = 'tool' | 'seed' | 'crop' | 'ball' | 'material' | 'product' | 'artisan' | 'food' | 'machine' | 'candy';
+export type ItemKind = 'tool' | 'seed' | 'crop' | 'ball' | 'material' | 'product' | 'artisan' | 'food' | 'machine' | 'candy' | 'medicine' | 'key';
 export type Tool = 'hoe' | 'can' | 'sickle';
 /** Food buffs, which last until you sleep. */
 export type Buff = 'swift' | 'lucky' | 'coach' | 'steady';
@@ -22,8 +22,10 @@ export interface Item {
   crop?: string;
   /** PokeAPI icon name, when there is one. */
   icon?: string;
-  /** Berries: HP restored in battle (as a share of max HP when below 1). */
+  /** Berries and medicine: HP restored (as a share of max HP when below 1; `FULL_HEAL` for all of it). */
   heals?: number;
+  /** Revives: brings a fainted Pokémon back with this share of its max HP. */
+  revive?: number;
   /** Balls: how much they multiply the catch rate. */
   ball?: number;
   /** Apricorn balls: what makes them work better (see `game/battle.ts`). */
@@ -44,6 +46,9 @@ export const BUFF_TEXT: Record<Buff, string> = {
 };
 
 const HEALS: Record<string, number> = { oran: 20, sitrus: 0.3 };
+
+/** `heals` for medicine that restores every last HP. */
+export const FULL_HEAL = 9999;
 
 const OTHER: Item[] = [
   { id: 'hoe', name: 'Hoe', kind: 'tool', sellPrice: 0 },
@@ -83,6 +88,14 @@ const OTHER: Item[] = [
   { id: 'berry-cookie', name: 'Berry Cookie', kind: 'food', sellPrice: 90, icon: 'lava-cookie', energy: 35 },
   { id: 'pecha-gateau', name: 'Pecha Gateau', kind: 'food', sellPrice: 260, icon: 'old-gateau', energy: 60, buff: 'swift' },
   { id: 'honey-cone', name: 'Honey Cone', kind: 'food', sellPrice: 320, icon: 'casteliacone', energy: 80, buff: 'lucky' },
+  // Medicine: bought at the Mart and the Pokémon Center, used in battle or from the Bag. Not for selling.
+  { id: 'potion', name: 'Potion', kind: 'medicine', sellPrice: 0, buyPrice: 150, icon: 'potion', heals: 20, description: 'Restores 20 HP to one Pokémon.' },
+  { id: 'super-potion', name: 'Super Potion', kind: 'medicine', sellPrice: 0, buyPrice: 400, icon: 'super-potion', heals: 60, description: 'Restores 60 HP to one Pokémon.' },
+  { id: 'hyper-potion', name: 'Hyper Potion', kind: 'medicine', sellPrice: 0, buyPrice: 900, icon: 'hyper-potion', heals: 120, description: 'Restores 120 HP to one Pokémon.' },
+  { id: 'max-potion', name: 'Max Potion', kind: 'medicine', sellPrice: 0, buyPrice: 1800, icon: 'max-potion', heals: FULL_HEAL, description: 'Fully restores one Pokémon\'s HP.' },
+  { id: 'revive', name: 'Revive', kind: 'medicine', sellPrice: 0, buyPrice: 1200, icon: 'revive', revive: 0.5, description: 'Brings a fainted Pokémon back with half its HP.' },
+  // Key items: kept for good, never sold.
+  { id: 'exp-share', name: 'Exp. Share', kind: 'key', sellPrice: 0, icon: 'exp-share', description: 'A gift from the Mayor. Your party Pokémon who sit out a battle still get half its XP.' },
   { id: 'cheese-sable', name: 'Cheese Sablé', kind: 'food', sellPrice: 480, icon: 'shalour-sable', energy: 100, buff: 'steady' },
   { id: 'big-malasada', name: 'Big Malasada', kind: 'food', sellPrice: 900, icon: 'big-malasada', energy: 999, buff: 'coach' },
   // Machines: crafted, then placed on the farm.
@@ -129,7 +142,7 @@ export function itemIconUrl(icon: string): string {
 }
 
 /** What the Poké Mart stocks, in shelf order. */
-export const MART_STOCK: readonly string[] = [...CROPS.map((c) => seedId(c.id)), 'poke-ball', 'great-ball'];
+export const MART_STOCK: readonly string[] = [...CROPS.map((c) => seedId(c.id)), 'poke-ball', 'great-ball', 'potion'];
 
 /** The Mart buys things on the spot, but for less than the shipping bin pays overnight. */
 export const MART_SELL_RATE = 0.6;

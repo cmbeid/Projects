@@ -88,8 +88,15 @@ function learn(mon: Mon, id: string): string {
     mon.moves.push(id);
     return `${name} learned ${move(id).name}!`;
   }
-  const weakest = [...mon.moves].sort((a, b) => move(a).power - move(b).power)[0]!;
-  if (move(weakest).power >= move(id).power) return `${name} didn't learn ${move(id).name}.`;
+  // A boost move takes the place of a stat-lowering one (Growl, Tail Whip), and is kept after.
+  if (move(id).raises) {
+    const lowering = mon.moves.find((k) => move(k).lowers);
+    if (!lowering) return `${name} didn't learn ${move(id).name}.`;
+    mon.moves[mon.moves.indexOf(lowering)] = id;
+    return `${name} forgot ${move(lowering).name} and learned ${move(id).name}!`;
+  }
+  const weakest = mon.moves.filter((k) => !move(k).raises).sort((a, b) => move(a).power - move(b).power)[0];
+  if (!weakest || move(weakest).power >= move(id).power) return `${name} didn't learn ${move(id).name}.`;
   mon.moves[mon.moves.indexOf(weakest)] = id;
   return `${name} forgot ${move(weakest).name} and learned ${move(id).name}!`;
 }
