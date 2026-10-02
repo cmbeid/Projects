@@ -555,3 +555,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pips { display: flex; gap: 4px; margin-top: 4px; }
 .pip { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(#e04030 50%, #f4f4f8 50%); border: 1px solid #3a2a1a; }
 .pip.out { filter: grayscale(1) opacity(0.4); }
+.row-blocker { display: block; margin-top: 2px; color: #b0471f; font-weight: 700; }

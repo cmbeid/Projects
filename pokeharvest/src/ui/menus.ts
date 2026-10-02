@@ -291,11 +291,14 @@ function recipeList(body: HTMLElement, world: World, kitchen: boolean, changed: 
     const inputs = Object.entries(recipe.inputs).map(([id, n]) => `${n} ${item(id).name} (${world.inventory[id] ?? 0})`).join(', ');
     const what = def.kind === 'food' ? `+${def.energy! >= 999 ? 'all' : def.energy} energy${def.buff ? `, ${BUFF_TEXT[def.buff].toLowerCase()}` : ''}` : def.description ?? '';
     const locked = levelOf(world, 'crafting') < recipe.level;
-    body.append(row(itemIcon(recipe.id), locked ? `${def.name} · Crafting ${recipe.level}` : def.name, `${what} · ${inputs}`,
+    const r = row(itemIcon(recipe.id), locked ? `${def.name} · Crafting ${recipe.level}` : def.name, `${what} · ${inputs}`,
       button(kitchen ? 'Cook' : 'Craft', () => {
         (craft(world, recipe.id) ? sfx.powerup : sfx.deny)();
         changed();
-      }, Boolean(blocker), 'primary')));
+      }, Boolean(blocker), 'primary'));
+    // Say why it can't be made yet, rather than just greying the button out.
+    if (blocker) r.querySelector('.row-detail')?.append(h('span.row-blocker', {}, blocker));
+    body.append(r);
   }
 }
 

@@ -18,7 +18,8 @@ export const RECIPES: readonly Recipe[] = [
   { id: 'cheese-press', inputs: { 'hard-stone': 4, 'metal-coat': 2, 'copper-bar': 1 }, level: 3 },
   { id: 'loom', inputs: { 'hard-stone': 5, 'metal-coat': 3, 'copper-bar': 1 }, level: 4 },
   { id: 'furnace', inputs: { 'hard-stone': 8, wood: 5 }, level: 1 },
-  { id: 'apricorn-workshop', inputs: { wood: 10, 'hard-stone': 4, 'red-apricorn': 1 }, level: 2 },
+  // The story asks for one in Chapter 3, so no Crafting level stands in the way.
+  { id: 'apricorn-workshop', inputs: { wood: 10, 'hard-stone': 4, 'red-apricorn': 1 }, level: 1 },
   { id: 'berry-cookie', inputs: { cheri: 2, oran: 1 }, level: 1, kitchen: true },
   { id: 'pecha-gateau', inputs: { pecha: 2, 'moomoo-milk': 1 }, level: 2, kitchen: true },
   { id: 'honey-cone', inputs: { honey: 1, 'moomoo-milk': 1, leppa: 1 }, level: 3, kitchen: true },
