@@ -2,6 +2,8 @@
  * The farm screen: the canvas, the HUD along the top, the hotbar along the
  * bottom, and the loop that runs the sim at a fixed step and draws it.
  */
+import { inSeason } from '../data/crops';
+import { farmStatus, statusLine } from '../game/status';
 import { BENCH_SPEED } from '../game/bench';
 import { cry, loadCries, sfx } from '../audio/index';
 import { playMusic, preloadMusic } from '../audio/music';
@@ -36,7 +38,7 @@ import { openSettings, show } from './app';
 import { h } from './dom';
 import { itemIcon } from './icons';
 import { battleScreen } from './battle';
-import { openBarn, openBoard, openMachine, openMerchant, openSeedBox } from './ranch';
+import { openBarn, openBoard, openMachine, openMerchant, openSeedBox, openStatus } from './ranch';
 import { openBag, openBin, openHelp, openMart, openPerk, openSleep, openSmith, openSummary } from './menus';
 import { closeSheet, sheetOpen } from './sheet';
 
@@ -70,12 +72,14 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
   const bar = h('nav.hotbar', { 'aria-label': 'Tools and seeds' });
   const layer = h('div.layer');
   const tracker = h('button.tracker', { 'aria-label': 'Current goal' });
+  const statusChip = h('button.status-chip', { 'aria-label': 'Farm status', hidden: true });
   const resting = h('div.resting', { hidden: true }, `⏩ Time ×${BENCH_SPEED} · tap to get up`);
   const dpad = createDpad(() => { if (!sheetOpen() && !battleOpen && !dialogueOpen()) actFacing(world); });
   dpad.apply(getSettings().dpad);
-  const root = h('main.farm', {}, canvas, hud, tracker, resting, dpad.el, bar, layer);
+  const root = h('main.farm', {}, canvas, hud, tracker, statusChip, resting, dpad.el, bar, layer);
   setDialogueHost(layer);
   tracker.addEventListener('click', () => openJournal(layer, world));
+  statusChip.addEventListener('click', () => openStatus(layer, world));
   show(root);
 
   const fx: Fx = { floaters: [], splashes: [], target: null };
@@ -90,12 +94,21 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
 
   // --- HUD ---------------------------------------------------------------------------
   let barKey = '';
+  let statusAt = 0;
   function updateHud(force = false): void {
     const where = world.map === 'farm' ? weekdayOf(world.day) : MAPS[world.map].name;
     dayEl.textContent = `${seasonOf(world.day)} ${dayOfSeason(world.day)} · ${where}`;
     const goal = nextGoal(world);
     tracker.hidden = !goal;
     resting.hidden = !world.player.seat;
+    // What needs you, at most twice a second: it walks every plot.
+    const t = performance.now();
+    if (force || t - statusAt > 500) {
+      statusAt = t;
+      const line = statusLine(farmStatus(world));
+      if (line !== statusChip.textContent) statusChip.textContent = line;
+      statusChip.hidden = !line;
+    }
     if (goal) tracker.textContent = `Ch.${world.story.chapter + 1} · ${goal.text} ${Math.min(goal.have, goal.need)}/${goal.need}`;
     clockEl.textContent = `${WEATHER_ICONS[world.weather]} ${clockText(world.clock)}`;
     clockEl.title = WEATHER_NAMES[world.weather];
@@ -105,15 +118,18 @@ export function farmScreen(world: World, isNew: boolean, quit: () => void, resta
     energyEl.classList.toggle('low', e < 0.25);
     const slots = hotbar(world);
     const cap = canCapacity(world);
-    const key = `${slots.join()}|${world.selected}|${slots.map((id) => world.inventory[id] ?? '').join()}|${world.player.water}/${cap}`;
+    const season = seasonOf(world.day);
+    const key = `${slots.join()}|${world.selected}|${slots.map((id) => world.inventory[id] ?? '').join()}|${world.player.water}/${cap}|${season}`;
     if (!force && key === barKey) return;
     barKey = key;
     bar.replaceChildren(...slots.map((id, i) => {
       const def = item(id);
       const count = def.kind === 'tool' ? (id === 'can' ? `${world.player.water}/${cap}` : '') : String(world.inventory[id] ?? 0);
+      // Seeds that won't grow outdoors this season are dimmed: greenhouse only.
+      const off = def.kind === 'seed' && !inSeason(def.crop!, season);
       return h('button', {
-        className: id === world.selected ? 'slot on' : 'slot',
-        title: `${def.name} (${i + 1})`,
+        className: `slot${id === world.selected ? ' on' : ''}${off ? ' off' : ''}`,
+        title: off ? `${def.name}: out of season, greenhouse only (${i + 1})` : `${def.name} (${i + 1})`,
         'aria-label': def.name,
         'aria-pressed': String(id === world.selected),
         onclick: () => { select(world, id); sfx.click(); updateHud(); },

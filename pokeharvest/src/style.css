@@ -178,6 +178,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .slot.on { border-color: var(--gold); background: rgba(242,194,48,0.25); box-shadow: 0 0 0 2px rgba(242,194,48,0.4); }
 .slot-icon { width: 36px; height: 36px; }
+.slot.off .slot-icon { opacity: 0.4; filter: grayscale(0.8); }
+.slot.off::after { content: '✕'; position: absolute; top: 2px; left: 5px; font: 900 0.7rem var(--mono); color: #e0402c; }
 .count { position: absolute; right: 3px; bottom: 1px; color: #fff; font: 700 0.7rem var(--mono); text-shadow: 0 1px 2px #000, 0 0 2px #000; }
 .count.empty { color: #ff8a6a; }
 
@@ -462,7 +464,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tracker[hidden] { display: none; }
 .resting {
   position: absolute;
-  top: calc(104px + var(--safe-top));
+  top: calc(136px + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   padding: 4px 12px;
@@ -556,3 +558,22 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pip { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(#e04030 50%, #f4f4f8 50%); border: 1px solid #3a2a1a; }
 .pip.out { filter: grayscale(1) opacity(0.4); }
 .row-blocker { display: block; margin-top: 2px; color: #b0471f; font-weight: 700; }
+.status-chip {
+  position: absolute;
+  top: calc(104px + var(--safe-top));
+  left: calc(8px + var(--safe-left));
+  max-width: calc(100% - 16px);
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(42, 42, 48, 0.85);
+  color: #fff8e7;
+  font: 700 0.78rem var(--mono);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.status-chip[hidden] { display: none; }
+.status-icon { width: 40px; font-size: 1.6rem; text-align: center; flex: none; }

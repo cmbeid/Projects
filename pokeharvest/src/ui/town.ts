@@ -8,6 +8,7 @@ import { canChallenge } from '../game/npcs';
 import { partyMons, type World } from '../game/model';
 import { canDeliverToMayor, currentChapter, deliverToMayor, hasFlag, kaiReady, progress } from '../game/story';
 import { buy } from '../game/economy';
+import { CENTER_LOCKS, centerStock } from '../game/medicine';
 import { h } from './dom';
 import { say, type Say } from './dialogue';
 import { itemIcon } from './icons';
@@ -29,7 +30,7 @@ export function beatLines(beat: string): Say[] {
 }
 
 export function openCenter(host: HTMLElement, world: World, openPc: () => void, changed: Changed): void {
-  openSheet(host, 'Pokémon Center', (body) => {
+  openSheet(host, 'Pokémon Center', (body, refresh) => {
     if (!hasFlag(world, 'center-open')) {
       body.append(h('p', {}, "The windows are boarded up. A sign says: \"Closed until further notice.\" The Mayor's Hall might know more."));
       return;
@@ -47,6 +48,18 @@ export function openCenter(host: HTMLElement, world: World, openPc: () => void, 
         }, false, 'primary'),
         button('Use the PC (your Pokémon box)', () => { closeSheet(); openPc(); })),
     );
+    // The counter: stronger medicine than the Mart's, more of it as your name gets around.
+    body.append(h('h3', {}, 'Counter'), h('p.note', {}, `Medicine for the road. You have ${world.player.gold.toLocaleString('en')}g.`));
+    const stock = centerStock(world);
+    for (const id of stock) {
+      const def = item(id);
+      const price = def.buyPrice!;
+      body.append(h('div.row', {}, itemIcon(id), h('div.row-text', {}, h('div.row-name', {}, `${def.name} · ${price}g${world.inventory[id] ? ` (have ${world.inventory[id]})` : ''}`), h('div.row-detail', {}, def.description ?? '')),
+        h('div.row-actions', {},
+          button('Buy', () => { (buy(world, id, 1) ? sfx.coin : sfx.deny)(); changed(); refresh(); }, world.player.gold < price))));
+    }
+    const locked = Object.entries(CENTER_LOCKS).filter(([id]) => !stock.includes(id));
+    if (locked.length) body.append(h('p.note', {}, locked.map(([id, lvl]) => `${item(id).name} at reputation level ${lvl}`).join(' · ')));
   });
 }
 

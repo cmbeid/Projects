@@ -4,6 +4,7 @@
  * Pokémon answers. Pure logic: every command returns what happened, in
  * order, for the battle screen to play back.
  */
+import { useMedicine } from './medicine';
 import { ITEMS, item, seedId } from '../data/items';
 import { KAI, kaiTeam, trainer as trainerData } from '../data/people';
 import { spawnNpcs, weekOf } from './npcs';
@@ -13,7 +14,7 @@ import { effectiveness } from '../data/types';
 import { adopt, gainXp, healthyParty, makeMon, maxHp, statsOf, xpYield } from './mon';
 import { SPAWN } from '../data/maps';
 import { placeHelpers, syncHelpers } from './helpers';
-import { hasBuff, hasPerk, monByUid, type Mon, type World } from './model';
+import { hasBuff, hasPerk, monByUid, partyMons, type Mon, type World } from './model';
 import { nextRandom } from './rng';
 import { addSkillXp } from './skills';
 import { DAY_END } from './time';
@@ -23,6 +24,19 @@ export type Side = 'you' | 'wild';
 export interface Stages {
   atk: number;
   def: number;
+  spe: number;
+}
+
+export function freshStages(): Stages {
+  return { atk: 0, def: 0, spe: 0 };
+}
+
+const STAT_NAMES: Record<keyof Stages, string> = { atk: 'Attack', def: 'Defense', spe: 'Speed' };
+
+/** A Pokémon's Speed with its stat stage: who moves first. */
+function speedOf(world: World, b: Battle, side: Side): number {
+  const mon = side === 'you' ? activeMon(world, b) : b.wild;
+  return statsOf(mon).spe * stageMult(b.stages[side].spe);
 }
 
 export interface Battle {
@@ -38,7 +52,15 @@ export interface Battle {
   /** Your Pokémon fainted and you must send out another. */
   mustSwitch: boolean;
   /** A trainer battle: their team, and which one is out (as `wild`). */
-  trainer: { id: string; name: string; team: Mon[]; index: number } | null;
+  trainer: {
+    id: string; name: string; team: Mon[]; index: number;
+    /** Potions left: trainers from Granite Pass on carry one, Kai two. */
+    potions: number;
+    /** The turn Kai last switched, so he doesn't keep doing it. */
+    switchedAt: number;
+  } | null;
+  /** Turns taken so far. */
+  turn: number;
   over: null | 'win' | 'lose' | 'run' | 'caught';
 }
 
@@ -56,7 +78,7 @@ export type BattleEvent =
 
 export type BattleAction =
   | { kind: 'move'; index: number }
-  | { kind: 'item'; id: string }
+  | { kind: 'item'; id: string; target?: number }
   | { kind: 'switch'; uid: number }
   | { kind: 'run' };
 
@@ -71,8 +93,8 @@ function begin(world: World, wild: Mon, trainer: Battle['trainer']): Battle | nu
   const lead = healthyParty(world)[0];
   if (!lead) return null;
   const battle: Battle = {
-    wild, active: lead.uid, stages: { you: { atk: 0, def: 0 }, wild: { atk: 0, def: 0 } },
-    lure: 1, runs: 0, fought: [lead.uid], mustSwitch: false, over: null, trainer,
+    wild, active: lead.uid, stages: { you: freshStages(), wild: freshStages() },
+    lure: 1, runs: 0, fought: [lead.uid], mustSwitch: false, over: null, trainer, turn: 0,
   };
   if (!world.seen.includes(wild.dex)) world.seen.push(wild.dex);
   world.battle = battle;
@@ -98,7 +120,8 @@ export function startTrainerBattle(world: World, id: string): Battle | null {
     mon.shiny = false;
     return mon;
   });
-  return begin(world, team[0]!, { id, name: `${t.cls === 'Rival' ? '' : `${t.cls} `}${t.name}`, team, index: 0 });
+  const potions = id === 'kai' ? 2 : t.map === 'route3' ? 1 : 0;
+  return begin(world, team[0]!, { id, name: `${t.cls === 'Rival' ? '' : `${t.cls} `}${t.name}`, team, index: 0, potions, switchedAt: -99 });
 }
 
 export function activeMon(world: World, b: Battle): Mon {
@@ -136,6 +159,17 @@ function useMove(world: World, b: Battle, side: Side, moveId: string, out: Battl
     out.push({ kind: 'text', text: 'But it missed!' });
     return;
   }
+  if (mv.raises) {
+    const stage = b.stages[side];
+    const { stat, by } = mv.raises;
+    if (stage[stat] >= 6) {
+      out.push({ kind: 'text', text: `${label(world, b, side)}'s ${STAT_NAMES[stat]} won't go any higher!` });
+      return;
+    }
+    stage[stat] = Math.min(6, stage[stat] + by);
+    out.push({ kind: 'text', text: `${label(world, b, side)}'s ${STAT_NAMES[stat]} rose${by > 1 ? ' sharply' : ''}!` });
+    return;
+  }
   if (mv.lowers) {
     const stage = b.stages[foe];
     if (stage[mv.lowers] <= -6) {
@@ -163,10 +197,25 @@ function useMove(world: World, b: Battle, side: Side, moveId: string, out: Battl
   }
 }
 
-/** The wild Pokémon's pick: usually an attack, sometimes a status move. */
+/** What the other side does this turn. */
+type FoeAction = { kind: 'move'; id: string } | { kind: 'potion' } | { kind: 'switch'; index: number };
+
+/** How good a damaging move looks against your Pokémon out now. */
+function moveScore(world: World, b: Battle, user: Mon, id: string): number {
+  const mv = move(id);
+  if (!mv.power) return 0;
+  const stab = species(user.dex).types.includes(mv.type) ? 1.5 : 1;
+  return mv.power * stab * effectiveness(mv.type, species(activeMon(world, b).dex).types) * (mv.accuracy / 100);
+}
+
+/** The wild Pokémon's pick: usually an attack, sometimes a status move, and no more boosting once it's well up. */
 function wildMove(world: World, b: Battle): string {
   const moves = b.wild.moves;
-  const weights = moves.map((id) => (move(id).power > 0 ? 3 : 1));
+  const weights = moves.map((id): number => {
+    const mv = move(id);
+    if (mv.raises) return b.stages.wild[mv.raises.stat] >= 2 ? 0 : 1;
+    return mv.power > 0 ? 3 : 1;
+  });
   let r = nextRandom(world.rng) * weights.reduce((a, w) => a + w, 0);
   for (let i = 0; i < moves.length; i += 1) {
     r -= weights[i]!;
@@ -175,17 +224,84 @@ function wildMove(world: World, b: Battle): string {
   return moves[0]!;
 }
 
+/**
+ * A trainer thinks a little: the move that hits hardest (now and then the
+ * next best), a boost while healthy and ahead, a Potion when low, and Kai
+ * swaps out of a bad matchup.
+ */
+function foeAction(world: World, b: Battle): FoeAction {
+  const t = b.trainer;
+  if (!t) return { kind: 'move', id: wildMove(world, b) };
+  const me = b.wild;
+  const max = maxHp(me);
+  const team = t.team;
+  const alive = team.filter((m) => m.hp > 0);
+  if (t.potions > 0 && me.hp > 0 && me.hp < max * 0.3) return { kind: 'potion' };
+  if (t.id === 'kai' && b.turn - t.switchedAt >= 3 && alive.length > 1) {
+    const yours = activeMon(world, b);
+    const threat = yours.moves.filter((id) => move(id).power > 0).map((id) => move(id).type);
+    const hurts = threat.some((type) => effectiveness(type, species(me.dex).types) >= 2);
+    const safe = team.findIndex((m, i) => i !== t.index && m.hp > 0 && threat.every((type) => effectiveness(type, species(m.dex).types) <= 1));
+    if (hurts && safe >= 0) return { kind: 'switch', index: safe };
+  }
+  const ranked = me.moves.map((id) => ({ id, score: moveScore(world, b, me, id) })).sort((a, z) => z.score - a.score);
+  const boost = me.moves.find((id) => {
+    const up = move(id).raises;
+    if (!up || b.stages.wild[up.stat] >= 2 || me.hp < max * 0.7) return false;
+    const ahead = speedOf(world, b, 'wild') > speedOf(world, b, 'you');
+    return up.stat === 'spe' ? !ahead : ahead;
+  });
+  if (boost && nextRandom(world.rng) < 0.5) return { kind: 'move', id: boost };
+  const best = ranked[0];
+  if (!best || best.score <= 0) return { kind: 'move', id: wildMove(world, b) };
+  const second = ranked[1];
+  return { kind: 'move', id: second && second.score > 0 && nextRandom(world.rng) < 0.25 ? second.id : best.id };
+}
+
+/** Carry out a trainer's Potion or switch (moves go through `useMove`). */
+function foeItemOrSwitch(world: World, b: Battle, action: FoeAction, out: BattleEvent[]): void {
+  const t = b.trainer!;
+  if (action.kind === 'potion') {
+    t.potions -= 1;
+    const max = maxHp(b.wild);
+    const heal = b.wild.level >= 20 ? 60 : 20;
+    b.wild.hp = Math.min(max, b.wild.hp + heal);
+    out.push({ kind: 'text', text: `${t.name} used a ${heal > 20 ? 'Super Potion' : 'Potion'}!` }, { kind: 'hp', side: 'wild', hp: b.wild.hp, max });
+  } else if (action.kind === 'switch') {
+    const from = species(b.wild.dex).name;
+    t.index = action.index;
+    t.switchedAt = b.turn;
+    b.wild = t.team[action.index]!;
+    b.stages.wild = freshStages();
+    if (!world.seen.includes(b.wild.dex)) world.seen.push(b.wild.dex);
+    out.push({ kind: 'text', text: `${t.name} withdrew ${from}!` }, { kind: 'sendWild', index: action.index }, { kind: 'text', text: `${t.name} sent out ${species(b.wild.dex).name}!` });
+  }
+}
+
+/** The other side's turn, when yours wasn't an attack (a switch, an item, a failed run). */
+function foeTurn(world: World, b: Battle, out: BattleEvent[]): void {
+  b.turn += 1;
+  const action = foeAction(world, b);
+  if (action.kind === 'move') {
+    useMove(world, b, 'wild', action.id, out);
+    checkFaints(world, b, out);
+  } else {
+    foeItemOrSwitch(world, b, action, out);
+  }
+}
+
 /** After a hit: check for fainting, and settle the battle if it's decided. */
 function checkFaints(world: World, b: Battle, out: BattleEvent[]): boolean {
   if (b.wild.hp <= 0) {
     const whose = b.trainer ? `${b.trainer.name}'s` : 'The wild';
     out.push({ kind: 'faint', side: 'wild' }, { kind: 'text', text: `${whose} ${species(b.wild.dex).name} fainted!` });
-    if (b.trainer && b.trainer.index < b.trainer.team.length - 1) {
-      // Experience for this one, then their next Pokémon.
+    const next = b.trainer ? b.trainer.team.findIndex((m) => m.hp > 0) : -1;
+    if (b.trainer && next >= 0) {
+      // Experience for this one, then their next Pokémon still standing (Kai may have swapped them about).
       award(world, b, out);
-      b.trainer.index += 1;
+      b.trainer.index = next;
       b.wild = b.trainer.team[b.trainer.index]!;
-      b.stages.wild = { atk: 0, def: 0 };
+      b.stages.wild = freshStages();
       if (!world.seen.includes(b.wild.dex)) world.seen.push(b.wild.dex);
       out.push({ kind: 'sendWild', index: b.trainer.index }, { kind: 'text', text: `${b.trainer.name} sent out ${species(b.wild.dex).name}!` });
       return true;
@@ -237,6 +353,13 @@ function award(world: World, b: Battle, out: BattleEvent[]): void {
     for (const line of gainXp(mon, xp)) out.push({ kind: 'text', text: line });
     if (uid === b.active) out.push({ kind: 'hp', side: 'you', hp: mon.hp, max: maxHp(mon) });
   }
+  // The Exp. Share: everyone else in the party who's still standing learns from watching.
+  if (!world.inventory['exp-share']) return;
+  const share = Math.max(1, Math.floor(xp / 2));
+  const rest = partyMons(world).filter((m) => m.hp > 0 && !b.fought.includes(m.uid));
+  if (!rest.length) return;
+  out.push({ kind: 'text', text: rest.length === 1 ? `${species(rest[0]!.dex).name} gained ${share} XP from the Exp. Share!` : `The rest of your team gained ${share} XP from the Exp. Share!` });
+  for (const mon of rest) for (const line of gainXp(mon, share)) out.push({ kind: 'text', text: line });
 }
 
 function win(world: World, b: Battle, out: BattleEvent[]): void {
@@ -326,11 +449,11 @@ function useItem(world: World, b: Battle, id: string, out: BattleEvent[]): boole
   return false;
 }
 
-/** What you can do from the bag in battle: balls, healing berries, and berries to offer. */
+/** What you can do from the bag in battle: balls, medicine, healing berries, and berries to offer. */
 export function battleItems(world: World): string[] {
   return Object.keys(world.inventory).filter((id) => {
     const def = ITEMS.get(id);
-    return def && (def.kind === 'ball' || def.kind === 'crop');
+    return def && (def.kind === 'ball' || def.kind === 'crop' || def.kind === 'medicine');
   });
 }
 
@@ -348,12 +471,11 @@ export function act(world: World, action: BattleAction): BattleEvent[] {
     const forced = b.mustSwitch;
     b.mustSwitch = false;
     b.active = action.uid;
-    b.stages.you = { atk: 0, def: 0 };
+    b.stages.you = freshStages();
     if (!b.fought.includes(action.uid)) b.fought.push(action.uid);
     out.push({ kind: 'send', uid: action.uid }, { kind: 'text', text: `Go, ${species(mon.dex).name}!` });
     if (!forced) {
-      useMove(world, b, 'wild', wildMove(world, b), out);
-      checkFaints(world, b, out);
+      foeTurn(world, b, out);
     }
     return out;
   }
@@ -364,7 +486,7 @@ export function act(world: World, action: BattleAction): BattleEvent[] {
   }
 
   if (action.kind === 'run') {
-    const faster = statsOf(activeMon(world, b)).spe >= statsOf(b.wild).spe;
+    const faster = speedOf(world, b, 'you') >= speedOf(world, b, 'wild');
     b.runs += 1;
     if (faster || nextRandom(world.rng) < 0.25 + 0.25 * b.runs) {
       out.push({ kind: 'text', text: 'Got away safely!' });
@@ -372,8 +494,7 @@ export function act(world: World, action: BattleAction): BattleEvent[] {
       return out;
     }
     out.push({ kind: 'text', text: "Couldn't get away!" });
-    useMove(world, b, 'wild', wildMove(world, b), out);
-    checkFaints(world, b, out);
+    foeTurn(world, b, out);
     return out;
   }
 
@@ -388,11 +509,19 @@ export function act(world: World, action: BattleAction): BattleEvent[] {
       if (throwBall(world, b, action.id, out)) return out;
     } else if (def.kind === 'crop') {
       if (!useItem(world, b, action.id, out)) return out;
+    } else if (def.kind === 'medicine') {
+      // On whoever you pick: the Pokémon out now unless you say otherwise.
+      const uid = action.target ?? b.active;
+      const mon = world.party.includes(uid) ? monByUid(world, uid) : undefined;
+      const line = mon && useMedicine(world, action.id, mon);
+      if (!mon || !line) return out;
+      out.push({ kind: 'text', text: `You used a ${def.name}.` });
+      if (uid === b.active) out.push({ kind: 'hp', side: 'you', hp: mon.hp, max: maxHp(mon) });
+      out.push({ kind: 'text', text: line });
     } else {
       return out;
     }
-    useMove(world, b, 'wild', wildMove(world, b), out);
-    checkFaints(world, b, out);
+    foeTurn(world, b, out);
     return out;
   }
 
@@ -400,9 +529,18 @@ export function act(world: World, action: BattleAction): BattleEvent[] {
   const mine = activeMon(world, b);
   const myMove = mine.moves[action.index];
   if (!myMove) return out;
-  const theirMove = wildMove(world, b);
-  const mySpeed = statsOf(mine).spe;
-  const theirSpeed = statsOf(b.wild).spe;
+  b.turn += 1;
+  const theirs = foeAction(world, b);
+  // A trainer's Potion or switch comes before anyone attacks.
+  if (theirs.kind !== 'move') {
+    foeItemOrSwitch(world, b, theirs, out);
+    useMove(world, b, 'you', myMove, out);
+    checkFaints(world, b, out);
+    return out;
+  }
+  const theirMove = theirs.id;
+  const mySpeed = speedOf(world, b, 'you');
+  const theirSpeed = speedOf(world, b, 'wild');
   const pm = move(myMove).priority ?? 0;
   const pt = move(theirMove).priority ?? 0;
   const meFirst = pm !== pt ? pm > pt : mySpeed !== theirSpeed ? mySpeed > theirSpeed : nextRandom(world.rng) < 0.5;

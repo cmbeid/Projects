@@ -116,6 +116,19 @@ function clearTile(r: Obj, key: string, inventory: Record<string, number>): void
   give(m.output, int(m.count, 1, 1, 2));
 }
 
+/** Today's work so far, for Pokémon you still have. */
+function workLog(raw: unknown, mons: Mon[]): World['workLog'] {
+  const out: World['workLog'] = {};
+  for (const [uid, v] of Object.entries(obj(raw))) {
+    if (!mons.some((m) => String(m.uid) === uid)) continue;
+    const o = obj(v);
+    const jobs: Record<string, number> = {};
+    for (const [k, n] of Object.entries(obj(o.jobs))) if (/^[a-z]+$/.test(k)) jobs[k] = int(n, 0, 0, 9999);
+    out[uid] = { jobs, xp: int(o.xp, 0), levels: arr(o.levels).filter((l): l is string => typeof l === 'string').slice(0, 20) };
+  }
+  return out;
+}
+
 function crops(raw: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(bag(raw)).filter(([id]) => ITEMS.get(id)?.kind === 'crop'));
 }
@@ -269,6 +282,7 @@ export function parseWorld(raw: unknown): World | null {
     nextUid,
     helpers: [],
     plots: plots(r.plots),
+    workLog: workLog(r.workLog, mons),
     field: [],
     seedBox: seeds(r.seedBox),
     seedChoice: typeof r.seedChoice === 'string' && ITEMS.get(r.seedChoice)?.kind === 'seed' ? r.seedChoice : 'auto',
@@ -314,6 +328,9 @@ export function parseWorld(raw: unknown): World | null {
     world.inventory.workbench = (world.inventory.workbench ?? 0) + 1;
   }
   world.story.flags = [...new Set(['visited:farm', ...world.story.flags])];
+  // The Exp. Share came in later as a Chapter 2 reward: farms already past it get theirs now. One only.
+  if (world.story.chapter >= 2) world.inventory['exp-share'] = 1;
+  else delete world.inventory['exp-share'];
   spawnNpcs(world);
   const maxEnergy = maxEnergyFor(world);
   world.player.maxEnergy = maxEnergy;
@@ -342,7 +359,7 @@ function serialize(world: World): unknown {
 
 function withCarried(world: World): Record<string, number> {
   const box = { ...world.seedBox };
-  for (const h of world.helpers) if (h.carrying) box[h.carrying] = (box[h.carrying] ?? 0) + 1;
+  for (const h of world.helpers) for (const seed of h.carrying) box[seed] = (box[seed] ?? 0) + 1;
   return box;
 }
 

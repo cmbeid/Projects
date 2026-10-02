@@ -1,4 +1,5 @@
 /** What's in each sheet: the Poké Mart, the shipping bin, the blacksmith, the bag, bedtime and the morning report. */
+import { bestMedicine, useMedicine } from '../game/medicine';
 import { sfx } from '../audio/index';
 import { CROPS, crop, inSeason } from '../data/crops';
 import { WEATHER_NAMES } from '../game/weather';
@@ -187,9 +188,13 @@ function stat(label: string, value: string): HTMLElement {
 function itemsTab(body: HTMLElement, world: World, changed: Changed): void {
   const p = world.player;
   body.append(h('div.stats', {}, stat('Gold', gold(p.gold)), stat('Energy', `${p.energy}/${p.maxEnergy}`), stat('Can', `${p.water}/${canCapacity(world)}`), stat('Harvested', String(world.stats.harvested))));
-  const owned = Object.entries(world.inventory);
-  if (!owned.length) body.append(empty('Your bag is empty.'));
-  for (const [id, n] of owned) {
+  const all = Object.entries(world.inventory);
+  if (!all.length) body.append(empty('Your bag is empty.'));
+  // Key items last, under their own heading.
+  const owned = all.filter(([id]) => item(id).kind !== 'key');
+  const keys = all.filter(([id]) => item(id).kind === 'key');
+  for (const [id, n] of [...owned, ...keys]) {
+    if (keys.length && id === keys[0]![0]) body.append(h('h3', {}, 'Key items'));
     const def = item(id);
     const action = def.kind === 'seed' || def.kind === 'machine'
       ? button(world.selected === id ? 'In hand' : 'Hold', () => { select(world, id); changed(); }, world.selected === id)
@@ -200,6 +205,7 @@ function itemsTab(body: HTMLElement, world: World, changed: Changed): void {
       : def.kind === 'crop' ? `Ships for ${gold(sellPrice(world, id))}${def.heals ? ' · heals in battle' : ' · offer it to calm wild Pokémon'}`
       : def.kind === 'food' ? `+${def.energy! >= 999 ? 'all' : def.energy} energy${def.buff ? ` · ${BUFF_TEXT[def.buff]}` : ''}`
       : def.kind === 'machine' ? `${def.description} Hold it and tap open grass to place it.`
+      : def.kind === 'medicine' ? `${def.description} Use it in battle, or from the Pokémon tab.`
       : def.kind === 'product' || def.kind === 'artisan' ? `Ships for ${gold(sellPrice(world, id))}${trend(world, id)}. ${def.description ?? ''}`
       : def.description ?? '';
     body.append(row(itemIcon(id), `${def.name} ×${n}`, detail, action));
@@ -209,7 +215,7 @@ function itemsTab(body: HTMLElement, world: World, changed: Changed): void {
 /** Oran or Sitrus, whichever heals this Pokémon without much waste. */
 function berryFor(world: World, mon: Mon): string | null {
   const missing = maxHp(mon) - mon.hp;
-  if (missing <= 0) return null;
+  if (missing <= 0 || mon.hp <= 0) return null;
   const options = ['oran', 'sitrus'].filter((id) => (world.inventory[id] ?? 0) > 0);
   return options.find((id) => id === 'oran' && missing <= 25) ?? options[0] ?? null;
 }
@@ -220,6 +226,7 @@ function monCard(world: World, mon: Mon, changed: Changed): HTMLElement {
   const lo = xpForLevel(mon.level);
   const role = roleOf(world, mon.uid);
   const berry = berryFor(world, mon);
+  const medicine = bestMedicine(world, mon);
   const roleButton = (r: Role, label: string): HTMLButtonElement => {
     const b = button(label, () => {
       const why = setRole(world, mon.uid, r);
@@ -241,6 +248,13 @@ function monCard(world: World, mon: Mon, changed: Changed): HTMLElement {
       if (!takeItem(world, berry, 1)) return;
       mon.hp = Math.min(max, mon.hp + (heal < 1 ? Math.floor(max * heal) : heal));
       sfx.pickup();
+      changed();
+    }) : null,
+    medicine ? button(`${item(medicine).revive ? 'Revive' : 'Use'} ${item(medicine).name}`, () => {
+      const line = useMedicine(world, medicine, mon);
+      if (!line) return;
+      sfx.levelUp();
+      note.textContent = line;
       changed();
     }) : null,
     (world.inventory['rare-candy'] ?? 0) > 0 && mon.level < 100 ? button('Rare Candy', () => {
@@ -360,6 +374,11 @@ export function openSleep(host: HTMLElement, world: World, onSleep: () => void, 
   });
 }
 
+/** How the day report names each job. */
+const JOB_DONE: Record<string, string> = {
+  water: 'Watered', tend: 'Tended', harvest: 'Picked', plant: 'Planted', till: 'Re-tilled', guard: 'Kept watch', power: 'Powered machines',
+};
+
 export function openSummary(host: HTMLElement, world: World, s: DaySummary, onDone: () => void): void {
   openSheet(host, s.passedOut ? 'You passed out…' : `Day ${s.day} done`, (body) => {
     if (s.passedOut) body.append(h('p', {}, `You were found collapsed at 2 AM and carried home. The doctor's bill came to ${gold(s.lost)}.`));
@@ -369,6 +388,15 @@ export function openSummary(host: HTMLElement, world: World, s: DaySummary, onDo
       for (const [id, n] of shipped) body.append(row(itemIcon(id), `${item(id).name} ×${n}`, gold(sellPrice(world, id) * n)));
     }
     body.append(h('div.stats', {}, stat('Earned', gold(s.earned)), stat('Crops grew', String(s.grown)), stat('Now ripe', String(s.ripe))));
+    if (s.helpers.length) {
+      body.append(h('h3', {}, 'Your Pokémon'));
+      for (const { dex, work } of s.helpers) {
+        const did = Object.entries(work.jobs).map(([job, n]) => (job === 'guard' || job === 'power' ? JOB_DONE[job]! : `${JOB_DONE[job] ?? job} ${n}`)).join(' · ');
+        const ups = work.levels.length ? ` ${work.levels.join(' ')}` : '';
+        body.append(h('div.row', {}, loadSprite(dex, 1, 'row-mon'),
+          h('div.row-text', {}, h('div.row-name', {}, species(dex).name), h('div.row-detail', {}, `${did} · +${work.xp} XP${ups}`))));
+      }
+    }
     if (s.upgraded) body.append(h('p.warn.ok', {}, `The blacksmith finished your ${s.upgraded}!`));
     const made = Object.entries(s.produced);
     if (made.length) body.append(h('p.warn.ok', {}, `Your barn Pokémon made ${made.map(([id, n]) => `${n} ${item(id).name}`).join(', ')}. Collect it at the barn.`));

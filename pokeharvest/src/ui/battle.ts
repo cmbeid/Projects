@@ -5,6 +5,7 @@
  * bars draining, lunges, faints, the ball's wobbles — before taking the next
  * command.
  */
+import { medicineBlocker } from '../game/medicine';
 import { cry, loadCries, sfx } from '../audio/index';
 import { playMusic } from '../audio/music';
 import { BATTLE, RIVAL_BATTLE, TRAINER_BATTLE, TRAINER_VICTORY, VICTORY } from '../data/music';
@@ -344,10 +345,36 @@ export function battleScreen(host: HTMLElement, world: World, onDone: () => void
     const ids = battleItems(world).filter((id) => !b.trainer || item(id).kind !== 'ball');
     const rows = ids.map((id) => {
       const def = item(id);
-      const verb = def.kind === 'ball' ? 'Throw' : def.heals ? 'Heal' : 'Offer';
-      return button(h('span.bag-item', {}, itemIcon(id, 'cmd-icon'), h('span', {}, `${def.name} ×${world.inventory[id]}`), h('span.verb', {}, verb)), () => void run({ kind: 'item', id }), 'item');
+      const verb = def.kind === 'ball' ? 'Throw' : def.revive ? 'Revive' : def.heals ? 'Heal' : 'Offer';
+      const use = (): void => {
+        if (def.kind !== 'medicine') return void run({ kind: 'item', id });
+        // Medicine: straight on the one Pokémon it would help, or ask which.
+        const able = partyMons(world).filter((m) => !medicineBlocker(id, m));
+        if (able.length === 1) return void run({ kind: 'item', id, target: able[0]!.uid });
+        if (!able.length) {
+          message.textContent = def.revive ? 'Nobody has fainted.' : 'Nobody needs healing.';
+          return;
+        }
+        showTargets(id);
+      };
+      return button(h('span.bag-item', {}, itemIcon(id, 'cmd-icon'), h('span', {}, `${def.name} ×${world.inventory[id]}`), h('span.verb', {}, verb)), use, 'item');
     });
-    commands.replaceChildren(...(rows.length ? rows : [h('p.cmd-empty', {}, 'Nothing useful in your bag. Buy Poké Balls at the Mart, and berries heal or calm.')]), back());
+    commands.replaceChildren(...(rows.length ? rows : [h('p.cmd-empty', {}, 'Nothing useful in your bag. Buy Poké Balls and Potions at the Mart, and berries heal or calm.')]), back());
+  }
+
+  /** Who gets the medicine: your party, with those it wouldn't help greyed out. */
+  function showTargets(id: string): void {
+    message.textContent = `Use the ${item(id).name} on which Pokémon?`;
+    const rows = partyMons(world).map((mon) => {
+      const max = maxHp(mon);
+      return button(
+        h('span.party-row', {}, h('b', {}, species(mon.dex).name), h('span', {}, `Lv${mon.level}`), h('span.hp-mini', {}, h('span', { style: `width:${(mon.hp / max) * 100}%;background:${hpColour(mon.hp / max)}` })), h('span.hp-text', {}, `${mon.hp}/${max}`)),
+        () => void run({ kind: 'item', id, target: mon.uid }),
+        'party',
+        Boolean(medicineBlocker(id, mon)),
+      );
+    });
+    commands.replaceChildren(...rows, button('Back', showBag, 'back'));
   }
 
   function showParty(forced: boolean): void {

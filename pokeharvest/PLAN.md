@@ -241,3 +241,12 @@ style.css
 - **Crop workers:** each finished job (water, tend, harvest, plant, re-till) gives the Pokémon that did it 4 + level/2 XP. Fetching a seed doesn't count.
 - **Guards and power helpers:** at bedtime they earn 12 jobs' worth, if they didn't faint. Power helpers only earn it when a machine is placed.
 - **Feedback:** level-ups and evolutions float over the Pokémon with their sounds, and an evolved helper changes on the spot.
+
+## Sowing trips, QOL, potions and deeper battles (built)
+- **Sowing:** Ground helpers carry 3–5 seeds a trip by level and plant nearby plots in a chain, resting once.
+- **QOL:** the farm status chip and sheet; the next in-season seed goes into your hand when one runs out; the helpers' day report in the morning summary.
+- **Medicine:** Potion, Super, Hyper and Max Potion, and Revive, in battle (with a target picker) and from the Bag. Sold at the Mart and at the Pokémon Center counter.
+- **Battles:**
+  - stat-boost moves at level 16, with Speed stages
+  - the Exp. Share as a Chapter 2 reward (older saves past it get one)
+  - trainer AI: move scoring, boosts, Potions, and Kai switching
