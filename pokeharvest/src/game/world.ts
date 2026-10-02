@@ -66,6 +66,7 @@ export function createWorld(seed: number, starter: number): World {
     nextUid: 1,
     helpers: [],
     plots: {},
+    workLog: {},
     field: [],
     seedBox: {},
     seedChoice: 'auto',
@@ -291,7 +292,13 @@ function endDay(world: World, passedOut: boolean): DaySummary {
   world.sold = {};
   rollMarket(world);
   const expired = refreshRequests(world);
-  const summary: DaySummary = { day: world.day - 1, shipped, earned, ...night, passedOut, lost, upgraded, produced, hungry, expired, withered, newSeason };
+  // What each Pokémon did today (guards included, paid at bedtime above), then a fresh log for tomorrow.
+  const helpers = Object.entries(world.workLog).flatMap(([uid, work]) => {
+    const mon = world.mons.find((m) => m.uid === Number(uid));
+    return mon ? [{ uid: mon.uid, dex: mon.dex, work }] : [];
+  });
+  world.workLog = {};
+  const summary: DaySummary = { day: world.day - 1, shipped, earned, ...night, passedOut, lost, upgraded, produced, hungry, expired, withered, newSeason, helpers };
   p.x = SPAWN.x;
   p.y = SPAWN.y;
   p.path = [];

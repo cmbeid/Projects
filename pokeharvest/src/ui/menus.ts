@@ -360,6 +360,11 @@ export function openSleep(host: HTMLElement, world: World, onSleep: () => void, 
   });
 }
 
+/** How the day report names each job. */
+const JOB_DONE: Record<string, string> = {
+  water: 'Watered', tend: 'Tended', harvest: 'Picked', plant: 'Planted', till: 'Re-tilled', guard: 'Kept watch', power: 'Powered machines',
+};
+
 export function openSummary(host: HTMLElement, world: World, s: DaySummary, onDone: () => void): void {
   openSheet(host, s.passedOut ? 'You passed out…' : `Day ${s.day} done`, (body) => {
     if (s.passedOut) body.append(h('p', {}, `You were found collapsed at 2 AM and carried home. The doctor's bill came to ${gold(s.lost)}.`));
@@ -369,6 +374,15 @@ export function openSummary(host: HTMLElement, world: World, s: DaySummary, onDo
       for (const [id, n] of shipped) body.append(row(itemIcon(id), `${item(id).name} ×${n}`, gold(sellPrice(world, id) * n)));
     }
     body.append(h('div.stats', {}, stat('Earned', gold(s.earned)), stat('Crops grew', String(s.grown)), stat('Now ripe', String(s.ripe))));
+    if (s.helpers.length) {
+      body.append(h('h3', {}, 'Your Pokémon'));
+      for (const { dex, work } of s.helpers) {
+        const did = Object.entries(work.jobs).map(([job, n]) => (job === 'guard' || job === 'power' ? JOB_DONE[job]! : `${JOB_DONE[job] ?? job} ${n}`)).join(' · ');
+        const ups = work.levels.length ? ` ${work.levels.join(' ')}` : '';
+        body.append(h('div.row', {}, loadSprite(dex, 1, 'row-mon'),
+          h('div.row-text', {}, h('div.row-name', {}, species(dex).name), h('div.row-detail', {}, `${did} · +${work.xp} XP${ups}`))));
+      }
+    }
     if (s.upgraded) body.append(h('p.warn.ok', {}, `The blacksmith finished your ${s.upgraded}!`));
     const made = Object.entries(s.produced);
     if (made.length) body.append(h('p.warn.ok', {}, `Your barn Pokémon made ${made.map(([id, n]) => `${n} ${item(id).name}`).join(', ')}. Collect it at the barn.`));

@@ -6,6 +6,8 @@ import { plotKey } from '../src/game/model';
 import { seedBoxCount, seedFor, stockSeedBox, takeFromSeedBox } from '../src/game/seedbox';
 import { select } from '../src/game/world';
 import { loadWorld, parseWorld, saveWorld } from '../src/state/save';
+import { JOB_INTERVAL, seedsPerTrip, syncHelpers } from '../src/game/helpers';
+import { tick, warpTo } from '../src/game/world';
 import { run, stand, world } from './helpers';
 
 const DIGLETT = 50;
@@ -70,7 +72,7 @@ describe('Ground helpers', () => {
     run(w, HOURS * 3);
     for (const x of [5, 6, 7]) expect(w.plots[plotKey(x, 13)]!.crop, `x=${x}`).toMatchObject({ id: 'cheri', growth: 0 });
     expect(w.seedBox).toEqual({ [seedId('oran')]: 2, [seedId('cheri')]: 2 });
-    expect(w.events.some((e) => e.kind === 'helper' && e.text?.startsWith('Took a'))).toBe(true);
+    expect(w.events.some((e) => e.kind === 'helper' && e.text === 'Took 3 seeds')).toBe(true);
   });
 
   it('plant nothing from an empty box, and leave your bag alone', () => {
@@ -115,10 +117,10 @@ describe('Ground helpers', () => {
     const w = sowField();
     w.seedBox = { [seedId('cheri')]: 1 };
     // Let it pick up the seed, then plant its plot ourselves.
-    for (let i = 0; i < 2000 && !w.helpers[0]!.carrying; i += 1) run(w, 1 / 30);
+    for (let i = 0; i < 2000 && !w.helpers[0]!.carrying.length; i += 1) run(w, 1 / 30);
     const h = w.helpers[0]!;
-    expect(h.carrying).toBe(seedId('cheri'));
-    w.plots[plotKey(h.errand!.x, h.errand!.y)]!.crop = { id: 'oran', growth: 0, harvests: 0, tended: false };
+    expect(h.carrying).toEqual([seedId('cheri')]);
+    w.plots[plotKey(h.errands[0]!.x, h.errands[0]!.y)]!.crop = { id: 'oran', growth: 0, harvests: 0, tended: false };
     for (let i = 0; i < 2000 && h.target; i += 1) run(w, 1 / 30);
     expect(w.seedBox[seedId('cheri')]).toBeGreaterThanOrEqual(1);
   });
@@ -136,11 +138,11 @@ describe('seed box saves', () => {
     const w = sowField();
     w.seedBox = { [seedId('cheri')]: 3 };
     w.seedChoice = seedId('cheri');
-    w.helpers[0]!.carrying = seedId('oran');
+    w.helpers[0]!.carrying = [seedId('oran'), seedId('oran')];
     const store = memory();
     saveWorld(w, store);
     const back = loadWorld(store)!;
-    expect(back.seedBox).toEqual({ [seedId('cheri')]: 3, [seedId('oran')]: 1 });
+    expect(back.seedBox).toEqual({ [seedId('cheri')]: 3, [seedId('oran')]: 2 });
     expect(back.seedChoice).toBe(seedId('cheri'));
     expect([...back.field].sort()).toEqual(['5,13', '6,13', '7,13']);
   });
@@ -162,5 +164,66 @@ describe('seed box saves', () => {
     expect(back.machines['12,4']).toBeUndefined();
     expect(back.inventory[seedId('pecha')]).toBe(1);
     expect(back.inventory.furnace).toBe(1);
+  });
+});
+
+describe('sowing trips', () => {
+  it('carry more seeds as they level', () => {
+    expect([1, 19, 20, 34, 35, 100].map(seedsPerTrip)).toEqual([3, 3, 4, 4, 5, 5]);
+  });
+
+  it('plant a trip\'s worth from one visit to the box, then rest once', () => {
+    const w = sowField();
+    useAt(w, 8, 13); // a fourth plot: more than a level-5 Diglett carries
+    w.seedBox = { [seedId('cheri')]: 10 };
+    const h = w.helpers[0]!;
+    let visits = 0;
+    let rests = 0;
+    let wasCarrying = false;
+    let wasResting = false;
+    for (let i = 0; i < 30 * HOURS * 0.9; i += 1) {
+      tick(w, 1 / 30);
+      if (h.carrying.length && !wasCarrying) visits += 1;
+      wasCarrying = h.carrying.length > 0;
+      const resting = !h.target && h.rest === JOB_INTERVAL;
+      if (resting && !wasResting) rests += 1;
+      wasResting = resting;
+    }
+    expect(visits).toBe(1);
+    expect(rests).toBe(1);
+    expect([5, 6, 7, 8].filter((x) => w.plots[plotKey(x, 13)]!.crop)).toHaveLength(3);
+    expect(w.seedBox[seedId('cheri')]).toBe(7);
+  });
+
+  it('take no more than the box holds', () => {
+    const w = sowField();
+    w.seedBox = { [seedId('cheri')]: 2 };
+    run(w, HOURS * 0.9);
+    expect([5, 6, 7].filter((x) => w.plots[plotKey(x, 13)]!.crop)).toHaveLength(2);
+    expect(w.seedBox).toEqual({});
+  });
+
+  it('two sowers split the plots between them', () => {
+    const w = sowField();
+    for (const x of [8, 9, 10]) useAt(w, x, 13);
+    const uid = w.nextUid++;
+    w.mons.push({ ...w.mons[0]!, uid });
+    w.party.push(uid);
+    syncHelpers(w);
+    w.seedBox = { [seedId('cheri')]: 10 };
+    for (let i = 0; i < 2000 && w.helpers.some((h) => !h.errands.length); i += 1) tick(w, 1 / 30);
+    const [a, b] = w.helpers.map((h) => h.errands.map((p) => plotKey(p.x, p.y)));
+    expect(a!.length + b!.length).toBe(6);
+    expect(a!.filter((k) => b!.includes(k))).toEqual([]);
+  });
+
+  it('give every carried seed back when called away', () => {
+    const w = sowField();
+    w.seedBox = { [seedId('cheri')]: 5 };
+    for (let i = 0; i < 2000 && !w.helpers[0]!.carrying.length; i += 1) tick(w, 1 / 30);
+    expect(w.helpers[0]!.carrying).toHaveLength(3);
+    warpTo(w, 'route1', 11, 1);
+    expect(w.helpers[0]!.carrying).toEqual([]);
+    expect(w.seedBox[seedId('cheri')]).toBe(5);
   });
 });

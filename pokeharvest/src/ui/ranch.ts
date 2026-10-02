@@ -10,6 +10,7 @@ import { isDone, loadBlocker, loadCost, loadMachine, machineSpeed, outputFor, pi
 import { MACHINES } from '../data/crafting';
 import { buyFromMerchant, merchantHere, merchantStock } from '../game/market';
 import { farmMons, partyMons, plotKey, type World } from '../game/model';
+import { farmStatus } from '../game/status';
 import { seedBoxCount, stockSeedBox, takeFromSeedBox } from '../game/seedbox';
 import { inSeason } from '../data/crops';
 import { seasonOf } from '../game/time';
@@ -122,6 +123,15 @@ export function openBarn(host: HTMLElement, world: World, changed: Changed): voi
         button('Repair', () => done(repairGreenhouse(world), sfx.powerup), Boolean(blocker), 'primary')));
       if (blocker) body.append(h('p.note', {}, blocker));
     }
+  });
+}
+
+/** Everything on the farm that needs you, in full: opened from the status chip. */
+export function openStatus(host: HTMLElement, world: World): void {
+  openSheet(host, 'Farm status', (body) => {
+    const entries = farmStatus(world);
+    if (!entries.length) body.append(h('p.empty', {}, 'All quiet on the farm. Nothing needs you right now.'));
+    for (const e of entries) body.append(h('div.row', {}, h('span.status-icon', {}, e.icon), h('div.row-text', {}, h('div.row-detail', {}, e.detail))));
   });
 }
 

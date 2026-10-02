@@ -109,6 +109,21 @@ export function retillable(world: World, x: number, y: number): boolean {
   return world.field.includes(plotKey(x, y)) && soilAt(world, x, y) && !world.plots[plotKey(x, y)] && !world.machines[plotKey(x, y)];
 }
 
+/**
+ * The seed to hold next: the in-season one you have most of (any seed at all
+ * under glass), or the hoe if none would grow.
+ */
+export function nextSeed(world: World, glass = false): string {
+  const season = seasonOf(world.day);
+  let best = 'hoe';
+  for (const [id, n] of Object.entries(world.inventory).sort(([a], [b]) => a.localeCompare(b))) {
+    const def = ITEMS.get(id);
+    if (def?.kind !== 'seed' || n <= 0 || (!glass && !inSeason(def.crop!, season))) continue;
+    if (best === 'hoe' || n > (world.inventory[best] ?? 0)) best = id;
+  }
+  return best;
+}
+
 /** Under glass, where seasons don't matter. */
 export function underGlass(x: number, y: number): boolean {
   return tileAt('farm', x, y) === 'ghsoil';
@@ -305,6 +320,8 @@ export function useAt(world: World, x: number, y: number): boolean {
       const seed = item(world.selected);
       plantAt(world, seed.crop!, x, y);
       takeItem(world, seed.id, 1);
+      // Out of that seed: on to the next one that would grow here, rather than back to the hoe.
+      if (world.selected === 'hoe') world.selected = nextSeed(world, underGlass(x, y));
       addSkillXp(world, 'farming', 1);
       return true;
     }

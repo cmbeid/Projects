@@ -52,11 +52,16 @@ export function returnSeed(world: World, id: string, n = 1): void {
  * would. Null if nothing in the box fits.
  */
 export function seedFor(world: World, x: number, y: number): string | null {
-  const grows = (id: string): boolean => (world.seedBox[id] ?? 0) > 0 && plantableAt(world, ITEMS.get(id)!.crop!, x, y);
+  return seedFrom(world, world.seedBox, x, y);
+}
+
+/** As `seedFor`, from a given stock of seeds: lets a helper plan a trip's worth before taking any. */
+export function seedFrom(world: World, box: Record<string, number>, x: number, y: number): string | null {
+  const grows = (id: string): boolean => (box[id] ?? 0) > 0 && plantableAt(world, ITEMS.get(id)!.crop!, x, y);
   if (world.seedChoice !== 'auto') return grows(world.seedChoice) ? world.seedChoice : null;
   let best: string | null = null;
-  for (const id of Object.keys(world.seedBox).sort()) {
-    if (grows(id) && (!best || world.seedBox[id]! > world.seedBox[best]!)) best = id;
+  for (const id of Object.keys(box).sort()) {
+    if (grows(id) && (!best || box[id]! > box[best]!)) best = id;
   }
   return best;
 }

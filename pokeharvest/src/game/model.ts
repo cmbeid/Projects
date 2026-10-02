@@ -74,10 +74,19 @@ export interface Helper extends Walker {
   rest: number;
   /** The plot it is walking to work on. */
   target: Point | null;
-  /** A Ground helper's planting trip: the plot it fetched (or is fetching) a seed for. */
-  errand: Point | null;
-  /** The seed it took from the Seed Box, on its way to plant it. */
-  carrying: string | null;
+  /** A Ground helper's planting trip: the plots it fetched (or is fetching) seeds for, in order. */
+  errands: Point[];
+  /** The seeds it took from the Seed Box, one for each plot still to plant. */
+  carrying: string[];
+}
+
+/** What one Pokémon did on the farm in a day. */
+export interface WorkDay {
+  /** Jobs done, by kind: water, tend, harvest, plant, till, guard, power. */
+  jobs: Record<string, number>;
+  xp: number;
+  /** Level-ups and evolutions, as lines to show. */
+  levels: string[];
 }
 
 export interface DaySummary {
@@ -102,6 +111,8 @@ export interface DaySummary {
   withered: number;
   /** A new season started this morning. */
   newSeason: boolean;
+  /** What each Pokémon did on the farm, by uid. */
+  helpers: { uid: number; dex: number; work: WorkDay }[];
 }
 
 /** A placed machine. */
@@ -192,6 +203,8 @@ export interface World {
   helpers: Helper[];
   /** Keyed "x,y", on the farm. */
   plots: Record<string, Plot>;
+  /** What each Pokémon has done on the farm today, by uid; it goes into the morning summary. */
+  workLog: Record<string, WorkDay>;
   /** Every tile you've tilled ("x,y"): your fields, which Ground helpers keep tilled and planted. */
   field: string[];
   /** Seeds in the Seed Box by the house, which Ground helpers plant from. */
