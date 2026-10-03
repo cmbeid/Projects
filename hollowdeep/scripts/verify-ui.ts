@@ -23,6 +23,8 @@ const OUT = 'screenshots';
 
 const VIEWPORTS = [
   { name: 'phone', width: 390, height: 844 },
+  // A phone with the browser's own bars showing leaves the scene short.
+  { name: 'short', width: 360, height: 600 },
   { name: 'tablet', width: 1024, height: 768 },
   { name: 'wide', width: 1440, height: 900 },
 ];
@@ -51,7 +53,7 @@ async function main(): Promise<void> {
 
   for (const vp of VIEWPORTS) {
     for (const [label, save] of Object.entries(saves)) {
-      if (label !== 'mid' && vp.name === 'tablet') continue;
+      if (label !== 'mid' && (vp.name === 'tablet' || vp.name === 'short')) continue;
       const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 2, hasTouch: vp.name === 'phone' });
       if (save) await ctx.addInitScript(([k, v]) => localStorage.setItem(k!, v!), [STORAGE_KEY, save]);
       const page = await ctx.newPage();
