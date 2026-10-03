@@ -30,6 +30,18 @@ import {
   renderUpgrades, tabVisible, type Tab, type UiState,
 } from './panels';
 
+type FsDocument = Document & {
+  webkitFullscreenEnabled?: boolean;
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void>;
+};
+type FsElement = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+
+function fullscreenElement(): Element | null {
+  const d = document as FsDocument;
+  return d.fullscreenElement ?? d.webkitFullscreenElement ?? null;
+}
+
 const STEP = 0.05;
 const SAVE_EVERY = 15_000;
 
@@ -79,6 +91,7 @@ export class App {
           <div class="res level"><span class="lv" id="lv">Lv 1</span><div class="bar xp"><div id="xpbar"></div></div></div>
           <div class="res stamina">${iconHtml('icon-stamina', 2)}<div class="bar st"><div id="stbar"></div></div></div>
           <div class="res echoes" id="echoes" hidden>${iconHtml('icon-echo', 2)}<span id="echo-n">0</span></div>
+          <button class="iconbtn" id="fs" data-act="fullscreen" aria-label="Full screen" hidden>${iconHtml('icon-fullscreen', 2)}</button>
           <button class="iconbtn" data-act="settings" aria-label="Settings">${iconHtml('icon-cog', 2)}</button>
         </header>
         <div class="stage">
@@ -122,6 +135,7 @@ export class App {
       } else if (e.key === '1') this.act('skill:power');
       else if (e.key === '2') this.act('skill:dowse');
       else if (e.key === '3') this.act('skill:frenzy');
+      else if (e.key === 'f' || e.key === 'F') this.act('fullscreen');
     });
     const onResize = (): void => {
       this.ui.wide = window.matchMedia('(min-width: 1300px)').matches;
@@ -130,6 +144,7 @@ export class App {
       this.renderPanels(true);
     };
     window.addEventListener('resize', onResize);
+    this.setupFullscreen(onResize);
     onResize();
     document.addEventListener('visibilitychange', () => {
       suspend(document.hidden);
@@ -137,6 +152,39 @@ export class App {
       else this.catchUp();
     });
     window.addEventListener('pagehide', () => this.save());
+  }
+
+  /**
+   * Shows the full-screen button only where it can work: not where the API is
+   * missing (iPhone Safari), and not in the installed app, which already is.
+   */
+  private setupFullscreen(onResize: () => void): void {
+    const d = document as FsDocument;
+    const supported = !!(d.fullscreenEnabled ?? d.webkitFullscreenEnabled);
+    const installed = window.matchMedia('(display-mode: standalone)').matches;
+    const button = this.root.querySelector<HTMLButtonElement>('#fs')!;
+    button.hidden = !supported || installed;
+    const sync = (): void => {
+      const on = !!fullscreenElement();
+      button.innerHTML = iconHtml(on ? 'icon-exitfs' : 'icon-fullscreen', 2);
+      button.setAttribute('aria-label', on ? 'Leave full screen' : 'Full screen');
+      onResize();
+    };
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+  }
+
+  private toggleFullscreen(): void {
+    const d = document as FsDocument;
+    if (fullscreenElement()) {
+      void (d.exitFullscreen?.() ?? d.webkitExitFullscreen?.())?.catch(() => undefined);
+      return;
+    }
+    const el = document.documentElement as FsElement;
+    const request = el.requestFullscreen?.({ navigationUI: 'hide' }) ?? el.webkitRequestFullscreen?.();
+    void request
+      ?.then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('portrait'))
+      .catch(() => undefined);
   }
 
   private placeFlyTarget(): void {
@@ -352,6 +400,9 @@ export class App {
       case 'settings':
         this.showSettings();
         return;
+      case 'fullscreen':
+        this.toggleFullscreen();
+        return;
       case 'close':
         this.closeModal();
         return;
@@ -474,7 +525,7 @@ export class App {
       <p class="muted small">Saved in this browser every few seconds. Copy the code to move it to another device.</p>
       <textarea id="save-code" rows="3" spellcheck="false"></textarea>
       <div class="row gap wrap"><button class="btn small" id="export">Export</button><button class="btn small" id="import">Import</button><button class="btn small danger" id="wipe">Erase save</button></div>
-      <p class="muted tiny">Hollowdeep · pixel art and sound made in code · Space taps, 1–3 use skills.</p>
+      <p class="muted tiny">Hollowdeep · pixel art and sound made in code · Space taps, 1–3 use skills, F toggles full screen.</p>
       <div class="row end"><button class="btn primary" data-act="close">Done</button></div>`);
     const music = m.querySelector<HTMLInputElement>('#vol-music')!;
     const sfx = m.querySelector<HTMLInputElement>('#vol-sfx')!;

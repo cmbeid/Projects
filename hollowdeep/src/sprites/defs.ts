@@ -818,6 +818,44 @@ const SCROLL = [
   '................',
 ];
 
+const FULLSCREEN = [
+  '................',
+  '.oooooo..oooooo.',
+  '.oMMMMo..oMMMMo.',
+  '.oMnooo..oooMno.',
+  '.oMo........oMo.',
+  '.oMo........oMo.',
+  '.ooo........ooo.',
+  '................',
+  '................',
+  '.ooo........ooo.',
+  '.oMo........oMo.',
+  '.oMo........oMo.',
+  '.oMnooo..oooMno.',
+  '.oMMMMo..oMMMMo.',
+  '.oooooo..oooooo.',
+  '................',
+];
+
+const EXIT_FULLSCREEN = [
+  '................',
+  '....ooo..ooo....',
+  '....oMo..oMo....',
+  '....oMo..oMo....',
+  '.ooooMo..oMoooo.',
+  '.oMMMno..onMMMo.',
+  '.oooooo..oooooo.',
+  '................',
+  '................',
+  '.oooooo..oooooo.',
+  '.oMMMno..onMMMo.',
+  '.ooooMo..oMoooo.',
+  '....oMo..oMo....',
+  '....oMo..oMo....',
+  '....ooo..ooo....',
+  '................',
+];
+
 const COG = [
   '................',
   '.......oo.......',
@@ -1033,6 +1071,8 @@ export function buildSprites(): SpriteDef[] {
   out.push(make('icon-anvil', ANVIL));
   out.push(make('icon-scroll', SCROLL));
   out.push(make('icon-cog', fixPalette(COG)));
+  out.push(make('icon-fullscreen', FULLSCREEN));
+  out.push(make('icon-exitfs', EXIT_FULLSCREEN));
   out.push(make('icon-cart', CART, shades(['#7a3416', '#c8622a', '#f2a65a'])));
   out.push(make('icon-bellows', BELLOWS));
   out.push(make('icon-glove', GLOVE));

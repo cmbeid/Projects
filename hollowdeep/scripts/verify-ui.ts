@@ -78,6 +78,14 @@ async function main(): Promise<void> {
       }
 
       if (vp.name === 'phone' && label === 'mid') {
+        await page.locator('#fs').click();
+        await page.waitForTimeout(300);
+        const fsOn = await page.evaluate(() => !!document.fullscreenElement);
+        await shoot(page, `${vp.name}-fullscreen`);
+        await page.locator('#fs').click();
+        await page.waitForTimeout(300);
+        const fsOff = await page.evaluate(() => !document.fullscreenElement);
+        if (!fsOn || !fsOff) errors.push(`fullscreen toggle failed (on ${fsOn}, off ${fsOff})`);
         await page.locator('[data-act="settings"]').click();
         await shoot(page, `${vp.name}-settings`);
         await page.locator('.modal [data-act="close"]').last().click();
