@@ -27,6 +27,10 @@ npm run build        # typecheck + production build into dist/
 npm run preview      # serve the build at http://localhost:4173/
 ```
 
+## Controls
+
+Tap the rock to swing. On a desktop, Space swings and 1–3 use the skills. The button at the top right (or F) switches to full screen wherever the browser supports it. iPhone Safari does not, but adding the game to the home screen does the same job.
+
 ## Art and sound: all made in code
 
 There are no image or audio files to fetch.
