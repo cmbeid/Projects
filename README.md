@@ -12,6 +12,7 @@ nothing at the root to install.
 | [`pokefling/`](pokefling/) | An Angry Birds–style slingshot physics game for the phone, themed on Pokémon. Sixty levels in ten Kanto and Johto locations, items, and Pokémon Crystal's music played by a Game Boy–style synth. |
 | [`pokedefense/`](pokedefense/) | A Pokémon tower defense game, portrait-first for the phone. Nine regions, Kanto to Paldea, and three side regions — the Orange Islands, Hisui and Kitakami: 108 maps with Gym Leaders and twelve Leagues, twelve endless maps, 178 evolving tower lines (legends included), catching, weather, Mega Evolution, Z-Moves, Dynamax and Terastallizing, a Battle Frontier, items, and music from the games. |
 | [`pokeharvest/`](pokeharvest/) | A Pokémon farming game, portrait-first for the phone. Till, plant, water and harvest berries on a walkable farm with a day/night clock, and sell through the shipping bin or the Poké Mart. Pokémon work the farm by type. Befriend more in turn-based battles on Route 1, level them up and evolve them, upgrade your tools at the blacksmith, and pick perks as your skills grow. Send Pokémon to live in the barn and work while you're away, raise livestock, craft machines, cook, fill town requests and play a market that changes daily. Four seasons of berries, weather, a greenhouse, a Pokédex with rewards and Pokémon Crystal's music. A five-chapter story to revive Cobblevale Town, two more routes (a forest and a cave), roaming trainers, a Pokémon Center, crafting stations (Workbench, Furnace, Apricorn Workshop), 94 Pokémon and an on-screen d-pad. |
+| [`hollowdeep/`](hollowdeep/) | An incremental mining game, portrait-first for the phone. Dig through five biomes to depth 200. The miner levels up and has stats, skills and a passive tree; there are machines that mine offline, furnaces and a workbench with 23 pieces of gear, a 42-mission story, daily contracts and a prestige layer. The pixel art, sound effects and generative ambient score are all made in code. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
 ## Working on one
@@ -40,7 +41,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 | `storied/` | http://s3.cmbeid.com/storied/index.html |
 
-`simtowerweb/`, `pokefling/`, `pokedefense/` and `pokeharvest/` have no S3 workflow — they publish to Pages only.
+`simtowerweb/`, `pokefling/`, `pokedefense/`, `pokeharvest/` and `hollowdeep/` have no S3 workflow — they publish to Pages only.
 
 ### GitHub Pages
 
@@ -57,6 +58,7 @@ them to publish.
 | `pokefling/` | https://cmbeid.github.io/Projects/pokefling/ |
 | `pokedefense/` | https://cmbeid.github.io/Projects/pokedefense/ |
 | `pokeharvest/` | https://cmbeid.github.io/Projects/pokeharvest/ |
+| `hollowdeep/` | https://cmbeid.github.io/Projects/hollowdeep/ |
 
 Pages serves from a subdirectory, so a project published there has to resolve
 its own assets relatively — `base: './'` in the Vite config, and no

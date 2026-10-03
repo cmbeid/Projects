@@ -21,6 +21,7 @@ on:
        - 'pokefling/**'
        - 'pokedefense/**'
        - 'pokeharvest/**'
+       - 'hollowdeep/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -57,6 +58,7 @@ jobs:
             pokefling/package-lock.json
             pokedefense/package-lock.json
             pokeharvest/package-lock.json
+            hollowdeep/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -184,6 +186,25 @@ jobs:
         run: npm run build
         working-directory: pokeharvest
 
+      - name: Install (hollowdeep)
+        run: npm ci
+        working-directory: hollowdeep
+
+      - name: Validate content (hollowdeep)
+        run: npm run validate
+        working-directory: hollowdeep
+
+      # Includes a bot playing six hours that has to reach the Crystal
+      # Hollows and Descend once: a balance change that walls the early game
+      # fails here.
+      - name: Test (hollowdeep)
+        run: npm test
+        working-directory: hollowdeep
+
+      - name: Build (hollowdeep)
+        run: npm run build
+        working-directory: hollowdeep
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -213,6 +234,9 @@ jobs:
 
           mkdir -p _site/pokeharvest
           cp -r pokeharvest/dist/. _site/pokeharvest/
+
+          mkdir -p _site/hollowdeep
+          cp -r hollowdeep/dist/. _site/hollowdeep/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -300,6 +324,13 @@ jobs:
                     <span>
                       <span class="name">PokéHarvest</span>
                       <span class="desc">A Pokémon farming game for the phone: till, plant, water and ship berries while your starter Pokémon lends a hand. Early build: the core farming loop.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./hollowdeep/">
+                    <span class="emoji" aria-hidden="true">⛏️</span>
+                    <span>
+                      <span class="name">Hollowdeep</span>
+                      <span class="desc">An incremental mining game: dig through five eerie biomes, level your miner, craft gear, and listen to the dark.</span>
                     </span>
                   </a>
                 </div>
