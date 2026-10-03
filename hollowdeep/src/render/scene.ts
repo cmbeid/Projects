@@ -59,6 +59,10 @@ const FONT = '"Silkscreen", "Pixelify Sans", ui-monospace, monospace';
  * listens to game events, and never changes either.
  */
 export class Scene {
+  /** Height kept clear for the objective and depth chips. */
+  static readonly TOP_RESERVE = 50;
+  /** Height kept clear for the skill buttons along the bottom. */
+  static readonly BOTTOM_RESERVE = 68;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly fog = document.createElement('canvas');
   private readonly strata = document.createElement('canvas');
@@ -100,9 +104,16 @@ export class Scene {
     this.canvas.height = Math.round(this.h * this.dpr);
     this.fog.width = this.canvas.width;
     this.fog.height = this.canvas.height;
-    this.S = Math.max(3, Math.floor(Math.min(this.w * 0.4, this.h * 0.5) / 16));
+    // The HTML overlays own a strip at the top (objective, depth) and at the
+    // bottom (skill buttons). The rock, its HP bar and its label must fit
+    // between them, or on a short phone the skills sit on top of the label.
+    const top = Scene.TOP_RESERVE;
+    const free = Math.max(80, this.h - top - Scene.BOTTOM_RESERVE);
+    // The face is 16 pixels; the bar and label under it take about S + 34 more.
+    this.S = Math.max(2, Math.floor(Math.min((this.w * 0.4) / 16, (free - 34) / 17)));
+    const stack = 17 * this.S + 34;
     this.bx = Math.round(this.w * 0.56);
-    this.by = Math.round(this.h * 0.5);
+    this.by = Math.round(top + Math.max(0, (free - stack) / 2) + 8 * this.S);
     this.strataBiome = '';
   }
 
