@@ -1,5 +1,5 @@
 import { biomeAt } from '../data/biomes';
-import { STORY } from '../data/missions';
+import { STORY, STORY_BY_ID } from '../data/missions';
 import { MATERIAL } from '../data/materials';
 import { SKILLS } from '../data/progression';
 import type { Goal, Mission, Reward } from '../data/types';
@@ -20,6 +20,7 @@ function isDelta(goal: Goal): boolean {
     case 'refine':
     case 'skill':
     case 'stats':
+    case 'farm':
       return true;
     case 'craft':
       return goal.recipe === undefined;
@@ -46,14 +47,23 @@ export function goalValue(s: GameState, goal: Goal): number {
     case 'stats': return c.statsSpent;
     case 'fixture': return s.fixtures.includes(goal.id) ? 1 : 0;
     case 'descend': return c.descents;
+    case 'farm': return c.farmed;
+    case 'echoes': return s.echoesEarned;
+    case 'bargain': return s.bargains.length;
+    // Latched in `tick` when the player stands there; see `progress`.
+    case 'visit': return 0;
   }
 }
 
 export function goalNeed(goal: Goal): number {
-  return goal.kind === 'fixture' ? 1 : goal.n;
+  return goal.kind === 'fixture' || goal.kind === 'visit' ? 1 : goal.n;
 }
 
 export function progress(s: GameState, goal: Goal, base: number): { have: number; need: number; done: boolean } {
+  if (goal.kind === 'visit') {
+    const have = base >= 1 || s.depth === goal.depth ? 1 : 0;
+    return { have, need: 1, done: have === 1 };
+  }
   const value = goalValue(s, goal);
   const have = isDelta(goal) ? value - base : value;
   const need = goalNeed(goal);
@@ -81,11 +91,22 @@ export function describeGoal(goal: Goal): string {
     case 'stats': return `Spend ${goal.n} stat points`;
     case 'fixture': return `Build: ${goal.id}`;
     case 'descend': return `Descend ${goal.n}×`;
+    case 'visit': return goal.depth === 1 ? 'Go back up to depth 1' : `Go to depth ${goal.depth}`;
+    case 'farm': return `Break ${n(goal.n)} blocks with the seam held buried`;
+    case 'echoes': return `Earn ${n(goal.n)} Echoes in all`;
+    case 'bargain': return goal.n === 1 ? 'Strike a bargain' : `Strike ${goal.n} bargains`;
   }
 }
 
 export function activeStory(s: GameState): Mission | null {
-  return STORY[s.story.index] ?? null;
+  return s.story.id ? (STORY_BY_ID.get(s.story.id) ?? null) : null;
+}
+
+/** Position of the active mission in the story; `STORY.length` once it is over. */
+export function storyIndex(s: GameState): number {
+  if (!s.story.id) return STORY.length;
+  const i = STORY.findIndex((m) => m.id === s.story.id);
+  return i < 0 ? STORY.length : i;
 }
 
 function grant(s: GameState, reward: Reward & { echoes?: number }): void {
@@ -96,6 +117,7 @@ function grant(s: GameState, reward: Reward & { echoes?: number }): void {
   for (const f of reward.unlock ?? []) unlockFeature(s, f);
   for (const it of reward.items ?? []) gain(s, it.id, it.n);
   for (const c of reward.consumables ?? []) s.consumables[c.id] = (s.consumables[c.id] ?? 0) + c.n;
+  if (reward.flag && !s.flags.includes(reward.flag)) s.flags.push(reward.flag);
   if (reward.echoes) {
     s.echoes += reward.echoes;
     s.echoesEarned += reward.echoes;
@@ -107,13 +129,29 @@ export function startStory(s: GameState): void {
   s.story.base = m ? goalBase(s, m.goal) : 0;
 }
 
-export function claimStory(s: GameState): boolean {
+/** The scene a mission plays on being claimed, given the flags held then. */
+export function sceneFor(s: GameState, m: Mission): readonly string[] | null {
+  for (const v of m.sceneIf ?? []) if (s.flags.includes(v.flag)) return v.scene;
+  return m.scene ?? null;
+}
+
+/**
+ * Claims the active mission. One with a choice needs `option`, the index of
+ * the option taken; its flag is set and its scene plays.
+ */
+export function claimStory(s: GameState, option?: number): boolean {
   const m = activeStory(s);
   if (!m || !progress(s, m.goal, s.story.base).done) return false;
+  const picked = m.choice ? m.choice.options[option ?? -1] : undefined;
+  if (m.choice && !picked) return false;
   grant(s, m.reward);
-  s.story.index += 1;
+  if (picked && !s.flags.includes(picked.flag)) s.flags.push(picked.flag);
+  const scene = picked ? picked.scene : sceneFor(s, m);
+  const next = STORY[storyIndex(s) + 1];
+  s.story.id = next ? next.id : null;
   startStory(s);
   emit({ type: 'claim', title: m.title });
+  if (scene) emit({ type: 'scene', title: m.title, paragraphs: scene });
   return true;
 }
 

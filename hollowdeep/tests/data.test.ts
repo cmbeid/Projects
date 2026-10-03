@@ -12,10 +12,10 @@ describe('content', () => {
   });
 
   it('has the promised breadth', () => {
-    expect(BIOMES).toHaveLength(5);
+    expect(BIOMES).toHaveLength(7);
     expect(MATERIALS.filter((m) => m.kind === 'ore' || m.kind === 'gem').length).toBeGreaterThanOrEqual(25);
     expect(CRAFT.length + REFINE.length).toBeGreaterThanOrEqual(40);
-    expect(STORY.length).toBeGreaterThanOrEqual(40);
+    expect(STORY.length).toBeGreaterThanOrEqual(75);
     expect(GEAR.length).toBeGreaterThan(20);
   });
 });

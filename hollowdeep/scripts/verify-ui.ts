@@ -102,6 +102,37 @@ async function main(): Promise<void> {
       await ctx.close();
     }
   }
+  // A save deep in the expansion: a scene to claim, bargains open, the world changed.
+  {
+    const st = newGame(13);
+    runBot(st, 60 * 60);
+    st.depth = st.maxDepth = st.deepestEver = 265;
+    st.features.push('bargains');
+    st.flags.push('other-miner', 'lamp-ahead', 'synced');
+    st.story = { id: 'below', base: 0 };
+    st.savedAt = Date.now();
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
+    await ctx.addInitScript(([k, v]) => localStorage.setItem(k!, v!), [STORAGE_KEY, serialize(st)]);
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(`story: ${e.message}`));
+    await page.goto(URL);
+    await page.waitForSelector('#scene');
+    const close = page.locator('.modal [data-act="close"]').first();
+    if (await close.isVisible().catch(() => false)) await close.click();
+    await page.waitForTimeout(4200);
+    await shoot(page, 'story-waking');
+    await page.locator('#tabs [data-act="tab:missions"]').click();
+    await page.locator('[data-act="claim"]').click();
+    await page.waitForTimeout(6000);
+    if (!(await page.locator('.story-scene').isVisible())) errors.push('story: claiming did not play its scene');
+    await shoot(page, 'story-scene');
+    await page.locator('#scene-next').click();
+    await page.locator('#tabs [data-act="tab:miner"]').click();
+    await page.locator('[data-key="bargains"]').scrollIntoViewIfNeeded();
+    await shoot(page, 'story-bargains');
+    await ctx.close();
+  }
+
   await browser.close();
   if (errors.length) {
     console.error(errors.join('\n'));

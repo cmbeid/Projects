@@ -1,3 +1,4 @@
+import { storyIndex } from '../src/game/missions';
 import { describe, expect, it } from 'vitest';
 import { runBot } from '../src/game/bot';
 import { newGame } from '../src/game/engine';
@@ -13,7 +14,7 @@ describe('a six-hour playthrough', () => {
     const s = newGame(1);
     runBot(s, 6 * 3600);
     expect(s.deepestEver).toBeGreaterThanOrEqual(51);
-    expect(s.story.index).toBeGreaterThanOrEqual(15);
+    expect(storyIndex(s)).toBeGreaterThanOrEqual(15);
     expect(s.counters.crafted).toBeGreaterThan(0);
     expect(s.gear.length).toBeGreaterThan(3);
     expect(s.counters.descents).toBeGreaterThanOrEqual(1);

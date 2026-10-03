@@ -5,8 +5,8 @@
  * without running the game.
  */
 
-export type BiomeId = 'topsoil' | 'fungal' | 'crystal' | 'magma' | 'hollow';
-export type HazardKind = 'none' | 'spore' | 'brittle' | 'heat' | 'dark';
+export type BiomeId = 'topsoil' | 'fungal' | 'crystal' | 'magma' | 'hollow' | 'roots' | 'waking';
+export type HazardKind = 'none' | 'spore' | 'brittle' | 'heat' | 'dark' | 'pulse' | 'gaze';
 
 /** Three shades, darkest first. Sprites built from a material use all three. */
 export type Shades = readonly [string, string, string];
@@ -24,6 +24,8 @@ export interface MusicParams {
   unease: number;
   /** Semitones above the root for the second drone voice (7 = a fifth, 6 = a tritone). */
   droneInterval: number;
+  /** A slow heartbeat under everything. Defaults to on in the uneasiest places. */
+  heartbeat?: boolean;
 }
 
 export interface Biome {
@@ -98,7 +100,7 @@ export interface RefineRecipe {
 }
 
 export type ConsumableId = 'dynamite' | 'tonic' | 'luckbrew' | 'sagebrew';
-export type FixtureId = 'filters' | 'coolant' | 'chute' | 'furnace2' | 'furnace3' | 'lens' | 'workshop';
+export type FixtureId = 'filters' | 'coolant' | 'chute' | 'furnace2' | 'furnace3' | 'lens' | 'workshop' | 'censer' | 'veil';
 
 export type CraftOutput =
   | { kind: 'gear'; base: string }
@@ -126,7 +128,8 @@ export type Feature =
   | 'excavator'
   | 'passives'
   | 'contracts'
-  | 'descent';
+  | 'descent'
+  | 'bargains';
 
 export type Goal =
   | { kind: 'depth'; n: number }
@@ -142,7 +145,15 @@ export type Goal =
   | { kind: 'skill'; n: number; skill?: string }
   | { kind: 'stats'; n: number }
   | { kind: 'fixture'; id: FixtureId }
-  | { kind: 'descend'; n: number };
+  | { kind: 'descend'; n: number }
+  /** Stand at this depth while the mission is active. */
+  | { kind: 'visit'; depth: number }
+  /** Break blocks with the seam held buried (auto-advance off). */
+  | { kind: 'farm'; n: number }
+  /** Echoes earned across every Descent, ever. */
+  | { kind: 'echoes'; n: number }
+  /** Bargains struck. */
+  | { kind: 'bargain'; n: number };
 
 export interface Reward {
   coins?: number;
@@ -150,6 +161,8 @@ export interface Reward {
   unlock?: readonly Feature[];
   items?: readonly Stack[];
   consumables?: readonly { id: ConsumableId; n: number }[];
+  /** A story flag: something in the world is now different. See `flags.ts`. */
+  flag?: string;
 }
 
 export interface Mission {
@@ -159,4 +172,10 @@ export interface Mission {
   text: string;
   goal: Goal;
   reward: Reward;
+  /** Shown as a short scene when the mission is claimed, one paragraph per entry. */
+  scene?: readonly string[];
+  /** Replaces `scene` when the player carries one of these flags; first match wins. */
+  sceneIf?: readonly { flag: string; scene: readonly string[] }[];
+  /** A decision made when claiming. Each option sets a flag and plays its own scene. */
+  choice?: { prompt: string; options: readonly { label: string; flag: string; scene: readonly string[] }[] };
 }

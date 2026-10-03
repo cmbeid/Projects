@@ -149,7 +149,7 @@ export class Music {
       this.breath(this.nextBreath);
       this.nextBreath += 22 + Math.random() * 26;
     }
-    if (this.params.unease >= 0.2 && this.nextHeart < horizon) {
+    if ((this.params.heartbeat ?? this.params.unease >= 0.2) && this.nextHeart < horizon) {
       this.heartbeat(this.nextHeart);
       this.nextHeart += 7 + Math.random() * 6;
     }

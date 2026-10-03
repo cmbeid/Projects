@@ -18,7 +18,8 @@ export type GameEvent =
   | { type: 'mission'; title: string }
   | { type: 'claim'; title: string }
   | { type: 'descent'; echoes: number }
-  | { type: 'toast'; text: string };
+  | { type: 'toast'; text: string }
+  | { type: 'scene'; title: string; paragraphs: readonly string[] };
 
 type Listener = (e: GameEvent) => void;
 const listeners = new Set<Listener>();

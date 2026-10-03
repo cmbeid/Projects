@@ -52,6 +52,24 @@ export const MATERIALS: readonly Material[] = [
   { id: 'dreamstone', name: 'Dreamstone', kind: 'gem', value: 3.6e6, shades: ['#1a0a4a', '#5a3ad8', '#c8b4ff'] },
   { id: 'hollow-heart', name: 'Hollow Heart', kind: 'essence', value: 8e6, shades: ['#000000', '#2a1a4a', '#9a8aff'] },
 
+  // --- The Roots ------------------------------------------------------------
+  { id: 'veinroot', name: 'Veinroot', kind: 'ore', value: 1.4e6, shades: ['#3a0610', '#a01a2a', '#ff7a8a'], vein: 'streak' },
+  { id: 'marrow', name: 'Marrowstone', kind: 'ore', value: 2.3e6, shades: ['#6a5a48', '#d8c8a8', '#fff8e8'], vein: 'speckle' },
+  { id: 'heartwood', name: 'Heartwood', kind: 'ore', value: 4e6, shades: ['#2a1206', '#7a3a14', '#d88a4a'], vein: 'streak' },
+  { id: 'pulsite', name: 'Pulsite', kind: 'ore', value: 7.5e6, shades: ['#5a002a', '#e0206a', '#ffa8d0'], vein: 'cluster' },
+  { id: 'blood-opal', name: 'Blood Opal', kind: 'gem', value: 3.4e7, shades: ['#4a0010', '#c8203a', '#ffc8d0'] },
+  { id: 'tearstone', name: 'Tearstone', kind: 'gem', value: 5.6e7, shades: ['#1a3a5a', '#6ab0e0', '#e8f8ff'] },
+  { id: 'root-heart', name: 'Root Heart', kind: 'essence', value: 1.2e8, shades: ['#3a000a', '#c0102a', '#ffb0b8'] },
+
+  // --- The Waking -----------------------------------------------------------
+  { id: 'lucidite', name: 'Lucidite', kind: 'ore', value: 2.1e7, shades: ['#4a4a5a', '#c8c8e0', '#ffffff'], vein: 'cluster' },
+  { id: 'reverie', name: 'Reverie', kind: 'ore', value: 3.5e7, shades: ['#3a2a6a', '#9a7ae0', '#f0e0ff'], vein: 'streak' },
+  { id: 'irisite', name: 'Irisite', kind: 'ore', value: 6e7, shades: ['#0a3a3a', '#2ab0a0', '#c8fff0'], vein: 'speckle' },
+  { id: 'wakestone', name: 'Wakestone', kind: 'ore', value: 1.1e8, shades: ['#6a4a0a', '#f0c040', '#fffbe0'], vein: 'cluster' },
+  { id: 'eyeglass', name: 'Eyeglass', kind: 'gem', value: 5e8, shades: ['#2a2a3a', '#d0d8e8', '#ffffff'] },
+  { id: 'morning-star', name: 'Morning Star', kind: 'gem', value: 8.5e8, shades: ['#8a5a00', '#ffd04a', '#ffffff'] },
+  { id: 'waking-heart', name: 'Waking Heart', kind: 'essence', value: 1.8e9, shades: ['#5a4a2a', '#f8e8b0', '#ffffff'] },
+
   // --- Bars -----------------------------------------------------------------
   { id: 'copper-bar', name: 'Copper Bar', kind: 'bar', value: 22, shades: ['#7a3416', '#d0702e', '#ffbe7a'] },
   { id: 'bronze-bar', name: 'Bronze Bar', kind: 'bar', value: 34, shades: ['#6a4a12', '#b8862a', '#f0d07a'] },
@@ -64,6 +82,9 @@ export const MATERIALS: readonly Material[] = [
   { id: 'titanium-bar', name: 'Titanium Bar', kind: 'bar', value: 190000, shades: ['#3a4a5a', '#8aa6ba', '#e4f4ff'] },
   { id: 'starmetal-bar', name: 'Starmetal Bar', kind: 'bar', value: 2.9e6, shades: ['#2a2a5a', '#9a9ae0', '#ffffff'] },
   { id: 'voidsteel-bar', name: 'Voidsteel Bar', kind: 'bar', value: 1.6e6, shades: ['#06060e', '#2e2a5a', '#7a6ad8'] },
+  { id: 'rootsteel-bar', name: 'Rootsteel Bar', kind: 'bar', value: 2.2e7, shades: ['#3a0a10', '#a83a3a', '#ffb0a0'] },
+  { id: 'pulse-ingot', name: 'Pulse Ingot', kind: 'bar', value: 7e7, shades: ['#5a0030', '#e0408a', '#ffd0e8'] },
+  { id: 'lucid-bar', name: 'Lucid Bar', kind: 'bar', value: 3.5e8, shades: ['#5a5a7a', '#e0e0f8', '#ffffff'] },
 ];
 
 export const MATERIAL: ReadonlyMap<string, Material> = new Map(MATERIALS.map((m) => [m.id, m]));

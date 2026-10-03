@@ -35,6 +35,15 @@ export const GEAR: readonly GearBase[] = [
   { id: 'amethyst-charm', name: 'Amethyst Charm', slot: 'charm', tier: 5, tint: 'amethyst', stats: { critChance: 6, critMult: 1, luck: 15 } },
   { id: 'ruby-charm', name: 'Ruby Charm', slot: 'charm', tier: 6, tint: 'ruby', stats: { dmgPct: 100, critMult: 1.5 } },
   { id: 'dream-charm', name: 'Dreamstone Charm', slot: 'charm', tier: 7, tint: 'dreamstone', stats: { luck: 40, orePct: 50, xpPct: 50 } },
+
+  { id: 'rootbound-pick', name: 'Rootbound Pick', slot: 'pick', tier: 8, tint: 'rootsteel-bar', stats: { dmgPct: 70000, critMult: 1.6 } },
+  { id: 'rootbound-lantern', name: 'Rootbound Lantern', slot: 'lantern', tier: 8, tint: 'pulse-ingot', stats: { light: 6, luck: 55, xpPct: 40 } },
+  { id: 'rootbound-mail', name: 'Rootbound Mail', slot: 'armor', tier: 8, tint: 'rootsteel-bar', stats: { heatRes: 1, stamina: 220, autoPct: 260 } },
+  { id: 'rootbound-charm', name: 'Tearstone Charm', slot: 'charm', tier: 8, tint: 'tearstone', stats: { luck: 60, orePct: 80, critChance: 8 } },
+  { id: 'waking-pick', name: 'Waking Pick', slot: 'pick', tier: 9, tint: 'lucid-bar', stats: { dmgPct: 230000, critMult: 2 } },
+  { id: 'waking-lantern', name: 'Morning Lantern', slot: 'lantern', tier: 9, tint: 'morning-star', stats: { light: 7, luck: 80, xpPct: 60 } },
+  { id: 'waking-mail', name: 'Lucid Mail', slot: 'armor', tier: 9, tint: 'lucid-bar', stats: { heatRes: 1, stamina: 300, autoPct: 450 } },
+  { id: 'waking-charm', name: 'Eyeglass Charm', slot: 'charm', tier: 9, tint: 'eyeglass', stats: { dmgPct: 300, orePct: 120, luck: 40 } },
 ];
 
 export const GEAR_BASE: ReadonlyMap<string, GearBase> = new Map(GEAR.map((g) => [g.id, g]));

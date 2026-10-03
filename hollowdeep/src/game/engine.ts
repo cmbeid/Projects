@@ -4,11 +4,12 @@ import type { GameState } from '../state/types';
 import { tickFurnace } from './crafting';
 import { derive } from './derive';
 import { emit } from './events';
-import { damage, spawnBlock, tap } from './mining';
+import { damage, machineBreaksPerSecond, spawnBlock, tap } from './mining';
+import { biomeAt } from '../data/biomes';
 import { activeStory, progress, startStory } from './missions';
 import { rand } from './rng';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function newGame(seed: number, now = 0): GameState {
   const s: GameState = {
@@ -42,7 +43,10 @@ export function newGame(seed: number, now = 0): GameState {
     fixtures: [],
     features: [],
     furnace: [0, 1, 2].map(() => ({ recipe: null, progress: -1, queued: 0 })),
-    story: { index: 0, base: 0 },
+    story: { id: STORY[0]!.id, base: 0 },
+    flags: [],
+    bargains: [],
+    machineBudget: 0,
     counters: {
       breaks: 0,
       mined: {},
@@ -54,6 +58,7 @@ export function newGame(seed: number, now = 0): GameState {
       skills: {},
       statsSpent: 0,
       descents: 0,
+      farmed: 0,
     },
     contracts: { day: '', list: [] },
     echoes: 0,
@@ -68,10 +73,13 @@ export function newGame(seed: number, now = 0): GameState {
   return s;
 }
 
+/** Share of a Roots block's hit points that grows back each second. */
+export const PULSE_HEAL = 0.06;
+
 /** Frenzy swings at this rate. */
 const FRENZY_RATE = 12;
 
-let lastReadyMission = -1;
+let lastReadyMission: string | null = null;
 
 /**
  * Advances the world by `dt` seconds: stamina, cooldowns and buffs, Frenzy's
@@ -97,6 +105,15 @@ export function tick(s: GameState, dt: number): void {
     s.frenzyCarry = 0;
   }
 
+  // The machines' clearing budget refills each second; see `damage`.
+  const cap = machineBreaksPerSecond(s);
+  s.machineBudget = Math.min(cap, s.machineBudget + cap * dt);
+
+  // In the Roots, a wound in the rock closes unless the Censer keeps it still.
+  if (biomeAt(s.depth).hazard === 'pulse' && !s.fixtures.includes('censer') && s.block.hp < s.block.maxHp) {
+    s.block.hp = Math.min(s.block.maxHp, s.block.hp + s.block.maxHp * PULSE_HEAL * dt);
+  }
+
   if (d.autoDps > 0) {
     // Machines crit too, with Overclock; spread as an average rather than rolled.
     const critBoost = 1 + (d.machineCrit / 100) * (d.critMult - 1);
@@ -106,12 +123,13 @@ export function tick(s: GameState, dt: number): void {
   tickFurnace(s, dt);
 
   const m = activeStory(s);
-  if (m && s.story.index !== lastReadyMission && progress(s, m.goal, s.story.base).done) {
-    lastReadyMission = s.story.index;
+  if (m?.goal.kind === 'visit' && s.depth === m.goal.depth) s.story.base = 1;
+  if (m && m.id !== lastReadyMission && progress(s, m.goal, s.story.base).done) {
+    lastReadyMission = m.id;
     emit({ type: 'mission', title: m.title });
   }
 }
 
 export function storyComplete(s: GameState): boolean {
-  return s.story.index >= STORY.length;
+  return s.story.id === null;
 }

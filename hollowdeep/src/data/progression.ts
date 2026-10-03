@@ -134,9 +134,9 @@ export interface EchoDef {
 
 /** The permanent tree, paid for in Echoes from a Descent. */
 export const ECHOES: readonly EchoDef[] = [
-  { id: 'resonance', name: 'Resonant Pick', text: 'Tap damage ×2 per rank.', baseCost: 2, growth: 1.75, max: 40 },
-  { id: 'ghosts', name: 'Ghost Hands', text: 'Machine output ×2 per rank.', baseCost: 2, growth: 1.75, max: 40 },
-  { id: 'ledger', name: 'Old Ledger', text: 'Sell value ×1.5 per rank.', baseCost: 3, growth: 1.75, max: 40 },
+  { id: 'resonance', name: 'Resonant Pick', text: 'Tap damage ×2 per rank.', baseCost: 2, growth: 1.68, max: 40 },
+  { id: 'ghosts', name: 'Ghost Hands', text: 'Machine output ×2 per rank.', baseCost: 2, growth: 1.68, max: 40 },
+  { id: 'ledger', name: 'Old Ledger', text: 'Sell value ×1.5 per rank.', baseCost: 3, growth: 1.68, max: 40 },
   { id: 'memory', name: 'Deep Memory', text: 'Each Descent starts 5 depths deeper per rank.', baseCost: 5, growth: 1.8, max: 20 },
   { id: 'purse', name: 'Buried Purse', text: 'Start each Descent with coin: 500 × 5^rank.', baseCost: 3, growth: 1.6, max: 15 },
   { id: 'study', name: 'Quick Study', text: '+30% XP per rank.', baseCost: 2, growth: 1.6, max: 20 },

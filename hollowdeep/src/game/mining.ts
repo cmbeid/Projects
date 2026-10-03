@@ -130,17 +130,37 @@ function breakBlock(s: GameState, d: Derived, auto: boolean, crit: boolean): voi
     if (s.depth === depth) spawnBlock(s);
   } else {
     s.blocksHere += 1;
+    if (!s.autoAdvance) s.counters.farmed += 1;
     spawnBlock(s);
   }
 }
 
 /**
- * Hits the current block. Overkill spills into the next one, so a strong
- * enough hit (or a second's worth of excavators) can clear several.
+ * Blocks the machines can clear in a second, however strong they are. The
+ * face has to be cleared and the next block exposed; without this, a heavily
+ * upgraded rig parked at a shallow depth would clear thousands of blocks a
+ * second and the economy would come apart.
+ */
+export const MACHINE_BREAKS_PER_SECOND = 4;
+
+export function machineBreaksPerSecond(s: GameState): number {
+  return MACHINE_BREAKS_PER_SECOND - (s.bargains.includes('greed') ? 1 : 0);
+}
+
+/**
+ * Hits the current block. Machine overkill spills into the next block, up to
+ * the machines' clearing budget; anything past that is lost. A single swing
+ * breaks at most one block, or a lucky crit would skip a whole depth.
  */
 export function damage(s: GameState, amount: number, opts: { crit: boolean; auto: boolean }, d = derive(s)): void {
   let left = amount;
-  for (let guard = 0; left > 0 && guard < 200; guard++) {
+  for (let guard = 0; left > 0 && guard < 50; guard++) {
+    if (opts.auto && s.machineBudget < 1) {
+      // Out of budget: the machines keep chipping, but cannot finish a block.
+      const dealt = s.block.seam ? left * d.seamMult : left;
+      s.block.hp = Math.max(s.block.maxHp * 0.01, s.block.hp - dealt);
+      return;
+    }
     const dealt = s.block.seam ? left * d.seamMult : left;
     if (dealt < s.block.hp) {
       s.block.hp -= dealt;
@@ -148,9 +168,8 @@ export function damage(s: GameState, amount: number, opts: { crit: boolean; auto
     }
     const used = s.block.seam ? s.block.hp / d.seamMult : s.block.hp;
     left -= used;
+    if (opts.auto) s.machineBudget -= 1;
     breakBlock(s, d, opts.auto, opts.crit);
-    // Overkill from a machine keeps going; overkill from a single swing stops
-    // at one block, or a lucky crit would skip a whole depth.
     if (!opts.auto) return;
   }
 }

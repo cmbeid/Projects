@@ -17,7 +17,9 @@ import { on, type GameEvent } from '../game/events';
 import { activeStory, claimContract, claimStory, progress, refreshContracts } from '../game/missions';
 import { setDepth, spawnBlock, tap, xpForLevel } from '../game/mining';
 import { applyOffline, type OfflineReport } from '../game/offline';
-import { buyEcho, descend, echoGain } from '../game/prestige';
+import { buyEcho, descend, echoGain, strikeBargain } from '../game/prestige';
+import { biomeText, musicFor, musicKey } from '../game/story';
+import { BARGAINS } from '../data/flags';
 import { equip, rankPassive, salvage, spendStat, useConsumable, useSkill } from '../game/rpg';
 import { fmt, fmtInt, fmtTime } from '../num/format';
 import { Scene } from '../render/scene';
@@ -71,7 +73,7 @@ export class App {
     setMuted(s.settings.muted);
     onReady((m) => {
       const biome = biomeAt(this.s.depth);
-      this.music = new Music(m, biome.music, biome.id);
+      this.music = new Music(m, musicFor(this.s, biome), musicKey(this.s, biome));
       this.music.start();
       (window as unknown as { __music: Music }).__music = this.music;
     });
@@ -267,7 +269,7 @@ export class App {
     morph(q('#objective'), this.ui.wide ? '' : renderObjective(s));
     const biome = biomeAt(s.depth);
     morph(q('#depthchip'), `<button class="chip-btn" data-act="depth:up"${s.depth > 1 ? '' : ' disabled'} aria-label="Up">▲</button>
-      <span class="depth-label"><b>${s.depth}</b><span class="tiny">${esc(biome.name)}</span></span>
+      <span class="depth-label"><b>${s.depth}</b><span class="tiny">${esc(biomeText(s, biome).name)}</span></span>
       <button class="chip-btn" data-act="depth:down"${s.depth < s.maxDepth ? '' : ' disabled'} aria-label="Down">▼</button>
       <button class="chip-btn mode ${s.autoAdvance ? 'on' : ''}" data-act="advance" title="${s.autoAdvance ? 'Pushing deeper' : 'Farming this depth'}">${s.autoAdvance ? '⇣' : '⏸'}</button>`);
     document.documentElement.dataset['biome'] = biome.id;
@@ -380,9 +382,26 @@ export class App {
       case 'craft':
         ok = craft(s, a);
         break;
-      case 'claim':
+      case 'claim': {
+        const m = activeStory(s);
+        if (m?.choice) {
+          this.showChoice();
+          return;
+        }
         ok = claimStory(s);
         break;
+      }
+      case 'bargain': {
+        const def = BARGAINS.find((x) => x.id === a);
+        if (!def) return;
+        this.confirm(`Accept ${def.name}?`, `${def.boon} ${def.cost} There is no taking it back.`, 'Accept', () => {
+          if (strikeBargain(s, a)) {
+            sfxDescent();
+            this.syncMusic();
+          }
+        });
+        return;
+      }
       case 'contract':
         ok = claimContract(s, a);
         break;
@@ -453,12 +472,14 @@ export class App {
         break;
       case 'claim':
         sfxCoin();
+        this.syncMusic();
         break;
-      case 'depth': {
-        const b = biomeAt(e.depth);
-        this.music?.setBiome(b.music, b.id);
+      case 'scene':
+        this.queueScene(e.title, e.paragraphs);
         break;
-      }
+      case 'depth':
+        this.syncMusic();
+        break;
       case 'descent':
         sfxDescent();
         refreshContracts(this.s, Date.now());
@@ -467,6 +488,51 @@ export class App {
         this.toast(e.text);
         break;
     }
+  }
+
+  private syncMusic(): void {
+    const b = biomeAt(this.s.depth);
+    this.music?.setBiome(musicFor(this.s, b), musicKey(this.s, b));
+  }
+
+  private scenes: { title: string; paragraphs: readonly string[] }[] = [];
+
+  /** Story scenes play one at a time, each paragraph fading in after the last. */
+  private queueScene(title: string, paragraphs: readonly string[]): void {
+    this.scenes.push({ title, paragraphs });
+    if (this.scenes.length === 1) this.playScene();
+  }
+
+  private playScene(): void {
+    const next = this.scenes[0];
+    if (!next) return;
+    sfxMission();
+    const body = next.paragraphs
+      .map((p, i) => `<p class="scene-p" style="animation-delay:${(0.4 + i * 1.6).toFixed(1)}s">${esc(p)}</p>`)
+      .join('');
+    const m = this.modal(`<div class="story-scene"><h3>${esc(next.title)}</h3>${body}
+      <div class="row end"><button class="btn primary scene-p" style="animation-delay:${(0.6 + next.paragraphs.length * 1.6).toFixed(1)}s" id="scene-next">Continue</button></div></div>`);
+    m.querySelector('#scene-next')!.addEventListener('click', () => {
+      this.scenes.shift();
+      this.closeModal();
+      this.playScene();
+    });
+  }
+
+  private showChoice(): void {
+    const mission = activeStory(this.s);
+    if (!mission?.choice) return;
+    const m = this.modal(`<div class="story-scene"><h3>${esc(mission.title)}</h3><p>${esc(mission.text)}</p><p class="muted">${esc(mission.choice.prompt)}</p>
+      <div class="choices">${mission.choice.options.map((o, i) => `<button class="btn wide" data-choice="${i}">${esc(o.label)}</button>`).join('')}</div>
+      <div class="row end"><button class="btn ghost small" data-act="close">Not yet</button></div></div>`);
+    m.querySelectorAll<HTMLButtonElement>('[data-choice]').forEach((b) =>
+      b.addEventListener('click', () => {
+        this.closeModal();
+        claimStory(this.s, Number(b.dataset['choice']));
+        this.save();
+        this.renderPanels(true);
+      }),
+    );
   }
 
   private toast(text: string): void {
