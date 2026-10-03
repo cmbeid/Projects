@@ -1,4 +1,5 @@
 import { BIOMES } from './biomes';
+import { BARGAINS, BIOME_TEXT, FLAGS } from './flags';
 import { GEAR } from './gear';
 import { MATERIALS, MATERIAL } from './materials';
 import { STORY } from './missions';
@@ -108,11 +109,32 @@ export function validateData(): string[] {
         before('miner');
         break;
       case 'descend':
+      case 'echoes':
         before('descent');
+        break;
+      case 'bargain':
+        before('bargains');
+        if (g.n > BARGAINS.length) errors.push(`mission ${m.id} wants ${g.n} bargains, only ${BARGAINS.length} exist`);
+        break;
+      case 'visit':
+        if (g.depth < 1) errors.push(`mission ${m.id} visits depth ${g.depth}`);
         break;
       default:
         break;
     }
   });
+  // Story flags: every one set must be a known flag, and every known flag set somewhere.
+  const known = new Set<string>(FLAGS);
+  const set = new Set<string>();
+  for (const m of STORY) {
+    const flags = [m.reward.flag, ...(m.choice?.options.map((o) => o.flag) ?? []), ...(m.sceneIf?.map((v) => v.flag) ?? [])];
+    for (const f of flags) {
+      if (!f) continue;
+      if (!known.has(f)) errors.push(`mission ${m.id} uses unknown flag ${f}`);
+      if (f === m.reward.flag || m.choice?.options.some((o) => o.flag === f)) set.add(f);
+    }
+  }
+  for (const f of FLAGS) if (!set.has(f)) errors.push(`flag ${f} is never set by any mission`);
+  for (const t of BIOME_TEXT) if (!BIOMES.some((b) => b.id === t.biome)) errors.push(`biome text for unknown biome ${t.biome}`);
   return errors;
 }

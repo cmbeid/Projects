@@ -9,10 +9,11 @@ import { derive } from './derive';
 import { buyMachine, buyUpgrade, machineCost, sellAllOre, upgradeCost } from './economy';
 import { tick } from './engine';
 import { hasFeature } from './features';
-import { activeStory, claimContract, claimStory, progress, refreshContracts } from './missions';
+import { activeStory, claimContract, claimStory, progress, refreshContracts, storyIndex } from './missions';
 import { blockHp, setDepth, tap } from './mining';
 import { BIOMES, biomeAt } from '../data/biomes';
-import { buyEcho, descend, echoGain } from './prestige';
+import { buyEcho, descend, echoGain, strikeBargain } from './prestige';
+import { BARGAINS } from '../data/flags';
 import { canRankPassive, rankPassive, skillReady, spendStat, useConsumable, useSkill } from './rpg';
 
 /**
@@ -80,7 +81,9 @@ function oreWanted(s: GameState, goal: Goal): string | null {
 }
 
 function plan(s: GameState, mem: BotMemory, opts: BotOptions): void {
-  if (activeStory(s) && progress(s, activeStory(s)!.goal, s.story.base).done) claimStory(s);
+  // The bot has no opinion on the ending; the seed decides.
+  if (activeStory(s) && progress(s, activeStory(s)!.goal, s.story.base).done) claimStory(s, s.rng & 1);
+  for (const b of BARGAINS) if (s.bargains.length < 3) strikeBargain(s, b.id);
   for (const c of s.contracts.list) claimContract(s, c.id);
 
   while (s.statPoints > 0 && hasFeature(s, 'miner')) {
@@ -160,6 +163,16 @@ function plan(s: GameState, mem: BotMemory, opts: BotOptions): void {
 
   // A mission wanting an ore from a shallower biome sends it back up to farm.
   const story = activeStory(s);
+  // Missions that ask to be somewhere, or to hold the seam shut.
+  if (story?.goal.kind === 'visit' && !progress(s, story.goal, s.story.base).done) {
+    s.autoAdvance = false;
+    setDepth(s, story.goal.depth);
+    return;
+  }
+  if (story?.goal.kind === 'farm' && !progress(s, story.goal, s.story.base).done) {
+    s.autoAdvance = false;
+    return;
+  }
   const ore = story && !progress(s, story.goal, s.story.base).done ? oreWanted(s, story.goal) : null;
   if (ore) {
     const home = BIOMES.find((b) => b.ores.some((o) => o.id === ore));
@@ -209,7 +222,7 @@ export function runBot(s: GameState, seconds: number, opts: BotOptions = DEFAULT
   const log: string[] = [];
   const dt = 0.1;
   let tapCarry = 0;
-  let lastStory = s.story.index;
+  let lastStory = storyIndex(s);
   let lastDescents = s.counters.descents;
   for (let t = 0; t < seconds; t += 1) {
     refreshContracts(s, now + t * 1000);
@@ -226,9 +239,9 @@ export function runBot(s: GameState, seconds: number, opts: BotOptions = DEFAULT
     for (const m of [10, 21, 30, 51, 91, 141]) {
       if (s.deepestEver >= m && !log.some((l) => l.includes(`reached ${m} `))) log.push(`${(t / 60).toFixed(1)}m reached ${m} lvl ${s.level}`);
     }
-    if (s.story.index !== lastStory) {
-      lastStory = s.story.index;
-      log.push(`${(t / 60).toFixed(1)}m story ${s.story.index} depth ${s.maxDepth} lvl ${s.level}`);
+    if (storyIndex(s) !== lastStory) {
+      lastStory = storyIndex(s);
+      log.push(`${(t / 60).toFixed(1)}m story ${storyIndex(s)} depth ${s.maxDepth} lvl ${s.level}`);
     }
     if (s.counters.descents !== lastDescents) {
       lastDescents = s.counters.descents;

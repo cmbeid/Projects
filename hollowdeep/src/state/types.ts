@@ -46,6 +46,8 @@ export interface Counters {
   skills: Record<string, number>;
   statsSpent: number;
   descents: number;
+  /** Blocks broken with the seam held buried. */
+  farmed: number;
 }
 
 export interface Settings {
@@ -98,7 +100,18 @@ export interface GameState {
   features: Feature[];
   furnace: FurnaceSlot[];
 
-  story: { index: number; base: number };
+  /**
+   * The active story mission by id (null once the story is over), and where
+   * its goal's counter stood when it began. For a `visit` goal, `base` is 1
+   * once the player has been there.
+   */
+  story: { id: string | null; base: number };
+  /** Story flags earned; see `data/flags.ts`. */
+  flags: string[];
+  /** Bargains struck; see `data/flags.ts`. */
+  bargains: string[];
+  /** Blocks the machines may still break this second. See `MACHINE_BREAKS_PER_SECOND`. */
+  machineBudget: number;
   counters: Counters;
   contracts: { day: string; list: Contract[] };
 

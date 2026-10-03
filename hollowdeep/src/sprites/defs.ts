@@ -545,6 +545,63 @@ const LENS = [
   '................',
 ];
 
+const CENSER = [
+  '.......o........',
+  '.......o..qp....',
+  '.......o.qpq....',
+  '......ooo.qp....',
+  '.....o...o.q....',
+  '....o.....o.....',
+  '...ooooooooo....',
+  '...oyyyyyyyo....',
+  '..oyYyyyyyyyo...',
+  '..oyyoyoyoyyo...',
+  '..oyyyyyyyyyo...',
+  '...oyyyyyyyo....',
+  '....ooyyyoo.....',
+  '......ooo.......',
+  '................',
+  '................',
+];
+
+const VEIL = [
+  '................',
+  '..pqpqpqpqpqpq..',
+  '..qpqpqpqpqpqp..',
+  '..pq.oooooo.qp..',
+  '..qpoKKKKKKoqp..',
+  '..poKKvvvvKKop..',
+  '..qoKvvoovvKoq..',
+  '..poKvvoovvKop..',
+  '..qpoKvvvvKopq..',
+  '..pqpoooooopqp..',
+  '..qpqpqpqpqpqp..',
+  '..pqp.qpq.pqpq..',
+  '..q.p..p..q..p..',
+  '................',
+  '................',
+  '................',
+];
+
+const BARGAIN = [
+  '................',
+  '...oo......oo...',
+  '..osso....osso..',
+  '..ossso..oSsso..',
+  '...osssooSsso...',
+  '....ossyySso....',
+  '.....osYYso.....',
+  '....osSyysSo....',
+  '...osSso.oSSo...',
+  '..osSso...oSSo..',
+  '..oSso.....oso..',
+  '...oo.......o...',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
 const COIN = [
   '................',
   '................',
@@ -1062,6 +1119,9 @@ export function buildSprites(): SpriteDef[] {
   out.push(make('fix-chute', CHUTE));
   out.push(make('fix-lens', LENS));
   out.push(make('fix-workshop', DRONE[0]!));
+  out.push(make('fix-censer', CENSER));
+  out.push(make('fix-veil', VEIL));
+  out.push(make('icon-bargain', BARGAIN));
 
   out.push(make('icon-coin', COIN));
   out.push(make('icon-echo', ECHO));

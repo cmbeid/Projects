@@ -1,3 +1,4 @@
+import { STORY, STORY_V1_ORDER } from '../data/missions';
 import { newGame, SAVE_VERSION } from '../game/engine';
 import type { GameState } from './types';
 
@@ -23,6 +24,23 @@ function mergeDefaults(raw: Record<string, unknown>): GameState {
   return out as unknown as GameState;
 }
 
+/**
+ * Version 1 kept its story place as an index into the original 42 missions.
+ * Map it to that mission's id, so missions added since never move the
+ * player: anything new before their place counts as already behind them.
+ */
+function migrateV1(obj: Record<string, unknown>): void {
+  const story = (obj['story'] ?? {}) as { index?: number; base?: number };
+  const index = typeof story.index === 'number' ? story.index : 0;
+  let id: string | null = STORY_V1_ORDER[index] ?? null;
+  if (id === null) {
+    // They had finished the old story: pick up with the first mission after its last.
+    const last = STORY.findIndex((m) => m.id === STORY_V1_ORDER[STORY_V1_ORDER.length - 1]);
+    id = STORY[last + 1]?.id ?? null;
+  }
+  obj['story'] = { id, base: typeof story.base === 'number' ? story.base : 0 };
+}
+
 export function serialize(s: GameState): string {
   return JSON.stringify(s);
 }
@@ -34,6 +52,7 @@ export function deserialize(text: string): GameState | null {
     const obj = raw as Record<string, unknown>;
     if (typeof obj['version'] !== 'number' || obj['version'] > SAVE_VERSION) return null;
     if (typeof obj['coins'] !== 'number' || typeof obj['depth'] !== 'number') return null;
+    if (obj['version'] === 1) migrateV1(obj);
     const s = mergeDefaults(obj);
     s.version = SAVE_VERSION;
     if (!Number.isFinite(s.coins)) s.coins = 0;

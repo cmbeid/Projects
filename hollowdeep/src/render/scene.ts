@@ -1,4 +1,6 @@
 import { biomeAt } from '../data/biomes';
+import { biomeText, eyesEverywhere, hasFlag } from '../game/story';
+import { gazeOpen } from '../game/derive';
 import { MATERIAL } from '../data/materials';
 import { BALANCE } from '../data/progression';
 import type { Biome } from '../data/types';
@@ -85,6 +87,9 @@ export class Scene {
   private eyes: Eyes[] = [];
   private banner: { title: string; sub: string; t: number } | null = null;
   private rockVariant = 0;
+  /** Seconds until the other miner's delayed swings land. */
+  private echoSwings: number[] = [];
+  private otherSwing = 1;
   /** Where ore flies to when mined: the inventory chip in the top bar, in canvas pixels. */
   flyTarget = { x: 24, y: 8 };
 
@@ -131,6 +136,8 @@ export class Scene {
       case 'hit': {
         if (e.auto) break;
         this.swing = 0;
+        // Whatever digs on the other side of the rock swings a beat late.
+        this.echoSwings.push(0.32);
         this.shake = Math.min(1, this.shake + (e.crit ? 0.8 : 0.35));
         const n = e.crit ? 10 : 4;
         for (let i = 0; i < n; i++) this.chip(cx - size * 0.35, cy + (Math.random() - 0.5) * size * 0.5, biome.rock[2 + (i % 2)]!, -1);
@@ -184,7 +191,7 @@ export class Scene {
         this.scroll = 1;
         const b = biomeAt(e.depth);
         this.banner = e.biomeChanged
-          ? { title: b.name, sub: `Depth ${e.depth}`, t: 0 }
+          ? { title: biomeText(s, b).name, sub: `Depth ${e.depth}`, t: 0 }
           : { title: `Depth ${e.depth}`, sub: '', t: 0.6 };
         break;
       }
@@ -229,7 +236,7 @@ export class Scene {
     });
   }
 
-  private ambient(biome: Biome, dt: number): void {
+  private ambient(biome: Biome, dt: number, s: GameState): void {
     const rate = biome.id === 'hollow' ? 3 : 7;
     if (Math.random() < rate * dt) {
       const base = { x: Math.random() * this.w, life: 6, max: 6, size: 2, gravity: 0, glow: true } as const;
@@ -248,7 +255,7 @@ export class Scene {
       }
     }
     // Something in the dark, watching. Only in The Hollow, and only now and then.
-    if (biome.id === 'hollow' && Math.random() < 0.08 * dt && this.eyes.length < 2) {
+    if ((biome.id === 'hollow' || eyesEverywhere(s)) && Math.random() < 0.08 * dt && this.eyes.length < 2) {
       const side = Math.random() < 0.5 ? 0.08 : 0.92;
       this.eyes.push({ x: this.w * side + (Math.random() - 0.5) * 20, y: this.h * (0.2 + Math.random() * 0.5), t: 0, life: 3 + Math.random() * 3 });
     }
@@ -344,6 +351,7 @@ export class Scene {
       sw < 0.15 ? 0.15 - (sw / 0.15) * 1.35 : sw < 0.35 ? -1.2 + ((sw - 0.15) / 0.2) * 1.9 : 0.7 - ((sw - 0.35) / 0.65) * 0.55;
     const equipped = s.gear.find((g) => g.uid === s.equipped.pick);
     drawSpriteRotated(ctx, `gear-${equipped ? equipped.base : 'none'}`, mx + 13 * mS, my + (13 + breathe) * mS, mS, angle, 3, 13);
+    this.drawOtherMiner(s, dt, x + size + S * 0.5, groundY, mS);
 
     // Drones circle the face.
     const drones = Math.min(6, s.machines['drone'] ?? 0);
@@ -380,7 +388,7 @@ export class Scene {
     ctx.fillText(label, this.bx, barY + 18);
 
     // Particles.
-    this.ambient(biome, dt);
+    this.ambient(biome, dt, s);
     const alive: Particle[] = [];
     for (const p of this.particles) {
       p.life -= dt;
@@ -399,6 +407,8 @@ export class Scene {
 
     // Lamp light: darkness everywhere except a flickering circle round the miner.
     this.drawFog(s, biome, mx + 10 * mS, my + 4 * mS);
+
+    this.drawStoryLights(s, biome, groundY);
 
     // Eyes in the dark are drawn over the fog. That is the point of them.
     this.eyes = this.eyes.filter((e) => (e.t += dt) < e.life);
@@ -452,6 +462,89 @@ export class Scene {
 
     this.drawBanner(dt);
     this.drawHazard(s);
+  }
+
+  /**
+   * Once the player has heard it, a faint second miner on the far side of
+   * the rock, digging in time with them, a beat late. Gone once they find
+   * what they find.
+   */
+  private drawOtherMiner(s: GameState, dt: number, x: number, groundY: number, mS: number): void {
+    if (!hasFlag(s, 'other-miner') || hasFlag(s, 'found-lamp')) return;
+    this.echoSwings = this.echoSwings.map((t) => t - dt);
+    if (this.echoSwings.some((t) => t <= 0)) {
+      this.echoSwings = this.echoSwings.filter((t) => t > 0);
+      this.otherSwing = 0;
+    }
+    this.otherSwing = Math.min(1, this.otherSwing + dt * 5);
+    const ctx = this.ctx;
+    const my = groundY - 23 * mS;
+    ctx.save();
+    ctx.globalAlpha = 0.1 + 0.04 * Math.sin(this.time * 0.7);
+    // Mirrored, facing back toward the rock.
+    ctx.translate(x + 16 * mS, 0);
+    ctx.scale(-1, 1);
+    drawSprite(ctx, 'miner-0', 0, my, mS);
+    const sw = this.otherSwing;
+    const angle = sw < 0.3 ? -1.2 + (sw / 0.3) * 1.9 : 0.7 - ((sw - 0.3) / 0.7) * 0.55;
+    drawSpriteRotated(ctx, 'gear-none', 13 * mS, my + 13 * mS, mS, angle, 3, 13);
+    ctx.restore();
+  }
+
+  /** Lights the story has put in the world, drawn over the dark. */
+  private drawStoryLights(s: GameState, biome: Biome, groundY: number): void {
+    const ctx = this.ctx;
+    const deep = biome.id === 'hollow' || biome.id === 'roots' || biome.id === 'waking';
+    if (deep && hasFlag(s, 'lamp-ahead') && !hasFlag(s, 'found-lamp')) {
+      // A lamp far below, swaying when the miner sways.
+      const lx = this.w * 0.88 + Math.sin(this.time * 0.6) * 3;
+      const ly = groundY + (this.h - groundY) * 0.55;
+      const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, 14);
+      g.addColorStop(0, '#ffe6a0d0');
+      g.addColorStop(1, '#ffe6a000');
+      ctx.fillStyle = g;
+      ctx.fillRect(lx - 14, ly - 14, 28, 28);
+      ctx.fillStyle = '#fff4d0';
+      ctx.fillRect(Math.round(lx - 1), Math.round(ly - 1), 2, 2);
+    }
+    if (biome.id === 'waking') {
+      // The light that opens: four seconds in every fifteen.
+      const phase = s.time % 15;
+      if (gazeOpen(s)) {
+        const lid = Math.sin((Math.min(phase, 4) / 4) * Math.PI);
+        const ex = this.w / 2;
+        const ey = Math.max(30, (groundY - 16 * this.S) * 0.6 + 20);
+        const rw = this.w * 0.42;
+        const rh = Math.max(2, 34 * lid);
+        ctx.save();
+        ctx.globalAlpha = s.fixtures.includes('veil') ? 0.25 : 0.75;
+        ctx.fillStyle = '#f4ecd8';
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, rw / 2, rh, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#6a5ad8';
+        ctx.beginPath();
+        ctx.ellipse(ex + Math.sin(this.time * 0.5) * 20, ey, Math.min(rh, 22), Math.min(rh, 22), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#05040a';
+        ctx.beginPath();
+        ctx.ellipse(ex + Math.sin(this.time * 0.5) * 20, ey, Math.min(rh, 8), Math.min(rh, 8), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    if (hasFlag(s, 'synced')) {
+      // Fifty-one beats a minute, felt at the edges of the screen.
+      const beat = (this.time * 51) / 60;
+      const pulse = Math.max(0, Math.sin((beat % 1) * Math.PI * 2)) ** 6;
+      if (pulse > 0.01) {
+        const g = ctx.createRadialGradient(this.w / 2, this.h / 2, Math.min(this.w, this.h) * 0.35, this.w / 2, this.h / 2, Math.max(this.w, this.h) * 0.75);
+        g.addColorStop(0, 'rgba(120,0,20,0)');
+        g.addColorStop(1, `rgba(120,0,20,${(0.22 * pulse).toFixed(3)})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, this.w, this.h);
+      }
+    }
   }
 
   private drawFog(s: GameState, biome: Biome, lx: number, ly: number): void {

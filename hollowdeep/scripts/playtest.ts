@@ -4,6 +4,7 @@
  *
  *   npm run playtest -- 6      # hours, default 6
  */
+import { storyIndex } from '../src/game/missions';
 import { newGame } from '../src/game/engine';
 import { runBot } from '../src/game/bot';
 import { derive } from '../src/game/derive';
@@ -19,7 +20,7 @@ const d = derive(s);
 console.log('---');
 console.log(`after ${hours}h (${((performance.now() - t0) / 1000).toFixed(1)}s real)`);
 console.log(`depth ${s.depth} / max ${s.maxDepth} / deepest ${s.deepestEver}, level ${s.level}`);
-console.log(`story ${s.story.index}/${STORY.length} (next: ${STORY[s.story.index]?.title ?? 'done'})`);
+console.log(`story ${storyIndex(s)}/${STORY.length} (next: ${STORY[storyIndex(s)]?.title ?? 'done'})`);
 console.log(`coins ${s.coins.toExponential(2)}, tap ${d.tap.toExponential(2)}, auto ${d.autoDps.toExponential(2)}`);
 console.log(`machines ${JSON.stringify(s.machines)} upgrades ${JSON.stringify(s.upgrades)}`);
 console.log(`gear ${s.gear.map((g) => g.base).join(', ')}`);

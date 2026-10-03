@@ -2,7 +2,7 @@ import { biomeAt } from '../data/biomes';
 import { BALANCE } from '../data/progression';
 import type { GameState } from '../state/types';
 import { derive } from './derive';
-import { addXp, blockHp, gain, gemChance, oreWeights, xpAt, yieldAt } from './mining';
+import { addXp, blockHp, gain, gemChance, machineBreaksPerSecond, oreWeights, xpAt, yieldAt } from './mining';
 import { tickFurnace } from './crafting';
 
 export interface OfflineReport {
@@ -41,7 +41,12 @@ export function applyOffline(s: GameState, seconds: number): OfflineReport {
   const levelBefore = s.level;
 
   const critBoost = 1 + (d.machineCrit / 100) * (d.critMult - 1);
-  const blocks = (d.autoDps * critBoost * t * d.offlineYield) / blockHp(s.depth, false);
+  // Capped like the online machines are, so parking strong machines at a
+  // shallow depth does not pay out thousands of blocks a second.
+  const blocks = Math.min(
+    (d.autoDps * critBoost * t) / blockHp(s.depth, false),
+    machineBreaksPerSecond(s) * t,
+  ) * d.offlineYield;
   report.blocks = Math.floor(blocks);
   if (report.blocks > 0) {
     const weights = oreWeights(s.depth, d.luck);

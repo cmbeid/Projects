@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STORY } from '../src/data/missions';
 import { newGame } from '../src/game/engine';
-import { claimStory, makeContracts, progress, claimContract, refreshContracts } from '../src/game/missions';
+import { claimStory, makeContracts, progress, claimContract, refreshContracts, storyIndex } from '../src/game/missions';
 import { damage } from '../src/game/mining';
 import { unlockFeature } from '../src/game/features';
 
@@ -13,7 +13,7 @@ describe('story', () => {
     for (let i = 0; i < 5; i++) damage(s, s.block.hp, { crit: false, auto: false });
     expect(claimStory(s)).toBe(true);
     expect(s.features).toContain('upgrades');
-    expect(s.story.index).toBe(1);
+    expect(storyIndex(s)).toBe(1);
   });
 });
 

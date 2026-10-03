@@ -9,8 +9,10 @@ import { batchesAffordable, canCraft, furnaceSlots, meetsRequirement, refineSeco
 import { derive } from '../game/derive';
 import { machineCost, maxAffordable, upgradeCost } from '../game/economy';
 import { hasFeature } from '../game/features';
-import { activeStory, describeGoal, progress } from '../game/missions';
-import { CHUTE_RESERVE, xpForLevel } from '../game/mining';
+import { activeStory, describeGoal, progress, storyIndex } from '../game/missions';
+import { CHUTE_RESERVE, machineBreaksPerSecond, xpForLevel } from '../game/mining';
+import { biomeText } from '../game/story';
+import { BARGAINS } from '../data/flags';
 import { echoCost, echoGain, startingDepth } from '../game/prestige';
 import { canRankPassive, passivePointsFree, skillReady } from '../game/rpg';
 import { fmt, fmtInt, fmtTime } from '../num/format';
@@ -100,8 +102,8 @@ export function renderMine(s: GameState): string {
   const d = derive(s);
   const out: string[] = [];
   out.push(`<section class="card biome" data-key="biome">
-    <div class="row between"><h3>${esc(biome.name)}</h3><span class="muted">Depth ${s.depth} of ${s.maxDepth}</span></div>
-    <p class="muted small">${esc(biome.blurb)}</p>
+    <div class="row between"><h3>${esc(biomeText(s, biome).name)}</h3><span class="muted">Depth ${s.depth} of ${s.maxDepth}</span></div>
+    <p class="muted small">${esc(biomeText(s, biome).blurb)}</p>
     ${d.hazard.warning ? `<p class="warn small">⚠ ${esc(d.hazard.warning)}</p>` : ''}
     <div class="row wrap gap">
       ${btn('depth:up', '▲ Up', s.depth > 1, 'small')}
@@ -172,7 +174,7 @@ export function renderUpgrades(s: GameState, ui: UiState): string {
     const d = derive(s);
     out.push(`<section class="card" data-key="machines"><div class="row between"><h4>Machines</h4>
       <div class="seg">${([1, 10, 'max'] as const).map((m) => `<button class="${ui.buyMode === m ? 'on' : ''}" data-act="mode:${m}">${m === 'max' ? 'Max' : `×${m}`}</button>`).join('')}</div></div>
-      <p class="muted small">Machines hit whatever is in front of you, all the time — and while you are away. Total ${fmt(d.autoDps)} damage/s.</p>`);
+      <p class="muted small">Machines hit whatever is in front of you, all the time — and while you are away. Total ${fmt(d.autoDps)} damage/s; they can clear at most ${machineBreaksPerSecond(s)} blocks a second, so they earn most at the deepest depth they can keep up with.</p>`);
     for (const m of MACHINES) {
       if (!hasFeature(s, m.requires)) continue;
       const owned = s.machines[m.id] ?? 0;
@@ -265,6 +267,18 @@ export function renderMiner(s: GameState): string {
     }
     out.push('</div></section>');
   }
+
+  if (hasFeature(s, 'bargains')) {
+    out.push(`<section class="card bargains" data-key="bargains"><div class="row between"><h4>Bargains</h4>${iconHtml('icon-bargain', 2)}</div>
+      <p class="muted small">It offers. You choose. Nothing taken can be given back.</p>`);
+    for (const b of BARGAINS) {
+      const taken = s.bargains.includes(b.id);
+      out.push(`<div class="item-row ${taken ? 'taken' : ''}" data-key="b-${b.id}"><div class="grow"><b>${esc(b.name)}</b>
+        <div class="small good">${esc(b.boon)}</div><div class="small warn">${esc(b.cost)}</div></div>
+        ${taken ? '<span class="chip glow">Struck</span>' : btn(`bargain:${b.id}`, 'Accept', true, 'small')}</div>`);
+    }
+    out.push('</section>');
+  }
   return out.join('');
 }
 
@@ -345,7 +359,7 @@ export function renderMissions(s: GameState, now: number): string {
   if (m) {
     const p = progress(s, m.goal, s.story.base);
     out.push(`<section class="card story ${p.done ? 'done' : ''}" data-key="story">
-      <div class="row between"><span class="muted small">Story ${s.story.index + 1} / ${STORY.length}</span>${p.done ? '<span class="chip glow">Complete</span>' : ''}</div>
+      <div class="row between"><span class="muted small">Story ${storyIndex(s) + 1} / ${STORY.length}</span>${p.done ? '<span class="chip glow">Complete</span>' : ''}</div>
       <h3>${esc(m.title)}</h3><p class="quote">“${esc(m.text)}”</p>
       <div class="row between small"><span>${esc(describeGoal(m.goal))}</span><span>${fmtInt(p.have)} / ${fmtInt(p.need)}</span></div>${bar(p.have / p.need)}
       <div class="reward small">${rewardHtml(m.reward)}</div>
@@ -366,7 +380,7 @@ export function renderMissions(s: GameState, now: number): string {
     }
     out.push('</section>');
   }
-  const done = STORY.slice(0, s.story.index).slice(-4).reverse();
+  const done = STORY.slice(0, storyIndex(s)).slice(-4).reverse();
   if (done.length) {
     out.push(`<section class="card muted small" data-key="log"><h4>Journal</h4>${done.map((x) => `<p>✓ <b>${esc(x.title)}</b> — ${esc(x.text)}</p>`).join('')}</section>`);
   }
@@ -379,6 +393,7 @@ export function renderDescent(s: GameState): string {
   const gain = echoGain(s);
   const out: string[] = [];
   out.push(`<section class="card descent" data-key="desc"><h3>The Descent</h3>
+    ${s.flags.includes('dreamt') ? '<p class="quote small">It turns over in its sleep, and dreams you again.</p>' : ''}
     <p class="small">Collapse the shaft and start again from the top. You lose coin, ore, bars, upgrades and machines. You keep your level, stats, skills, gear, fixtures and recipes — and the Echoes.</p>
     <div class="row between"><span>Deepest this run: <b>${s.maxDepth}</b></span><span>Ever: <b>${s.deepestEver}</b></span></div>
     <div class="echo-gain">${iconHtml('icon-echo', 3)}<div><div class="big">+${fmtInt(gain)}</div><div class="muted small">${gain > 0 ? 'Echoes if you Descend now' : 'Reach past depth 20 to earn Echoes'}</div></div></div>

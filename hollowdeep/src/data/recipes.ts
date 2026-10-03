@@ -13,6 +13,9 @@ export const REFINE: readonly RefineRecipe[] = [
   { id: 'r-titanium', output: 'titanium-bar', inputs: [{ id: 'titanium', n: 6 }, { id: 'cinnabar', n: 4 }], seconds: 14, requires: { depth: 91 } },
   { id: 'r-starmetal', output: 'starmetal-bar', inputs: [{ id: 'starmetal', n: 6 }, { id: 'glyphstone', n: 4 }], seconds: 16, requires: { depth: 141 } },
   { id: 'r-voidsteel', output: 'voidsteel-bar', inputs: [{ id: 'voidglass', n: 6 }, { id: 'whisperite', n: 2 }], seconds: 18, requires: { depth: 141 } },
+  { id: 'r-rootsteel', output: 'rootsteel-bar', inputs: [{ id: 'veinroot', n: 6 }, { id: 'marrow', n: 4 }], seconds: 20, requires: { depth: 201 } },
+  { id: 'r-pulse', output: 'pulse-ingot', inputs: [{ id: 'pulsite', n: 4 }, { id: 'heartwood', n: 4 }], seconds: 22, requires: { depth: 201 } },
+  { id: 'r-lucid', output: 'lucid-bar', inputs: [{ id: 'lucidite', n: 6 }, { id: 'reverie', n: 4 }], seconds: 25, requires: { depth: 261 } },
 ];
 
 const gear = (id: string, base: string, coins: number, depth: number, ...inputs: [string, number][]): CraftRecipe => ({
@@ -49,6 +52,8 @@ export const CRAFT: readonly CraftRecipe[] = [
   gear('c-crystal-pick', 'crystal-pick', 4e6, 55, ['platinum-bar', 12], ['amethyst', 3], ['prism-heart', 1]),
   gear('c-titanium-pick', 'titanium-pick', 3e8, 95, ['titanium-bar', 12], ['ruby', 2], ['ember-heart', 1]),
   gear('c-starmetal-pick', 'starmetal-pick', 4e10, 145, ['starmetal-bar', 12], ['pale-pearl', 2], ['hollow-heart', 1]),
+  gear('c-rootbound-pick', 'rootbound-pick', 6e12, 205, ['rootsteel-bar', 12], ['blood-opal', 2], ['root-heart', 1]),
+  gear('c-waking-pick', 'waking-pick', 8e14, 265, ['lucid-bar', 12], ['eyeglass', 2], ['waking-heart', 1]),
 
   // Lanterns
   gear('c-miners-lamp', 'miners-lamp', 150, 3, ['bronze-bar', 3], ['quartz', 1]),
@@ -56,6 +61,8 @@ export const CRAFT: readonly CraftRecipe[] = [
   gear('c-crystal-lantern', 'crystal-lantern', 2e6, 53, ['gold-bar', 8], ['sapphire', 2]),
   gear('c-ember-lantern', 'ember-lantern', 1.5e8, 93, ['titanium-bar', 8], ['sunstone', 2]),
   gear('c-pale-lantern', 'pale-lantern', 2e10, 143, ['voidsteel-bar', 8], ['pale-pearl', 2]),
+  gear('c-rootbound-lantern', 'rootbound-lantern', 3e12, 203, ['pulse-ingot', 8], ['tearstone', 2]),
+  gear('c-waking-lantern', 'waking-lantern', 4e14, 263, ['lucid-bar', 8], ['morning-star', 2]),
 
   // Armour
   gear('c-work-jacket', 'work-jacket', 60, 2, ['copper-bar', 3]),
@@ -64,6 +71,8 @@ export const CRAFT: readonly CraftRecipe[] = [
   gear('c-crystal-plate', 'crystal-plate', 5e6, 57, ['platinum-bar', 10], ['crystalite', 80]),
   gear('c-ember-mail', 'ember-mail', 2e8, 91, ['obsidian-plate', 10], ['titanium', 30], ['ember-heart', 1]),
   gear('c-hollow-shroud', 'hollow-shroud', 3e10, 147, ['voidsteel-bar', 10], ['hollow-heart', 1]),
+  gear('c-rootbound-mail', 'rootbound-mail', 5e12, 207, ['rootsteel-bar', 10], ['root-heart', 1]),
+  gear('c-waking-mail', 'waking-mail', 6e14, 267, ['lucid-bar', 10], ['waking-heart', 1]),
 
   // Charms
   gear('c-amber-charm', 'amber-charm', 200, 4, ['amber', 3], ['copper-bar', 2]),
@@ -71,6 +80,8 @@ export const CRAFT: readonly CraftRecipe[] = [
   gear('c-amethyst-charm', 'amethyst-charm', 3e6, 56, ['amethyst', 3], ['gold-bar', 4]),
   gear('c-ruby-charm', 'ruby-charm', 2.5e8, 94, ['ruby', 3], ['titanium-bar', 4]),
   gear('c-dream-charm', 'dream-charm', 3e10, 146, ['dreamstone', 3], ['starmetal-bar', 4]),
+  gear('c-rootbound-charm', 'rootbound-charm', 4e12, 206, ['tearstone', 3], ['pulse-ingot', 4]),
+  gear('c-waking-charm', 'waking-charm', 5e14, 266, ['eyeglass', 3], ['lucid-bar', 4]),
 
   // Consumables
   consumable('c-dynamite', 'dynamite', 3, 50, 2, ['coal', 30], ['copper', 5]),
@@ -86,6 +97,8 @@ export const CRAFT: readonly CraftRecipe[] = [
   fixture('c-furnace3', 'furnace3', 300_000, 32, ['cobalt-bar', 8], ['silver-bar', 12]),
   fixture('c-lens', 'lens', 8e6, 58, ['gold-bar', 10], ['amethyst', 3], ['prism-heart', 1]),
   fixture('c-coolant', 'coolant', 1e8, 91, ['titanium-bar', 10], ['sapphire', 4]),
+  fixture('c-censer', 'censer', 2e12, 201, ['rootsteel-bar', 10], ['blood-opal', 3]),
+  fixture('c-veil', 'veil', 3e14, 261, ['lucid-bar', 10], ['eyeglass', 3]),
 ];
 
 export const REFINE_BY_ID: ReadonlyMap<string, RefineRecipe> = new Map(REFINE.map((r) => [r.id, r]));
@@ -118,4 +131,6 @@ export const FIXTURES: readonly FixtureDef[] = [
   { id: 'furnace3', name: 'Third Furnace', text: 'A third refinery slot.' },
   { id: 'lens', name: 'Echo Lens', text: '+15% Echoes from every Descent.' },
   { id: 'coolant', name: 'Coolant Lines', text: 'Your machines run at full speed in the Magma Veins.' },
+  { id: 'censer', name: 'Stillness Censer', text: 'A slow smoke that keeps the Roots from healing.' },
+  { id: 'veil', name: 'Dreamveil', text: 'When it looks, it no longer sees you.' },
 ];

@@ -40,6 +40,11 @@ export function gearStat(s: GameState, stat: StatKey): number {
   return total;
 }
 
+/** In The Waking the light opens for four seconds in every fifteen. */
+export function gazeOpen(s: GameState): boolean {
+  return s.time % 15 < 4;
+}
+
 export function sharpenBase(level: number): number {
   return (1 + level) * 2 ** Math.floor(level / 10);
 }
@@ -55,7 +60,8 @@ export function derive(s: GameState): Derived {
   const u = s.upgrades;
   const biome = biomeAt(s.depth);
 
-  const light = gearStat(s, 'light');
+  const b = (id: string): boolean => s.bargains.includes(id);
+  const light = Math.max(0, gearStat(s, 'light') - (b('sight') ? 1 : 0));
   const heatProof = gearStat(s, 'heatRes') > 0;
   const hazard = { tap: 1, auto: 1, luck: 1, warning: null as string | null };
   const pen = BALANCE.hazardPenalty;
@@ -75,6 +81,14 @@ export function derive(s: GameState): Derived {
     hazard.tap = pen;
     hazard.luck = 0.5;
     hazard.warning = `Too dark to see the veins. You need a lantern with ${BALANCE.darkLight} light.`;
+  } else if (biome.hazard === 'pulse' && !s.fixtures.includes('censer')) {
+    hazard.warning = 'The rock heals between blows. A Stillness Censer would keep it still.';
+  } else if (biome.hazard === 'gaze' && !s.fixtures.includes('veil')) {
+    if (gazeOpen(s)) {
+      hazard.tap = 0.25;
+      hazard.auto = 0.25;
+    }
+    hazard.warning = 'When the light opens, everything slows. A Dreamveil would hide you.';
   }
 
   const hum = lvl(e, 'hum') > 0 ? 1 + 0.02 * s.echoes : 1;
@@ -86,6 +100,8 @@ export function derive(s: GameState): Derived {
     (1 + 0.15 * lvl(p, 'heavy')) *
     2 ** lvl(e, 'resonance') *
     hum *
+    (b('hunger') ? 0.6 : 1) *
+    (b('name') ? 3 : 1) *
     hazard.tap;
 
   const critChance = Math.min(
@@ -96,7 +112,7 @@ export function derive(s: GameState): Derived {
 
   const luck =
     (s.stats.lck + gearStat(s, 'luck') + 4 * lvl(p, 'lucky') + 6 * lvl(e, 'omen') +
-      (s.buffs.dowse > 0 ? 30 : 0) + (s.buffs.luck > 0 ? 40 : 0)) * hazard.luck;
+      (s.buffs.dowse > 0 ? 30 : 0) + (s.buffs.luck > 0 ? 40 : 0) + (b('sight') ? 60 : 0)) * hazard.luck;
 
   let autoBase = 0;
   for (const m of MACHINES) {
@@ -111,6 +127,7 @@ export function derive(s: GameState): Derived {
     (1 + 0.15 * lvl(p, 'oiled')) *
     2 ** lvl(e, 'ghosts') *
     hum *
+    (b('hunger') ? 3 : 1) *
     hazard.auto;
 
   const overclock = lvl(p, 'overclock');
@@ -122,7 +139,7 @@ export function derive(s: GameState): Derived {
     light,
     heatProof,
     staminaMax: BALANCE.baseStamina + 5 * s.stats.end + gearStat(s, 'stamina'),
-    staminaRegen: BALANCE.staminaRegen + 0.05 * s.stats.end,
+    staminaRegen: (BALANCE.staminaRegen + 0.05 * s.stats.end) * (b('quiet') ? 0.5 : 1),
     autoDps,
     machineCrit: overclock > 0 ? critChance * (0.5 + 0.1 * (overclock - 1)) : 0,
     xpMult:
@@ -131,9 +148,9 @@ export function derive(s: GameState): Derived {
     oreMult:
       (1 + 0.1 * lvl(u, 'cart')) * (1 + gearStat(s, 'orePct') / 100) * (1 + 0.1 * lvl(p, 'geologist')) *
       (s.buffs.dowse > 0 ? 2 : 1),
-    sellMult: (1 + 0.08 * lvl(u, 'haggle')) * (1 + 0.1 * lvl(p, 'assayer')) * 1.5 ** lvl(e, 'ledger'),
+    sellMult: (1 + 0.08 * lvl(u, 'haggle')) * (1 + 0.1 * lvl(p, 'assayer')) * 1.5 ** lvl(e, 'ledger') * (b('greed') ? 2.5 : 1),
     refineSpeed: (1 + 0.25 * lvl(u, 'bellows')) * (1 + 0.2 * lvl(p, 'tinker')) * (1 + 0.3 * lvl(e, 'embers')),
-    offlineHours: BALANCE.offlineHours + lvl(p, 'nightshift') + 2 * lvl(e, 'longnight'),
+    offlineHours: BALANCE.offlineHours + lvl(p, 'nightshift') + 2 * lvl(e, 'longnight') + (b('quiet') ? 12 : 0),
     offlineYield: 1 + 0.1 * lvl(p, 'nightshift'),
     seamMult: 1 + 0.25 * lvl(p, 'seambreaker'),
     hazard,

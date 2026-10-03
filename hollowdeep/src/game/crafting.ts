@@ -7,12 +7,13 @@ import { derive } from './derive';
 import { emit } from './events';
 import { hasFeature } from './features';
 import { equip, gearScore, rollGear } from './rpg';
+import { storyIndex } from './missions';
 
 /** Recipes are learned for good: the deepest depth ever reached counts, not this run's. */
 export function meetsRequirement(s: GameState, req: Requirement): boolean {
   if ('depth' in req) return s.deepestEver >= req.depth;
   const i = STORY.findIndex((m) => m.id === req.mission);
-  return i >= 0 && s.story.index > i;
+  return i >= 0 && storyIndex(s) > i;
 }
 
 export function hasInputs(s: GameState, inputs: readonly Stack[], times = 1): boolean {
