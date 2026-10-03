@@ -1,0 +1,33 @@
+{
+  "name": "hollowdeep",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An incremental mining game for the phone: dig down through five strange strata, level up your miner, craft gear and listen to the dark.",
+  "scripts": {
+    "dev": "vite",
+    "bake": "tsx scripts/bake-sprites.ts",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "validate": "tsx scripts/validate-data.ts",
+    "playtest": "tsx scripts/playtest.ts",
+    "verify": "tsx scripts/verify-ui.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/pngjs": "^6.0.5",
+    "playwright": "^1.63.0",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "@fontsource/pixelify-sans": "^5.3.0",
+    "@fontsource/silkscreen": "^5.3.0"
+  }
+}
