@@ -3,7 +3,7 @@ import { BALANCE } from '../src/data/progression';
 import { newGame, tick } from '../src/game/engine';
 import { blockHp, damage, setDepth, tap, xpForLevel, addXp } from '../src/game/mining';
 import { derive } from '../src/game/derive';
-import { buyMachine, buyUpgrade, sellAllOre } from '../src/game/economy';
+import { buyMachine, buyUpgrade, maxUpgradeLevels, sellAllOre, spendAll, upgradeCost } from '../src/game/economy';
 import { unlockFeature } from '../src/game/features';
 
 describe('mining', () => {
@@ -83,5 +83,38 @@ describe('mining', () => {
     }
     expect(a.inventory).toEqual(b.inventory);
     expect(a.rng).toBe(b.rng);
+  });
+});
+
+describe('buying in bulk', () => {
+  it('prices n upgrade levels as the sum of the single ones', () => {
+    const s = newGame(20);
+    unlockFeature(s, 'upgrades');
+    s.coins = 1e12;
+    let singles = 0;
+    for (let i = 0; i < 25; i++) singles += upgradeCost('sharpen', i);
+    expect(upgradeCost('sharpen', 0, 25)).toBeGreaterThanOrEqual(singles - 25);
+    expect(upgradeCost('sharpen', 0, 25)).toBeLessThanOrEqual(singles + 1);
+    expect(buyUpgrade(s, 'sharpen', 25)).toBe(true);
+    expect(s.upgrades['sharpen']).toBe(25);
+  });
+
+  it('Max buys as many levels as the coin allows, and no more', () => {
+    const s = newGame(21);
+    unlockFeature(s, 'upgrades');
+    s.coins = 1e9;
+    const n = maxUpgradeLevels(s, 'cart');
+    expect(n).toBeGreaterThan(10);
+    expect(buyUpgrade(s, 'cart', n)).toBe(true);
+    expect(buyUpgrade(s, 'cart', 1)).toBe(false);
+  });
+
+  it('Spend all leaves nothing affordable', () => {
+    const s = newGame(22);
+    for (const f of ['upgrades', 'drones', 'rig', 'miner', 'refinery'] as const) unlockFeature(s, f);
+    s.coins = 1e10;
+    expect(spendAll(s)).toBeGreaterThan(50);
+    expect(buyUpgrade(s, 'sharpen')).toBe(false);
+    expect(buyMachine(s, 'drone')).toBe(false);
   });
 });

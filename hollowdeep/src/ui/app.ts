@@ -11,7 +11,7 @@ import type { ConsumableId } from '../data/types';
 import type { SkillId } from '../data/progression';
 import { batchesAffordable, clearSlot, craft, furnaceSlots, queueRefine } from '../game/crafting';
 import { derive } from '../game/derive';
-import { buyMachine, buyUpgrade, sell, sellAllOre } from '../game/economy';
+import { buyMachine, buyUpgrade, sell, sellAllOre, spendAll } from '../game/economy';
 import { tick } from '../game/engine';
 import { on, type GameEvent } from '../game/events';
 import { activeStory, claimContract, claimStory, progress, refreshContracts } from '../game/missions';
@@ -320,7 +320,10 @@ export class App {
         if (!s.autoAdvance && s.block.seam) spawnBlock(s);
         break;
       case 'up':
-        ok = buyUpgrade(s, a);
+        ok = buyUpgrade(s, a, Number(b) || 1);
+        break;
+      case 'spendall':
+        ok = spendAll(s) > 0;
         break;
       case 'machine':
         ok = buyMachine(s, a, Number(b));

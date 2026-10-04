@@ -5,22 +5,65 @@ import { derive } from './derive';
 import { emit } from './events';
 import { hasFeature } from './features';
 
-export function upgradeCost(id: string, level: number): number {
+/** Price of `count` more levels of an upgrade already at `level`. */
+export function upgradeCost(id: string, level: number, count = 1): number {
   const def = UPGRADES.find((u) => u.id === id);
   if (!def) return Infinity;
-  return Math.ceil(def.baseCost * def.growth ** level);
+  return Math.ceil((def.baseCost * def.growth ** level * (def.growth ** count - 1)) / (def.growth - 1));
 }
 
-export function buyUpgrade(s: GameState, id: string): boolean {
+/** How many levels of an upgrade the coin on hand would buy. */
+export function maxUpgradeLevels(s: GameState, id: string): number {
   const def = UPGRADES.find((u) => u.id === id);
-  if (!def || !hasFeature(s, 'upgrades') || (def.requires && !hasFeature(s, def.requires))) return false;
+  if (!def) return 0;
+  const first = def.baseCost * def.growth ** (s.upgrades[id] ?? 0);
+  if (s.coins < first) return 0;
+  const n = Math.floor(Math.log((s.coins * (def.growth - 1)) / first + 1) / Math.log(def.growth));
+  return upgradeCost(id, s.upgrades[id] ?? 0, n) <= s.coins ? n : Math.max(0, n - 1);
+}
+
+function upgradeAllowed(s: GameState, id: string): boolean {
+  const def = UPGRADES.find((u) => u.id === id);
+  return !!def && hasFeature(s, 'upgrades') && (!def.requires || hasFeature(s, def.requires));
+}
+
+export function buyUpgrade(s: GameState, id: string, count = 1): boolean {
+  if (!upgradeAllowed(s, id) || count < 1) return false;
   const level = s.upgrades[id] ?? 0;
-  const cost = upgradeCost(id, level);
+  const cost = upgradeCost(id, level, count);
   if (s.coins < cost) return false;
   s.coins -= cost;
-  s.upgrades[id] = level + 1;
+  s.upgrades[id] = level + count;
   emit({ type: 'buy' });
   return true;
+}
+
+/**
+ * Spends the coin on hand across every upgrade and machine, always on the
+ * cheapest next level, until nothing more is affordable. For the climb back
+ * after a Descent, when every price is tiny next to the purse.
+ */
+export function spendAll(s: GameState): number {
+  let bought = 0;
+  for (let guard = 0; guard < 100_000; guard++) {
+    let best: { cost: number; buy: () => void } | null = null;
+    for (const u of UPGRADES) {
+      if (!upgradeAllowed(s, u.id)) continue;
+      const cost = upgradeCost(u.id, s.upgrades[u.id] ?? 0);
+      if (!best || cost < best.cost) best = { cost, buy: () => { s.upgrades[u.id] = (s.upgrades[u.id] ?? 0) + 1; } };
+    }
+    for (const m of MACHINES) {
+      if (!hasFeature(s, m.requires)) continue;
+      const cost = machineCost(m.id, s.machines[m.id] ?? 0);
+      if (!best || cost < best.cost) best = { cost, buy: () => { s.machines[m.id] = (s.machines[m.id] ?? 0) + 1; } };
+    }
+    if (!best || best.cost > s.coins) break;
+    s.coins -= best.cost;
+    best.buy();
+    bought += 1;
+  }
+  if (bought > 0) emit({ type: 'buy' });
+  return bought;
 }
 
 /** Price of `count` more machines when `owned` are already running. */
