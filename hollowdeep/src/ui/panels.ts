@@ -7,7 +7,7 @@ import { CONSUMABLES, CRAFT, FIXTURES, REFINE } from '../data/recipes';
 import type { CraftRecipe, MaterialKind, Reward, Slot, Stack, StatKey } from '../data/types';
 import { batchesAffordable, canCraft, furnaceSlots, meetsRequirement, refineSeconds } from '../game/crafting';
 import { derive } from '../game/derive';
-import { machineCost, maxAffordable, upgradeCost } from '../game/economy';
+import { machineCost, maxAffordable, maxUpgradeLevels, upgradeCost } from '../game/economy';
 import { hasFeature } from '../game/features';
 import { activeStory, describeGoal, progress, storyIndex } from '../game/missions';
 import { CHUTE_RESERVE, machineBreaksPerSecond, xpForLevel } from '../game/mining';
@@ -159,21 +159,25 @@ function machineCount(s: GameState, id: string, mode: UiState['buyMode']): numbe
 }
 
 export function renderUpgrades(s: GameState, ui: UiState): string {
-  const out: string[] = ['<section class="card" data-key="ups"><h4>Upgrades</h4>'];
+  const seg = `<div class="seg">${([1, 10, 'max'] as const).map((m) => `<button class="${ui.buyMode === m ? 'on' : ''}" data-act="mode:${m}">${m === 'max' ? 'Max' : `×${m}`}</button>`).join('')}</div>`;
+  const out: string[] = [`<section class="card" data-key="buybar"><div class="row between wrap gap">
+    <span class="muted small">Buy</span>${seg}${btn('spendall', 'Spend all', s.coins > 0, 'small primary')}</div>
+    <p class="muted tiny">Spend all buys the cheapest next level of everything, again and again, until the coin runs out.</p></section>`];
+  out.push('<section class="card" data-key="ups"><h4>Upgrades</h4>');
   for (const u of UPGRADES) {
     if (u.requires && !hasFeature(s, u.requires)) continue;
     const lvl = s.upgrades[u.id] ?? 0;
-    const cost = upgradeCost(u.id, lvl);
+    const n = ui.buyMode === 'max' ? Math.max(1, maxUpgradeLevels(s, u.id)) : ui.buyMode;
+    const cost = upgradeCost(u.id, lvl, n);
     out.push(`<div class="item-row" data-key="u-${u.id}">${iconHtml(UPGRADE_ICON[u.id] ?? 'icon-up', 2)}
       <div class="grow"><b>${u.name}</b> <span class="muted">Lv ${lvl}</span><div class="muted small">${u.text}</div></div>
-      ${btn(`up:${u.id}`, coin(cost), s.coins >= cost, 'buy')}</div>`);
+      ${btn(`up:${u.id}:${n}`, `${n > 1 ? `+${n} · ` : ''}${coin(cost)}`, s.coins >= cost, 'buy')}</div>`);
   }
   out.push('</section>');
 
   if (hasFeature(s, 'drones')) {
     const d = derive(s);
-    out.push(`<section class="card" data-key="machines"><div class="row between"><h4>Machines</h4>
-      <div class="seg">${([1, 10, 'max'] as const).map((m) => `<button class="${ui.buyMode === m ? 'on' : ''}" data-act="mode:${m}">${m === 'max' ? 'Max' : `×${m}`}</button>`).join('')}</div></div>
+    out.push(`<section class="card" data-key="machines"><h4>Machines</h4>
       <p class="muted small">Machines hit whatever is in front of you, all the time — and while you are away. Total ${fmt(d.autoDps)} damage/s; they can clear at most ${machineBreaksPerSecond(s)} blocks a second, so they earn most at the deepest depth they can keep up with.</p>`);
     for (const m of MACHINES) {
       if (!hasFeature(s, m.requires)) continue;
