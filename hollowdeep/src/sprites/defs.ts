@@ -1111,6 +1111,13 @@ export function buildSprites(): SpriteDef[] {
   out.push(make('use-tonic', FLASK, shades(['#8a1a2a', '#e0304a', '#ff9aa8'])));
   out.push(make('use-luckbrew', FLASK, shades(['#1a6a2a', '#3ad04a', '#c8ffb0'])));
   out.push(make('use-sagebrew', FLASK, shades(['#2a2a8a', '#5a6ae0', '#c8d0ff'])));
+  out.push(make('use-overdrive', FLASK, shades(['#1a1208', '#4a3a1a', '#a88a4a'])));
+  out.push(make('use-gilded', FLASK, shades(['#7a5206', '#e8b42a', '#fff4a8'])));
+  out.push(make('use-charge', DYNAMITE, { r: '#4a1a8a', R: '#a87aff' }));
+  out.push(make('use-embertonic', FLASK, shades(['#7a2a00', '#f06a0a', '#ffd04a'])));
+  out.push(make('use-seeker', FLASK, shades(['#1a3a3a', '#3a8a7a', '#9affd8'])));
+  out.push(make('use-stillwater', FLASK, shades(['#1a3a5a', '#6ab0e0', '#e8f8ff'])));
+  out.push(make('use-dreamdust', ESSENCE, shades(['#3a2a6a', '#9a7ae0', '#f0e0ff'])));
 
   out.push(make('fix-filters', FILTER));
   out.push(make('fix-coolant', COOLANT));

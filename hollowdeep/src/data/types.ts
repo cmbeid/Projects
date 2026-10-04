@@ -99,7 +99,18 @@ export interface RefineRecipe {
   requires: Requirement;
 }
 
-export type ConsumableId = 'dynamite' | 'tonic' | 'luckbrew' | 'sagebrew';
+export type ConsumableId =
+  | 'dynamite'
+  | 'tonic'
+  | 'luckbrew'
+  | 'sagebrew'
+  | 'overdrive'
+  | 'gilded'
+  | 'charge'
+  | 'embertonic'
+  | 'seeker'
+  | 'stillwater'
+  | 'dreamdust';
 export type FixtureId = 'filters' | 'coolant' | 'chute' | 'furnace2' | 'furnace3' | 'lens' | 'workshop' | 'censer' | 'veil';
 
 export type CraftOutput =

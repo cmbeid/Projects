@@ -119,6 +119,10 @@ export function renderMine(s: GameState): string {
   if (s.buffs.frenzy > 0) buffs.push(`Frenzy ${fmtTime(s.buffs.frenzy)}`);
   if (s.buffs.luck > 0) buffs.push(`Lucky Brew ${fmtTime(s.buffs.luck)}`);
   if (s.buffs.sage > 0) buffs.push(`Sage Brew ${fmtTime(s.buffs.sage)}`);
+  if (s.buffs.overdrive > 0) buffs.push(`Overdrive ${fmtTime(s.buffs.overdrive)}`);
+  if (s.buffs.gild > 0) buffs.push(`Gilded ${fmtTime(s.buffs.gild)}`);
+  if (s.buffs.seek > 0) buffs.push(`Veinseeker ${fmtTime(s.buffs.seek)}`);
+  if (s.buffs.still > 0) buffs.push(`Stillwater ${fmtTime(s.buffs.still)}`);
   if (buffs.length) out.push(`<section class="card" data-key="buffs"><div class="row wrap gap">${buffs.map((b) => `<span class="chip glow">${b}</span>`).join('')}</div></section>`);
 
   const cons = CONSUMABLES.filter((c) => (s.consumables[c.id] ?? 0) > 0);
@@ -427,8 +431,10 @@ export function renderSkills(s: GameState): string {
     out.push(`<button class="skill ${active ? 'active' : ''}" data-act="skill:${k.id}" data-key="sk-${k.id}" title="${esc(`${k.name}: ${k.text} (${k.stamina} stamina)`)}"${skillReady(s, k.id) ? '' : ' disabled'}>
       ${iconHtml(`skill-${k.id}`, 2)}<span class="cd" style="height:${pct.toFixed(0)}%"></span><span class="cost">${k.stamina}</span></button>`);
   }
-  if ((s.consumables.dynamite ?? 0) > 0) {
-    out.push(`<button class="skill" data-act="use:dynamite" data-key="sk-dyn" title="Dynamite">${iconHtml('use-dynamite', 2)}<span class="cost">×${s.consumables.dynamite}</span></button>`);
+  // Blasts sit on the bar, beside the skills, where they are needed in a hurry.
+  for (const id of ['dynamite', 'charge'] as const) {
+    if ((s.consumables[id] ?? 0) <= 0) continue;
+    out.push(`<button class="skill" data-act="use:${id}" data-key="sk-${id}" title="${id === 'charge' ? 'Deep Charge' : 'Dynamite'}">${iconHtml(`use-${id}`, 2)}<span class="cost">×${s.consumables[id]}</span></button>`);
   }
   return out.join('');
 }

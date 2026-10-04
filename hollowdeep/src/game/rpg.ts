@@ -5,7 +5,7 @@ import type { CoreStat, GameState, GearItem } from '../state/types';
 import { derive } from './derive';
 import { emit } from './events';
 import { hasFeature } from './features';
-import { damage, tap } from './mining';
+import { addXp, damage, tap, xpAt } from './mining';
 import { rand } from './rng';
 
 export function passivePointsTotal(s: GameState): number {
@@ -79,6 +79,29 @@ export function useConsumable(s: GameState, id: ConsumableId): boolean {
       break;
     case 'sagebrew':
       s.buffs.sage = 300;
+      break;
+    case 'overdrive':
+      s.buffs.overdrive = 120;
+      break;
+    case 'gilded':
+      s.buffs.gild = 300;
+      break;
+    case 'charge':
+      emit({ type: 'skill', id: 'dynamite' });
+      damage(s, d.tap * 400, { crit: false, auto: false }, d);
+      break;
+    case 'embertonic':
+      s.stamina = d.staminaMax;
+      s.cooldowns = { power: 0, dowse: 0, frenzy: 0 };
+      break;
+    case 'seeker':
+      s.buffs.seek = 180;
+      break;
+    case 'stillwater':
+      s.buffs.still = 300;
+      break;
+    case 'dreamdust':
+      addXp(s, xpAt(s.depth) * d.xpMult * 500);
       break;
   }
   return true;

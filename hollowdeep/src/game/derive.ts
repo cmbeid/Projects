@@ -81,6 +81,8 @@ export function derive(s: GameState): Derived {
     hazard.tap = pen;
     hazard.luck = 0.5;
     hazard.warning = `Too dark to see the veins. You need a lantern with ${BALANCE.darkLight} light.`;
+  } else if (s.buffs.still > 0 && (biome.hazard === 'pulse' || biome.hazard === 'gaze')) {
+    // Stillwater: neither hazard touches you while it lasts.
   } else if (biome.hazard === 'pulse' && !s.fixtures.includes('censer')) {
     hazard.warning = 'The rock heals between blows. A Stillness Censer would keep it still.';
   } else if (biome.hazard === 'gaze' && !s.fixtures.includes('veil')) {
@@ -128,6 +130,7 @@ export function derive(s: GameState): Derived {
     2 ** lvl(e, 'ghosts') *
     hum *
     (b('hunger') ? 3 : 1) *
+    (s.buffs.overdrive > 0 ? 3 : 1) *
     hazard.auto;
 
   const overclock = lvl(p, 'overclock');
@@ -147,8 +150,9 @@ export function derive(s: GameState): Derived {
       (s.buffs.sage > 0 ? 2 : 1),
     oreMult:
       (1 + 0.1 * lvl(u, 'cart')) * (1 + gearStat(s, 'orePct') / 100) * (1 + 0.1 * lvl(p, 'geologist')) *
-      (s.buffs.dowse > 0 ? 2 : 1),
-    sellMult: (1 + 0.08 * lvl(u, 'haggle')) * (1 + 0.1 * lvl(p, 'assayer')) * 1.5 ** lvl(e, 'ledger') * (b('greed') ? 2.5 : 1),
+      (s.buffs.dowse > 0 ? 2 : 1) *
+      (s.buffs.seek > 0 ? 3 : 1),
+    sellMult: (1 + 0.08 * lvl(u, 'haggle')) * (1 + 0.1 * lvl(p, 'assayer')) * 1.5 ** lvl(e, 'ledger') * (b('greed') ? 2.5 : 1) * (s.buffs.gild > 0 ? 2 : 1),
     refineSpeed: (1 + 0.25 * lvl(u, 'bellows')) * (1 + 0.2 * lvl(p, 'tinker')) * (1 + 0.3 * lvl(e, 'embers')),
     offlineHours: BALANCE.offlineHours + lvl(p, 'nightshift') + 2 * lvl(e, 'longnight') + (b('quiet') ? 12 : 0),
     offlineYield: 1 + 0.1 * lvl(p, 'nightshift'),
