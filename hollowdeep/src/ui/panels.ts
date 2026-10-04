@@ -102,7 +102,7 @@ export function renderMine(s: GameState): string {
   const d = derive(s);
   const out: string[] = [];
   out.push(`<section class="card biome" data-key="biome">
-    <div class="row between"><h3>${esc(biomeText(s, biome).name)}</h3><span class="muted">Depth ${s.depth} of ${s.maxDepth}</span></div>
+    <div class="row between"><button class="title-btn" data-act="jump" title="Go to another depth"><h3>${esc(biomeText(s, biome).name)} ▾</h3></button><span class="muted">Depth ${s.depth} of ${s.maxDepth}</span></div>
     <p class="muted small">${esc(biomeText(s, biome).blurb)}</p>
     ${d.hazard.warning ? `<p class="warn small">⚠ ${esc(d.hazard.warning)}</p>` : ''}
     <div class="row wrap gap">

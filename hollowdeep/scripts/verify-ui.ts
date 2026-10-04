@@ -80,6 +80,14 @@ async function main(): Promise<void> {
       }
 
       if (vp.name === 'phone' && label === 'mid') {
+        // Tapping the depth label opens the picker; jumping to the top moves there.
+        await page.locator('.depth-label').click();
+        await page.waitForTimeout(300);
+        await shoot(page, `${vp.name}-jump`);
+        await page.locator('.modal [data-to="1"]').first().click();
+        await page.waitForTimeout(300);
+        const depth = await page.evaluate(() => (window as unknown as { __hollowdeep: { depth: number } }).__hollowdeep.depth);
+        if (depth !== 1) errors.push(`jump: expected depth 1, got ${depth}`);
         await page.locator('#fs').click();
         await page.waitForTimeout(300);
         const fsOn = await page.evaluate(() => !!document.fullscreenElement);

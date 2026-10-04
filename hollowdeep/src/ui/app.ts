@@ -3,7 +3,7 @@ import { Music } from '../audio/music';
 import {
   sfxBreak, sfxBuy, sfxCoin, sfxCraft, sfxDescent, sfxGem, sfxHit, sfxLevel, sfxMission, sfxSkill, sfxSmelt, sfxTick,
 } from '../audio/sfx';
-import { biomeAt } from '../data/biomes';
+import { BIOMES, biomeAt } from '../data/biomes';
 import { GEAR_BASE } from '../data/gear';
 import { MATERIAL } from '../data/materials';
 import { CRAFT_BY_ID, REFINE_BY_ID } from '../data/recipes';
@@ -269,7 +269,7 @@ export class App {
     morph(q('#objective'), this.ui.wide ? '' : renderObjective(s));
     const biome = biomeAt(s.depth);
     morph(q('#depthchip'), `<button class="chip-btn" data-act="depth:up"${s.depth > 1 ? '' : ' disabled'} aria-label="Up">▲</button>
-      <span class="depth-label"><b>${s.depth}</b><span class="tiny">${esc(biomeText(s, biome).name)}</span></span>
+      <button class="depth-label" data-act="jump" title="Go to another depth"><b>${s.depth}</b><span class="tiny">${esc(biomeText(s, biome).name)} ▾</span></button>
       <button class="chip-btn" data-act="depth:down"${s.depth < s.maxDepth ? '' : ' disabled'} aria-label="Down">▼</button>
       <button class="chip-btn mode ${s.autoAdvance ? 'on' : ''}" data-act="advance" title="${s.autoAdvance ? 'Pushing deeper' : 'Farming this depth'}">${s.autoAdvance ? '⇣' : '⏸'}</button>`);
     document.documentElement.dataset['biome'] = biome.id;
@@ -312,8 +312,11 @@ export class App {
         this.ui.craftFilter = a as UiState['craftFilter'];
         break;
       case 'depth':
-        setDepth(s, a === 'up' ? s.depth - 1 : a === 'down' ? s.depth + 1 : s.maxDepth);
+        setDepth(s, a === 'up' ? s.depth - 1 : a === 'down' ? s.depth + 1 : a === 'front' ? s.maxDepth : Number(a));
         break;
+      case 'jump':
+        this.showJump();
+        return;
       case 'advance':
         s.autoAdvance = !s.autoAdvance;
         // Farming means no seam: swap an exposed one back for ordinary rock.
@@ -582,6 +585,56 @@ export class App {
       <p>Your machines broke <b>${fmtInt(r.blocks)}</b> blocks.${r.levelsGained ? ` You gained <b>${r.levelsGained}</b> levels.` : ''}${r.coinsAfter > r.coinsBefore ? ` The chute earned ${fmt(r.coinsAfter - r.coinsBefore)} coin.` : ''}</p>
       <div class="stacks">${items || '<span class="muted small">Nothing — buy some machines.</span>'}</div>
       <div class="row end"><button class="btn primary" data-act="close">Back to work</button></div>`);
+  }
+
+  /**
+   * Jump to any depth already opened: one button per biome reached, a slider
+   * across the whole range, and a number to type. Moving is instant.
+   */
+  private showJump(): void {
+    const s = this.s;
+    const biomes = BIOMES.filter((b) => b.from <= s.maxDepth);
+    const rows = biomes
+      .map((b, i) => {
+        const end = Math.min(s.maxDepth, (BIOMES[i + 1]?.from ?? Infinity) - 1);
+        const here = biomeAt(s.depth).id === b.id;
+        return `<div class="item-row${here ? ' here' : ''}"><div class="grow"><b>${esc(biomeText(s, b).name)}</b>
+          <div class="muted small">Depths ${b.from}–${end}</div></div>
+          <button class="btn small" data-to="${b.from}">Top</button><button class="btn small" data-to="${end}">Bottom</button></div>`;
+      })
+      .join('');
+    const m = this.modal(`<h3>Go to depth</h3>
+      <p class="muted small">Anywhere you have already opened, down to depth ${s.maxDepth}.</p>
+      <div class="jump-pick"><input type="range" min="1" max="${s.maxDepth}" value="${s.depth}" id="jump-range" aria-label="Depth">
+        <input type="number" min="1" max="${s.maxDepth}" value="${s.depth}" id="jump-num" inputmode="numeric" aria-label="Depth number">
+        <button class="btn primary" id="jump-go">Go</button></div>
+      <div class="row gap wrap jump-quick">
+        <button class="btn small" data-step="-10">−10</button><button class="btn small" data-step="-1">−1</button>
+        <button class="btn small" data-step="1">+1</button><button class="btn small" data-step="10">+10</button>
+        <button class="btn small" data-to="1">Top</button><button class="btn small" data-to="${s.maxDepth}">Deepest</button>
+      </div>
+      ${rows}
+      <div class="row end"><button class="btn ghost" data-act="close">Close</button></div>`);
+    const range = m.querySelector<HTMLInputElement>('#jump-range')!;
+    const num = m.querySelector<HTMLInputElement>('#jump-num')!;
+    const clamp = (v: number): number => Math.max(1, Math.min(s.maxDepth, Math.round(v) || 1));
+    const set = (v: number): void => {
+      range.value = num.value = String(clamp(v));
+    };
+    const go = (v: number): void => {
+      setDepth(s, clamp(v));
+      sfxTick();
+      this.closeModal();
+      this.renderPanels(true);
+    };
+    range.addEventListener('input', () => set(Number(range.value)));
+    num.addEventListener('input', () => (range.value = String(clamp(Number(num.value)))));
+    num.addEventListener('keydown', (e) => e.key === 'Enter' && go(Number(num.value)));
+    m.querySelector('#jump-go')!.addEventListener('click', () => go(Number(num.value)));
+    m.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
+      b.addEventListener('click', () => set(Number(num.value) + Number(b.dataset['step']))),
+    );
+    m.querySelectorAll<HTMLButtonElement>('[data-to]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset['to']))));
   }
 
   private showSettings(): void {
