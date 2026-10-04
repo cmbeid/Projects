@@ -44,6 +44,26 @@ export const GEAR: readonly GearBase[] = [
   { id: 'waking-lantern', name: 'Morning Lantern', slot: 'lantern', tier: 9, tint: 'morning-star', stats: { light: 7, luck: 80, xpPct: 60 } },
   { id: 'waking-mail', name: 'Lucid Mail', slot: 'armor', tier: 9, tint: 'lucid-bar', stats: { heatRes: 1, stamina: 300, autoPct: 450 } },
   { id: 'waking-charm', name: 'Eyeglass Charm', slot: 'charm', tier: 9, tint: 'eyeglass', stats: { dmgPct: 300, orePct: 120, luck: 40 } },
+
+  // Late-game sidegrades: same tier as the main line, different strengths.
+  { id: 'ember-hammer', name: 'Emberbreaker', slot: 'pick', tier: 6, tint: 'emberstone', stats: { dmgPct: 5200, critChance: 10, critMult: 1.4 } },
+  { id: 'magma-charm', name: 'Cinder Charm', slot: 'charm', tier: 6, tint: 'sunstone', stats: { autoPct: 150, critChance: 5 } },
+  { id: 'void-pick', name: 'Voidsteel Pick', slot: 'pick', tier: 7, tint: 'voidsteel-bar', stats: { dmgPct: 17000, critChance: 12, critMult: 1.8 } },
+  { id: 'glyph-lantern', name: 'Glyph Lantern', slot: 'lantern', tier: 7, tint: 'glyphstone', stats: { light: 5, orePct: 60, luck: 20 } },
+  { id: 'star-mail', name: 'Starmetal Mail', slot: 'armor', tier: 7, tint: 'starmetal-bar', stats: { heatRes: 1, stamina: 200, autoPct: 220 } },
+  { id: 'whisper-charm', name: 'Whisper Charm', slot: 'charm', tier: 7, tint: 'whisperite', stats: { autoPct: 300, luck: 20 } },
+  { id: 'pulse-pick', name: 'Pulse Pick', slot: 'pick', tier: 8, tint: 'pulse-ingot', stats: { dmgPct: 52000, critChance: 15, critMult: 2.6 } },
+  { id: 'vein-coat', name: 'Veinweave Coat', slot: 'armor', tier: 8, tint: 'veinroot', stats: { heatRes: 1, stamina: 420, autoPct: 180, xpPct: 40 } },
+  { id: 'heart-charm', name: 'Blood Opal Charm', slot: 'charm', tier: 8, tint: 'blood-opal', stats: { critMult: 3, critChance: 10, dmgPct: 150 } },
+  { id: 'iris-pick', name: 'Irisite Pick', slot: 'pick', tier: 9, tint: 'irisite', stats: { dmgPct: 170000, critChance: 20, critMult: 3 } },
+  { id: 'iris-lantern', name: 'Iris Lantern', slot: 'lantern', tier: 9, tint: 'irisite', stats: { light: 7, orePct: 150, luck: 50 } },
+  { id: 'dawn-charm', name: 'Dawn Charm', slot: 'charm', tier: 9, tint: 'morning-star', stats: { autoPct: 900, xpPct: 80 } },
+
+  // The Dreamer's set: the last and best of everything.
+  { id: 'dreamer-pick', name: "Dreamer's Pick", slot: 'pick', tier: 10, tint: 'wakestone', stats: { dmgPct: 700000, critChance: 10, critMult: 3 } },
+  { id: 'dreamer-lantern', name: "Dreamer's Lantern", slot: 'lantern', tier: 10, tint: 'waking-heart', stats: { light: 8, luck: 120, xpPct: 100, orePct: 100 } },
+  { id: 'dreamer-mail', name: "Dreamer's Mantle", slot: 'armor', tier: 10, tint: 'reverie', stats: { heatRes: 1, stamina: 500, autoPct: 1200 } },
+  { id: 'dreamer-charm', name: "Dreamer's Eye", slot: 'charm', tier: 10, tint: 'eyeglass', stats: { dmgPct: 600, orePct: 200, critChance: 10 } },
 ];
 
 export const GEAR_BASE: ReadonlyMap<string, GearBase> = new Map(GEAR.map((g) => [g.id, g]));

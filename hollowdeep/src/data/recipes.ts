@@ -88,8 +88,35 @@ export const CRAFT: readonly CraftRecipe[] = [
   consumable('c-tonic', 'tonic', 2, 80, 3, ['amber', 1], ['coal', 15]),
   consumable('c-luckbrew', 'luckbrew', 1, 400, 6, ['quartz', 3], ['tin', 20]),
   consumable('c-sagebrew', 'sagebrew', 1, 15_000, 22, ['jade', 1], ['mycelite', 30]),
+  consumable('c-overdrive', 'overdrive', 2, 200_000, 28, ['cobalt-bar', 2], ['sporestone', 20]),
+  consumable('c-gilded', 'gilded', 1, 5e6, 55, ['gold-bar', 2], ['amethyst', 1]),
+  consumable('c-charge', 'charge', 2, 5e8, 95, ['obsidian-plate', 1], ['cinnabar', 40]),
+  consumable('c-embertonic', 'embertonic', 2, 8e8, 92, ['ruby', 1], ['emberstone', 10]),
+  consumable('c-seeker', 'seeker', 1, 5e10, 145, ['pale-pearl', 1], ['glyphstone', 30]),
+  consumable('c-stillwater', 'stillwater', 1, 5e12, 205, ['tearstone', 1], ['marrow', 30]),
+  consumable('c-dreamdust', 'dreamdust', 1, 5e14, 265, ['eyeglass', 1], ['reverie', 30]),
 
   // Fixtures
+  // Late-game sidegrades
+  gear('c-ember-hammer', 'ember-hammer', 3.5e8, 96, ['titanium-bar', 10], ['emberstone', 40], ['ember-heart', 1]),
+  gear('c-magma-charm', 'magma-charm', 2e8, 98, ['sunstone', 3], ['obsidian-plate', 4]),
+  gear('c-void-pick', 'void-pick', 5e10, 150, ['voidsteel-bar', 12], ['dreamstone', 2], ['hollow-heart', 1]),
+  gear('c-glyph-lantern', 'glyph-lantern', 2.5e10, 152, ['starmetal-bar', 6], ['glyphstone', 120]),
+  gear('c-star-mail', 'star-mail', 3e10, 155, ['starmetal-bar', 10], ['pale-pearl', 2]),
+  gear('c-whisper-charm', 'whisper-charm', 3e10, 158, ['whisperite', 80], ['dreamstone', 2]),
+  gear('c-pulse-pick', 'pulse-pick', 7e12, 215, ['pulse-ingot', 12], ['blood-opal', 3], ['root-heart', 1]),
+  gear('c-vein-coat', 'vein-coat', 5e12, 218, ['rootsteel-bar', 8], ['veinroot', 200]),
+  gear('c-heart-charm', 'heart-charm', 6e12, 222, ['blood-opal', 4], ['pulse-ingot', 4]),
+  gear('c-iris-pick', 'iris-pick', 9e14, 272, ['lucid-bar', 12], ['irisite', 120], ['waking-heart', 1]),
+  gear('c-iris-lantern', 'iris-lantern', 6e14, 275, ['lucid-bar', 8], ['irisite', 150]),
+  gear('c-dawn-charm', 'dawn-charm', 7e14, 278, ['morning-star', 3], ['lucid-bar', 6]),
+
+  // The Dreamer's set
+  gear('c-dreamer-pick', 'dreamer-pick', 5e16, 300, ['lucid-bar', 30], ['wakestone', 200], ['waking-heart', 3]),
+  gear('c-dreamer-lantern', 'dreamer-lantern', 3e16, 302, ['lucid-bar', 20], ['morning-star', 4], ['waking-heart', 2]),
+  gear('c-dreamer-mail', 'dreamer-mail', 4e16, 305, ['lucid-bar', 25], ['reverie', 300], ['waking-heart', 2]),
+  gear('c-dreamer-charm', 'dreamer-charm', 4e16, 308, ['eyeglass', 6], ['morning-star', 4], ['waking-heart', 2]),
+
   fixture('c-furnace2', 'furnace2', 1500, 8, ['bronze-bar', 6], ['iron-bar', 6]),
   fixture('c-chute', 'chute', 4000, 14, ['iron-bar', 15], ['loam-heart', 1]),
   fixture('c-filters', 'filters', 30_000, 21, ['silver-bar', 10], ['mycelite', 20]),
@@ -115,6 +142,13 @@ export const CONSUMABLES: readonly ConsumableDef[] = [
   { id: 'tonic', name: 'Stamina Tonic', text: 'Refills your stamina.' },
   { id: 'luckbrew', name: 'Lucky Brew', text: '+40 luck for 3 minutes.' },
   { id: 'sagebrew', name: 'Sage Brew', text: 'Double XP for 5 minutes.' },
+  { id: 'overdrive', name: 'Overdrive Oil', text: 'Machines ×3 for 2 minutes.' },
+  { id: 'gilded', name: 'Gilded Draught', text: 'Everything sells for ×2 for 5 minutes.' },
+  { id: 'charge', name: 'Deep Charge', text: 'Deals 400× your tap damage in one blast.' },
+  { id: 'embertonic', name: 'Ember Tonic', text: 'Refills stamina and resets every skill cooldown.' },
+  { id: 'seeker', name: 'Veinseeker Draught', text: 'Ore ×3 for 3 minutes.' },
+  { id: 'stillwater', name: 'Stillwater', text: 'For 5 minutes the rock cannot heal and the light cannot slow you.' },
+  { id: 'dreamdust', name: 'Dream Dust', text: 'At once, the XP of 500 blocks at this depth.' },
 ];
 
 export interface FixtureDef {

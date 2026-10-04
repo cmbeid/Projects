@@ -4,7 +4,7 @@ An incremental mining game for the phone. It's built for portrait and scales up 
 
 - **Mining and upgrades.** Tap to swing. Buy upgrades with coin, and buy drones, drill rigs and excavators that mine for you, offline too (up to 8 hours, more with upgrades).
 - **RPG.** Your miner levels up from every block. Each level gives stat points for Strength, Dexterity, Luck and Endurance. Every third level gives a point for a 12-node passive tree. Three active skills draw on stamina: Power Strike, Dowse and Frenzy.
-- **Crafting.** Furnaces smelt ore into bars over time. The workbench turns bars, gems and seam hearts into gear, supplies and one-off fixtures. There are 23 pieces of gear across four slots, each with random affixes, and 45 recipes in all.
+- **Crafting.** Furnaces smelt ore into bars over time. The workbench turns bars, gems and seam hearts into gear, supplies and one-off fixtures. There are 47 pieces of gear across four slots, each with random affixes, including late sidegrades and the Dreamer's set at the very bottom; 11 supplies, from dynamite to deep-game draughts; and 81 recipes in all.
 - **Missions.** A 42-mission story runs from the top of the shaft to depth 200 and unlocks each system as it introduces it. Three daily contracts pay out coin, XP and Echoes.
 - **Biomes and hazards.** There are five biomes, each with four ores, two gems and a heart:
   | Biome | Depths | Hazard |

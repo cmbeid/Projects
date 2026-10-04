@@ -54,7 +54,7 @@ export function descend(s: GameState): boolean {
   s.upgrades = {};
   s.machines = {};
   s.furnace = s.furnace.map(() => ({ recipe: null, progress: -1, queued: 0 }));
-  s.buffs = { dowse: 0, frenzy: 0, luck: 0, sage: 0 };
+  s.buffs = { dowse: 0, frenzy: 0, luck: 0, sage: 0, overdrive: 0, gild: 0, seek: 0, still: 0 };
   s.depth = s.maxDepth = Math.min(startingDepth(s), s.deepestEver);
   s.blocksHere = 0;
   spawnBlock(s);

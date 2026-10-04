@@ -34,12 +34,14 @@ export function newGame(seed: number, now = 0): GameState {
     passives: {},
     stamina: BALANCE.baseStamina,
     cooldowns: { power: 0, dowse: 0, frenzy: 0 },
-    buffs: { dowse: 0, frenzy: 0, luck: 0, sage: 0 },
+    buffs: { dowse: 0, frenzy: 0, luck: 0, sage: 0, overdrive: 0, gild: 0, seek: 0, still: 0 },
     frenzyCarry: 0,
     gear: [],
     equipped: { pick: null, lantern: null, armor: null, charm: null },
     nextUid: 1,
-    consumables: { dynamite: 0, tonic: 0, luckbrew: 0, sagebrew: 0 },
+    consumables: {
+      dynamite: 0, tonic: 0, luckbrew: 0, sagebrew: 0, overdrive: 0, gilded: 0, charge: 0, embertonic: 0, seeker: 0, stillwater: 0, dreamdust: 0,
+    },
     fixtures: [],
     features: [],
     furnace: [0, 1, 2].map(() => ({ recipe: null, progress: -1, queued: 0 })),
@@ -93,7 +95,7 @@ export function tick(s: GameState, dt: number): void {
 
   s.stamina = Math.min(d.staminaMax, s.stamina + d.staminaRegen * dt);
   for (const k of ['power', 'dowse', 'frenzy'] as const) s.cooldowns[k] = Math.max(0, s.cooldowns[k] - dt);
-  for (const k of ['dowse', 'frenzy', 'luck', 'sage'] as const) s.buffs[k] = Math.max(0, s.buffs[k] - dt);
+  for (const k of ['dowse', 'frenzy', 'luck', 'sage', 'overdrive', 'gild', 'seek', 'still'] as const) s.buffs[k] = Math.max(0, s.buffs[k] - dt);
 
   if (s.buffs.frenzy > 0) {
     s.frenzyCarry += FRENZY_RATE * dt;
@@ -110,7 +112,7 @@ export function tick(s: GameState, dt: number): void {
   s.machineBudget = Math.min(cap, s.machineBudget + cap * dt);
 
   // In the Roots, a wound in the rock closes unless the Censer keeps it still.
-  if (biomeAt(s.depth).hazard === 'pulse' && !s.fixtures.includes('censer') && s.block.hp < s.block.maxHp) {
+  if (biomeAt(s.depth).hazard === 'pulse' && !s.fixtures.includes('censer') && s.buffs.still <= 0 && s.block.hp < s.block.maxHp) {
     s.block.hp = Math.min(s.block.maxHp, s.block.hp + s.block.maxHp * PULSE_HEAL * dt);
   }
 

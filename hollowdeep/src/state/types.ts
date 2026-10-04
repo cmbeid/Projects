@@ -88,7 +88,7 @@ export interface GameState {
   stamina: number;
   cooldowns: Record<SkillId, number>;
   /** Seconds left on each timed effect. */
-  buffs: { dowse: number; frenzy: number; luck: number; sage: number };
+  buffs: { dowse: number; frenzy: number; luck: number; sage: number; overdrive: number; gild: number; seek: number; still: number };
   /** Fractional taps owed by Frenzy. */
   frenzyCarry: number;
 
