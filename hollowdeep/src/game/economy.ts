@@ -66,6 +66,34 @@ export function spendAll(s: GameState): number {
   return bought;
 }
 
+/**
+ * Buys whatever is ticked for auto-buy, as soon as it is affordable. With
+ * several ticked, the most expensive affordable one goes first, so cheap
+ * levels never starve the big purchases.
+ */
+export function autoBuy(s: GameState): number {
+  let bought = 0;
+  for (let guard = 0; guard < 1000; guard++) {
+    let best: { cost: number; buy: () => void } | null = null;
+    for (const id of s.autoBuy) {
+      const m = MACHINES.find((x) => x.id === id);
+      const cost = m ? machineCost(id, s.machines[id] ?? 0) : upgradeCost(id, s.upgrades[id] ?? 0);
+      const ok = m ? hasFeature(s, m.requires) : upgradeAllowed(s, id);
+      if (!ok || cost > s.coins || (best && cost <= best.cost)) continue;
+      best = { cost, buy: () => (m ? (s.machines[id] = (s.machines[id] ?? 0) + 1) : (s.upgrades[id] = (s.upgrades[id] ?? 0) + 1)) };
+    }
+    if (!best) break;
+    s.coins -= best.cost;
+    best.buy();
+    bought += 1;
+  }
+  return bought;
+}
+
+export function toggleAutoBuy(s: GameState, id: string): void {
+  s.autoBuy = s.autoBuy.includes(id) ? s.autoBuy.filter((x) => x !== id) : [...s.autoBuy, id];
+}
+
 /** Price of `count` more machines when `owned` are already running. */
 export function machineCost(id: string, owned: number, count = 1): number {
   const def = MACHINES.find((m) => m.id === id);

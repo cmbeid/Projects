@@ -112,6 +112,8 @@ export interface GameState {
   bargains: string[];
   /** Blocks the machines may still break this second. See `MACHINE_BREAKS_PER_SECOND`. */
   machineBudget: number;
+  /** Upgrades and machines ticked for auto-buy, by id. */
+  autoBuy: string[];
   counters: Counters;
   contracts: { day: string; list: Contract[] };
 

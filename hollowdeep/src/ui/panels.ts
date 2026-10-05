@@ -157,6 +157,11 @@ export function renderMine(s: GameState): string {
 
 // --- Upgrades ---------------------------------------------------------------------------
 
+function autoBox(s: GameState, id: string): string {
+  const on = s.autoBuy.includes(id);
+  return `<button class="auto ${on ? 'on' : ''}" data-act="auto:${id}" aria-pressed="${on}" title="Buy automatically">${on ? '☑' : '☐'} Auto</button>`;
+}
+
 function machineCount(s: GameState, id: string, mode: UiState['buyMode']): number {
   if (mode === 'max') return Math.max(1, maxAffordable(s, id));
   return mode;
@@ -166,7 +171,7 @@ export function renderUpgrades(s: GameState, ui: UiState): string {
   const seg = `<div class="seg">${([1, 10, 'max'] as const).map((m) => `<button class="${ui.buyMode === m ? 'on' : ''}" data-act="mode:${m}">${m === 'max' ? 'Max' : `×${m}`}</button>`).join('')}</div>`;
   const out: string[] = [`<section class="card" data-key="buybar"><div class="row between wrap gap">
     <span class="muted small">Buy</span>${seg}${btn('spendall', 'Spend all', s.coins > 0, 'small primary')}</div>
-    <p class="muted tiny">Spend all buys the cheapest next level of everything, again and again, until the coin runs out.</p></section>`];
+    <p class="muted tiny">Spend all buys the cheapest next level of everything, again and again, until the coin runs out. Tick Auto on any row to buy it whenever it is affordable; with several ticked, the most expensive goes first.</p></section>`];
   out.push('<section class="card" data-key="ups"><h4>Upgrades</h4>');
   for (const u of UPGRADES) {
     if (u.requires && !hasFeature(s, u.requires)) continue;
@@ -175,7 +180,7 @@ export function renderUpgrades(s: GameState, ui: UiState): string {
     const cost = upgradeCost(u.id, lvl, n);
     out.push(`<div class="item-row" data-key="u-${u.id}">${iconHtml(UPGRADE_ICON[u.id] ?? 'icon-up', 2)}
       <div class="grow"><b>${u.name}</b> <span class="muted">Lv ${lvl}</span><div class="muted small">${u.text}</div></div>
-      ${btn(`up:${u.id}:${n}`, `${n > 1 ? `+${n} · ` : ''}${coin(cost)}`, s.coins >= cost, 'buy')}</div>`);
+      ${autoBox(s, u.id)}${btn(`up:${u.id}:${n}`, `${n > 1 ? `+${n} · ` : ''}${coin(cost)}`, s.coins >= cost, 'buy')}</div>`);
   }
   out.push('</section>');
 
@@ -190,7 +195,7 @@ export function renderUpgrades(s: GameState, ui: UiState): string {
       const cost = machineCost(m.id, owned, n);
       out.push(`<div class="item-row" data-key="m-${m.id}">${iconHtml(`${m.id}-0`, m.id === 'drone' ? 3 : 2)}
         <div class="grow"><b>${m.name}</b> <span class="muted">×${owned}</span><div class="muted small">${m.text} ${fmt(m.dps)} dmg/s each, before bonuses.</div></div>
-        ${btn(`machine:${m.id}:${n}`, `+${n} · ${coin(cost)}`, s.coins >= cost, 'buy')}</div>`);
+        ${autoBox(s, m.id)}${btn(`machine:${m.id}:${n}`, `+${n} · ${coin(cost)}`, s.coins >= cost, 'buy')}</div>`);
     }
     out.push('</section>');
   }

@@ -3,7 +3,7 @@ import { BALANCE } from '../src/data/progression';
 import { newGame, tick } from '../src/game/engine';
 import { blockHp, damage, setDepth, tap, xpForLevel, addXp } from '../src/game/mining';
 import { derive } from '../src/game/derive';
-import { buyMachine, buyUpgrade, maxUpgradeLevels, sellAllOre, spendAll, upgradeCost } from '../src/game/economy';
+import { buyMachine, buyUpgrade, maxUpgradeLevels, sellAllOre, spendAll, toggleAutoBuy, upgradeCost } from '../src/game/economy';
 import { unlockFeature } from '../src/game/features';
 
 describe('mining', () => {
@@ -116,5 +116,25 @@ describe('buying in bulk', () => {
     expect(spendAll(s)).toBeGreaterThan(50);
     expect(buyUpgrade(s, 'sharpen')).toBe(false);
     expect(buyMachine(s, 'drone')).toBe(false);
+  });
+});
+
+describe('auto-buy', () => {
+  it('buys ticked items as they become affordable, most expensive first', () => {
+    const s = newGame(40);
+    for (const f of ['upgrades', 'drones'] as const) unlockFeature(s, f);
+    toggleAutoBuy(s, 'sharpen');
+    toggleAutoBuy(s, 'haggle');
+    s.coins = upgradeCost('haggle', 0) + 1;
+    tick(s, 0.1);
+    // Haggling costs more than a Sharpened Pick level, so it went first.
+    expect(s.upgrades['haggle']).toBe(1);
+    expect(s.upgrades['cart'] ?? 0).toBe(0);
+    s.coins = 1e6;
+    tick(s, 0.1);
+    expect(buyUpgrade(s, 'sharpen')).toBe(false);
+    expect(buyUpgrade(s, 'haggle')).toBe(false);
+    toggleAutoBuy(s, 'sharpen');
+    expect(s.autoBuy).toEqual(['haggle']);
   });
 });
