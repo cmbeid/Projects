@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STORY, STORY_V1_ORDER } from '../src/data/missions';
+import { BALANCE } from '../src/data/progression';
+import { derive } from '../src/game/derive';
 import { buyMachine } from '../src/game/economy';
 import { newGame, tick } from '../src/game/engine';
 import { unlockFeature } from '../src/game/features';
@@ -112,5 +114,25 @@ describe('the story', () => {
     expect(claimStory(s)).toBe(false);
     expect(claimStory(s, 1)).toBe(true);
     expect(s.flags).toContain(choice.choice!.options[1]!.flag);
+  });
+});
+
+describe('machines deep down', () => {
+  it('keep up with the biome jumps in rock HP', () => {
+    const shallow = newGame(30);
+    shallow.machines = { drone: 50 };
+    const deep = newGame(30);
+    deep.machines = { drone: 50 };
+    deep.depth = deep.maxDepth = deep.deepestEver = 230;
+    const share = (s: typeof deep): number => derive(s).tap * BALANCE.machineTapShare;
+    const ratio = (derive(deep).autoDps - share(deep)) / (derive(shallow).autoDps - share(shallow));
+    expect(ratio).toBeCloseTo(BALANCE.machineBiomeBoost ** 5);
+  });
+
+  it('borrow a share of your swing, but only once you own one', () => {
+    const s = newGame(31);
+    expect(derive(s).autoDps).toBe(0);
+    s.machines = { drone: 1 };
+    expect(derive(s).autoDps).toBeGreaterThan(derive(s).tap * BALANCE.machineTapShare);
   });
 });

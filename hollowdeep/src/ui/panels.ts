@@ -2,7 +2,7 @@ import { biomeAt } from '../data/biomes';
 import { GEAR_BASE, STAT_LABEL, formatStat } from '../data/gear';
 import { MATERIAL, MATERIALS } from '../data/materials';
 import { STORY } from '../data/missions';
-import { ECHOES, MACHINES, PASSIVES, SKILLS, UPGRADES } from '../data/progression';
+import { BALANCE, ECHOES, MACHINES, PASSIVES, SKILLS, UPGRADES } from '../data/progression';
 import { CONSUMABLES, CRAFT, FIXTURES, REFINE } from '../data/recipes';
 import type { CraftRecipe, MaterialKind, Reward, Slot, Stack, StatKey } from '../data/types';
 import { batchesAffordable, canCraft, furnaceSlots, meetsRequirement, refineSeconds } from '../game/crafting';
@@ -182,7 +182,7 @@ export function renderUpgrades(s: GameState, ui: UiState): string {
   if (hasFeature(s, 'drones')) {
     const d = derive(s);
     out.push(`<section class="card" data-key="machines"><h4>Machines</h4>
-      <p class="muted small">Machines hit whatever is in front of you, all the time — and while you are away. Total ${fmt(d.autoDps)} damage/s; they can clear at most ${machineBreaksPerSecond(s)} blocks a second, so they earn most at the deepest depth they can keep up with.</p>`);
+      <p class="muted small">Machines hit whatever is in front of you, all the time — and while you are away. Total ${fmt(d.autoDps)} damage/s; they can clear at most ${machineBreaksPerSecond(s)} blocks a second, so they earn most at the deepest depth they can keep up with. Each biome down refits them (×${BALANCE.machineBiomeBoost} per biome), and they borrow half of your swing.</p>`);
     for (const m of MACHINES) {
       if (!hasFeature(s, m.requires)) continue;
       const owned = s.machines[m.id] ?? 0;
