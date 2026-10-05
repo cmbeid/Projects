@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GEAR } from '../src/data/gear';
+import { BALANCE } from '../src/data/progression';
 import { CONSUMABLES, CRAFT } from '../src/data/recipes';
 import { derive } from '../src/game/derive';
 import { newGame, tick } from '../src/game/engine';
@@ -17,9 +18,11 @@ describe('late-game supplies', () => {
     const s = newGame(1);
     s.machines = { drone: 10 };
     const before = derive(s).autoDps;
+    // The share of your swing machines borrow is not part of what Overdrive boosts.
+    const share = derive(s).tap * BALANCE.machineTapShare;
     s.consumables.overdrive = 1;
     expect(useConsumable(s, 'overdrive')).toBe(true);
-    expect(derive(s).autoDps).toBeCloseTo(before * 3);
+    expect(derive(s).autoDps).toBeCloseTo((before - share) * 3 + share);
     tick(s, 121);
     expect(derive(s).autoDps).toBeCloseTo(before);
   });

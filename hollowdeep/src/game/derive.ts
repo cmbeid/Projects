@@ -1,4 +1,4 @@
-import { biomeAt } from '../data/biomes';
+import { biomeAt, biomeIndex } from '../data/biomes';
 import { GEAR_BASE } from '../data/gear';
 import { BALANCE, MACHINES } from '../data/progression';
 import type { StatKey } from '../data/types';
@@ -122,8 +122,13 @@ export function derive(s: GameState): Derived {
     if (m.id === 'drone' && s.fixtures.includes('workshop')) dps *= 2;
     autoBase += dps;
   }
+  // Machines are refitted for each biome: without this, the 15× jump in rock
+  // HP at every new biome leaves them hopelessly behind the pick by the Roots.
+  const refit = BALANCE.machineBiomeBoost ** biomeIndex(s.depth);
   const autoDps =
+    (autoBase > 0 ? tap * BALANCE.machineTapShare : 0) +
     autoBase *
+    refit *
     1.25 ** lvl(u, 'tuning') *
     (1 + gearStat(s, 'autoPct') / 100) *
     (1 + 0.15 * lvl(p, 'oiled')) *

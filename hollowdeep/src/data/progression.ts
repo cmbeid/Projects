@@ -35,6 +35,13 @@ export const BALANCE = {
   staminaRegen: 1.5,
   baseCrit: 5,
   baseCritMult: 2.5,
+  /**
+   * Machine damage is multiplied by this for each biome below the first, so
+   * machines keep pace with the jump in rock HP at every new biome.
+   */
+  machineBiomeBoost: 8,
+  /** Owning any machine adds this share of your tap damage to machine damage each second. */
+  machineTapShare: 0.5,
   /** Machines earn this share of the XP a tap would. */
   autoXpShare: 0.5,
   offlineHours: 8,
