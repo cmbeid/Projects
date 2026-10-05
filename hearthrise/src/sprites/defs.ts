@@ -1634,6 +1634,192 @@ const WALKER = [
   ],
 ];
 
+
+// --- Buildings added in the expansion ------------------------------------------------
+
+const WINDMILL = [
+  '..o.....o.......',
+  '...o...o........',
+  '....oDo.........',
+  '.....oCo........',
+  '....oCo.o.......',
+  '...o.o...o......',
+  '..o..oCCo.o.....',
+  '....oCCCCo......',
+  '...oLHHHHIo.....',
+  '...oLHyyHIo.....',
+  '...oLHHHHIo.....',
+  '..oLHHHHHHIoooo.',
+  '..oLHHHHHHIoCDo.',
+  '..oLHHbbHHIoHHo.',
+  '..oIIIbbIIIoIIo.',
+  '..oooooooooooo..',
+];
+
+const BATHHOUSE = [
+  '................',
+  '....T.....T.....',
+  '...T..T..T..T...',
+  '....T.....T.....',
+  '..oooooooooooo..',
+  '.oDDDDDDDDDDDDo.',
+  'oCCCCCCCCCCCCCCo',
+  'oooooooooooooooo',
+  'oLHHHHHHHHHHHHIo',
+  'oLHoHoHHHHoHoHIo',
+  'oLHoHoHbbHoHoHIo',
+  'oLHHHHHbbHHHHHIo',
+  'oooooooooooooooo',
+  'otTtTtTtTtTtTtTo',
+  'oooooooooooooooo',
+  '................',
+];
+
+const CLOCK = [
+  '.......oo.......',
+  '......oDCo......',
+  '.....oDCCAo.....',
+  '....oooooooo....',
+  '....oLppppIo....',
+  '....opppkppo....',
+  '....oppkkppo....',
+  '....opppppko....',
+  '....oLppppIo....',
+  '....oooooooo....',
+  '....oLHHHHIo....',
+  '....oLHeeHIo....',
+  '....oLHHHHIo....',
+  '...oLHHbbHHIo...',
+  '...oIIIbbIIIo...',
+  '...oooooooooo...',
+];
+
+const PUMP = [
+  '................',
+  '...........oo...',
+  '..........oxxo..',
+  '.........oxo....',
+  '....oooooxo.....',
+  '...oCCCCCo......',
+  '...oCDDDCo......',
+  '...oCCCCCo.oo...',
+  '..oooooooooTTo..',
+  '..oLHHHHHHIoTo..',
+  '..oLHMMMMHIo.T..',
+  '..oLHMeeMHIo.T..',
+  '..oLHMMMMHIo....',
+  '..oIIIIIIIIo.t..',
+  '..oooooooooo.T..',
+  '.............t..',
+];
+
+const LAMP = [
+  '................',
+  '.....oooo.......',
+  '....oDDDDo......',
+  '....oCyyCo......',
+  '....oCyyCo......',
+  '.....oooo.......',
+  '......ox........',
+  '......ox........',
+  '.g..G.ox..g..G..',
+  'gGg.gGox.gGg.gGg',
+  '.g..g.ox..g..g..',
+  '......ox........',
+  'gG...oxxo...gG..',
+  'GgG..oxxo..GgGg.',
+  'gGgGgGgGgGgGgGgG',
+  'oooooooooooooooo',
+];
+
+const FERRY = [
+  '................',
+  '......o.........',
+  '......oC........',
+  '......oCC.......',
+  '......oCCC......',
+  '......oCCCC.....',
+  '......o.........',
+  '..oooooooooooo..',
+  '..oLHHHHHHHHIo..',
+  '.oLHyHHyHHyHHIo.',
+  'ooooooooooooooo.',
+  'oIIIIIIIIIIIIIIo',
+  '.oIIIIIIIIIIIIo.',
+  'tTtooooooooooTtT',
+  'TtTtTtTtTtTtTtTt',
+  'tTtTtTtTtTtTtTtT',
+];
+
+const KITE = [
+  '.......oo.......',
+  '......oRRo......',
+  '.....oRRyRo.....',
+  '....oRRyyyRo....',
+  '.....oRyyRo.....',
+  '......oRRo......',
+  '.......oo.......',
+  '.......o........',
+  '........o.......',
+  '.......o........',
+  '......o.........',
+  '.......o........',
+  '........o.......',
+  '.......o........',
+  '......oo........',
+  '................',
+];
+
+function terraceRows(): string[] {
+  const r = new Raster(32, 32);
+  const steps = [
+    { x: 0, y: 24, w: 32, h: 8 },
+    { x: 4, y: 16, w: 26, h: 8 },
+    { x: 8, y: 8, w: 20, h: 8 },
+    { x: 12, y: 1, w: 14, h: 7 },
+  ];
+  for (const t of steps) {
+    r.rect(t.x, t.y, t.w, t.h, 'H', 'o');
+    r.rect(t.x + 1, t.y + 1, t.w - 2, 2, 'C');
+    r.rect(t.x + 1, t.y + 3, t.w - 2, 1, 'D');
+    for (let x = t.x + 2; x < t.x + t.w - 2; x += 4) r.rect(x, t.y + 4, 2, 2, (x + t.y) % 3 ? 'y' : 'e');
+    r.rect(t.x + 1, t.y + t.h - 2, t.w - 2, 1, 'I');
+    for (let x = t.x + 1; x < t.x + t.w - 1; x += 3) r.set(x, t.y + 1, 'G');
+  }
+  r.rect(15, 28, 3, 3, 'b', 'o');
+  return r.rows();
+}
+
+function dockRows(): string[] {
+  const r = new Raster(32, 16);
+  // The gasbag and the gondola, moored to a mast.
+  r.disc(13, 4, 4, 'C', 'o');
+  r.rect(6, 1, 15, 7, 'C', 'o');
+  r.rect(7, 2, 13, 1, 'D');
+  r.rect(7, 6, 13, 1, 'A');
+  r.rect(10, 8, 7, 3, 'H', 'o');
+  r.set(12, 9, 'y');
+  r.set(14, 9, 'y');
+  r.rect(26, 0, 2, 13, 'x', 'o');
+  r.rect(21, 2, 6, 1, 'o');
+  // The landing stage.
+  r.rect(0, 12, 32, 4, 'I', 'o');
+  r.rect(1, 13, 30, 1, 'L');
+  return r.rows();
+}
+
+function assemblyRows(): string[] {
+  const r = new Raster(32, 16);
+  r.rect(3, 4, 26, 2, 'C', 'o');
+  r.rect(8, 1, 16, 4, 'D', 'o');
+  r.rect(14, 0, 4, 2, 'C', 'o');
+  r.rect(1, 6, 30, 10, 'H', 'o');
+  for (let x = 3; x < 29; x += 4) r.rect(x, 7, 2, 7, 'L');
+  r.rect(14, 10, 4, 6, 'b', 'o');
+  r.rect(1, 14, 30, 2, 'I', 'o');
+  return r.rows();
+}
+
 // --- Assembly --------------------------------------------------------------------------
 
 function fixPalette(rows: readonly string[]): readonly string[] {
@@ -1664,6 +1850,15 @@ const SHAPES: Record<string, () => readonly string[]> = {
   park: () => PARK,
   foundry: foundryRows,
   arcology: arcologyRows,
+  windmill: () => WINDMILL,
+  bathhouse: () => BATHHOUSE,
+  clock: () => CLOCK,
+  pump: () => PUMP,
+  lamp: () => LAMP,
+  ferry: () => FERRY,
+  terrace: terraceRows,
+  dock: dockRows,
+  assembly: assemblyRows,
 };
 
 const ITEM_BY_PILE = { timber: LOG, stone: ORE_CHUNK, metal: COIL, cloth: BOLT_OF_CLOTH } as const;
@@ -1726,6 +1921,8 @@ export function buildSprites(): SpriteDef[] {
   out.push(make('use-seeker', LENS));
   out.push(make('use-calm', FLASK, shades(['#4a5a6a', '#a8c0d0', '#f0f8ff'])));
   out.push(make('use-memoir', BOOK, shades(['#2a1a4a', '#6a4aa8', '#d0c0ff'])));
+  out.push(make('use-grease', FLASK, shades(['#1a3a2a', '#3a8a6a', '#a8f0d0'])));
+  out.push(make('use-kite', KITE));
 
   out.push(make('fix-auction', CHUTE));
   out.push(make('fix-seawall', WALL, shades(['#5a2a1a', '#a8503a', '#e09070'])));
@@ -1734,6 +1931,9 @@ export function buildSprites(): SpriteDef[] {
   out.push(make('fix-archive', BOOK, shades(['#4a2a0a', '#8a5a2a', '#e0b070'])));
   out.push(make('fix-scrubbers', FILTER));
   out.push(make('fix-beacons', BEACON, shades(['#3a3a5a', '#7a7a9a', '#c8c8e0'])));
+  out.push(make('fix-caissons', COIL, shades(['#1a3a34', '#4a8a7a', '#c0f0e0'])));
+  out.push(make('fix-windbreaks', FLAG, { R: '#8ab8ff', y: '#ffffff' }));
+  out.push(make('fix-treaty', SCROLL));
 
   out.push(make('icon-coin', COIN));
   out.push(make('icon-memory', ECHO, { v: '#3a9ad0', V: '#c8f0ff' }));

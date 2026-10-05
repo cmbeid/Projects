@@ -163,7 +163,7 @@ export function renderCity(s: GameState): string {
   const buffs: string[] = [];
   const named: [keyof GameState['buffs'], string][] = [
     ['survey', 'Survey'], ['festival', 'Festival'], ['ink', 'Surveyor’s Ink'], ['almanac', 'Almanac'], ['overtime', 'Overtime'],
-    ['wine', 'Festival Wine'], ['seek', 'Dowsing Glass'], ['calm', 'Still Air'],
+    ['wine', 'Festival Wine'], ['seek', 'Dowsing Glass'], ['calm', 'Still Air'], ['grease', 'Pump Grease'], ['kite', 'Kite Line'],
   ];
   for (const [k, name] of named) if (s.buffs[k] > 0) buffs.push(`${name} ${fmtTime(s.buffs[k])}`);
   if (buffs.length) out.push(`<section class="card" data-key="buffs"><div class="row wrap gap">${buffs.map((b) => `<span class="chip glow">${b}</span>`).join('')}</div></section>`);
@@ -479,8 +479,7 @@ export function renderMissions(s: GameState, now: number): string {
       <div class="reward small">${rewardHtml(m.reward)}</div>
       ${btn('claim', p.done ? 'Claim' : 'In progress', p.done, 'primary wide')}</section>`);
   } else {
-    const rang = s.flags.includes('rang');
-    out.push(`<section class="card story" data-key="story"><h3>${rang ? 'The Singing Spire' : 'The Key'}</h3><p class="quote">“${rang ? 'It is awake, and it is glad of us. I think we will stay.' : 'The key is on my chain. The sea is kind. I think we will stay.'}”</p></section>`);
+    out.push('<section class="card story" data-key="story"><h3>Hearthrise</h3><p class="quote">“A city, and a fire under it, and the sea being kind. I think we will stay.”</p></section>');
   }
 
   if (hasFeature(s, 'petitions')) {

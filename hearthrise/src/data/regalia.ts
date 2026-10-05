@@ -49,11 +49,32 @@ export const REGALIA: readonly RegaliaBase[] = [
   { id: 'star-coat', name: 'Starstone Coat', slot: 'coat', tier: 7, tint: 'starstone', stats: { smogRes: 1, resolve: 200, crewPct: 220 } },
   { id: 'choir-seal', name: 'Choir Seal', slot: 'seal', tier: 7, tint: 'choir-shard', stats: { crewPct: 300, taxPct: 120 } },
 
-  // The Founders' set: what the first city's founders wore, found at the very top.
-  { id: 'founders-chain', name: 'Founders’ Chain', slot: 'chain', tier: 8, tint: 'spire-key', stats: { dmgPct: 70000, critChance: 10, critMult: 2 } },
-  { id: 'founders-lantern', name: 'Founders’ Lantern', slot: 'lantern', tier: 8, tint: 'lumen', stats: { light: 6, luck: 60, xpPct: 60, salvagePct: 80 } },
-  { id: 'founders-coat', name: 'Founders’ Mantle', slot: 'coat', tier: 8, tint: 'starstone', stats: { smogRes: 1, resolve: 260, crewPct: 450 } },
-  { id: 'founders-seal', name: 'Founders’ Seal', slot: 'seal', tier: 8, tint: 'moonpearl', stats: { dmgPct: 300, taxPct: 200, salvagePct: 100 } },
+  // The Undercroft: old Vessel's own work.
+  { id: 'tide-chain', name: 'Tidewrought Chain', slot: 'chain', tier: 8, tint: 'caisson-iron', stats: { dmgPct: 70000, critMult: 1.6 } },
+  { id: 'vessel-lantern', name: 'Vessel Lantern', slot: 'lantern', tier: 8, tint: 'vessel-bell', stats: { light: 6, luck: 55, xpPct: 40 } },
+  { id: 'caisson-coat', name: 'Caisson Coat', slot: 'coat', tier: 8, tint: 'caisson-iron', stats: { smogRes: 1, resolve: 220, crewPct: 260 } },
+  { id: 'crown-seal', name: 'Crown Seal', slot: 'seal', tier: 8, tint: 'crown-coin', stats: { luck: 60, salvagePct: 80, taxPct: 200 } },
+  { id: 'verdigris-chain', name: 'Verdigris Chain', slot: 'chain', tier: 8, tint: 'verdigris', stats: { dmgPct: 52000, critChance: 15, critMult: 2.6 } },
+
+  // The Cloudline.
+  { id: 'storm-chain', name: 'Storm Chain', slot: 'chain', tier: 9, tint: 'storm-brass', stats: { dmgPct: 230000, critMult: 2 } },
+  { id: 'sky-lantern', name: 'Sky Lantern', slot: 'lantern', tier: 9, tint: 'sky-heart', stats: { light: 7, luck: 80, xpPct: 60 } },
+  { id: 'skysilk-coat', name: 'Skysilk Coat', slot: 'coat', tier: 9, tint: 'skysilk', stats: { smogRes: 1, resolve: 300, crewPct: 450 } },
+  { id: 'vane-seal', name: 'Vane Seal', slot: 'seal', tier: 9, tint: 'weather-vane', stats: { dmgPct: 300, salvagePct: 120, taxPct: 300 } },
+  { id: 'gale-seal', name: 'Gale Seal', slot: 'seal', tier: 9, tint: 'kite-charm', stats: { crewPct: 900, xpPct: 80 } },
+
+  // The Far Shore.
+  { id: 'anchor-chain', name: 'Anchor Chain', slot: 'chain', tier: 10, tint: 'anchor-iron', stats: { dmgPct: 700000, critChance: 10, critMult: 3 } },
+  { id: 'chart-lantern', name: 'Chart Lantern', slot: 'lantern', tier: 10, tint: 'old-chart', stats: { light: 8, luck: 120, xpPct: 100, salvagePct: 100 } },
+  { id: 'oilcloth-mantle', name: 'Oilcloth Mantle', slot: 'coat', tier: 10, tint: 'shore-oak', stats: { smogRes: 1, resolve: 500, crewPct: 1200 } },
+  { id: 'shell-seal', name: 'Shell Seal', slot: 'seal', tier: 10, tint: 'shell-crown', stats: { dmgPct: 600, salvagePct: 200, taxPct: 500 } },
+  { id: 'net-coat', name: 'Netmaker’s Coat', slot: 'coat', tier: 10, tint: 'net-cord', stats: { smogRes: 1, resolve: 600, crewPct: 900, xpPct: 60 } },
+
+  // The Founders' set: what the first city's founders wore. Last of all, and best.
+  { id: 'founders-chain', name: 'Founders’ Chain', slot: 'chain', tier: 11, tint: 'spire-key', stats: { dmgPct: 2.2e6, critChance: 12, critMult: 4 } },
+  { id: 'founders-lantern', name: 'Founders’ Lantern', slot: 'lantern', tier: 11, tint: 'lumen', stats: { light: 9, luck: 160, xpPct: 150, salvagePct: 150 } },
+  { id: 'founders-coat', name: 'Founders’ Mantle', slot: 'coat', tier: 11, tint: 'starstone', stats: { smogRes: 1, resolve: 700, crewPct: 3000 } },
+  { id: 'founders-seal', name: 'Founders’ Seal', slot: 'seal', tier: 11, tint: 'moonpearl', stats: { dmgPct: 1200, taxPct: 1200, salvagePct: 300 } },
 ];
 
 export const REGALIA_BASE: ReadonlyMap<string, RegaliaBase> = new Map(REGALIA.map((g) => [g.id, g]));

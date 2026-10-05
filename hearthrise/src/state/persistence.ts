@@ -23,6 +23,18 @@ function mergeDefaults(raw: Record<string, unknown>): GameState {
   return out as unknown as GameState;
 }
 
+/** The first mission after the Spire, where a finished version-1 story picks up again. */
+export const EXPANSION_START = 'beneath';
+
+/**
+ * Version 1 ended at the top of the Spire. A save that had finished that
+ * story carries on into the expansion rather than sitting at "the end".
+ */
+function migrateV1(obj: Record<string, unknown>): void {
+  const story = obj['story'] as { id?: string | null } | undefined;
+  if (story && story.id === null) obj['story'] = { id: EXPANSION_START, base: 0 };
+}
+
 export function serialize(s: GameState): string {
   return JSON.stringify(s);
 }
@@ -34,6 +46,7 @@ export function deserialize(text: string): GameState | null {
     const obj = raw as Record<string, unknown>;
     if (typeof obj['version'] !== 'number' || obj['version'] > SAVE_VERSION) return null;
     if (typeof obj['coins'] !== 'number' || typeof obj['ward'] !== 'number' || !Array.isArray(obj['buildings'])) return null;
+    if (obj['version'] === 1) migrateV1(obj);
     const s = mergeDefaults(obj);
     s.version = SAVE_VERSION;
     if (!Number.isFinite(s.coins)) s.coins = 0;

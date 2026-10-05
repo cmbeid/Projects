@@ -142,6 +142,14 @@ export function tidal(b: { district: number; y: number }, def: BuildingDef): boo
   return DISTRICTS[b.district]!.hazard === 'tide' && b.y + def.h - 1 >= GRID_H - 2;
 }
 
+/** Gusts on the Cloudline: a cycle this long, gusting for the first part of it. */
+export const GUST_CYCLE = 20;
+export const GUST_LENGTH = 8;
+
+export function gustOpen(s: GameState): boolean {
+  return s.time % GUST_CYCLE < GUST_LENGTH;
+}
+
 export function tideHigh(s: GameState): boolean {
   return s.time % BALANCE.tideCycle < BALANCE.tideHigh;
 }

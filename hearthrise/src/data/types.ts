@@ -5,8 +5,8 @@
  * affordable, every mission completable — without running the game.
  */
 
-export type DistrictId = 'landing' | 'harbour' | 'market' | 'foundry' | 'spire';
-export type HazardKind = 'none' | 'tide' | 'crowd' | 'smog' | 'silence';
+export type DistrictId = 'landing' | 'harbour' | 'market' | 'foundry' | 'spire' | 'undercroft' | 'cloudline' | 'shore';
+export type HazardKind = 'none' | 'tide' | 'crowd' | 'smog' | 'silence' | 'seep' | 'gale' | 'rivalry';
 
 /** Three shades, darkest first. Sprites built from a material use all three. */
 export type Shades = readonly [string, string, string];
@@ -97,8 +97,8 @@ export interface Stack {
   n: number;
 }
 
-/** A ward reached at least once (in any run), or a story mission behind you. */
-export type Requirement = { ward: number } | { mission: string };
+/** A ward reached at least once (in any run), a story mission behind you, or a fixture built. */
+export type Requirement = { ward: number } | { mission: string } | { fixture: FixtureId };
 
 export interface RefineRecipe {
   id: string;
@@ -118,9 +118,11 @@ export type ConsumableId =
   | 'greatcharge'
   | 'seeker'
   | 'calm'
-  | 'memoir';
+  | 'memoir'
+  | 'grease'
+  | 'kite';
 
-export type FixtureId = 'seawall' | 'charter' | 'scrubbers' | 'beacons' | 'auction' | 'archive' | 'surveyor';
+export type FixtureId = 'seawall' | 'charter' | 'scrubbers' | 'beacons' | 'auction' | 'archive' | 'surveyor' | 'caissons' | 'windbreaks' | 'treaty';
 
 export type CraftOutput =
   | { kind: 'regalia'; base: string }

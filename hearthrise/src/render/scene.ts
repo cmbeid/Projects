@@ -3,9 +3,9 @@ import { DISTRICTS, GRID_H, GRID_W, districtAt, districtIndex, wardOfRow } from 
 import { MATERIAL } from '../data/materials';
 import { BALANCE } from '../data/progression';
 import type { District } from '../data/types';
-import { derive } from '../game/derive';
+import { derive, seeping } from '../game/derive';
 import type { GameEvent } from '../game/events';
-import { buildingAt, canPlace, flooded, previewPlacement, tidal, tideHigh } from '../game/grid';
+import { buildingAt, canPlace, flooded, gustOpen, previewPlacement, tidal, tideHigh } from '../game/grid';
 import { districtText, hasFlag } from '../game/story';
 import { fmt } from '../num/format';
 import { drawSprite, drawSpriteRotated, frameOf } from '../sprites/atlas';
@@ -285,6 +285,7 @@ export class Scene {
     this.shake = Math.max(0, this.shake - dt * 4);
     this.drawGrid(s, district, view, dt);
     this.drawSite(s, work, dt);
+    this.drawWeather(s, work);
 
     // Particles.
     const alive: Particle[] = [];
@@ -670,6 +671,29 @@ export class Scene {
     ctx.strokeText(label, this.bx, barY + 16);
     ctx.fillStyle = '#f4ecdc';
     ctx.fillText(label, this.bx, barY + 16);
+  }
+
+  /** The Cloudline's gusts across everything, and the Undercroft's sea seeping into the ruin. */
+  private drawWeather(s: GameState, work: District): void {
+    const ctx = this.ctx;
+    if (work.hazard === 'gale' && gustOpen(s) && !s.fixtures.includes('windbreaks') && s.buffs.calm <= 0) {
+      ctx.fillStyle = '#ffffffa0';
+      for (let i = 0; i < 26; i++) {
+        const y = (i * 53 + Math.sin(i) * 20) % this.h;
+        const x = ((i * 97 + this.time * (420 + (i % 5) * 60)) % (this.w + 120)) - 60;
+        ctx.fillRect(Math.round(x), Math.round(y), 24 + (i % 4) * 10, 1);
+      }
+    }
+    if (seeping(s)) {
+      const { x, y, size } = this.ruinRect();
+      ctx.fillStyle = '#6ad8ff';
+      for (let i = 0; i < 6; i++) {
+        const t = (this.time * 0.9 + i / 6) % 1;
+        ctx.globalAlpha = 1 - t;
+        ctx.fillRect(Math.round(x + ((i * 37) % size)), Math.round(y + t * size), 2, 3);
+      }
+      ctx.globalAlpha = 1;
+    }
   }
 
   private drawBanner(dt: number): void {

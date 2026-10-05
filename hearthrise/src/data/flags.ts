@@ -8,9 +8,9 @@ import type { DistrictId } from './types';
  * Readers:
  * - district names and blurbs: `DISTRICT_TEXT` below, via `districtText`
  * - the scene: `heard` (the Spire glows at night), `rang` (the sea draws back)
- * - the music: `heard`, `rang`, `hushed`
+ * - the music: `heard`, `rang`, `hushed`, `above`, `treaty`
  */
-export const FLAGS = ['heard', 'remembered', 'rang', 'hushed'] as const;
+export const FLAGS = ['heard', 'remembered', 'rang', 'hushed', 'below', 'above', 'treaty'] as const;
 
 export type Flag = (typeof FLAGS)[number];
 
@@ -36,5 +36,21 @@ export const DISTRICT_TEXT: readonly { flag: Flag; district: DistrictId; name?: 
     flag: 'hushed',
     district: 'spire',
     blurb: 'White stone, still water, a locked door at the top. The hum is the note everyone knows. The key is on your chain.',
+  },
+  {
+    flag: 'below',
+    district: 'undercroft',
+    blurb: 'Old Vessel, dry under the bay, with the sea standing round it like green glass. Something warm lies at its heart. The sea still seeps into every breach.',
+  },
+  {
+    flag: 'above',
+    district: 'spire',
+    blurb: 'White stone, warm to the touch: the chimney of the hearth under the city. You know what it is now.',
+  },
+  {
+    flag: 'treaty',
+    district: 'shore',
+    name: 'The Near Shore',
+    blurb: 'The fishing town across the bay, older than Vessel. Since the treaty they call it the near shore, and they mean it kindly.',
   },
 ];
