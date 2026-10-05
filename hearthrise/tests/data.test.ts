@@ -9,7 +9,7 @@ describe('content', () => {
     expect(validateData()).toEqual([]);
   });
 
-  it('gives every ward of every district a row, and the Spire runs on past its grid', () => {
+  it('gives every ward of every district a row, and the last district runs on past its grid', () => {
     for (let d = 0; d < DISTRICTS.length; d++) {
       for (let y = 0; y < GRID_H; y++) {
         const ward = wardOfRow(d, y);
@@ -17,12 +17,16 @@ describe('content', () => {
         expect(rowOfWard(ward)).toBe(y);
       }
     }
-    expect(districtAt(60).id).toBe('spire');
-    expect(rowOfWard(60)).toBe(-1);
+    expect(districtAt(40).id).toBe('spire');
+    expect(districtAt(41).id).toBe('undercroft');
+    expect(districtAt(90).id).toBe('shore');
+    expect(rowOfWard(90)).toBe(-1);
   });
 
-  it('has a story that ends with a choice, and buildings for every district', () => {
-    expect(STORY.at(-1)?.choice?.options.length).toBe(2);
-    expect(BUILDINGS.length).toBeGreaterThanOrEqual(30);
+  it('has a story with a choice at the top of the Spire, and buildings for every district', () => {
+    expect(STORY.find((m) => m.id === 'summit')?.choice?.options.length).toBe(2);
+    expect(STORY.at(-1)?.id).toBe('hearthrise');
+    expect(DISTRICTS.length).toBe(8);
+    expect(BUILDINGS.length).toBeGreaterThanOrEqual(56);
   });
 });

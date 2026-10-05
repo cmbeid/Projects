@@ -56,7 +56,7 @@ export function letTideIn(s: GameState): boolean {
   s.upgrades = {};
   s.buildings = [];
   s.workshops = s.workshops.map(() => ({ recipe: null, progress: -1, queued: 0 }));
-  s.buffs = { survey: 0, festival: 0, ink: 0, almanac: 0, overtime: 0, wine: 0, seek: 0, calm: 0 };
+  s.buffs = { survey: 0, festival: 0, ink: 0, almanac: 0, overtime: 0, wine: 0, seek: 0, calm: 0, grease: 0, kite: 0 };
   s.ward = s.maxWard = startingWard(s);
   s.ruinsHere = 0;
   spawnRuin(s);

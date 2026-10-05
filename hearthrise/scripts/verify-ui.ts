@@ -15,6 +15,7 @@ import { mkdir } from 'node:fs/promises';
 import { chromium, type Page } from 'playwright';
 import { BUILDINGS } from '../src/data/buildings';
 import { runBot } from '../src/game/bot';
+import { spawnRuin } from '../src/game/clearing';
 import { canAffordPlace } from '../src/game/economy';
 import { newGame } from '../src/game/engine';
 import { freeSpots } from '../src/game/grid';
@@ -158,6 +159,45 @@ async function main(): Promise<void> {
       }
       await ctx.close();
     }
+  }
+
+  // Beyond the Spire: the Cloudline in a gust, and the Undercroft and Far Shore on the map.
+  {
+    const st = botSave(30);
+    st.ward = st.maxWard = st.furthestEver = 52;
+    st.features.push('tide', 'festival', 'survey', 'passives');
+    st.flags.push('heard', 'rang', 'below', 'above');
+    st.story = { id: 'docks', base: 0 };
+    st.time = 3;
+    spawnRuin(st);
+    let uid = 9000;
+    const put = (type: string, district: number, x: number, y: number, lvl = 3): void => {
+      st.buildings.push({ uid: uid++, type, district, x, y, lvl });
+    };
+    put('sky-terrace', 6, 0, 0);
+    put('wind-garden', 6, 2, 0, 1);
+    put('cloud-exchange', 6, 3, 0);
+    put('airship-dock', 6, 4, 1);
+    put('sky-terrace', 6, 0, 2);
+    put('wind-garden', 6, 2, 2, 1);
+    put('cistern-homes', 5, 0, 0);
+    put('pump-gang', 5, 1, 0);
+    put('vault-market', 5, 2, 0);
+    put('lamp-garden', 5, 3, 0, 1);
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
+    await ctx.addInitScript(([k, v]) => localStorage.setItem(k!, v!), [STORAGE_KEY, serialize(st)]);
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(`expansion: ${e.message}`));
+    page.on('console', (m) => m.type() === 'error' && errors.push(`expansion: ${m.text()}`));
+    await page.goto(URL);
+    await page.waitForSelector('#scene');
+    await dismiss(page);
+    await shoot(page, 'expansion-cloudline');
+    await page.locator('#wardchip [aria-label="Previous district"]').click();
+    await shoot(page, 'expansion-undercroft');
+    await page.locator('#tabs [data-act="tab:build"]').click();
+    await shoot(page, 'expansion-build');
+    await ctx.close();
   }
 
   // The end of the story: the last door, and the choice.

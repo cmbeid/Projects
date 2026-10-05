@@ -4,7 +4,7 @@ import { REGALIA_BASE } from '../data/regalia';
 import { BALANCE } from '../data/progression';
 import type { BuildingDef, StatKey } from '../data/types';
 import type { GameState, Placed } from '../state/types';
-import { adjacencyMult, flooded } from './grid';
+import { adjacencyMult, flooded, gustOpen } from './grid';
 
 export interface CityStats {
   pop: number;
@@ -43,7 +43,7 @@ export interface Derived {
   offlineYield: number;
   landmarkMult: number;
   city: CityStats;
-  hazard: { tap: number; crew: number; luck: number; warning: string | null };
+  hazard: { tap: number; crew: number; luck: number; tax: number; warning: string | null };
 }
 
 const lvl = (rec: Record<string, number>, id: string): number => rec[id] ?? 0;
@@ -158,7 +158,7 @@ export function derive(s: GameState): Derived {
 
   const light = regaliaStat(s, 'light');
   const smogProof = regaliaStat(s, 'smogRes') > 0;
-  const hazard = { tap: 1, crew: 1, luck: 1, warning: null as string | null };
+  const hazard = { tap: 1, crew: 1, luck: 1, tax: 1, warning: null as string | null };
   const pen = BALANCE.hazardPenalty;
   const fix = (id: Parameters<typeof s.fixtures.includes>[0]): boolean => s.fixtures.includes(id);
   if (!calm) {
@@ -185,6 +185,18 @@ export function derive(s: GameState): Derived {
         const need = [light < BALANCE.fogLight && `a lantern with ${BALANCE.fogLight} light`, !fix('beacons') && 'a Beacon Line'].filter(Boolean).join(' and ');
         hazard.warning = `The fog is too thick to work in. You need ${need}.`;
       }
+    } else if (district.hazard === 'seep' && !fix('caissons') && s.buffs.grease <= 0) {
+      hazard.crew = pen;
+      hazard.warning = 'The sea seeps back into every breach. Caisson Pumps would keep it out.';
+    } else if (district.hazard === 'gale' && !fix('windbreaks')) {
+      if (gustOpen(s)) {
+        if (s.buffs.kite <= 0) hazard.tap = 0.25;
+        hazard.crew = 0.25;
+      }
+      hazard.warning = 'When the gusts come, nobody can work. Windbreaks would shelter the terraces.';
+    } else if (district.hazard === 'rivalry' && !fix('treaty')) {
+      hazard.tax = 0.5;
+      hazard.warning = 'The Far Shore undercuts every price while you work here. A Treaty of the Bay would settle it.';
     }
   }
 
@@ -235,7 +247,7 @@ export function derive(s: GameState): Derived {
     resolveMax: BALANCE.baseResolve + 5 * s.stats.grit + regaliaStat(s, 'resolve'),
     resolveRegen: BALANCE.resolveRegen + 0.05 * s.stats.grit,
     crewDps,
-    taxPerSec: city.taxBase * city.employ * city.happiness * taxMult * festival,
+    taxPerSec: city.taxBase * city.employ * city.happiness * taxMult * festival * hazard.tax,
     xpMult: (1 + regaliaStat(s, 'xpPct') / 100) * (1 + 0.12 * lvl(p, 'scholar')) * (1 + 0.3 * lvl(c, 'lore')) * (s.buffs.almanac > 0 ? 2 : 1),
     salvageMult:
       (1 + 0.1 * lvl(u, 'barrows')) * (1 + regaliaStat(s, 'salvagePct') / 100) * (1 + 0.1 * lvl(p, 'scavenger')) *
@@ -249,4 +261,9 @@ export function derive(s: GameState): Derived {
     city,
     hazard,
   };
+}
+
+/** Whether the Undercroft's sea is filling the current ruin back in. */
+export function seeping(s: GameState): boolean {
+  return districtAt(s.ward).hazard === 'seep' && !s.fixtures.includes('caissons') && s.buffs.grease <= 0 && s.buffs.calm <= 0;
 }

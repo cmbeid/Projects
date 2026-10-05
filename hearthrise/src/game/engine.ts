@@ -2,13 +2,13 @@ import { STORY } from '../data/missions';
 import { BALANCE } from '../data/progression';
 import type { GameState } from '../state/types';
 import { crewClearsPerSecond, damage, spawnRuin, tap } from './clearing';
-import { MAX_SLOTS, derive } from './derive';
+import { MAX_SLOTS, derive, seeping } from './derive';
 import { emit } from './events';
 import { activeStory, progress, startStory } from './missions';
 import { rand } from './rng';
 import { tickWorkshops } from './workshops';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function newGame(seed: number, now = 0): GameState {
   const s: GameState = {
@@ -34,12 +34,12 @@ export function newGame(seed: number, now = 0): GameState {
     passives: {},
     resolve: BALANCE.baseResolve,
     cooldowns: { rush: 0, survey: 0, festival: 0 },
-    buffs: { survey: 0, festival: 0, ink: 0, almanac: 0, overtime: 0, wine: 0, seek: 0, calm: 0 },
+    buffs: { survey: 0, festival: 0, ink: 0, almanac: 0, overtime: 0, wine: 0, seek: 0, calm: 0, grease: 0, kite: 0 },
     festivalCarry: 0,
     regalia: [],
     equipped: { chain: null, seal: null, coat: null, lantern: null },
     nextUid: 1,
-    consumables: { charge: 0, tea: 0, ink: 0, almanac: 0, overtime: 0, wine: 0, greatcharge: 0, seeker: 0, calm: 0, memoir: 0 },
+    consumables: { charge: 0, tea: 0, ink: 0, almanac: 0, overtime: 0, wine: 0, greatcharge: 0, seeker: 0, calm: 0, memoir: 0, grease: 0, kite: 0 },
     fixtures: [],
     features: [],
     workshops: Array.from({ length: MAX_SLOTS }, () => ({ recipe: null, progress: -1, queued: 0 })),
@@ -74,6 +74,9 @@ export function newGame(seed: number, now = 0): GameState {
   return s;
 }
 
+/** Share of an Undercroft ruin that the sea fills back in each second. */
+export const SEEP_HEAL = 0.05;
+
 /** The Festival swings at this rate. */
 const FESTIVAL_RATE = 8;
 
@@ -92,7 +95,7 @@ export function tick(s: GameState, dt: number): void {
 
   s.resolve = Math.min(d.resolveMax, s.resolve + d.resolveRegen * dt);
   for (const k of ['rush', 'survey', 'festival'] as const) s.cooldowns[k] = Math.max(0, s.cooldowns[k] - dt);
-  for (const k of ['survey', 'festival', 'ink', 'almanac', 'overtime', 'wine', 'seek', 'calm'] as const) s.buffs[k] = Math.max(0, s.buffs[k] - dt);
+  for (const k of ['survey', 'festival', 'ink', 'almanac', 'overtime', 'wine', 'seek', 'calm', 'grease', 'kite'] as const) s.buffs[k] = Math.max(0, s.buffs[k] - dt);
 
   if (s.buffs.festival > 0) {
     s.festivalCarry += FESTIVAL_RATE * dt;
@@ -114,6 +117,9 @@ export function tick(s: GameState, dt: number): void {
     s.coins += coins;
     s.counters.earned += coins;
   }
+
+  // In the Undercroft, the sea seeps back into every breach unless the pumps keep it out.
+  if (seeping(s) && s.ruin.hp < s.ruin.maxHp) s.ruin.hp = Math.min(s.ruin.maxHp, s.ruin.hp + s.ruin.maxHp * SEEP_HEAL * dt);
 
   tickWorkshops(s, dt);
 

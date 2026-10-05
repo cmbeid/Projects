@@ -5,29 +5,41 @@
  * affordable, every mission completable — without running the game.
  */
 
-export type DistrictId = 'landing' | 'harbour' | 'market' | 'foundry' | 'spire';
-export type HazardKind = 'none' | 'tide' | 'crowd' | 'smog' | 'silence';
+export type DistrictId = 'landing' | 'harbour' | 'market' | 'foundry' | 'spire' | 'undercroft' | 'cloudline' | 'shore';
+export type HazardKind = 'none' | 'tide' | 'crowd' | 'smog' | 'silence' | 'seep' | 'gale' | 'rivalry';
 
 /** Three shades, darkest first. Sprites built from a material use all three. */
 export type Shades = readonly [string, string, string];
 
-export interface MusicParams {
-  /** MIDI note of the tonic. */
-  root: number;
-  /** Semitone offsets of the scale the melody walks. */
+export type ArpStyle = 'up' | 'updown' | 'broken' | 'stabs' | 'none';
+export type DrumStyle = 'waltz' | 'jig' | 'march' | 'machine' | 'shuffle' | 'drive' | 'polka' | 'none';
+
+/**
+ * A district's tune, for the chip score in `audio/music.ts`: four channels
+ * (two pulse waves, a triangle and noise) playing a generated melody over a
+ * fixed chord progression, in the district's own dance.
+ */
+export interface SongParams {
+  /** Beats a minute. In 6/8 the beat is the eighth note. */
+  bpm: number;
+  /** Beats in a bar: 2/4, 3/4, 4/4 or 6/8. */
+  meter: 2 | 3 | 4 | 6;
+  /** MIDI note of the tonic, in the lead's octave. */
+  key: number;
+  /** The seven-note mode, as semitones above the tonic. */
   scale: readonly number[];
-  /** Seconds per beat. */
-  beat: number;
-  /** Lowpass cutoff on the pads, in Hz. Lower is murkier. */
-  filter: number;
-  /** 0–1: how often a melody note is bent onto a tense interval instead. */
-  unease: number;
-  /** Semitones above the root for the second drone voice (7 = a fifth, 6 = a tritone). */
-  droneInterval: number;
-  /** 0–1: how busy the plucked ostinato under the bells is. The town gets busier; the Spire goes quiet. */
-  bustle: number;
-  /** A slow, deep bell under everything. On in the Spire. */
-  toll?: boolean;
+  /** One chord a bar, as scale degrees (0 is the tonic), eight bars. */
+  progression: readonly number[];
+  /** Duty cycle of the lead's pulse wave: 0.125 is thin and reedy, 0.5 is a hollow square. */
+  duty: number;
+  /** How the second pulse channel plays the chord, and how many notes a beat. */
+  arp: ArpStyle;
+  arpRate: number;
+  drums: DrumStyle;
+  /** The tune's seed: scale steps from the chord's root, varied phrase by phrase. */
+  motif: readonly number[];
+  /** 0–1: a lowpass over the whole band, for somewhere underwater. */
+  muffle?: number;
 }
 
 export interface District {
@@ -51,7 +63,7 @@ export interface District {
   relics: readonly string[];
   /** The heart-relic every landmark gives up. */
   heart: string;
-  music: MusicParams;
+  music: SongParams;
 }
 
 export type MaterialKind = 'salvage' | 'relic' | 'good' | 'heart';
@@ -97,8 +109,8 @@ export interface Stack {
   n: number;
 }
 
-/** A ward reached at least once (in any run), or a story mission behind you. */
-export type Requirement = { ward: number } | { mission: string };
+/** A ward reached at least once (in any run), a story mission behind you, or a fixture built. */
+export type Requirement = { ward: number } | { mission: string } | { fixture: FixtureId };
 
 export interface RefineRecipe {
   id: string;
@@ -118,9 +130,11 @@ export type ConsumableId =
   | 'greatcharge'
   | 'seeker'
   | 'calm'
-  | 'memoir';
+  | 'memoir'
+  | 'grease'
+  | 'kite';
 
-export type FixtureId = 'seawall' | 'charter' | 'scrubbers' | 'beacons' | 'auction' | 'archive' | 'surveyor';
+export type FixtureId = 'seawall' | 'charter' | 'scrubbers' | 'beacons' | 'auction' | 'archive' | 'surveyor' | 'caissons' | 'windbreaks' | 'treaty';
 
 export type CraftOutput =
   | { kind: 'regalia'; base: string }

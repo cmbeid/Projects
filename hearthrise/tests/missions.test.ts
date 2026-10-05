@@ -21,6 +21,14 @@ describe('the story', () => {
     expect(claimStory(s)).toBe(false);
     expect(claimStory(s, 1)).toBe(true);
     expect(s.flags).toContain('hushed');
+    expect(s.story.id).toBe('beneath');
+  });
+
+  it('ends after the last mission', () => {
+    const s = newGame(1);
+    s.story = { id: 'hearthrise', base: 0 };
+    s.furthestEver = 64;
+    expect(claimStory(s)).toBe(true);
     expect(s.story.id).toBeNull();
   });
 

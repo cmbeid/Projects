@@ -39,6 +39,15 @@ export function validateData(): string[] {
   }
   const reqWard = (r: Requirement, what: string): number => {
     if ('ward' in r) return r.ward;
+    if ('fixture' in r) {
+      // A fixture-gated thing unlocks once the fixture can be made.
+      const recipe = CRAFT.find((c) => c.output.kind === 'fixture' && c.output.id === r.fixture);
+      if (!recipe) {
+        errors.push(`${what} requires fixture ${r.fixture}, which has no recipe`);
+        return 0;
+      }
+      return reqWard(recipe.requires, recipe.id);
+    }
     const w = storyWard.get(r.mission);
     if (w === undefined) {
       errors.push(`${what} requires unknown mission ${r.mission}`);

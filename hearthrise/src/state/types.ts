@@ -110,7 +110,7 @@ export interface GameState {
   resolve: number;
   cooldowns: Record<EdictId, number>;
   /** Seconds left on each timed effect. */
-  buffs: { survey: number; festival: number; ink: number; almanac: number; overtime: number; wine: number; seek: number; calm: number };
+  buffs: { survey: number; festival: number; ink: number; almanac: number; overtime: number; wine: number; seek: number; calm: number; grease: number; kite: number };
   /** Fractional swings owed by the Festival. */
   festivalCarry: number;
 

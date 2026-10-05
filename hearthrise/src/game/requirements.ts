@@ -11,10 +11,12 @@ export function storyIndex(s: GameState): number {
 
 /**
  * Recipes and buildings are learned for good: the furthest ward ever opened
- * counts, not this run's, and a mission counts once it is behind you.
+ * counts, not this run's, a mission counts once it is behind you, and a
+ * fixture once it is built.
  */
 export function meetsRequirement(s: GameState, req: Requirement): boolean {
   if ('ward' in req) return s.furthestEver >= req.ward;
+  if ('fixture' in req) return s.fixtures.includes(req.fixture);
   const i = STORY.findIndex((m) => m.id === req.mission);
   return i >= 0 && storyIndex(s) > i;
 }

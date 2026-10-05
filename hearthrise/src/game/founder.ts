@@ -96,6 +96,12 @@ export function useConsumable(s: GameState, id: ConsumableId): boolean {
     case 'calm':
       s.buffs.calm = 300;
       break;
+    case 'grease':
+      s.buffs.grease = 300;
+      break;
+    case 'kite':
+      s.buffs.kite = 180;
+      break;
     case 'memoir':
       addXp(s, xpAt(s.ward) * d.xpMult * 500);
       break;

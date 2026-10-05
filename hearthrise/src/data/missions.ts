@@ -11,7 +11,7 @@ const m = (id: string, title: string, text: string, goal: Goal, reward: Reward, 
 
 /**
  * The story: one chain, one mission at a time, from the beach to the top of
- * the Spire. The early ones double as the tutorial — most features are
+ * the Spire — and on, under it, up it and across the bay. The early ones double as the tutorial — most features are
  * switched on by the mission that introduces them.
  */
 export const STORY: readonly Mission[] = [
@@ -134,6 +134,74 @@ export const STORY: readonly Mission[] = [
         },
       ],
     },
+  }),
+
+  // --- Beyond the Spire: the Undercroft ----------------------------------------
+  m('beneath', 'Beneath', 'Under the Spire lies old Vessel itself, the city everyone stood and watched drown. Go down.', { kind: 'ward', n: 41 }, { coins: 3e14, flag: 'below' }, {
+    scene: [
+      'Under the Spire there is a second city, and it is dry. The sea stands round it like a wall of green glass, and through it you can see fish going about their business.',
+      'Vessel. Streets of pale stone, every door with the circle and the line chalked on it. And in the middle, under the tower, something warm.',
+    ],
+    sceneIf: [
+      {
+        flag: 'rang',
+        scene: [
+          'When the bell rang the sea drew back from the bay, and it never quite came in again. At low water you can walk down the old stairs into Vessel, dry-shod, if you do not mind the walls being made of sea.',
+          'The streets are pale stone. Every door has the circle and the line chalked on it. And in the middle, under the tower, something is warm, and getting warmer.',
+        ],
+      },
+      {
+        flag: 'hushed',
+        scene: [
+          'The key on my chain fits a second door, at the foot of the Spire, that nobody had noticed. Behind it a stair goes down and down, and at the bottom the sea stands back like a wall of green glass.',
+          'Vessel. Dry, and quiet, and every door marked with the circle and the line. In the middle, under the tower, something sleeps, and it is warm.',
+        ],
+      },
+    ],
+  }),
+  m('pumps', 'Caissons', 'The sea gets into every hole we make. Iron boxes and pumps, and a heart from the old city to drive them.', { kind: 'fixture', id: 'caissons' }, { coins: 1e15 }),
+  m('drowned-oak', 'Drowned Oak', 'Their timber is black and hard as iron after all those years underwater.', { kind: 'salvage', id: 'drowned-oak', n: 400 }, { coins: 2e15 }),
+  m('tide-chain', 'Tidewrought', 'A chain of office in Vessel’s own iron. It fits as if it was made for me.', { kind: 'craft', n: 1, recipe: 'c-tide-chain' }, { xp: 1e13 }),
+  m('cisterns', 'Cisterns', 'People want to live down here. Of course they do; it is beautiful.', { kind: 'build', id: 'cistern-homes', n: 3 }, { coins: 5e15 }),
+
+  // --- The Cloudline ------------------------------------------------------------
+  m('upward', 'The Cloudline', 'The Spire goes up above the weather. The founders kept gardens up there. Climb.', { kind: 'ward', n: 49 }, { coins: 5e16, flag: 'above' }, {
+    scene: [
+      'Above the clouds the Spire is warm to the touch, like a chimney. There are terraces cut into it, and gardens gone wild, and an old founder’s bench with a view of the whole bay.',
+      'I understand it now. The thing under the tower is not a beast. It is a hearth: a fire the first founders lit under the city, so deep and so old that it learned to breathe. The Spire is its chimney. The city was built to keep it warm, and it kept the city warm in return.',
+      'Every time we built too high, it began to wake. Every time, we were afraid of it, and let the sea in. The city was called Vessel because it held the fire. It should have been called something else.',
+    ],
+    sceneIf: [
+      {
+        flag: 'rang',
+        scene: [
+          'Above the clouds the Spire is hot to the touch, and it hums the way a kettle hums. There are terraces cut into it, gardens gone wild in the warm air, and a founder’s bench with a view of the whole bay.',
+          'I understand it now. The thing I woke is not a beast. It is a hearth: a fire the first founders lit under the city, so old that it learned to breathe. The Spire is its chimney. It was never dangerous. It was lonely.',
+          'The city was called Vessel because it held the fire. It should have been called something else.',
+        ],
+      },
+    ],
+  }),
+  m('windbreaks', 'Windbreaks', 'The gusts up here would blow a house off its terrace. Skysilk screens, strung between the gardens.', { kind: 'fixture', id: 'windbreaks' }, { coins: 1e17 }),
+  m('docks', 'Airships', 'If we are building in the sky we should have ships that sail in it.', { kind: 'build', id: 'airship-dock', n: 2 }, { coins: 2e17 }),
+  m('storm-chain', 'Storm Chain', 'Brass from the weather vanes, and a heart from the top of the sky.', { kind: 'craft', n: 1, recipe: 'c-storm-chain' }, { xp: 1e15 }),
+
+  // --- The Far Shore ------------------------------------------------------------
+  m('far-shore', 'The Far Shore', 'From the top of the Spire you can see the town the boats come from. It is time we visited.', { kind: 'ward', n: 57 }, { coins: 8e18 }, {
+    scene: [
+      'The fishermen’s town is older than Vessel. Their harbour wall has the circle and the line carved into every stone.',
+      'Their oldest woman met me on the quay. She knew my name. She said: we have rowed you over every time. Every founding. We put you on the beach with a crate and a hammer and a lantern, and we rowed away, and we did not look back, because we could not bear to watch.',
+      'She said: this time, you went up instead of letting it drown. So this time, we came to see.',
+    ],
+  }),
+  m('treaty', 'Treaty of the Bay', 'Two towns, one bay, one fire under it. Write it down and both sign it.', { kind: 'fixture', id: 'treaty' }, { coins: 2e19, flag: 'treaty' }),
+  m('assembly', 'Assembly', 'A hall big enough for both shores to argue in.', { kind: 'build', id: 'assembly-hall', n: 1 }, { coins: 4e19 }),
+  m('hearthrise', 'Hearthrise', 'There is no more rubble to clear in the old sense. Just a city, and a fire under it, and the sea being kind.', { kind: 'ward', n: 64 }, { coins: 1e21 }, {
+    scene: [
+      'We held the vote in the Assembly Hall, both shores together, to give the city a name. Vessel was out; nobody wanted to be a pot again.',
+      'A child from the Far Shore stood on a bench and said it should be named for the fire that rises up the middle of it. So it is.',
+      'Hearthrise. I wrote it on the first page of a new journal, and put the journal in the tin box under the jetty, in case. But I do not think anyone will need to read it.',
+    ],
   }),
 ];
 

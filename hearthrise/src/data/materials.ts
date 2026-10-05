@@ -52,6 +52,33 @@ export const MATERIALS: readonly Material[] = [
   { id: 'choir-shard', name: 'Choir Shard', kind: 'relic', value: 3.6e6, shades: ['#3a2a6a', '#9a7ae0', '#f0e0ff'] },
   { id: 'spire-key', name: 'Spire Key', kind: 'heart', value: 8e6, shades: ['#2a2a4a', '#c8c8f0', '#ffffff'] },
 
+  // --- The Undercroft ---------------------------------------------------------
+  { id: 'drowned-oak', name: 'Drowned Oak', kind: 'salvage', value: 1.4e6, shades: ['#0a1a14', '#2a4a3a', '#5a8a6a'], pile: 'timber' },
+  { id: 'vessel-stone', name: 'Vessel Stone', kind: 'salvage', value: 2.3e6, shades: ['#1a3a30', '#3a7a62', '#8ad0b0'], pile: 'stone' },
+  { id: 'verdigris', name: 'Verdigris', kind: 'salvage', value: 4e6, shades: ['#1a4a3a', '#3aa080', '#a8ffd8'], pile: 'metal' },
+  { id: 'sea-silk', name: 'Sea Silk', kind: 'salvage', value: 7.5e6, shades: ['#2a3a5a', '#5a8ac8', '#d0e8ff'], pile: 'cloth' },
+  { id: 'crown-coin', name: 'Crown of Vessel', kind: 'relic', value: 3.4e7, shades: ['#5a4a0a', '#c8a82a', '#fff4a0'] },
+  { id: 'vessel-bell', name: 'Vessel Bell', kind: 'relic', value: 5.6e7, shades: ['#2a5a4a', '#5ac8a0', '#e0fff0'] },
+  { id: 'vessel-heart', name: 'Heart of Vessel', kind: 'heart', value: 1.2e8, shades: ['#0a3a2a', '#2ae0a0', '#e0fff4'] },
+
+  // --- The Cloudline ------------------------------------------------------------
+  { id: 'sky-cedar', name: 'Sky Cedar', kind: 'salvage', value: 2.1e7, shades: ['#5a2a1a', '#a8603a', '#ffc090'], pile: 'timber' },
+  { id: 'cloudstone', name: 'Cloudstone', kind: 'salvage', value: 3.5e7, shades: ['#8a90a8', '#dce2f0', '#ffffff'], pile: 'stone' },
+  { id: 'storm-brass', name: 'Storm Brass', kind: 'salvage', value: 6e7, shades: ['#6a5a1a', '#d8c04a', '#fffad0'], pile: 'metal' },
+  { id: 'sky-canvas', name: 'Sky Canvas', kind: 'salvage', value: 1.1e8, shades: ['#3a5aa8', '#8ab8ff', '#f0f8ff'], pile: 'cloth' },
+  { id: 'weather-vane', name: 'Weather Vane', kind: 'relic', value: 5e8, shades: ['#5a3a1a', '#c88a3a', '#ffe0a0'] },
+  { id: 'kite-charm', name: 'Kite Charm', kind: 'relic', value: 8.5e8, shades: ['#8a1a3a', '#ff5a8a', '#ffd0e0'] },
+  { id: 'sky-heart', name: 'Sky Heart', kind: 'heart', value: 1.8e9, shades: ['#5a5a0a', '#ffe84a', '#ffffff'] },
+
+  // --- The Far Shore ------------------------------------------------------------
+  { id: 'shore-pine', name: 'Shore Pine', kind: 'salvage', value: 3.2e8, shades: ['#3a2a10', '#7a5a2a', '#c8a060'], pile: 'timber' },
+  { id: 'sandstone', name: 'Sandstone', kind: 'salvage', value: 5.3e8, shades: ['#8a5a2a', '#d8a868', '#fff0c8'], pile: 'stone' },
+  { id: 'anchor-iron', name: 'Anchor Iron', kind: 'salvage', value: 9e8, shades: ['#1a1a24', '#4a4a5a', '#8a8aa0'], pile: 'metal' },
+  { id: 'net-cord', name: 'Net Cord', kind: 'salvage', value: 1.65e9, shades: ['#5a4a2a', '#a8946a', '#f0e4c0'], pile: 'cloth' },
+  { id: 'shell-crown', name: 'Shell Crown', kind: 'relic', value: 7.5e9, shades: ['#8a5a6a', '#f0b0c0', '#ffffff'] },
+  { id: 'old-chart', name: 'The Old Chart', kind: 'relic', value: 1.3e10, shades: ['#6a5a3a', '#d8c898', '#fffaf0'] },
+  { id: 'shore-lantern', name: 'Shore Lantern', kind: 'heart', value: 2.7e10, shades: ['#7a3a0a', '#ff9a3a', '#fff0c8'] },
+
   // --- Goods ------------------------------------------------------------------
   { id: 'planks', name: 'Planks', kind: 'good', value: 22, shades: ['#6a4a24', '#b08048', '#f0c888'] },
   { id: 'bricks', name: 'Bricks', kind: 'good', value: 34, shades: ['#6a2414', '#b84a2a', '#f08a5a'] },
@@ -64,6 +91,9 @@ export const MATERIALS: readonly Material[] = [
   { id: 'steel', name: 'Steel Girders', kind: 'good', value: 190000, shades: ['#3a4a5a', '#8aa6ba', '#e4f4ff'] },
   { id: 'marble-block', name: 'Dressed Marble', kind: 'good', value: 2.9e6, shades: ['#8a8a96', '#e0e0ea', '#ffffff'] },
   { id: 'lumen', name: 'Lumen Glass', kind: 'good', value: 1.6e6, shades: ['#3a3a7a', '#9a9af0', '#f8f8ff'] },
+  { id: 'caisson-iron', name: 'Caisson Iron', kind: 'good', value: 2.2e7, shades: ['#1a3a34', '#4a8a7a', '#c0f0e0'] },
+  { id: 'skysilk', name: 'Skysilk', kind: 'good', value: 3.5e8, shades: ['#3a5aa8', '#a0c8ff', '#ffffff'] },
+  { id: 'shore-oak', name: 'Shore Timbers', kind: 'good', value: 5e9, shades: ['#4a3010', '#9a7040', '#e8c890'] },
 ];
 
 export const MATERIAL: ReadonlyMap<string, Material> = new Map(MATERIALS.map((m) => [m.id, m]));
