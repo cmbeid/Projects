@@ -7,6 +7,7 @@ import { emit } from './events';
 import { damage, machineBreaksPerSecond, spawnBlock, tap } from './mining';
 import { biomeAt } from '../data/biomes';
 import { activeStory, progress, startStory } from './missions';
+import { autoBuy } from './economy';
 import { rand } from './rng';
 
 export const SAVE_VERSION = 2;
@@ -49,6 +50,7 @@ export function newGame(seed: number, now = 0): GameState {
     flags: [],
     bargains: [],
     machineBudget: 0,
+    autoBuy: [],
     counters: {
       breaks: 0,
       mined: {},
@@ -123,6 +125,7 @@ export function tick(s: GameState, dt: number): void {
   }
 
   tickFurnace(s, dt);
+  if (s.autoBuy.length) autoBuy(s);
 
   const m = activeStory(s);
   if (m?.goal.kind === 'visit' && s.depth === m.goal.depth) s.story.base = 1;

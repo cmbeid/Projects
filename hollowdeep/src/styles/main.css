@@ -184,6 +184,8 @@ p { margin: 6px 0; }
 .btn:disabled { opacity: 0.45; cursor: default; filter: saturate(0.4); }
 .btn.small { font-size: 13px; padding: 5px 9px; min-height: 34px; }
 .btn.primary { background: linear-gradient(#e0a03a, #a8641a); color: #1a0e04; }
+.auto { background: none; border: 1px solid #ffffff25; border-radius: 6px; color: var(--muted); font-family: var(--font-body); font-size: 12px; padding: 4px 6px; min-height: 34px; cursor: pointer; white-space: nowrap; }
+.auto.on { color: var(--good); border-color: var(--good); }
 .btn.buy { min-width: 92px; background: linear-gradient(#5a4a2a, #3e3218); color: #ffe08a; }
 .btn.danger { background: linear-gradient(#c04a3a, #7a2418); }
 .btn.ghost { background: transparent; box-shadow: none; border-color: #ffffff20; }
