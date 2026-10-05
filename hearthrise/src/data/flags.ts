@@ -8,7 +8,7 @@ import type { DistrictId } from './types';
  * Readers:
  * - district names and blurbs: `DISTRICT_TEXT` below, via `districtText`
  * - the scene: `heard` (the Spire glows at night), `rang` (the sea draws back)
- * - the music: `heard`, `rang`, `hushed`, `above`, `treaty`
+ * - the music: `rang`, `hushed`, `above`, `treaty`
  */
 export const FLAGS = ['heard', 'remembered', 'rang', 'hushed', 'below', 'above', 'treaty'] as const;
 

@@ -294,6 +294,7 @@ export class App {
       this.acc -= STEP;
     }
     this.scene.frame(dt, this.s, this.view());
+    this.music?.setNight(this.scene.night(this.s) > 0.7);
     this.uiTimer -= dt;
     if (this.uiTimer <= 0) {
       this.uiTimer = 0.2;

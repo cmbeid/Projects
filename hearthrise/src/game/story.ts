@@ -1,5 +1,5 @@
 import { DISTRICT_TEXT } from '../data/flags';
-import type { District, MusicParams } from '../data/types';
+import type { District, SongParams } from '../data/types';
 import type { GameState } from '../state/types';
 
 /** A district's name and blurb as the player now knows it. */
@@ -18,21 +18,22 @@ export function hasFlag(s: GameState, flag: string): boolean {
   return s.flags.includes(flag);
 }
 
-/** The district's score, shifted by what the player has done and learned. */
-export function musicFor(s: GameState, d: District): MusicParams {
-  const p: MusicParams = { ...d.music };
-  if (hasFlag(s, 'heard') && d.id !== 'landing') p.unease += 0.04;
-  if (hasFlag(s, 'hushed')) p.unease *= 0.5;
-  if (hasFlag(s, 'rang')) {
-    p.filter *= 1.4;
-    p.unease *= 0.4;
-    // The Spire sings in its own key now, a fifth above the old drone.
-    if (d.id === 'spire') p.droneInterval = 7;
+/** The district's tune, shifted by what the player has done and learned. */
+export function musicFor(s: GameState, d: District): SongParams {
+  const p: SongParams = { ...d.music };
+  if (d.id === 'spire') {
+    // Rung, the Spire's hymn gets a beat and a brighter voice; locked, it slows to a lullaby.
+    if (hasFlag(s, 'rang')) Object.assign(p, { bpm: 92, drums: 'waltz', duty: 0.25 });
+    else if (hasFlag(s, 'hushed')) p.bpm = 60;
   }
+  // Once you know what is under the city, the Undercroft is less muffled.
+  if (d.id === 'undercroft' && hasFlag(s, 'above')) p.muffle = 0.4;
+  // After the treaty, the Far Shore's polka swaps its oom-pah for a running arpeggio.
+  if (d.id === 'shore' && hasFlag(s, 'treaty')) Object.assign(p, { arp: 'up', arpRate: 2 });
   return p;
 }
 
 /** A key that changes whenever `musicFor` would. */
 export function musicKey(s: GameState, d: District): string {
-  return `${d.id}:${['heard', 'hushed', 'rang'].filter((f) => hasFlag(s, f)).join(',')}`;
+  return `${d.id}:${['rang', 'hushed', 'above', 'treaty'].filter((f) => hasFlag(s, f)).join(',')}`;
 }

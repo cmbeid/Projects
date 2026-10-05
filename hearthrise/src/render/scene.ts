@@ -268,7 +268,7 @@ export class Scene {
   }
 
   /** 0 at noon, 1 at midnight. */
-  private night(s: GameState): number {
+  night(s: GameState): number {
     return (1 - Math.cos(((s.time % DAY) / DAY) * Math.PI * 2)) / 2;
   }
 
