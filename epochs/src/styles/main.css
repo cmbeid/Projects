@@ -63,22 +63,40 @@ textarea {
 
 /* --- Top bar ---------------------------------------------------------------------- */
 
+/* The header holds the age, the stores and the city's vital signs, and stays
+   on screen however far the panel scrolls. On a wide header the stores sit in
+   the middle; on a narrow one they take a row of their own underneath. */
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'era res stats';
   align-items: center;
-  gap: 10px;
+  gap: 6px 12px;
   padding: 6px 10px;
   background: var(--bg2);
   border-bottom: 2px solid var(--line);
-  flex-wrap: wrap;
 }
 
 .topbar .era {
+  grid-area: era;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-right: auto;
   min-width: 0;
+}
+
+.topbar .stats {
+  grid-area: stats;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 759px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'era stats' 'res res';
+  }
 }
 
 .topbar .era b {
@@ -194,12 +212,10 @@ textarea {
 .resources {
   /* A fixed grid: every chip the same width, so a value gaining or losing a
      decimal never resizes its chip or shoves the others along. */
+  grid-area: res;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   gap: 4px;
-  padding: 6px 8px;
-  background: var(--bg2);
-  border-bottom: 2px solid var(--line);
 }
 
 .rchip {

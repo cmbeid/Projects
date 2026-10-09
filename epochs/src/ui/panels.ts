@@ -101,11 +101,16 @@ export function tabBadge(s: GameState, d: Derived, t: Tab): boolean {
 
 // --- Header -------------------------------------------------------------------------
 
-export function renderHeader(s: GameState, d: Derived): string {
+/** The age and the year, top left. */
+export function renderEra(s: GameState): string {
   const era = ERAS[s.era]!;
+  return `${iconHtml(`era-${s.era}`, 2)}<div><b>${esc(era.name)}</b><small>${yearText(yearOf(s))}${s.world.number > 0 ? ` · ${esc(s.world.name)}` : ''}</small></div>`;
+}
+
+/** People, stability, land and power, top right. */
+export function renderStats(s: GameState, d: Derived): string {
   const stab = Math.round(d.stability);
   return `
-    <div class="era">${iconHtml(`era-${s.era}`, 2)}<div><b>${esc(era.name)}</b><small>${yearText(yearOf(s))}${s.world.number > 0 ? ` · ${esc(s.world.name)}` : ''}</small></div></div>
     <div class="stat" title="Citizens / housing">${iconHtml('icon-people', 2)}<span>${fmtInt(s.pop)}<small>/${fmtInt(d.housing)}</small></span></div>
     <div class="stat${stab < 50 ? ' bad' : stab >= 120 ? ' good' : ''}" title="Stability">${iconHtml('icon-stability', 2)}<span>${stab}%</span></div>
     <div class="stat" title="Land used / land">${iconHtml('icon-land', 2)}<span>${d.plotsUsed}<small>/${d.plotsTotal}</small></span></div>

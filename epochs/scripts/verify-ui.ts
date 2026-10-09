@@ -88,6 +88,14 @@ async function main(): Promise<void> {
       const overflow = await page.locator('#res .rchip .n, #res .rchip .r').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 0.5).map((e) => e.textContent));
       if (overflow.length) errors.push(`${vp.name}/${label}: resource text overflows its slot: ${overflow.join(', ')}`);
 
+      // The stores live in the header, and stay in view however far the page scrolls.
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(300);
+      const res = await page.locator('#res').boundingBox();
+      if (!res || res.y < 0 || res.y + res.height > vp.height) errors.push(`${vp.name}/${label}: the resources scrolled out of view`);
+      await shoot(page, `${vp.name}-${label}-scrolled`);
+      await page.evaluate(() => window.scrollTo(0, 0));
+
       if (label === 'fresh') {
         // The first things anyone does: build a farm, put someone on it, research.
         const before = await page.evaluate(() => (window as unknown as Win).__epochs.plots.filter(Boolean).length);
