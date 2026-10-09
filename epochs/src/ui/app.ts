@@ -42,12 +42,13 @@ import {
   renderChronicle,
   renderCity,
   renderEventCard,
-  renderHeader,
+  renderEra,
   renderHeritage,
   renderJobs,
   renderResearch,
   renderResources,
   renderSettings,
+  renderStats,
   renderWonders,
   tabBadge,
   tabVisible,
@@ -103,14 +104,17 @@ export class App {
   private build(): void {
     this.root.innerHTML = `
       <div class="app">
-        <header class="topbar" id="top"></header>
+        <header class="topbar" id="top">
+          <div class="era" id="era"></div>
+          <div class="resources" id="res"></div>
+          <div class="stats" id="stats"></div>
+        </header>
         <div class="stage">
           <div class="scene-col">
             <div class="scene">
               <canvas id="scene" aria-label="The city's skyline. Drag to look along it; tap a building to rebuild or pull it down."></canvas>
               <div class="badges" id="badges"></div>
             </div>
-            <div class="resources" id="res"></div>
             <div id="event"></div>
           </div>
           <div class="side">
@@ -235,7 +239,8 @@ export class App {
     const s = this.s;
     const d = derive(s);
     if (!tabVisible(s, this.ui.tab)) this.ui.tab = 'city';
-    morph(this.root.querySelector('#top')!, renderHeader(s, d));
+    morph(this.root.querySelector('#era')!, renderEra(s));
+    morph(this.root.querySelector('#stats')!, renderStats(s, d));
     const top = this.root.querySelector<HTMLElement>('#top')!;
     this.root.style.setProperty('--top-h', `${top.offsetHeight}px`);
     morph(this.root.querySelector('#res')!, renderResources(s, d));
