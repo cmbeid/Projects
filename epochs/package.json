@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate-data.ts",
     "playtest": "tsx scripts/playtest.ts",
-    "verify": "tsx scripts/verify-ui.ts"
+    "verify": "tsx scripts/verify-ui.ts",
+    "sheet": "tsx scripts/sheet.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
