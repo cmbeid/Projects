@@ -1,5 +1,4 @@
 import '@fontsource/jersey-10/400.css';
-import '@fontsource/tiny5/400.css';
 import './styles/main.css';
 import { newGame } from './game/engine';
 import { applyOffline, type OfflineReport } from './game/offline';
