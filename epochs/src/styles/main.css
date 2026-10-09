@@ -10,8 +10,10 @@
   --good: #7ae07a;
   --bad: #ff7a6a;
   --sky: #5ae0f0;
-  --head: 'Jersey 10', 'Tiny5', system-ui, sans-serif;
-  --num: 'Tiny5', 'Jersey 10', ui-monospace, monospace;
+  --head: 'Jersey 10', system-ui, sans-serif;
+  /* Numbers in a plain, sturdy face with digits all the same width: the pixel
+     fonts are lovely for headings but too small to read as figures on a phone. */
+  --num-face: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;
 }
@@ -22,6 +24,7 @@
 
 html,
 body {
+  font-variant-numeric: tabular-nums;
   margin: 0;
   height: 100%;
   background: var(--bg);
@@ -214,42 +217,44 @@ textarea {
      decimal never resizes its chip or shoves the others along. */
   grid-area: res;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
   gap: 4px;
 }
 
+/* Icon on the left; the amount over the rate, both right-aligned, so the
+   figures line up and a changing digit never moves anything else. */
 .rchip {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 4px;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px 3px 3px;
+  padding: 3px 6px 4px 4px;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
-  font: 12px/1 var(--num);
+  font: 600 13px/1.15 var(--num-face);
+}
+
+.rchip .ricon {
+  grid-row: 1 / 3;
 }
 
 .rchip .n,
 .rchip .r {
-  display: inline-block;
   text-align: right;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
-/* Fixed slots, wide enough for the widest strings fmt() and rate() make: "10.7K" and "−88.8K/s". */
 .rchip .n {
-  font-size: 13px;
-  width: 2.6em;
+  font-size: 15px;
 }
 
 .rchip .r {
   color: var(--good);
-  font-size: 10px;
-  width: 4.1em;
-  margin-left: auto;
+  font-size: 11px;
 }
 
 .rchip .r.neg {
@@ -527,7 +532,7 @@ button.on {
   padding: 1px 4px;
   border-radius: 3px;
   background: rgba(0, 0, 0, 0.25);
-  font: 12px/1.2 var(--num);
+  font: 600 12px/1.2 var(--num-face);
 }
 
 .cost.short {
@@ -565,7 +570,7 @@ button.primary .cost.short {
 }
 
 .age .goals small {
-  font: 12px var(--num);
+  font: 600 12px var(--num-face);
   opacity: 0.8;
 }
 
@@ -623,7 +628,7 @@ button.primary .cost.short {
 
 .count {
   margin-left: auto;
-  font: 14px var(--num);
+  font: 600 14px var(--num-face);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -741,7 +746,7 @@ button.primary .cost.short {
 }
 
 .parts b {
-  font: 14px var(--num);
+  font: 600 14px var(--num-face);
 }
 
 /* --- Research ------------------------------------------------------------------- */
@@ -905,7 +910,7 @@ button.primary .cost.short {
 .log .yr {
   display: inline-block;
   min-width: 82px;
-  font: 12px var(--num);
+  font: 600 12px var(--num-face);
   color: var(--muted);
 }
 
@@ -967,7 +972,7 @@ textarea {
   border: 2px solid var(--line);
   border-radius: 5px;
   padding: 6px;
-  font: 12px var(--num);
+  font: 600 12px var(--num-face);
 }
 
 /* --- Toasts and modals ------------------------------------------------------------ */
@@ -1060,7 +1065,7 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  font: 14px var(--num);
+  font: 600 14px var(--num-face);
 }
 
 /* --- Wide screens: the skyline beside the panel ------------------------------------ */
