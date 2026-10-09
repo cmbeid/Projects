@@ -23,6 +23,7 @@ on:
        - 'pokeharvest/**'
        - 'hollowdeep/**'
        - 'hearthrise/**'
+       - 'epochs/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -61,6 +62,7 @@ jobs:
             pokeharvest/package-lock.json
             hollowdeep/package-lock.json
             hearthrise/package-lock.json
+            epochs/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -226,6 +228,25 @@ jobs:
         run: npm run build
         working-directory: hearthrise
 
+      - name: Install (epochs)
+        run: npm ci
+        working-directory: epochs
+
+      - name: Validate content (epochs)
+        run: npm run validate
+        working-directory: epochs
+
+      # Includes a bot playing eight hours that has to reach the Industrial Age
+      # and launch the colony ship once: a balance change that walls an era
+      # fails here.
+      - name: Test (epochs)
+        run: npm test
+        working-directory: epochs
+
+      - name: Build (epochs)
+        run: npm run build
+        working-directory: epochs
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -261,6 +282,9 @@ jobs:
 
           mkdir -p _site/hearthrise
           cp -r hearthrise/dist/. _site/hearthrise/
+
+          mkdir -p _site/epochs
+          cp -r epochs/dist/. _site/epochs/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -362,6 +386,13 @@ jobs:
                     <span>
                       <span class="name">Hearthrise</span>
                       <span class="desc">An incremental city builder: clear the ruins of a drowned city, lay out its districts tile by tile, and find out why everyone left.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./epochs/">
+                    <span class="emoji" aria-hidden="true">🏛️</span>
+                    <span>
+                      <span class="name">Epochs</span>
+                      <span class="desc">An incremental city through the ages: grow one city from a Stone Age campfire to the Space Age, then launch a colony ship to a new world.</span>
                     </span>
                   </a>
                 </div>

@@ -14,6 +14,7 @@ nothing at the root to install.
 | [`pokeharvest/`](pokeharvest/) | A Pokémon farming game, portrait-first for the phone. Till, plant, water and harvest berries on a walkable farm with a day/night clock, and sell through the shipping bin or the Poké Mart. Pokémon work the farm by type. Befriend more in turn-based battles on Route 1, level them up and evolve them, upgrade your tools at the blacksmith, and pick perks as your skills grow. Send Pokémon to live in the barn and work while you're away, raise livestock, craft machines, cook, fill town requests and play a market that changes daily. Four seasons of berries, weather, a greenhouse, a Pokédex with rewards and Pokémon Crystal's music. A five-chapter story to revive Cobblevale Town, two more routes (a forest and a cave), roaming trainers, a Pokémon Center, crafting stations (Workbench, Furnace, Apricorn Workshop), 94 Pokémon and an on-screen d-pad. |
 | [`hollowdeep/`](hollowdeep/) | An incremental mining game, portrait-first for the phone. Dig through five biomes to depth 200. The miner levels up and has stats, skills and a passive tree; there are machines that mine offline, furnaces and a workbench with 23 pieces of gear, a 42-mission story, daily contracts and a prestige layer. The pixel art, sound effects and generative ambient score are all made in code. |
 | [`hearthrise/`](hearthrise/) | An incremental city-building game, portrait-first for the phone. Clear the ruins of a drowned city ward by ward and build it back on a grid per district, where every building likes or dislikes its neighbours. There are eight districts with their own hazards and 56 buildings, a Founder with stats, edicts and a passive tree, workshops and a Drafting Hall with 49 pieces of regalia, a 57-mission story with a choice at the top of the Spire, daily petitions, and the Tide as the prestige layer. The pixel art, sound effects and four-channel chiptune score are all made in code. |
+| [`epochs/`](epochs/) | An incremental city game through the ages, portrait-first for the phone. One city grows from a Stone Age campfire to the Space Age across eight eras: put citizens to work, build from 14 lines of buildings that each have a style for every era (81 in all) and modernize the old ones in place, research 80 techs, raise 15 wonders, and decide what the city does when the Chronicle asks. Launching the colony ship is the prestige layer: carry Heritage to a new world with its own traits. The pixel art, sound effects and a score that changes ensemble with every era are all made in code. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
 ## Working on one
@@ -42,7 +43,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 | `storied/` | http://s3.cmbeid.com/storied/index.html |
 
-`simtowerweb/`, `pokefling/`, `pokedefense/`, `pokeharvest/`, `hollowdeep/` and `hearthrise/` have no S3 workflow — they publish to Pages only.
+`simtowerweb/`, `pokefling/`, `pokedefense/`, `pokeharvest/`, `hollowdeep/`, `hearthrise/` and `epochs/` have no S3 workflow — they publish to Pages only.
 
 ### GitHub Pages
 
@@ -61,6 +62,7 @@ them to publish.
 | `pokeharvest/` | https://cmbeid.github.io/Projects/pokeharvest/ |
 | `hollowdeep/` | https://cmbeid.github.io/Projects/hollowdeep/ |
 | `hearthrise/` | https://cmbeid.github.io/Projects/hearthrise/ |
+| `epochs/` | https://cmbeid.github.io/Projects/epochs/ |
 
 Pages serves from a subdirectory, so a project published there has to resolve
 its own assets relatively — `base: './'` in the Vite config, and no
