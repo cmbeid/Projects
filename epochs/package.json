@@ -1,0 +1,33 @@
+{
+  "name": "epochs",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An incremental city game through the ages, for the phone: grow one city from a Stone Age campfire to the Space Age, then launch a colony ship and start again on a new world.",
+  "scripts": {
+    "dev": "vite",
+    "bake": "tsx scripts/bake-sprites.ts",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "validate": "tsx scripts/validate-data.ts",
+    "playtest": "tsx scripts/playtest.ts",
+    "verify": "tsx scripts/verify-ui.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/pngjs": "^6.0.5",
+    "playwright": "^1.63.0",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "@fontsource/jersey-10": "^5.3.0",
+    "@fontsource/tiny5": "^5.3.0"
+  }
+}
