@@ -192,8 +192,10 @@ textarea {
 }
 
 .resources {
-  display: flex;
-  flex-wrap: wrap;
+  /* A fixed grid: every chip the same width, so a value gaining or losing a
+     decimal never resizes its chip or shoves the others along. */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   gap: 4px;
   padding: 6px 8px;
   background: var(--bg2);
@@ -213,13 +215,25 @@ textarea {
   font: 12px/1 var(--num);
 }
 
+.rchip .n,
+.rchip .r {
+  display: inline-block;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fixed slots, wide enough for the widest strings fmt() and rate() make: "10.7K" and "−88.8K/s". */
 .rchip .n {
   font-size: 13px;
+  width: 2.6em;
 }
 
 .rchip .r {
   color: var(--good);
   font-size: 10px;
+  width: 4.1em;
+  margin-left: auto;
 }
 
 .rchip .r.neg {
