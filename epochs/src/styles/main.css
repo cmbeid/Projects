@@ -1,0 +1,1100 @@
+:root {
+  --bg: #141826;
+  --bg2: #1b2032;
+  --card: #20263a;
+  --line: #333b56;
+  --ink: #ece6d6;
+  --muted: #9aa0b8;
+  --accent: #f0b44a;
+  --accent-ink: #2a1a00;
+  --good: #7ae07a;
+  --bad: #ff7a6a;
+  --sky: #5ae0f0;
+  --head: 'Jersey 10', 'Tiny5', system-ui, sans-serif;
+  --num: 'Tiny5', 'Jersey 10', ui-monospace, monospace;
+  --body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.35 var(--body);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.loading,
+.fatal {
+  display: grid;
+  place-items: center;
+  height: 100dvh;
+  font: 28px var(--head);
+  color: var(--accent);
+}
+
+.spr {
+  display: inline-block;
+  image-rendering: pixelated;
+  vertical-align: middle;
+  flex: none;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+
+/* --- Top bar ---------------------------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--bg2);
+  border-bottom: 2px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.topbar .era {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.topbar .era b {
+  display: block;
+  font: 24px/0.9 var(--head);
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+.topbar .era small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.topbar .stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: 20px/1 var(--head);
+}
+
+.topbar .stat small {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.topbar .stat.bad span {
+  color: var(--bad);
+}
+
+.topbar .stat.good span {
+  color: var(--good);
+}
+
+.tools {
+  display: flex;
+  gap: 4px;
+}
+
+.iconbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.iconbtn.on {
+  border-color: var(--accent);
+}
+
+/* --- Stage ------------------------------------------------------------------------ */
+
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.scene-col {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.scene {
+  position: relative;
+  height: clamp(190px, 34dvh, 360px);
+  border-bottom: 2px solid var(--line);
+}
+
+.scene canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: pan-y;
+  cursor: grab;
+  image-rendering: pixelated;
+}
+
+.badges {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.badge {
+  font: 16px/1 var(--head);
+  background: rgba(20, 24, 38, 0.8);
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--good);
+}
+
+.badge.bad {
+  color: var(--bad);
+}
+
+.badge.fest {
+  color: var(--accent);
+}
+
+.resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--bg2);
+  border-bottom: 2px solid var(--line);
+}
+
+.rchip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px 3px 3px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  font: 12px/1 var(--num);
+}
+
+.rchip .n {
+  font-size: 13px;
+}
+
+.rchip .r {
+  color: var(--good);
+  font-size: 10px;
+}
+
+.rchip .r.neg {
+  color: var(--bad);
+}
+
+.rchip i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.7;
+}
+
+.rchip.full {
+  border-color: var(--accent);
+}
+
+/* --- The Chronicle card ------------------------------------------------------------ */
+
+.event {
+  margin: 6px 8px;
+  padding: 8px 10px;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  background: linear-gradient(#2a2a3a, #22263a);
+  animation: rise 0.3s ease-out;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+.event .ehead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.event .ehead b {
+  font: 22px/1 var(--head);
+  color: var(--accent);
+}
+
+.event .timer {
+  margin-left: auto;
+  width: 60px;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.event .timer i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.event p {
+  margin: 4px 0 8px;
+}
+
+.choices {
+  display: flex;
+  gap: 6px;
+}
+
+.choices .choice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.choice .price {
+  display: flex;
+  gap: 4px;
+}
+
+/* --- Tabs and panel ------------------------------------------------------------- */
+
+.side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabs {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--bg2);
+  border-bottom: 2px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 10px 4px;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  font: 16px/1 var(--head);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tab.on {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.tab.cog {
+  flex: 0 0 auto;
+  justify-content: center;
+}
+
+.tab.cog b {
+  font: 24px/1 var(--body);
+}
+
+.choice small {
+  font: 12px var(--body);
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.tab .dot {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px calc(16px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+
+.card {
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px 10px;
+  margin-bottom: 8px;
+}
+
+.card h3 {
+  margin: 0 0 6px;
+  font: 24px/1 var(--head);
+  color: var(--accent);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.card h3 small {
+  font: 13px var(--body);
+  color: var(--muted);
+}
+
+.card h4 {
+  margin: 10px 0 4px;
+  font: 18px/1 var(--head);
+  color: var(--muted);
+}
+
+.blurb {
+  color: var(--muted);
+  font-style: italic;
+  margin: 0 0 6px;
+}
+
+.hint {
+  color: var(--muted);
+  margin: 4px 0;
+}
+
+.bad {
+  color: var(--bad);
+}
+
+.lock {
+  color: var(--muted);
+  display: block;
+}
+
+.fx {
+  color: var(--good);
+  display: block;
+}
+
+.ok {
+  color: var(--good);
+  margin-left: auto;
+}
+
+button {
+  cursor: pointer;
+  border-radius: 5px;
+  border: 2px solid var(--line);
+  background: #2a3148;
+  padding: 5px 9px;
+  font: 17px/1.05 var(--head);
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  touch-action: manipulation;
+}
+
+button:hover:not(:disabled) {
+  border-color: #4a5478;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: #b88020;
+}
+
+button.primary .cost {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--accent-ink);
+}
+
+button.danger {
+  border-color: #8a3a3a;
+  color: var(--bad);
+}
+
+button.ghost {
+  background: none;
+  width: 100%;
+  color: var(--muted);
+}
+
+button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  font: 12px/1.2 var(--num);
+}
+
+.cost.short {
+  color: var(--bad);
+}
+
+button.primary .cost.short {
+  color: #8a1a00;
+}
+
+.btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* --- City ------------------------------------------------------------------------- */
+
+.age .goals {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 3px 10px;
+}
+
+.age .goals li {
+  color: var(--muted);
+}
+
+.age .goals li.done {
+  color: var(--good);
+}
+
+.age .goals small {
+  font: 12px var(--num);
+  opacity: 0.8;
+}
+
+.age > button {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.age .festival {
+  flex-direction: column;
+}
+
+.age .festival small {
+  font: 12px var(--body);
+  color: var(--muted);
+}
+
+.lines,
+.jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.line,
+.job {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  background: var(--bg2);
+  border-radius: 5px;
+}
+
+.bicon {
+  min-width: 32px;
+  align-self: flex-end;
+}
+
+.line .body,
+.job .body {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.title b {
+  font: 19px/1.05 var(--head);
+}
+
+.count {
+  margin-left: auto;
+  font: 14px var(--num);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.count em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.line small,
+.job small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.costs {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.acts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.job .acts {
+  flex-direction: row;
+}
+
+.line .build {
+  min-width: 68px;
+}
+
+.pick .row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.pick .row h3 {
+  margin: 0;
+}
+
+.pick .row small {
+  color: var(--muted);
+}
+
+.pick .what {
+  margin: 0;
+}
+
+/* --- Jobs ------------------------------------------------------------------------- */
+
+.jobbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.seg {
+  display: flex;
+}
+
+.seg button {
+  border-radius: 0;
+}
+
+.seg button:first-child {
+  border-radius: 5px 0 0 5px;
+}
+
+.seg button:last-child {
+  border-radius: 0 5px 5px 0;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.pin {
+  color: var(--muted);
+}
+
+.pin.on {
+  color: var(--accent);
+}
+
+.parts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.parts li {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.parts b {
+  font: 14px var(--num);
+}
+
+/* --- Research ------------------------------------------------------------------- */
+
+.techs,
+.nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+}
+
+.tech,
+.node {
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--bg2);
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tech.open,
+.node.open {
+  border-color: var(--line);
+}
+
+.tech.known,
+.node.owned {
+  opacity: 0.6;
+}
+
+.tech.locked {
+  opacity: 0.75;
+}
+
+.tech small,
+.node small {
+  font-size: 12px;
+}
+
+.tech .blurb {
+  margin: 0;
+  font-size: 12px;
+}
+
+.tech .acts {
+  flex-direction: row;
+  margin-top: 4px;
+}
+
+.tech .acts .primary {
+  flex: 1;
+}
+
+.node .cost {
+  margin-left: auto;
+}
+
+/* --- Wonders ---------------------------------------------------------------------- */
+
+.wonders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wonder {
+  display: flex;
+  gap: 10px;
+  padding: 6px;
+  background: var(--bg2);
+  border-radius: 5px;
+}
+
+.wonder .pic {
+  width: 100px;
+  min-height: 60px;
+  display: grid;
+  place-items: end center;
+  flex: none;
+  background: linear-gradient(#3a4a6a, #2a3048);
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.wonder .pic .spr {
+  transform: scale(1);
+  max-width: 100%;
+}
+
+.wonder .body {
+  flex: 1;
+  min-width: 0;
+}
+
+.wonder.done .pic {
+  background: linear-gradient(#e8a868, #6a8a3a);
+}
+
+.tag {
+  font: 11px var(--body);
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+.wonder .blurb {
+  display: block;
+  font-size: 12px;
+}
+
+.wonder button {
+  margin-top: 4px;
+}
+
+.progress {
+  position: relative;
+  height: 20px;
+  margin-top: 6px;
+  background: var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.progress span {
+  position: relative;
+  display: block;
+  text-align: center;
+  font: 16px/20px var(--head);
+}
+
+/* --- Chronicle -------------------------------------------------------------------- */
+
+.log {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+}
+
+.log li {
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.log li.eh {
+  font: 20px var(--head);
+  color: var(--accent);
+  border: 0;
+  padding-top: 10px;
+}
+
+.log .yr {
+  display: inline-block;
+  min-width: 82px;
+  font: 12px var(--num);
+  color: var(--muted);
+}
+
+/* --- Heritage ------------------------------------------------------------------- */
+
+.traits {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.worlds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.world {
+  padding: 8px;
+  background: var(--bg2);
+  border: 2px solid var(--sky);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.world > b {
+  font: 22px var(--head);
+  color: var(--sky);
+}
+
+.world ul {
+  margin: 0;
+  padding-left: 16px;
+  flex: 1;
+}
+
+.launch {
+  border-color: var(--sky);
+}
+
+/* --- Settings --------------------------------------------------------------------- */
+
+.settings label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.settings input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+textarea {
+  width: 100%;
+  background: var(--bg2);
+  border: 2px solid var(--line);
+  border-radius: 5px;
+  padding: 6px;
+  font: 12px var(--num);
+}
+
+/* --- Toasts and modals ------------------------------------------------------------ */
+
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  pointer-events: none;
+  z-index: 20;
+  width: min(92vw, 420px);
+}
+
+.toast {
+  background: rgba(20, 24, 38, 0.95);
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  text-align: center;
+  transition: opacity 0.4s;
+}
+
+.toast.good {
+  border-color: var(--good);
+}
+
+.toast.bad {
+  border-color: var(--bad);
+}
+
+.toast.out {
+  opacity: 0;
+}
+
+.modal-host:empty {
+  display: none;
+}
+
+.modal-host {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 20, 0.7);
+  display: grid;
+  place-items: center;
+  z-index: 30;
+  padding: 16px;
+}
+
+.modal {
+  width: min(440px, 100%);
+  max-height: 90dvh;
+  overflow: auto;
+  background: var(--card);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  animation: rise 0.3s ease-out;
+}
+
+.modal h2 {
+  margin: 0 0 8px;
+  font: 32px/1 var(--head);
+  color: var(--accent);
+}
+
+.modal > .primary {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.era-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.era-card .big {
+  font-size: 16px;
+}
+
+.gains {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font: 14px var(--num);
+}
+
+/* --- Wide screens: the skyline beside the panel ------------------------------------ */
+
+@media (min-width: 900px) {
+  .stage {
+    flex-direction: row;
+  }
+
+  .scene-col {
+    flex: 1.25;
+    min-width: 0;
+    border-right: 2px solid var(--line);
+    overflow-y: auto;
+  }
+
+  .scene {
+    height: clamp(300px, 62dvh, 720px);
+  }
+
+  .side {
+    flex: 1;
+    max-width: 640px;
+  }
+
+  .topbar .era b {
+    font-size: 30px;
+  }
+}
+
+.count small {
+  display: inline !important;
+  font-size: inherit !important;
+}
+
+/* --- Phones: the page scrolls, the header and tabs stay put ------------------------- */
+
+@media (max-width: 899px) {
+  .app {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .scene {
+    height: clamp(170px, 30dvh, 320px);
+  }
+
+  .side {
+    flex: none;
+  }
+
+  .tabs {
+    position: sticky;
+    top: var(--top-h, 52px);
+    z-index: 9;
+  }
+
+  .panel {
+    overflow: visible;
+  }
+}

@@ -16,7 +16,7 @@ import { rand } from './rng';
  */
 
 /** A resource's output a second, for sizing an event; never so small that an event is worth nothing. */
-function rateFor(s: GameState, d: Derived, r: ResId): number {
+export function rateFor(s: GameState, d: Derived, r: ResId): number {
   return Math.max(d.gross[r], 0.2 * ERA_SCALE[s.era]!);
 }
 

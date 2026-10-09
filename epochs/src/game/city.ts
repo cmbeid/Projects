@@ -134,6 +134,31 @@ export function modernize(s: GameState, line: LineId): boolean {
   return true;
 }
 
+/** Modernizes one particular building, if it is outdated. */
+export function modernizePlot(s: GameState, plot: number): boolean {
+  const p = s.plots[plot];
+  if (!p) return false;
+  const t = currentTier(s, p.line);
+  if (!t || p.era >= t.era) return false;
+  const cost = modernizeCost(s, p.line);
+  if (!cost || !canAfford(s, cost)) return false;
+  pay(s, cost);
+  s.plots[plot] = { line: p.line, era: t.era };
+  s.stats.modernized += 1;
+  emit({ type: 'modernize', line: p.line, plot });
+  return true;
+}
+
+/** Pulls down one particular building. */
+export function demolishPlot(s: GameState, plot: number): boolean {
+  const p = s.plots[plot];
+  if (!p) return false;
+  s.plots[plot] = null;
+  emit({ type: 'demolish', line: p.line, plot });
+  fixJobs(s);
+  return true;
+}
+
 /** Modernizes as many as can be afforded; returns how many. */
 export function modernizeAll(s: GameState, line: LineId): number {
   let n = 0;
@@ -184,9 +209,17 @@ export function assign(s: GameState, job: JobId, n: number, d?: Derived): number
   if (def.era > s.era) return 0;
   const info = (d ?? derive(s)).jobs[job];
   const room = info.slots === Infinity ? Infinity : Math.max(0, info.slots - s.jobs[job]);
-  const give = Math.min(n, idle(s), room);
+  const give = Math.min(n, available(s, job), room);
+  // Idle people first, then foragers: foraging is what people do while they wait for work.
+  const fromIdle = Math.min(give, idle(s));
+  s.jobs.forager -= give - fromIdle;
   s.jobs[job] += give;
   return give;
+}
+
+/** People who could take up this job: the idle, and (for any other job) the foragers. */
+export function available(s: GameState, job: JobId): number {
+  return idle(s) + (job === 'forager' ? 0 : s.jobs.forager);
 }
 
 /** Keeps jobs within the slots and the people there are. */
