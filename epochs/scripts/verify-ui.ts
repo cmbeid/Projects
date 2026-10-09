@@ -76,6 +76,18 @@ async function main(): Promise<void> {
       await dismiss(page);
       await shoot(page, `${vp.name}-${label}-city`);
 
+      // The resource chips must hold still while their numbers tick.
+      const boxes = (): Promise<string[]> =>
+        page.locator('#res .rchip').evaluateAll((els) => els.map((e) => {
+          const r = e.getBoundingClientRect();
+          return `${r.x},${r.y},${r.width},${r.height}`;
+        }));
+      const first = await boxes();
+      await page.waitForTimeout(5000);
+      if ((await boxes()).join('|') !== first.join('|')) errors.push(`${vp.name}/${label}: resource chips moved as their numbers changed`);
+      const overflow = await page.locator('#res .rchip .n, #res .rchip .r').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 0.5).map((e) => e.textContent));
+      if (overflow.length) errors.push(`${vp.name}/${label}: resource text overflows its slot: ${overflow.join(', ')}`);
+
       if (label === 'fresh') {
         // The first things anyone does: build a farm, put someone on it, research.
         const before = await page.evaluate(() => (window as unknown as Win).__epochs.plots.filter(Boolean).length);
