@@ -454,5 +454,143 @@ export const EVENTS: readonly EventDef[] = [
       { label: 'Give the crew a moment', ok: { text: 'A moment of wonder.', morale: 10 } },
     ],
   },
+  // ------------------------------------------------------------ More of the deep
+  {
+    id: 'dr-orchestra', title: 'Silent Concert', kinds: ['derelict'], minSector: 3,
+    text: 'A Choir-touched liner, every passenger still in their seat, facing an empty stage. The ship\'s speakers hum one held note.',
+    choices: [
+      { label: 'Cut the power to the speakers', check: { stat: 'wits', dc: 8 }, ok: { text: 'The note stops. The passengers are only mannequins after all; the cargo hold is very real.', mats: { crystal: 5, circuits: 2 }, xp: 35 }, fail: { text: 'The note rises to a shriek before it dies.', hpAll: -6 } },
+      { label: 'Listen a while', ok: { text: 'Strange comfort. The crew sleep well that night.', morale: 15, rep: { choir: 5 } } },
+    ],
+  },
+  {
+    id: 'dr-tug', title: 'Clan Tug', kinds: ['derelict'], minSector: 1,
+    text: 'A Clan salvage tug with a snapped tow cable. Its crew left in a hurry, and left their tools.',
+    choices: [
+      { label: 'Take the tools', ok: { text: 'Good tools. Somebody will miss them.', gear: true, rep: { clans: -5 } } },
+      { label: 'Fix the cable and tow it to the Clans', check: { stat: 'grit', dc: 7, cls: 'engineer' }, ok: { text: 'The Clans pay a salvage fee and remember your name.', res: { credits: 60 }, rep: { clans: 15 }, xp: 25 }, fail: { text: 'The cable snaps again. You give up.', days: 1 } },
+    ],
+  },
+  {
+    id: 'dr-nursery', title: 'Ark Nursery', kinds: ['derelict', 'distress'], minSector: 2, weight: 0.7,
+    text: 'A piece of the ark\'s nursery deck. Six small cradles, still cold, still green.',
+    choices: [
+      { label: 'Bring them all home', ok: { text: 'Six more sleepers for the Wake. The crew handle the cradles like glass.', colonists: 6, morale: 15 } },
+    ],
+  },
+  {
+    id: 'as-miners-strike', title: 'Strike', kinds: ['asteroids', 'station'], minSector: 1, weight: 0.6,
+    text: 'Miners have downed tools against their Clan boss. Both sides want your help.',
+    choices: [
+      { label: 'Back the miners', check: { stat: 'charm', dc: 7 }, ok: { text: 'The boss gives in. The miners share their stockpile.', mats: { ore: 12, crystal: 3 }, rep: { clans: -5 }, morale: 10 }, fail: { text: 'The boss calls in muscle.', combat: 'raider' } },
+      { label: 'Back the boss', ok: { text: 'The boss pays well. The miners spit as you leave.', res: { credits: 70 }, rep: { clans: 10 }, morale: -8 } },
+      { label: 'Stay out of it', ok: { text: 'Not your fight.' } },
+    ],
+  },
+  {
+    id: 'as-tumbling', title: 'Tumbling Station', kinds: ['asteroids'], minSector: 2,
+    text: 'An old mining station is spinning toward an asteroid. Someone is still aboard.',
+    choices: [
+      { label: 'Dock and pull them out', check: { stat: 'reflex', dc: 8, cls: 'pilot' }, ok: { text: 'A perfect match of spin. The survivor signs on.', recruit: 'any', xp: 35 }, fail: { text: 'You scrape the hull and abort.', res: { hull: -10 } } },
+      { label: 'Fire a tow line', check: { stat: 'grit', dc: 7 }, ok: { text: 'You drag the whole station clear. Its owner rewards you.', res: { credits: 50 }, mats: { alloy: 3 }, xp: 25 }, fail: { text: 'The line snaps.', res: { hull: -4 } } },
+    ],
+  },
+  {
+    id: 'ne-ghostfleet', title: 'Ghost Fleet', kinds: ['nebula'], minSector: 2,
+    text: 'Silhouettes of a hundred ships in the fog. Old Concord designs, decades dead.',
+    choices: [
+      { label: 'Salvage the nearest', ok: { text: 'Antique but sound plate.', mats: { alloy: 4, ore: 6 } } },
+      { label: 'Search for their flagship\'s logs', check: { stat: 'wits', dc: 8 }, ok: { text: 'The logs map this whole sector.', reveal: true, xp: 35, rep: { concord: 5 } }, fail: { text: 'You get lost in the fog for a day.', days: 1 } },
+    ],
+  },
+  {
+    id: 'ne-hitchhiker', title: 'Stowaway', kinds: ['nebula', 'system', 'station'], weight: 0.4,
+    text: 'You find someone curled up behind the water tanks. They\'ve been aboard since the last dock.',
+    choices: [
+      { label: 'Let them stay', ok: { text: 'They turn out to be handy.', recruit: 'any' } },
+      { label: 'Put them off at the next port', ok: { text: 'They thank you anyway, and leave you a ration bar.', res: { food: 1 } } },
+    ],
+  },
+  {
+    id: 'an-garden', title: 'Impossible Garden', kinds: ['anomaly'], minSector: 1,
+    text: 'An asteroid covered in flowers, in vacuum, blooming.',
+    choices: [
+      { label: 'Gather seeds', check: { stat: 'wits', dc: 7, cls: 'scientist' }, ok: { text: 'The seeds grow in your hydroponics like nothing else.', res: { food: 15 }, mats: { organics: 6 }, xp: 30 }, fail: { text: 'They crumble to dust when they leave the rock.', mats: { organics: 2 } } },
+      { label: 'Picnic', ok: { text: 'A strange, lovely afternoon.', morale: 20 } },
+    ],
+  },
+  {
+    id: 'an-echo-glimpse', title: 'A Reflection', kinds: ['anomaly', 'nebula'], minSector: 4,
+    text: 'For one second the sensors show the Meridian, whole and shining, a hand\'s width away. Then nothing.',
+    choices: [
+      { label: 'Chase it', check: { stat: 'reflex', dc: 9 }, ok: { text: 'You catch its wake and scoop up exotic matter it shed.', mats: { exotic: 2 }, xp: 40 }, fail: { text: 'It was never there. You burn fuel on nothing.', res: { fuel: -2 } } },
+      { label: 'Log it and move on', ok: { text: 'The crew are rattled.', morale: -5, xp: 20 } },
+    ],
+  },
+  {
+    id: 'di-choir-child', title: 'A Small Voice', kinds: ['distress'], minSector: 3,
+    text: 'A tiny Choir mote, separated from its song, flickering in distress.',
+    choices: [
+      { label: 'Carry it back to the nebula', ok: { text: 'It hums happily in a jar on the bridge until you let it go.', rep: { choir: 15 }, morale: 10 } },
+      { label: 'Study it', check: { stat: 'wits', dc: 7 }, ok: { text: 'Fascinating. It leaves crystal behind when it goes.', mats: { crystal: 4 }, xp: 30, rep: { choir: -5 } }, fail: { text: 'It fades away in the jar.', rep: { choir: -10 }, morale: -10 } },
+    ],
+  },
+  {
+    id: 'di-ambulance', title: 'Hospital Ship', kinds: ['distress'], minSector: 1,
+    text: 'A Clan hospital ship with a failing reactor and forty patients aboard.',
+    choices: [
+      { label: 'Give them energy', req: { res: { energy: 15 } }, pay: true, ok: { text: 'Their lights come back on. The Clans won\'t forget.', rep: { clans: 20 }, items: { medkit: 2 } } },
+      { label: 'Fix their reactor', check: { stat: 'wits', dc: 8, cls: 'engineer' }, ok: { text: 'Good as new. They patch up your crew in thanks.', hpAll: 30, rep: { clans: 10 }, xp: 30 }, fail: { text: 'You make it worse before you make it better.', days: 1, rep: { clans: 5 } } },
+      { label: 'Wish them luck', ok: { text: 'You leave.', morale: -10 } },
+    ],
+  },
+  {
+    id: 'pa-concord-recruit', title: 'Recruiting Officer', kinds: ['patrol'], faction: 'concord', minSector: 2,
+    text: 'A Concord cutter hails. "The fleet needs pilots. Any of your crew want a uniform?"',
+    choices: [
+      { label: 'Ask for supplies instead', check: { stat: 'charm', dc: 7 }, ok: { text: 'The officer laughs and sends over a crate.', res: { food: 6, fuel: 2 }, rep: { concord: 5 } }, fail: { text: 'No uniforms, no supplies.' } },
+      { label: 'Decline politely', ok: { text: 'They move on.' } },
+    ],
+  },
+  {
+    id: 'pa-clan-race', title: 'Race You', kinds: ['patrol'], faction: 'clans', minSector: 1,
+    text: 'A Clan hotrod pulls alongside. "Race to the beacon. Loser pays."',
+    choices: [
+      { label: 'Race (30 credits)', req: { res: { credits: 30 } }, pay: true, check: { stat: 'reflex', dc: 7, cls: 'pilot' }, ok: { text: 'You win by a hull length.', res: { credits: 70 }, rep: { clans: 10 }, xp: 25 }, fail: { text: 'You lose by a mile.', rep: { clans: 5 } } },
+      { label: 'Decline', ok: { text: '"Coward!" they call, cheerfully.' } },
+    ],
+  },
+  {
+    id: 'sy-volcano-moon', title: 'Erupting Moon', kinds: ['system'], weight: 0.4, minSector: 1,
+    text: 'A moon is throwing glittering crystal into orbit.',
+    choices: [
+      { label: 'Collect the ejecta', check: { stat: 'reflex', dc: 6 }, ok: { text: 'A clean catch.', mats: { crystal: 5 }, xp: 15 }, fail: { text: 'A chunk hits you.', mats: { crystal: 2 }, res: { hull: -6 } } },
+      { label: 'Watch from a distance', ok: { text: 'Beautiful.', morale: 5 } },
+    ],
+  },
+  {
+    id: 'sy-signal-buoy', title: 'Old Buoy', kinds: ['system', 'entry'], weight: 0.4,
+    text: 'A navigation buoy, still broadcasting charts a century out of date.',
+    choices: [
+      { label: 'Download the charts', ok: { text: 'Old, but the stars haven\'t moved much.', reveal: true } },
+      { label: 'Strip it for parts', ok: { text: 'Good circuits inside.', mats: { circuits: 1, ore: 3 } } },
+    ],
+  },
+  {
+    id: 'st-preacher', title: 'Doomsayer', kinds: ['station'], weight: 0.3,
+    text: 'A preacher on the docks says the ark was punished, and anyone helping it will be too.',
+    choices: [
+      { label: 'Argue', check: { stat: 'charm', dc: 6 }, ok: { text: 'The crowd laughs him off the crate.', morale: 10, xp: 15 }, fail: { text: 'The crowd turns on you. You leave quickly.', morale: -8 } },
+      { label: 'Ignore him', ok: { text: 'He shouts after you.' } },
+    ],
+  },
+  {
+    id: 'st-medic-offer', title: 'Travelling Doctor', kinds: ['station'], weight: 0.3,
+    text: 'A doctor offers check-ups for the whole crew at a discount.',
+    choices: [
+      { label: 'Pay 25 credits', req: { res: { credits: 25 } }, pay: true, ok: { text: 'Everyone feels better.', hpAll: 40, morale: 5 } },
+      { label: 'No thanks', ok: { text: 'Maybe next time.' } },
+    ],
+  },
 ];
 export const EVENT = new Map(EVENTS.map((e) => [e.id, e]));

@@ -24,6 +24,7 @@ on:
        - 'hollowdeep/**'
        - 'hearthrise/**'
        - 'epochs/**'
+       - 'voidwake/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -63,6 +64,7 @@ jobs:
             hollowdeep/package-lock.json
             hearthrise/package-lock.json
             epochs/package-lock.json
+            voidwake/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -247,6 +249,25 @@ jobs:
         run: npm run build
         working-directory: epochs
 
+      - name: Install (voidwake)
+        run: npm ci
+        working-directory: voidwake
+
+      - name: Validate content (voidwake)
+        run: npm run validate
+        working-directory: voidwake
+
+      # Includes a bot playing the whole campaign on three seeds, which has
+      # to recover all six ark sections and reach an ending: a balance change
+      # that walls a sector fails here.
+      - name: Test (voidwake)
+        run: npm test
+        working-directory: voidwake
+
+      - name: Build (voidwake)
+        run: npm run build
+        working-directory: voidwake
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -285,6 +306,9 @@ jobs:
 
           mkdir -p _site/epochs
           cp -r epochs/dist/. _site/epochs/
+
+          mkdir -p _site/voidwake
+          cp -r voidwake/dist/. _site/voidwake/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -393,6 +417,13 @@ jobs:
                     <span>
                       <span class="name">Epochs</span>
                       <span class="desc">An incremental city through the ages: grow one city from a Stone Age campfire to the Space Age, then launch a colony ship to a new world.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./voidwake/">
+                    <span class="emoji" aria-hidden="true">🚀</span>
+                    <span>
+                      <span class="name">Voidwake</span>
+                      <span class="desc">An RPG space survival game: gather the scattered ark across six sectors, keep your crew fed and breathing, and land on strange worlds to scavenge.</span>
                     </span>
                   </a>
                 </div>
