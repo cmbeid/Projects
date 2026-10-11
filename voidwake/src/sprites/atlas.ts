@@ -24,7 +24,7 @@ export function hasSprite(name: string): boolean {
 }
 
 export function frameOf(name: string): Frame {
-  return FRAMES[name] ?? FRAMES['cloud']!;
+  return FRAMES[name] ?? FRAMES['node-anomaly']!;
 }
 
 /** Draws a sprite with its top-left at (x, y), scaled by an integer for crisp pixels. */
