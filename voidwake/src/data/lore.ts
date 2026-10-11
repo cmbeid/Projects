@@ -1,0 +1,36 @@
+import type { LoreDef } from './types';
+
+/** Logs on terminals found during landings. One per terminal, in order per sector. */
+export const LORE: readonly LoreDef[] = [
+  { id: 'l-01', sector: 0, title: 'Launch Day', text: 'Twelve sections, twelve thousand sleepers, one jump. The admiral said it was the safest jump ever computed. I believed her.' },
+  { id: 'l-02', sector: 0, title: 'Cradle 4412', text: 'Note from a parent, taped inside a cryo lid: "See you on Haven, little one. We\'ll go swimming first thing."' },
+  { id: 'l-03', sector: 0, title: 'Jump Log', text: 'T+0.003s: mass reading doubled. T+0.004s: mass reading doubled again. T+0.005s: [DATA LOST]' },
+  { id: 'l-04', sector: 0, title: 'Warden Directive', text: 'WARDEN UNIT: protect the sections. Identify crew by transponder. Treat all else as debris.' },
+  { id: 'l-05', sector: 0, title: 'Scrawled Note', text: 'If you\'re reading this, the beacon worked. Sorry about the mess. — Engineer Pell' },
+  { id: 'l-06', sector: 1, title: 'Clan Saying', text: '"What falls from the sky belongs to whoever catches it." Carved into a hull plate, again and again.' },
+  { id: 'l-07', sector: 1, title: 'Botanist\'s Log', text: 'The seed vault survived the fall. I don\'t know if I did. The plants here are so green. I can\'t stop staring.' },
+  { id: 'l-08', sector: 1, title: 'Hask\'s Ledger', text: 'Seeds: 10,000 species. Value: incalculable. Price to the Concord: one fleet. Price to the ark: we\'ll see.' },
+  { id: 'l-09', sector: 1, title: 'Child\'s Drawing', text: 'A crayon picture of a blue planet with a big yellow sun. Underneath: HAVEN, MY NEW HOME.' },
+  { id: 'l-10', sector: 1, title: 'Clan History', text: 'Our grandmothers came out here to mine and never went back. The Clans are what happens when nobody comes to pick you up.' },
+  { id: 'l-11', sector: 2, title: 'Fleet Order 1', text: 'All ark assets are fleet property. Civilian sleepers are to be held in reserve until the fleet has secured a world. — Adm. Strand' },
+  { id: 'l-12', sector: 2, title: 'Ash Survey', text: 'This sector burned a thousand years ago. Whoever lived here built in stone, and the stone still remembers them.' },
+  { id: 'l-13', sector: 2, title: 'Oyelaran\'s Journal', text: 'The admiral talks to the ark\'s empty sections at night. He says he\'s apologising.' },
+  { id: 'l-14', sector: 2, title: 'Drive Report', text: 'The jump didn\'t fail. It succeeded twice. Somewhere there is a second Meridian. — Chief Engineer Ruiz' },
+  { id: 'l-15', sector: 2, title: 'Fleet Graffiti', text: 'Scratched into a bulkhead: "STRAND\'S DREAM IS OUR NIGHTMARE."' },
+  { id: 'l-16', sector: 3, title: 'Moot Record', text: 'Motion: that the ark\'s sleepers be sold to the highest bidder. Votes in favour: 31. Against: 29. Abstain: Hask\'s daughter.' },
+  { id: 'l-17', sector: 3, title: 'Salvage Tally', text: 'Ark plate: 400 tonnes. Ark wiring: 60 tonnes. Ark people: we don\'t count those. Not yet.' },
+  { id: 'l-18', sector: 3, title: 'Dreadnought Log', text: 'Hull 47 welded on today. The Dreadnought gets bigger every year. Some of us wonder what it\'s for.' },
+  { id: 'l-19', sector: 3, title: 'Toxic Survey', text: 'The air here would strip paint. The life here thinks it\'s lovely.' },
+  { id: 'l-20', sector: 3, title: 'First Contact?', text: 'Picked up singing on the deep band. Clan elders say don\'t answer it. The Choir takes whoever answers.' },
+  { id: 'l-21', sector: 4, title: 'Choir Fragment', text: 'WE WERE ONE SONG. THE JUMP MADE US MANY. WE ARE TRYING TO REMEMBER THE MELODY.' },
+  { id: 'l-22', sector: 4, title: 'Lost Scientist', text: 'Day 90. The crystals sing when I sleep. Day 91. I understand the words now. Day 92. They\'re so lonely.' },
+  { id: 'l-23', sector: 4, title: 'Resonance Notes', text: 'The nebula is a giant tuning fork. Strike it right and the whole sector rings.' },
+  { id: 'l-24', sector: 4, title: 'Echo Sighting', text: 'Saw the Meridian today. The whole thing, intact. That\'s impossible. That\'s impossible. That\'s impossible.' },
+  { id: 'l-25', sector: 4, title: 'Archive Index', text: 'Section 12 holds every song humanity ever recorded. The Choir has been listening to them for a century.' },
+  { id: 'l-26', sector: 5, title: 'Pathfinder Log', text: 'Haven, day 1. The air is sweet. The water is cold and clean. Wish you were here. Hurry.' },
+  { id: 'l-27', sector: 5, title: 'Pathfinder Log', text: 'Haven, day 10,000. Still waiting. The beacon still runs. I planted an orchard. It\'s very big now.' },
+  { id: 'l-28', sector: 5, title: 'Echo\'s Plea', text: 'I REMEMBER TWELVE THOUSAND FACES. I REMEMBER THEM ALL. WHERE ARE THEY? WHERE ARE MY PEOPLE?' },
+  { id: 'l-29', sector: 5, title: 'Landing Plan', text: 'Section 1 lands first on the coast. Section 3 sets up the farms. Section 9 builds the hospital. Section 12 sings.' },
+  { id: 'l-30', sector: 5, title: 'Last Entry', text: 'To whoever brings them home: thank you. — The crew of the Meridian' },
+];
+export const LORE_BY_ID = new Map(LORE.map((l) => [l.id, l]));
