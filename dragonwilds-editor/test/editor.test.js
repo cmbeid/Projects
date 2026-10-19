@@ -42,13 +42,30 @@ test('only wearable slots that hold the item directly are allowed', () => {
   assert.throws(() => DWSave.equip(sample(), 4, 3), /empty/);
 });
 
-test('unequip puts the item in the first free bag slot', () => {
+test('unequip puts the item in the first free bag slot, skipping the hotbar', () => {
   const save = sample();
   DWSave.equip(save, 9, 3);
   const r = DWSave.unequip(save, 3);
-  assert.equal(r.slot, 2);
-  assert.equal(save.Inventory[2], CAPE);
+  assert.equal(r.slot, 8);
+  assert.equal(save.Inventory[8], CAPE);
   assert.equal(save.Loadout[3], undefined);
+});
+
+test('unequip falls back to the hotbar when the bag is full', () => {
+  const save = sample();
+  save.Loadout[3] = OLD_CAPE;
+  for (let s = 8; s <= 39; s++) save.Inventory[s] = { GUID: 'g' + s, ItemData: 'x' };
+  assert.equal(DWSave.unequip(save, 3).slot, 2);
+  for (let s = 0; s <= 7; s++) save.Inventory[s] = { GUID: 'h' + s, ItemData: 'x' };
+  save.Loadout[3] = OLD_CAPE;
+  assert.throws(() => DWSave.unequip(save, 3), /bag and hotbar are full/);
+});
+
+test('slots map to the game\'s inventory sections', () => {
+  const at = (slot) => DWSave.sectionOf(slot) && DWSave.sectionOf(slot).key;
+  assert.deepEqual([0, 7, 8, 39, 40, 71, 72, 103, 104, 119].map(at),
+    ['hotbar', 'hotbar', 'bag', 'bag', 'runes', 'runes', 'arrows', 'arrows', 'quest', 'quest']);
+  assert.equal(DWSave.sectionOf(120), null);
 });
 
 test('serialize keeps tabs, CRLF and the trailing newline, and round-trips', () => {
@@ -201,24 +218,32 @@ test('setDurability updates in place or goes before NumUpgradesApplied', () => {
   assert.equal(save.Loadout[1].Durability, 7);
 });
 
-test('addItem fills the first free bag slot with a fresh entry', () => {
+test('addItem fills the first free slot of the item\'s section with a fresh entry', () => {
   const save = DWSave.parse(NEW_FORMAT);
-  const r = DWSave.addItem(save, '_QMgbMYhjU-9jAD_euFbyQ', 500);
-  assert.equal(r.slot, 0);
-  const item = save.GameProgress.Inventory[0];
+  const r = DWSave.addItem(save, '_QMgbMYhjU-9jAD_euFbyQ', 500, 'runes');
+  assert.equal(r.slot, 40);
+  const item = save.GameProgress.Inventory[40];
   assert.deepEqual(Object.keys(item), ['GUID', 'ItemData', 'Count', 'AddedToInventoryTimestamp']);
   assert.match(item.GUID, /^[A-Za-z0-9_-]{22}$/);
   assert.equal(item.Count, 500);
   assert.ok(item.AddedToInventoryTimestamp > 6.39e17);
-  assert.notEqual(DWSave.addItem(save, '36kwMUzRF5L6DG-k7YgkSw').item.GUID, item.GUID);
-  assert.equal(save.GameProgress.Inventory[1].Count, undefined);
+  const cape = DWSave.addItem(save, '36kwMUzRF5L6DG-k7YgkSw');
+  assert.equal(cape.slot, 8);
+  assert.notEqual(cape.item.GUID, item.GUID);
+  assert.equal(cape.item.Count, undefined);
+  assert.equal(DWSave.addItem(save, 'P3_Aq0nAXu5dlFuBNGgyaw', 1, 'arrows').slot, 72);
+  assert.equal(DWSave.addItem(save, 'P3_Aq0nAXu5dlFuBNGgyaw', 1, 'quest').slot, 104);
   assert.throws(() => DWSave.addItem(save, 'not an id'), /not an item ID/);
+  assert.throws(() => DWSave.addItem(save, '36kwMUzRF5L6DG-k7YgkSw', 1, 'pockets'), /Unknown inventory section/);
 });
 
-test('addItem refuses when the bag is full', () => {
+test('addItem refuses when the item\'s section is full', () => {
   const save = sample();
-  for (let s = 0; s < 32; s++) save.Inventory[s] = { GUID: 'g' + s, ItemData: 'x' };
-  assert.throws(() => DWSave.addItem(save, '_QMgbMYhjU-9jAD_euFbyQ'), /full/);
+  for (let s = 0; s <= 39; s++) save.Inventory[s] = { GUID: 'g' + s, ItemData: 'x' };
+  assert.throws(() => DWSave.addItem(save, '36kwMUzRF5L6DG-k7YgkSw'), /bag and hotbar are full/);
+  assert.equal(DWSave.addItem(save, '_QMgbMYhjU-9jAD_euFbyQ', 5, 'runes').slot, 40);
+  for (let s = 104; s <= 119; s++) save.Inventory[s] = { GUID: 'q' + s, ItemData: 'x' };
+  assert.throws(() => DWSave.addItem(save, '36kwMUzRF5L6DG-k7YgkSw', 1, 'quest'), /quest items section is full/);
 });
 
 test('removeItem empties the inventory slot', () => {

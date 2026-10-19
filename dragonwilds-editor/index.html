@@ -150,7 +150,23 @@
       .actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
       .lock { color: var(--warn); font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
       .unlocked { color: var(--good); }
-      .empty { color: var(--muted); padding: 12px 0; }
+      .empty { color: var(--muted); padding: 8px 0 4px; font-size: 14px; }
+      .group + .group { margin-top: 20px; }
+      .group { scroll-margin-top: 110px; }
+      button.chip { font-weight: 500; padding: 3px 10px; border-radius: 999px; }
+      .group h3 {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin: 0;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--accent);
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .group h3 .badge { margin-left: auto; text-transform: none; letter-spacing: 0; }
+      .group .item:first-child { border-top: 0; }
 
       /* Gear */
       .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 12px; }
@@ -210,28 +226,29 @@
 
         <div class="tabs" role="tablist">
           <button type="button" role="tab" data-tab="gear">Gear</button>
-          <button type="button" role="tab" data-tab="bag">Bag <span class="badge" id="bagBadge"></span></button>
+          <button type="button" role="tab" data-tab="bag">Inventory <span class="badge" id="bagBadge"></span></button>
           <button type="button" role="tab" data-tab="add">Add items</button>
           <button type="button" role="tab" data-tab="recipes">Recipes <span class="badge" id="recipeBadge"></span></button>
         </div>
 
         <section class="card" data-panel="gear">
           <h2>Worn gear</h2>
-          <p class="muted small">To wear something from your bag, use <strong>Wear</strong> on the Bag tab.</p>
+          <p class="muted small">To wear something you carry, use <strong>Wear</strong> on the Inventory tab.</p>
           <div class="slots" id="slots"></div>
         </section>
 
         <section class="card" data-panel="bag">
           <div class="row" style="margin-bottom: 8px">
-            <input id="bagSearch" type="search" placeholder="Filter your bag" aria-label="Filter your bag" />
+            <input id="bagSearch" type="search" placeholder="Filter your inventory" aria-label="Filter your inventory" />
           </div>
+          <nav class="row small" id="jump" aria-label="Jump to section" style="margin-bottom: 8px"></nav>
           <p class="note small" id="unknownHint"></p>
           <div class="list" id="bag"></div>
         </section>
 
         <section class="card" data-panel="add">
           <h2>Add an item</h2>
-          <p class="muted small">New items go in the first free bag slot. <span id="freeSlots"></span> Gear starts at the game's own durability.</p>
+          <p class="muted small">Runes, arrows and quest items go in their own sections; everything else goes in the bag, then the hotbar. Gear starts at the game's own durability. <span id="freeSlots"></span></p>
           <div class="row" style="margin-bottom: 8px">
             <input id="addSearch" type="search" placeholder="Search all items, e.g. rune platebody" aria-label="Search all items" />
             <select id="addCategory" aria-label="Category"></select>
@@ -286,6 +303,9 @@
         const SLOT_FOR_CAT = { Helms: 0, Body: 1, Legs: 2, Capes: 3, Rings: 4 };
         const DURABLE = new Set(['Helms', 'Body', 'Legs', 'Rings', 'Amulets', 'Melee Weapons', 'Bows', 'Crossbows',
           'Staves', 'Shields', 'Tools']);
+        // Inventory section a new item of each category goes in; the rest go
+        // in the bag, then the hotbar.
+        const SECTION_FOR_CAT = { Runes: 'runes', Arrows: 'arrows', Keys: 'quest', Quest: 'quest' };
         const canPick = 'showOpenFilePicker' in window;
 
         let save = null;
@@ -440,7 +460,7 @@
                 type: 'button',
                 onclick: () => act(() => {
                   const r = DWSave.unequip(save, Number(slot));
-                  return d.name + ' taken off, now in bag slot ' + r.slot + '.';
+                  return d.name + ' taken off, now in ' + DWSave.sectionOf(r.slot).label.toLowerCase() + ' slot ' + r.slot + '.';
                 }),
               }, 'Take off'))));
           }
@@ -451,7 +471,7 @@
           const wear = (to) => act(() => {
             const r = DWSave.equip(save, slot, to);
             let msg = d.name + ' is now worn as ' + WEARABLE_SLOTS[to].toLowerCase() + '.';
-            if (r.unequipped) msg += ' ' + describe(r.unequipped.ItemData).name + ' went to bag slot ' + slot + '.';
+            if (r.unequipped) msg += ' ' + describe(r.unequipped.ItemData).name + ' went to slot ' + slot + '.';
             return msg;
           });
           if (d.cat in SLOT_FOR_CAT) {
@@ -475,38 +495,64 @@
           $('bagBadge').textContent = '(' + all.length + ')';
           let unknown = 0;
           let shown = 0;
-          for (const { slot, item } of all) {
-            const d = describe(item.ItemData);
-            if (!d.known) unknown++;
-            if (!matches(d.name + ' ' + d.cat + ' ' + item.ItemData, ws)) continue;
-            shown++;
-            list.append(h('div', { class: 'item' + (d.known ? '' : ' unknown') },
-              h('div', { class: 'slotno', title: 'Bag slot' }, '#' + slot),
-              itemLabel(item),
-              amountFields('Inventory', slot, item),
-              h('div', { class: 'actions' },
-                wearButton(slot, item),
-                h('button', {
-                  type: 'button',
-                  class: 'quiet',
-                  title: 'Remove from bag',
-                  onclick: () => act(() => {
-                    DWSave.removeItem(save, slot);
-                    return d.name + ' removed from bag slot ' + slot + '.';
-                  }),
-                }, 'Remove'))));
+          // Slots past the last known section, should a patch add more.
+          const groups = DWSave.SECTIONS.map((s) => ({ ...s, size: s.to - s.from + 1, items: [] }));
+          const other = { key: 'other', label: 'Other slots', items: [] };
+          for (const entry of all) {
+            const s = DWSave.sectionOf(entry.slot);
+            (s ? groups.find((g) => g.key === s.key) : other).items.push(entry);
           }
-          if (!shown) list.append(h('div', { class: 'empty' }, all.length ? 'Nothing in your bag matches.' : 'Your bag is empty.'));
+          if (other.items.length) groups.push(other);
+
+          for (const g of groups) {
+            const rows = [];
+            for (const { slot, item } of g.items) {
+              const d = describe(item.ItemData);
+              if (!d.known) unknown++;
+              if (!matches(d.name + ' ' + d.cat + ' ' + item.ItemData, ws)) continue;
+              rows.push(h('div', { class: 'item' + (d.known ? '' : ' unknown') },
+                h('div', { class: 'slotno', title: 'Inventory slot' }, '#' + slot),
+                itemLabel(item),
+                amountFields('Inventory', slot, item),
+                h('div', { class: 'actions' },
+                  wearButton(slot, item),
+                  h('button', {
+                    type: 'button',
+                    class: 'quiet',
+                    title: 'Remove',
+                    onclick: () => act(() => {
+                      DWSave.removeItem(save, slot);
+                      return d.name + ' removed from ' + g.label.toLowerCase() + ' slot ' + slot + '.';
+                    }),
+                  }, 'Remove'))));
+            }
+            // While filtering, only sections with matches are shown.
+            if (ws.length && !rows.length) continue;
+            shown += rows.length;
+            list.append(h('div', { class: 'group', id: 'section-' + g.key },
+              h('h3', null, g.label, h('span', { class: 'badge' }, g.size ? g.items.length + ' / ' + g.size : String(g.items.length))),
+              rows.length ? h('div', { class: 'list' }, rows) : h('div', { class: 'empty' }, 'Empty')));
+          }
+          if (ws.length && !shown) list.append(h('div', { class: 'empty' }, 'Nothing in your inventory matches.'));
+          const jump = $('jump');
+          jump.textContent = '';
+          for (const g of groups) {
+            const target = document.getElementById('section-' + g.key);
+            if (!target) continue;
+            jump.append(h('button', {
+              type: 'button',
+              class: 'chip',
+              onclick: () => target.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+            }, g.label + ' ', h('span', { class: 'badge' }, String(g.items.length))));
+          }
           $('unknownHint').textContent = unknown
             ? 'Items marked "Unknown item" are newer than this page\'s item list. Capes show no quantity or durability, so an unknown item without either may be a cape.'
             : '';
         }
 
         function renderAdd() {
-          const free = DWSave.firstFreeBagSlot(save);
-          const inv = DWSave.progress(save).Inventory;
-          const freeCount = Array.from({ length: 32 }, (_, i) => i).filter((s) => !(inv[s] && inv[s].ItemData)).length;
-          $('freeSlots').textContent = freeCount ? freeCount + ' of 32 slots are free.' : 'Your bag is full.';
+          $('freeSlots').textContent = 'Free slots: ' + DWSave.SECTIONS
+            .map((s) => s.label + ' ' + DWSave.freeSlots(save, s.key).length).join(', ') + '.';
 
           const sel = $('addCategory');
           if (!sel.options.length) {
@@ -525,18 +571,24 @@
           const found = ITEM_IDS.filter((id) => (!cat || ITEMS[id][1] === cat) && matches(ITEMS[id].join(' ') + ' ' + id, ws));
           for (const id of found.slice(0, LIMIT)) {
             const [name, c] = ITEMS[id];
+            const section = SECTION_FOR_CAT[c] || 'bag';
+            const slot = DWSave.firstFreeSlot(save, section);
             const qty = stackable(c) ? h('input', { type: 'number', min: 1, step: 1, value: 1, 'aria-label': 'Quantity' }) : null;
             list.append(h('div', { class: 'item' },
-              h('div', { class: 'label' }, h('div', { class: 'name' }, name), h('div', { class: 'meta' }, c)),
+              h('div', { class: 'label' }, h('div', { class: 'name' }, name),
+                h('div', { class: slot === undefined ? 'meta note' : 'meta' }, c + ' · ' + (slot === undefined
+                  ? (section === 'bag' ? 'bag and hotbar are full' : DWSave.SECTIONS.find((s) => s.key === section).label.toLowerCase() + ' section is full')
+                  : 'goes in ' + DWSave.sectionOf(slot).label.toLowerCase()))),
               qty ? h('label', { class: 'field' }, 'Qty', qty) : null,
               h('div', { class: 'actions' }, h('button', {
                 type: 'button',
                 class: 'primary',
-                disabled: free === undefined,
+                disabled: slot === undefined,
                 onclick: () => act(() => {
                   const n = qty ? Number(qty.value) : 1;
-                  const r = DWSave.addItem(save, id, n);
-                  return 'Added ' + (n > 1 ? n + ' × ' : '') + name + ' to bag slot ' + r.slot + '.';
+                  const r = DWSave.addItem(save, id, n, section);
+                  return 'Added ' + (n > 1 ? n + ' × ' : '') + name + ' to ' +
+                    DWSave.sectionOf(r.slot).label.toLowerCase() + ' slot ' + r.slot + '.';
                 }),
               }, 'Add'))));
           }
