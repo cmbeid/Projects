@@ -2,8 +2,8 @@
 
 A character save editor for RuneScape: Dragonwilds that runs in the browser.
 It moves items from your inventory into your worn gear (head, body, legs, cape,
-ring), for example to wear a Fire Cape. The save is read and written locally;
-nothing is uploaded.
+ring), for example to wear a Fire Cape, and unlocks recipes. The save is read
+and written locally; nothing is uploaded.
 
 ## Using it
 
@@ -11,7 +11,8 @@ nothing is uploaded.
 2. Back up `%LOCALAPPDATA%\RSDragonwilds\Saved\SaveCharacters`, which holds one
    `<CharacterName>.json` per character.
 3. Open `index.html` (straight from disk is fine, or the Pages build), load the
-   character file, and press **Wear as cape** next to the item.
+   character file, and press **Wear as cape** next to the item. To unlock a
+   recipe, search for it under **Recipes** and press **Unlock**.
 4. Save over the original (Chrome/Edge), or download the file and put it back
    under the same name.
 
@@ -36,12 +37,29 @@ the edited one in.
   the Fire Cape is `36kwMUzRF5L6DG-k7YgkSw`). Items added by later patches
   show as "Unknown item" with their raw ID until the list is regenerated.
 
-## Regenerating the item list
+## Recipes and the Fire Cape
 
-`items.js` is built from the game's paks by `tools/itemdump` (C#, .NET 10,
+`GameProgress.Progress.RecipesUnlocked` lists the recipe IDs a character
+knows. Loading a character without `RECIPE_Armour_T0_Cape_Fire`
+(`1RBw-UqvGfavD2KdV-65Jg`, normally from the Fight Caves vestige) took the
+Fire Cape off it; the cape asset is tagged
+`UI.Notification.Inventory.CannotEquipDueToEntitlement`. Worn gear and gear in
+the bag whose recipe is locked shows an **Unlock recipe** button.
+
+Quest progress is `GameProgress.QuestProgress.Quests`: one entry per quest
+with `QuestId`, `QuestState` (0 not started, 1 in progress, 2 complete),
+`QuestObjective` and named `QuestInts` / `QuestBools`. The Fight Caves are
+part of the Umbral Sands main quest (`kPtTW0exXrqw2BqELR_bFA`) and have no
+completion flag of their own in the save.
+
+## Regenerating the item and recipe lists
+
+`items.js` and `recipes.js` are built from the game's paks by `tools/itemdump` (C#, .NET 10,
 [CUE4Parse](https://github.com/FabianFG/CUE4Parse)). The paks are unencrypted
 UE 5.6. Each `ITEM_*` asset's `PersistenceID` is the 22-character ID the save
 uses, and its `Name` points into a string table such as `ST_ItemNames`.
+`RECIPE_*` assets carry the IDs in `RecipesUnlocked`. A recipe is named after
+the item it makes, picked from the items it references by matching asset names.
 
 The tool needs a `.usmap` to open the packages; the one in
 [PEAKEGames/DWCharacterEditor](https://github.com/PEAKEGames/DWCharacterEditor/tree/main/DragonwildsUpdater)
@@ -50,8 +68,8 @@ from the raw asset bytes rather than parsing properties through it. The first
 run downloads the Oodle and zlib-ng DLLs into `tools/itemdump/bin/.../native`.
 
 ```bash
-dotnet run -c Release --project tools/itemdump -- "<Steam>/steamapps/common/RSDragonwilds/RSDragonwilds/Content/Paks" path/to/RSDragonwilds.usmap items.json
-node scripts/gen-items.js items.json
+dotnet run -c Release --project tools/itemdump -- "<Steam>/steamapps/common/RSDragonwilds/RSDragonwilds/Content/Paks" path/to/RSDragonwilds.usmap dump.json
+node scripts/gen-items.js dump.json
 ```
 
 Names the game leaves blank (some skill capes, test items) keep the name
@@ -62,5 +80,5 @@ from the asset's folder and are for display only.
 
 ```bash
 npm test        # save logic tests (node:test, no dependencies)
-npm run build   # copies the three static files to dist/
+npm run build   # copies the four static files to dist/
 ```
