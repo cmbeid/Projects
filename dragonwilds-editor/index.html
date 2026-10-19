@@ -180,7 +180,7 @@
         function amount(item) {
           if (typeof item.Count === 'number') return '× ' + item.Count;
           if (typeof item.Durability === 'number') return String(Math.round(item.Durability));
-          return '';
+          return '—';
         }
 
         function cell(tr, html, cls) {
@@ -209,7 +209,7 @@
           const worn = $('worn');
           worn.textContent = '';
           for (const [slot, label] of Object.entries(WEARABLE_SLOTS)) {
-            const item = save.Loadout[slot];
+            const item = DWSave.progress(save).Loadout[slot];
             const tr = document.createElement('tr');
             cell(tr, label);
             if (item && item.ItemData) {
@@ -267,7 +267,7 @@
             inv.append(tr);
           }
           $('unknownHint').textContent = unknown
-            ? 'Items marked "Unknown item" are newer than this page\'s item list. The Fire Cape is one of them, so if you only see one unknown item that is cape-shaped in game, that\'s it. Its durability is shown next to it.'
+            ? 'Items marked "Unknown item" are newer than this page\'s item list, the Fire Cape among them. Capes have no durability or count, so look for an unknown item in your bag (slots 0-31) with nothing in that column. Wearing the wrong one is harmless: press Take off, or wear the right one over it.'
             : '';
           $('download').disabled = !dirty;
           $('writeBack').disabled = !dirty;

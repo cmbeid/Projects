@@ -17,21 +17,68 @@
   // the first free one of these.
   const BAG_SLOTS = Array.from({ length: 32 }, (_, i) => i);
 
+  // Newer saves (Version 80-something on) keep Inventory and Loadout under
+  // GameProgress; older ones have them at the top level.
+  function progress(save) {
+    return save.GameProgress && save.GameProgress.Inventory ? save.GameProgress : save;
+  }
+
   function parse(text) {
     const save = JSON.parse(text.replace(/^﻿/, ''));
-    if (!save || typeof save !== 'object' || !save.Inventory || !save.Loadout) {
+    const p = save && typeof save === 'object' ? progress(save) : null;
+    if (!p || !p.Inventory || !p.Loadout) {
       throw new Error('This is not a Dragonwilds character file: it has no Inventory or Loadout.');
     }
     return save;
   }
 
-  // The game writes tab-indented JSON; keep its line endings and trailing
-  // newline so the only diff is the edit itself.
+  // Numbers as C's printf("%.17g"), which is how the game writes them:
+  // 17 significant digits, trailing zeros dropped, exponent form outside
+  // 1e-4..1e17 with at least two exponent digits.
+  function formatNumber(n) {
+    if (!Number.isFinite(n)) return '0';
+    if (n === 0) return Object.is(n, -0) ? '-0' : '0';
+    const [mant, expPart] = n.toExponential(16).split('e');
+    const exp = Number(expPart);
+    const trim = (str) => (str.includes('.') ? str.replace(/0+$/, '').replace(/\.$/, '') : str);
+    if (exp < -4 || exp >= 17) {
+      const sign = exp < 0 ? '-' : '+';
+      return trim(mant) + 'e' + sign + String(Math.abs(exp)).padStart(2, '0');
+    }
+    return trim(n.toFixed(Math.max(0, 16 - exp)));
+  }
+
+  // Pretty-prints the way the game does, so an edited save differs from the
+  // original only where it was edited: tab indents, an object's opening brace
+  // on its own line under its key, arrays opening on the key's line, arrays
+  // of numbers on one line as [ 1, 2 ], and empty arrays as [].
+  function stringify(value, indent, eol) {
+    const pad = '\t'.repeat(indent);
+    const inner = '\t'.repeat(indent + 1);
+    if (value === null) return 'null';
+    if (typeof value === 'number') return formatNumber(value);
+    if (typeof value !== 'object') return JSON.stringify(value);
+    if (Array.isArray(value)) {
+      if (!value.length) return '[]';
+      if (value.every((v) => typeof v === 'number')) return '[ ' + value.map(formatNumber).join(', ') + ' ]';
+      const items = value.map((v) => inner + stringify(v, indent + 1, eol));
+      return '[' + eol + items.join(',' + eol) + eol + pad + ']';
+    }
+    const entries = Object.keys(value).map((k) => {
+      const v = value[k];
+      const key = inner + JSON.stringify(k) + ':';
+      return v && typeof v === 'object' && !Array.isArray(v)
+        ? key + eol + inner + stringify(v, indent + 1, eol)
+        : key + ' ' + stringify(v, indent + 1, eol);
+    });
+    return '{' + eol + entries.join(',' + eol) + (entries.length ? eol : '') + pad + '}';
+  }
+
+  // Keeps the original's line endings and trailing newline too.
   function serialize(save, originalText) {
     const original = originalText || '';
     const eol = original.includes('\r\n') ? '\r\n' : '\n';
-    let text = JSON.stringify(save, null, '\t');
-    if (eol !== '\n') text = text.replace(/\n/g, eol);
+    let text = stringify(save, 0, eol);
     if (/\r?\n$/.test(original)) text += eol;
     return text;
   }
@@ -44,11 +91,13 @@
   }
 
   function inventoryItems(save) {
-    return slotKeys(save.Inventory).map((slot) => ({ slot, item: save.Inventory[slot] }));
+    const inv = progress(save).Inventory;
+    return slotKeys(inv).map((slot) => ({ slot, item: inv[slot] }));
   }
 
   function loadoutItems(save) {
-    return slotKeys(save.Loadout).map((slot) => ({ slot, item: save.Loadout[slot] }));
+    const loadout = progress(save).Loadout;
+    return slotKeys(loadout).map((slot) => ({ slot, item: loadout[slot] }));
   }
 
   function bumpMaxSlot(container, slot) {
@@ -64,22 +113,24 @@
     if (!(loadoutSlot in WEARABLE_SLOTS)) {
       throw new Error(`Loadout slot ${loadoutSlot} is not a wearable slot.`);
     }
-    const item = save.Inventory[invSlot];
+    const { Inventory, Loadout } = progress(save);
+    const item = Inventory[invSlot];
     if (!item || !item.ItemData) throw new Error(`Inventory slot ${invSlot} is empty.`);
-    const previous = save.Loadout[loadoutSlot];
+    const previous = Loadout[loadoutSlot];
 
-    save.Loadout[loadoutSlot] = item;
-    bumpMaxSlot(save.Loadout, loadoutSlot);
+    Loadout[loadoutSlot] = item;
+    bumpMaxSlot(Loadout, loadoutSlot);
     if (previous && previous.ItemData) {
-      save.Inventory[invSlot] = previous;
+      Inventory[invSlot] = previous;
     } else {
-      delete save.Inventory[invSlot];
+      delete Inventory[invSlot];
     }
     return { equipped: item, unequipped: previous && previous.ItemData ? previous : null };
   }
 
   function firstFreeBagSlot(save) {
-    return BAG_SLOTS.find((s) => !(save.Inventory[s] && save.Inventory[s].ItemData));
+    const inv = progress(save).Inventory;
+    return BAG_SLOTS.find((s) => !(inv[s] && inv[s].ItemData));
   }
 
   // Takes the item off wearable loadout slot `loadoutSlot` and puts it in the
@@ -88,17 +139,18 @@
     if (!(loadoutSlot in WEARABLE_SLOTS)) {
       throw new Error(`Loadout slot ${loadoutSlot} is not a wearable slot.`);
     }
-    const item = save.Loadout[loadoutSlot];
+    const { Inventory, Loadout } = progress(save);
+    const item = Loadout[loadoutSlot];
     if (!item || !item.ItemData) throw new Error(`Nothing is worn in the ${WEARABLE_SLOTS[loadoutSlot]} slot.`);
     const slot = firstFreeBagSlot(save);
     if (slot === undefined) throw new Error('Your bag and action bar are full; free a slot first.');
-    save.Inventory[slot] = item;
-    bumpMaxSlot(save.Inventory, slot);
-    delete save.Loadout[loadoutSlot];
+    Inventory[slot] = item;
+    bumpMaxSlot(Inventory, slot);
+    delete Loadout[loadoutSlot];
     return { slot, item };
   }
 
-  const api = { WEARABLE_SLOTS, CAPE_SLOT, parse, serialize, inventoryItems, loadoutItems, equip, unequip };
+  const api = { WEARABLE_SLOTS, CAPE_SLOT, progress, parse, serialize, formatNumber, inventoryItems, loadoutItems, equip, unequip };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.DWSave = api;
 })(typeof self !== 'undefined' ? self : this);
