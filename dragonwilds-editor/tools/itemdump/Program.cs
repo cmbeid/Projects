@@ -1,4 +1,5 @@
-// Dumps every ITEM_* asset in the game's paks as { id, name, internalName, path, class }.
+// Dumps every ITEM_* and RECIPE_* asset in the game's paks as
+// { items: [{ id, name, internalName, path, class }], recipes: [{ id, name, internalName, path, class, items }] }.
 //
 // The .usmap that ships with PEAKEGames/DWCharacterEditor predates 1.0, so
 // property parsing stops a few fields in, before PersistenceID. Rather than
@@ -56,6 +57,7 @@ var notNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "ST_ItemD
 var idRx = new Regex("^[A-Za-z0-9_-]{22}$");
 // Internal names ("armour_body_apprentice") can also be 22 chars; IDs are never all lowercase.
 var internalRx = new Regex("^[a-z0-9_]+$");
+var itemRefRx = new Regex("/(ITEM_[A-Za-z0-9_]+)");
 
 static string? ReadFString(byte[] d, int i, out int next)
 {
@@ -69,8 +71,9 @@ static string? ReadFString(byte[] d, int i, out int next)
     return Encoding.ASCII.GetString(d, i + 4, len - 1);
 }
 
-var items = new List<object>();
-foreach (var path in provider.Files.Keys.Where(p => IsAsset(p, "ITEM_")).OrderBy(p => p, StringComparer.Ordinal))
+// Reads an asset's ID, internal name, display name and the ITEM_ assets it
+// references (a recipe references the item it makes, and sometimes others).
+(string? id, string? internalName, string? name, string? nameKey, string? cls, List<string> itemRefs) Scan(string path)
 {
     var pkg = provider.LoadPackage(path);
     var names = pkg.NameMap.Select(n => n.Name ?? "").ToArray();
@@ -101,15 +104,33 @@ foreach (var path in provider.Files.Keys.Where(p => IsAsset(p, "ITEM_")).OrderBy
             i = next - 1;
         }
     }
-    if (id == null) continue; // mesh-data and other non-item assets
     // ST_ItemNames is the item-name table; other tables (ST_Localization and
     // so on) also hold UI strings such as a container's "Contents: ..." line.
     var pick = texts.Cast<(string table, string key, string text)?>()
         .FirstOrDefault(x => x!.Value.table.Equals("ST_ItemNames", StringComparison.OrdinalIgnoreCase))
         ?? texts.Cast<(string table, string key, string text)?>().FirstOrDefault();
-    var name = pick?.text;
-    var nameKey = pick is { } pk ? pk.table + ":" + pk.key : null;
-    items.Add(new { id, name, nameKey, internalName, path, @class = cls });
+    // Imported package paths sit in the header as plain ASCII.
+    var itemRefs = itemRefRx.Matches(Encoding.Latin1.GetString(d)).Select(m => m.Groups[1].Value).Distinct().ToList();
+    return (id, internalName, pick?.text, pick is { } pk ? pk.table + ":" + pk.key : null, cls, itemRefs);
+}
+
+var items = new List<object>();
+foreach (var path in provider.Files.Keys.Where(p => IsAsset(p, "ITEM_")).OrderBy(p => p, StringComparer.Ordinal))
+{
+    var a = Scan(path);
+    if (a.id == null) continue; // mesh-data and other non-item assets
+    items.Add(new { a.id, a.name, a.nameKey, a.internalName, path, @class = a.cls });
 }
 Console.WriteLine($"Items: {items.Count}");
-File.WriteAllText(outJson, JsonSerializer.Serialize(items, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+
+// RecipesUnlocked in the save holds these IDs.
+var recipes = new List<object>();
+foreach (var path in provider.Files.Keys.Where(p => IsAsset(p, "RECIPE_")).OrderBy(p => p, StringComparer.Ordinal))
+{
+    var a = Scan(path);
+    if (a.id == null) continue;
+    recipes.Add(new { a.id, a.name, a.internalName, path, @class = a.cls, items = a.itemRefs });
+}
+Console.WriteLine($"Recipes: {recipes.Count}");
+
+File.WriteAllText(outJson, JsonSerializer.Serialize(new { items, recipes }, new JsonSerializerOptions { WriteIndented = true }) + "\n");

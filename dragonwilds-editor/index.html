@@ -83,7 +83,10 @@
       .cat { color: var(--muted); font-size: 13px; }
       .id { color: var(--muted); font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
       tr.unknown .name { color: var(--warn); }
-      select { font: inherit; background: #2b241d; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+      select, input[type=search] { font: inherit; background: #2b241d; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+      input[type=search] { flex: 1 1 14rem; min-width: 0; padding: 6px 10px; }
+      .lock { color: var(--warn); font-size: 13px; }
+      .unlocked { color: var(--good); }
       .hidden { display: none; }
       @media (max-width: 560px) {
         th.hide-sm, td.hide-sm { display: none; }
@@ -94,7 +97,7 @@
   <body>
     <main>
       <h1>Dragonwilds Save Editor</h1>
-      <p class="sub">Wear any item from your inventory, the Fire Cape included, by moving it into your equipment in the character save. Everything happens in this page; your save never leaves your computer.</p>
+      <p class="sub">Wear any item from your inventory, the Fire Cape included, by moving it into your equipment in the character save, and unlock recipes. Everything happens in this page; your save never leaves your computer.</p>
 
       <section>
         <h2>Before you start</h2>
@@ -136,8 +139,26 @@
           </table>
         </section>
 
+        <section id="recipesSection">
+          <h2>4. Recipes</h2>
+          <p class="cat" id="recipeSummary"></p>
+          <div class="row" style="margin-bottom: 8px">
+            <input id="recipeSearch" type="search" placeholder="Search recipes, e.g. fire cape" aria-label="Search recipes" />
+            <select id="recipeFilter" aria-label="Show">
+              <option value="all">All</option>
+              <option value="locked">Locked</option>
+              <option value="unlocked">Unlocked</option>
+            </select>
+          </div>
+          <table>
+            <thead><tr><th>Recipe</th><th class="hide-sm">Status</th><th></th></tr></thead>
+            <tbody id="recipes"></tbody>
+          </table>
+          <p class="cat" id="recipeMore"></p>
+        </section>
+
         <section>
-          <h2>4. Save it</h2>
+          <h2>5. Save it</h2>
           <p>Put the edited file back in <code>SaveCharacters</code> under <strong>exactly the same name</strong>, replacing the old one, then start the game.</p>
           <div class="row">
             <button id="writeBack" class="primary hidden" type="button">Save over the original</button>
@@ -149,12 +170,24 @@
     </main>
 
     <script src="items.js"></script>
+    <script src="recipes.js"></script>
     <script src="editor.js"></script>
     <script>
       (function () {
         'use strict';
         const $ = (id) => document.getElementById(id);
         const ITEMS = self.DW_ITEMS || {};
+        const RECIPES = self.DW_RECIPES || {};
+        const RECIPE_IDS = Object.keys(RECIPES);
+        const RECIPES_FOR_ITEM = {};
+        for (const id of RECIPE_IDS) {
+          const made = RECIPES[id][2];
+          if (made) (RECIPES_FOR_ITEM[made] = RECIPES_FOR_ITEM[made] || []).push(id);
+        }
+        const RECIPE_LIMIT = 60;
+        // Gear the wearable slots take; other items only get a recipe hint in
+        // the Recipes section.
+        const WEARABLE_CATS = new Set(['Capes', 'Helms', 'Body', 'Legs', 'Rings', 'Amulets']);
         const { WEARABLE_SLOTS, CAPE_SLOT } = DWSave;
         const canPick = 'showOpenFilePicker' in window;
 
@@ -202,8 +235,89 @@
           meta.className = d.known ? 'cat' : 'id';
           meta.textContent = d.known ? d.cat : d.cat + ' · ' + item.ItemData;
           wrap.append(name, meta);
+          const locked = WEARABLE_CATS.has(d.cat) ? lockedRecipesFor(item.ItemData) : [];
+          if (locked.length) {
+            const hint = document.createElement('div');
+            hint.className = 'row lock';
+            hint.textContent = 'Recipe not unlocked; the game can take gear off you for that.';
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = 'Unlock recipe';
+            b.onclick = () => act(() => {
+              for (const id of locked) DWSave.unlockRecipe(save, id);
+              return 'Unlocked the recipe for ' + d.name + '.';
+            });
+            hint.append(b);
+            wrap.append(hint);
+          }
           return wrap;
         }
+
+        // Recipes that make this item, if the character knows none of them.
+        function lockedRecipesFor(itemId) {
+          const unlocked = DWSave.unlockedRecipes(save);
+          const ids = RECIPES_FOR_ITEM[itemId];
+          if (!unlocked || !ids || ids.some((id) => unlocked.includes(id))) return [];
+          return ids;
+        }
+
+        function recipeName(id) {
+          return RECIPES[id] ? RECIPES[id][0] : 'Unknown recipe';
+        }
+
+        function renderRecipes() {
+          const unlocked = DWSave.unlockedRecipes(save);
+          $('recipesSection').classList.toggle('hidden', !unlocked);
+          if (!unlocked) return;
+          const have = new Set(unlocked);
+          const known = RECIPE_IDS.filter((id) => have.has(id)).length;
+          $('recipeSummary').textContent = known + ' of ' + RECIPE_IDS.length + ' recipes unlocked' +
+            (unlocked.length > known ? ' (plus ' + (unlocked.length - known) + ' this page does not know).' : '.');
+
+          const words = $('recipeSearch').value.toLowerCase().split(/\s+/).filter(Boolean);
+          const filter = $('recipeFilter').value;
+          const matches = RECIPE_IDS.filter((id) => {
+            if (filter === 'locked' && have.has(id)) return false;
+            if (filter === 'unlocked' && !have.has(id)) return false;
+            const [name, cat, , asset] = RECIPES[id];
+            const text = (name + ' ' + cat + ' ' + asset + ' ' + id).toLowerCase();
+            return words.every((w) => text.includes(w));
+          });
+
+          const body = $('recipes');
+          body.textContent = '';
+          for (const id of matches.slice(0, RECIPE_LIMIT)) {
+            const [name, cat, , asset] = RECIPES[id];
+            const on = have.has(id);
+            const tr = document.createElement('tr');
+            const label = document.createElement('div');
+            const n = document.createElement('div');
+            n.className = 'name';
+            n.textContent = name;
+            const meta = document.createElement('div');
+            meta.className = 'cat';
+            meta.textContent = cat + ' · ' + asset;
+            label.append(n, meta);
+            cell(tr, label);
+            cell(tr, on ? 'Unlocked' : 'Locked', 'hide-sm ' + (on ? 'unlocked' : 'cat'));
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = on ? 'Lock' : 'Unlock';
+            if (!on) b.className = 'primary';
+            b.onclick = () => act(() => {
+              if (on) DWSave.lockRecipe(save, id);
+              else DWSave.unlockRecipe(save, id);
+              return (on ? 'Locked ' : 'Unlocked ') + recipeName(id) + '.';
+            });
+            cell(tr, b, 'act');
+            body.append(tr);
+          }
+          $('recipeMore').textContent = !matches.length ? 'No recipes match.'
+            : matches.length > RECIPE_LIMIT ? 'Showing ' + RECIPE_LIMIT + ' of ' + matches.length + '; search to narrow it down.' : '';
+        }
+
+        $('recipeSearch').oninput = () => save && renderRecipes();
+        $('recipeFilter').onchange = () => save && renderRecipes();
 
         function render() {
           const worn = $('worn');
@@ -269,6 +383,7 @@
           $('unknownHint').textContent = unknown
             ? 'Items marked "Unknown item" are newer than this page\'s item list, which was read from the game\'s files. Capes have no durability or count, so an unknown item with nothing in that column may be a cape. Wearing the wrong one is harmless: press Take off, or wear the right one over it.'
             : '';
+          renderRecipes();
           $('download').disabled = !dirty;
           $('writeBack').disabled = !dirty;
         }
@@ -285,7 +400,7 @@
             const msg = fn();
             dirty = true;
             render();
-            setStatus(msg + ' Now save the file (step 4).', 'ok');
+            setStatus(msg + ' Now save the file (step 5).', 'ok');
           } catch (e) {
             setStatus(e.message, 'err');
           }

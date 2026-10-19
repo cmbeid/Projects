@@ -141,6 +141,42 @@ test('a Version 86 save equips from GameProgress and changes nothing else', () =
   assert.match(out, /"Backup": 2544458474\r\n\}$/);
 });
 
+const WITH_RECIPES = NEW_FORMAT.replace('\t\t"Inventory":', [
+  '\t\t"Progress":',
+  '\t\t{',
+  '\t\t\t"RecipesUnlocked": [',
+  '\t\t\t\t"G2LRQkwdrgWVlZ-EXRXtcg",',
+  '\t\t\t\t"NbePfEBQYxH_dpKM0pqZhw"',
+  '\t\t\t],',
+  '\t\t\t"RecipesNew": []',
+  '\t\t},',
+  '\t\t"Inventory":',
+].join('\r\n'));
+
+test('unlocking a recipe appends its ID and changes nothing else', () => {
+  const save = DWSave.parse(WITH_RECIPES);
+  assert.equal(DWSave.serialize(save, WITH_RECIPES), WITH_RECIPES);
+  assert.equal(DWSave.unlockRecipe(save, '1RBw-UqvGfavD2KdV-65Jg'), true);
+  assert.equal(DWSave.unlockRecipe(save, '1RBw-UqvGfavD2KdV-65Jg'), false);
+  const out = DWSave.serialize(save, WITH_RECIPES);
+  assert.equal(out, WITH_RECIPES.replace('"NbePfEBQYxH_dpKM0pqZhw"\r\n',
+    '"NbePfEBQYxH_dpKM0pqZhw",\r\n\t\t\t\t"1RBw-UqvGfavD2KdV-65Jg"\r\n'));
+  assert.deepEqual(save.GameProgress.Progress.RecipesNew, []);
+});
+
+test('locking a recipe removes it, and only if it was unlocked', () => {
+  const save = DWSave.parse(WITH_RECIPES);
+  assert.equal(DWSave.lockRecipe(save, 'G2LRQkwdrgWVlZ-EXRXtcg'), true);
+  assert.equal(DWSave.lockRecipe(save, 'G2LRQkwdrgWVlZ-EXRXtcg'), false);
+  assert.deepEqual(DWSave.unlockedRecipes(save), ['NbePfEBQYxH_dpKM0pqZhw']);
+});
+
+test('saves without a recipe list say so instead of inventing one', () => {
+  const save = DWSave.parse(NEW_FORMAT);
+  assert.equal(DWSave.unlockedRecipes(save), null);
+  assert.throws(() => DWSave.unlockRecipe(save, 'x'), /no recipe list/);
+});
+
 test('numbers are written like printf %.17g', () => {
   const cases = { 0: '0', 1468: '1468', 2544458474: '2544458474', 0.1: '0.10000000000000001',
     1e-5: '1.0000000000000001e-05', 1e17: '1e+17', 639279712607330050: '6.3927971260733005e+17', '-2.5': '-2.5' };

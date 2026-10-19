@@ -150,7 +150,39 @@
     return { slot, item };
   }
 
-  const api = { WEARABLE_SLOTS, CAPE_SLOT, progress, parse, serialize, formatNumber, inventoryItems, loadoutItems, equip, unequip };
+  // Progress.RecipesUnlocked lists the recipe IDs the character knows. Some
+  // gear checks it on load: the Fire Cape is taken off a character that has
+  // not unlocked RECIPE_Armour_T0_Cape_Fire.
+  function unlockedRecipes(save) {
+    const p = progress(save).Progress;
+    return p && Array.isArray(p.RecipesUnlocked) ? p.RecipesUnlocked : null;
+  }
+
+  function recipeList(save) {
+    const list = unlockedRecipes(save);
+    if (!list) throw new Error('This save has no recipe list (Progress.RecipesUnlocked).');
+    return list;
+  }
+
+  // Returns false if the recipe was already unlocked.
+  function unlockRecipe(save, id) {
+    const list = recipeList(save);
+    if (list.includes(id)) return false;
+    list.push(id);
+    return true;
+  }
+
+  // Returns false if the recipe was not unlocked.
+  function lockRecipe(save, id) {
+    const list = recipeList(save);
+    const i = list.indexOf(id);
+    if (i < 0) return false;
+    list.splice(i, 1);
+    return true;
+  }
+
+  const api = { WEARABLE_SLOTS, CAPE_SLOT, progress, parse, serialize, formatNumber, inventoryItems, loadoutItems, equip, unequip,
+    unlockedRecipes, unlockRecipe, lockRecipe };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.DWSave = api;
 })(typeof self !== 'undefined' ? self : this);
