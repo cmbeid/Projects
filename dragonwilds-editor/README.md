@@ -20,16 +20,23 @@ the edited one in.
 
 ## Notes on the save
 
-- Character saves are plain tab-indented JSON. `Loadout` slots 0–4 (head, body,
-  legs, cape, ring) hold the item itself; 5–8 (weapon, shield, ammo, amulet)
-  point back into `Inventory` through `PlayerInventoryItemIndex`, and this
-  editor does not touch them.
+- Character saves are plain JSON. Newer saves (Version 86 seen) keep
+  `Inventory` and `Loadout` under `GameProgress`; older ones (Version 67) have
+  them at the top level. Both are handled.
+- The game pretty-prints with tabs, CRLF, each object's brace on its own line,
+  number arrays on one line and numbers as `%.17g`. The editor writes the same
+  way, so an unedited save round-trips byte for byte and an edit changes only
+  the lines it touches.
+- `Loadout` slots 0–4 (head, body, legs, cape, ring) hold the item itself.
+  Slots that hold only a `PlayerInventoryItemIndex` (weapon, shield, ammo and
+  so on) point back into `Inventory`, and this editor does not touch them.
 - The trailing `Backup` number is left as it is; the game accepts edited files
   without it changing.
 - Item names come from the community catalog in
   [PEAKEGames/DWCharacterEditor](https://github.com/PEAKEGames/DWCharacterEditor)
   (April 2026). Items added since, the Fire Cape among them, show as
-  "Unknown item" with their raw ID.
+  "Unknown item" with their raw ID. Capes have no `Durability` or `Count`,
+  which helps pick one out.
 
 ## Scripts
 

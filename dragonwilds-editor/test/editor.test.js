@@ -52,7 +52,7 @@ test('unequip puts the item in the first free bag slot', () => {
 });
 
 test('serialize keeps tabs, CRLF and the trailing newline, and round-trips', () => {
-  const original = JSON.stringify(sample(), null, '\t').replace(/\n/g, '\r\n') + '\r\n';
+  const original = DWSave.serialize(sample(), '{\r\n}\r\n');
   const save = DWSave.parse('﻿' + original);
   assert.equal(DWSave.serialize(save, original), original);
   DWSave.equip(save, 9, 3);
@@ -65,4 +65,84 @@ test('serialize keeps tabs, CRLF and the trailing newline, and round-trips', () 
 
 test('parse rejects files that are not character saves', () => {
   assert.throws(() => DWSave.parse('{"foo": 1}'), /not a Dragonwilds character file/);
+});
+
+// Version 86 saves nest everything under GameProgress and are written with
+// each object's brace on its own line, CRLF, and %.17g numbers.
+const NEW_FORMAT = [
+  '{',
+  '\t"Version": 86,',
+  '\t"meta_data":',
+  '\t{',
+  '\t\t"char_name": "Tester"',
+  '\t},',
+  '\t"GameProgress":',
+  '\t{',
+  '\t\t"Character":',
+  '\t\t{',
+  '\t\t\t"Playtime_sim": 372399.71052306145,',
+  '\t\t\t"Ratio": 0.55555558204650879,',
+  '\t\t\t"Tiny": 1.0000000000000001e-05,',
+  '\t\t\t"Food":',
+  '\t\t\t{',
+  '\t\t\t},',
+  '\t\t\t"TrackedAI": []',
+  '\t\t},',
+  '\t\t"Inventory":',
+  '\t\t{',
+  '\t\t\t"15":',
+  '\t\t\t{',
+  '\t\t\t\t"GUID": "AWgg",',
+  '\t\t\t\t"ItemData": "FireCapeIdNotInCatalog",',
+  '\t\t\t\t"AddedToInventoryTimestamp": 6.3927971260733005e+17',
+  '\t\t\t},',
+  '\t\t\t"MaxSlotIndex": 119',
+  '\t\t},',
+  '\t\t"Loadout":',
+  '\t\t{',
+  '\t\t\t"5":',
+  '\t\t\t{',
+  '\t\t\t\t"PlayerInventoryItemIndex": 79',
+  '\t\t\t},',
+  '\t\t\t"MaxSlotIndex": 11',
+  '\t\t},',
+  '\t\t"MapCustomization":',
+  '\t\t{',
+  '\t\t\t"Pins": [',
+  '\t\t\t\t{',
+  '\t\t\t\t\t"PinType": 3,',
+  '\t\t\t\t\t"PinLocation": [ 71998.0390625, 153273.328125 ]',
+  '\t\t\t\t}',
+  '\t\t\t],',
+  '\t\t\t"Spells": [',
+  '\t\t\t\t"a",',
+  '\t\t\t\t""',
+  '\t\t\t]',
+  '\t\t}',
+  '\t},',
+  '\t"Backup": 2544458474',
+  '}',
+].join('\r\n');
+
+test('a Version 86 save round-trips byte for byte', () => {
+  const save = DWSave.parse(NEW_FORMAT);
+  assert.equal(DWSave.serialize(save, NEW_FORMAT), NEW_FORMAT);
+});
+
+test('a Version 86 save equips from GameProgress and changes nothing else', () => {
+  const save = DWSave.parse(NEW_FORMAT);
+  DWSave.equip(save, 15, 3);
+  const p = save.GameProgress;
+  assert.equal(p.Loadout[3].ItemData, 'FireCapeIdNotInCatalog');
+  assert.equal(p.Inventory[15], undefined);
+  assert.equal(p.Loadout[5].PlayerInventoryItemIndex, 79);
+  const out = DWSave.serialize(save, NEW_FORMAT);
+  assert.match(out, /\t\t"Loadout":\r\n\t\t\{\r\n\t\t\t"3":\r\n\t\t\t\{\r\n\t\t\t\t"GUID": "AWgg",/);
+  assert.match(out, /"Backup": 2544458474\r\n\}$/);
+});
+
+test('numbers are written like printf %.17g', () => {
+  const cases = { 0: '0', 1468: '1468', 2544458474: '2544458474', 0.1: '0.10000000000000001',
+    1e-5: '1.0000000000000001e-05', 1e17: '1e+17', 639279712607330050: '6.3927971260733005e+17', '-2.5': '-2.5' };
+  for (const [n, want] of Object.entries(cases)) assert.equal(DWSave.formatNumber(Number(n)), want);
 });
