@@ -32,11 +32,31 @@ the edited one in.
   so on) point back into `Inventory`, and this editor does not touch them.
 - The trailing `Backup` number is left as it is; the game accepts edited files
   without it changing.
-- Item names come from the community catalog in
-  [PEAKEGames/DWCharacterEditor](https://github.com/PEAKEGames/DWCharacterEditor)
-  (April 2026). Items added since, the Fire Cape among them, show as
-  "Unknown item" with their raw ID. Capes have no `Durability` or `Count`,
-  which helps pick one out.
+- Item names come from the game's own data files (1,270 items, October 2026;
+  the Fire Cape is `36kwMUzRF5L6DG-k7YgkSw`). Items added by later patches
+  show as "Unknown item" with their raw ID until the list is regenerated.
+
+## Regenerating the item list
+
+`items.js` is built from the game's paks by `tools/itemdump` (C#, .NET 10,
+[CUE4Parse](https://github.com/FabianFG/CUE4Parse)). The paks are unencrypted
+UE 5.6. Each `ITEM_*` asset's `PersistenceID` is the 22-character ID the save
+uses, and its `Name` points into a string table such as `ST_ItemNames`.
+
+The tool needs a `.usmap` to open the packages; the one in
+[PEAKEGames/DWCharacterEditor](https://github.com/PEAKEGames/DWCharacterEditor/tree/main/DragonwildsUpdater)
+works even though it predates 1.0, because the tool reads IDs and name keys
+from the raw asset bytes rather than parsing properties through it. The first
+run downloads the Oodle and zlib-ng DLLs into `tools/itemdump/bin/.../native`.
+
+```bash
+dotnet run -c Release --project tools/itemdump -- "<Steam>/steamapps/common/RSDragonwilds/RSDragonwilds/Content/Paks" path/to/RSDragonwilds.usmap items.json
+node scripts/gen-items.js items.json
+```
+
+Names the game leaves blank (some skill capes, test items) keep the name
+already in `items.js`, or fall back to the asset's file name. Categories come
+from the asset's folder and are for display only.
 
 ## Scripts
 
