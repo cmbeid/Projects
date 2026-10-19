@@ -1,20 +1,25 @@
 # Dragonwilds Save Editor
 
 A character save editor for RuneScape: Dragonwilds that runs in the browser.
-It moves items from your inventory into your worn gear (head, body, legs, cape,
-ring), for example to wear a Fire Cape, and unlocks recipes. The save is read
-and written locally; nothing is uploaded.
+It changes worn gear (head, body, legs, cape, ring), item quantities and
+durability, adds or removes items, and unlocks recipes, for example to wear a
+Fire Cape. The save is read and written locally; nothing is uploaded.
 
 ## Using it
 
-1. Quit the game.
+1. Go back to the game's main menu, or quit. In a world the game keeps the
+   character in memory and writes over the file.
 2. Back up `%LOCALAPPDATA%\RSDragonwilds\Saved\SaveCharacters`, which holds one
    `<CharacterName>.json` per character.
-3. Open `index.html` (straight from disk is fine, or the Pages build), load the
-   character file, and press **Wear as cape** next to the item. To unlock a
-   recipe, search for it under **Recipes** and press **Unlock**.
-4. Save over the original (Chrome/Edge), or download the file and put it back
-   under the same name.
+3. Open `index.html` (straight from disk is fine, or the Pages build) and load
+   the character file. The tabs:
+   - **Gear**: what is worn, with durability and **Take off**.
+   - **Bag**: filter, change **Qty** or **Durability**, **Wear** gear in its
+     slot, or **Remove** an item.
+   - **Add items**: search all items and add them to the first free bag slot.
+   - **Recipes**: search, then **Unlock** or **Lock**.
+4. Press **Save** to write over the original (Chrome/Edge), or **Download** and
+   put the file back under the same name. Then load the character in the game.
 
 If Steam Cloud restores the old file, turn it off for the game while you swap
 the edited one in.
@@ -33,6 +38,13 @@ the edited one in.
   so on) point back into `Inventory`, and this editor does not touch them.
 - The trailing `Backup` number is left as it is; the game accepts edited files
   without it changing.
+- Item entries are `GUID`, `ItemData`, then `Durability` (gear that wears)
+  and `NumUpgradesApplied`, or `Count` (stacks of more than one; the game
+  leaves it out at 1), then `AddedToInventoryTimestamp` in .NET ticks. Capes
+  have neither field. Added items get a random 22-character `GUID`; gear gets
+  no `Durability`, so the game starts it at its own default. Maximum
+  durability is not in the save or the item assets, so the editor accepts any
+  number.
 - Item names come from the game's own data files (1,270 items, October 2026;
   the Fire Cape is `36kwMUzRF5L6DG-k7YgkSw`). Items added by later patches
   show as "Unknown item" with their raw ID until the list is regenerated.
@@ -43,8 +55,9 @@ the edited one in.
 knows. Loading a character without `RECIPE_Armour_T0_Cape_Fire`
 (`1RBw-UqvGfavD2KdV-65Jg`, normally from the Fight Caves vestige) took the
 Fire Cape off it; the cape asset is tagged
-`UI.Notification.Inventory.CannotEquipDueToEntitlement`. Worn gear and gear in
-the bag whose recipe is locked shows an **Unlock recipe** button.
+`UI.Notification.Inventory.CannotEquipDueToEntitlement`. With the recipe
+unlocked, the cape stays equipped in game (confirmed October 2026). Worn gear
+and gear in the bag whose recipe is locked shows an **Unlock recipe** button.
 
 Quest progress is `GameProgress.QuestProgress.Quests`: one entry per quest
 with `QuestId`, `QuestState` (0 not started, 1 in progress, 2 complete),

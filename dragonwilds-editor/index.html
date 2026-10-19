@@ -9,10 +9,13 @@
         color-scheme: dark;
         --bg: #12100e;
         --panel: #1d1915;
+        --raised: #2b241d;
+        --raised-hover: #362d24;
         --line: #3a3128;
         --text: #efe6d8;
         --muted: #a89a86;
         --accent: #e8822a;
+        --accent-hover: #f39443;
         --accent-ink: #1a0f05;
         --warn: #f2c14e;
         --bad: #ef6b5b;
@@ -25,12 +28,14 @@
         color: var(--text);
         font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       }
-      main { max-width: 52rem; margin: 0 auto; padding: 24px 16px 64px; }
+      main { max-width: 56rem; margin: 0 auto; padding: 24px 16px 64px; }
       h1 { font-size: 24px; margin: 0 0 4px; }
-      h2 { font-size: 17px; margin: 0 0 12px; }
+      h2 { font-size: 17px; margin: 0 0 10px; }
       p { margin: 0 0 10px; }
       .sub { color: var(--muted); margin-bottom: 20px; }
-      section {
+      .muted { color: var(--muted); }
+      .small { font-size: 13px; }
+      .card {
         background: var(--panel);
         border: 1px solid var(--line);
         border-radius: 12px;
@@ -52,96 +57,192 @@
         font-weight: 600;
         border-radius: 8px;
         border: 1px solid var(--line);
-        background: #2b241d;
+        background: var(--raised);
         color: var(--text);
-        padding: 7px 12px;
+        padding: 6px 12px;
         cursor: pointer;
+        white-space: nowrap;
       }
-      button:hover, label.button:hover { background: #362d24; }
+      button:hover, label.button:hover { background: var(--raised-hover); }
       button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-      button.primary:hover { background: #f39443; }
+      button.primary:hover { background: var(--accent-hover); }
+      button.quiet { background: transparent; border-color: transparent; color: var(--muted); }
+      button.quiet:hover { color: var(--bad); background: transparent; }
       button:disabled { opacity: 0.45; cursor: default; }
+      input, select {
+        font: inherit;
+        background: var(--raised);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px 10px;
+      }
+      input[type=number] { width: 7.5rem; }
+      input[type=search] { flex: 1 1 14rem; min-width: 0; }
+      input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
       .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .grow { flex: 1 1 auto; min-width: 0; }
+      .hidden { display: none !important; }
+
+      /* Opening a file */
       #drop {
         border: 2px dashed var(--line);
         border-radius: 12px;
-        padding: 20px;
+        padding: 24px;
         text-align: center;
         color: var(--muted);
       }
       #drop.over { border-color: var(--accent); color: var(--text); }
-      #status { min-height: 1.5em; margin-top: 10px; }
+      details summary { cursor: pointer; font-weight: 600; }
+      details[open] summary { margin-bottom: 10px; }
+
+      /* Save bar */
+      .bar {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: color-mix(in srgb, var(--bg) 92%, transparent);
+        backdrop-filter: blur(6px);
+        border-bottom: 1px solid var(--line);
+        margin: 0 -16px 16px;
+        padding: 10px 16px;
+      }
+      .who { font-weight: 700; }
+      #changeCount { font-size: 13px; }
+      #changeCount.pending { color: var(--warn); }
+      #toast { min-height: 1.4em; font-size: 14px; margin-top: 6px; }
       .ok { color: var(--good); }
       .err { color: var(--bad); }
       .note { color: var(--warn); }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
-      th { color: var(--muted); font-weight: 500; font-size: 13px; border-top: 0; }
-      td.num { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-      td.act { text-align: right; white-space: nowrap; }
+
+      /* Tabs */
+      .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+      .tabs button {
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        color: var(--muted);
+        padding: 8px 12px;
+      }
+      .tabs button:hover { color: var(--text); background: transparent; }
+      .tabs button[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); }
+      .badge { color: var(--muted); font-weight: 500; font-size: 13px; }
+
+      /* Item lists */
+      .list { display: flex; flex-direction: column; }
+      .item {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+        padding: 10px 0;
+        border-top: 1px solid var(--line);
+      }
+      .item:first-child { border-top: 0; }
+      .slotno { width: 2.2rem; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+      .label { flex: 1 1 12rem; min-width: 0; }
       .name { font-weight: 600; }
-      .cat { color: var(--muted); font-size: 13px; }
-      .id { color: var(--muted); font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
-      tr.unknown .name { color: var(--warn); }
-      select, input[type=search] { font: inherit; background: #2b241d; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
-      input[type=search] { flex: 1 1 14rem; min-width: 0; padding: 6px 10px; }
-      .lock { color: var(--warn); font-size: 13px; }
+      .item.unknown .name { color: var(--warn); }
+      .meta { color: var(--muted); font-size: 13px; }
+      .id { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+      .field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+      .actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+      .lock { color: var(--warn); font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
       .unlocked { color: var(--good); }
-      .hidden { display: none; }
+      .empty { color: var(--muted); padding: 12px 0; }
+
+      /* Gear */
+      .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 12px; }
+      .slot { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+      .slot h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+      .slot .label { flex: none; }
+      .slot .actions { margin-left: 0; margin-top: auto; }
+      .slot.vacant .name { color: var(--muted); font-weight: 500; }
+
       @media (max-width: 560px) {
-        th.hide-sm, td.hide-sm { display: none; }
-        td.act { white-space: normal; }
+        .slotno { display: none; }
+        .actions { margin-left: 0; }
       }
     </style>
   </head>
   <body>
     <main>
       <h1>Dragonwilds Save Editor</h1>
-      <p class="sub">Wear any item from your inventory, the Fire Cape included, by moving it into your equipment in the character save, and unlock recipes. Everything happens in this page; your save never leaves your computer.</p>
+      <p class="sub">Change gear, items and recipes in a RuneScape: Dragonwilds character save. Everything happens in this page; your save never leaves your computer.</p>
 
-      <section>
-        <h2>Before you start</h2>
-        <ol>
-          <li><strong>Quit the game fully.</strong> It keeps your character in memory and overwrites the file when it exits.</li>
-          <li>Your character saves are in <code>%LOCALAPPDATA%\RSDragonwilds\Saved\SaveCharacters</code>, one <code>&lt;CharacterName&gt;.json</code> per character. Paste that path into the File Explorer address bar, or press Win+R and paste it there.</li>
-          <li><strong>Copy the whole <code>SaveCharacters</code> folder somewhere safe</strong> before you change anything.</li>
-          <li>If Steam Cloud puts the old file back, turn it off for the game while you swap the edited one in (Steam &rarr; RuneScape: Dragonwilds &rarr; Properties &rarr; General).</li>
-        </ol>
-      </section>
-
-      <section>
-        <h2>1. Open your character</h2>
-        <div id="drop">
-          <p>Drop <code>&lt;CharacterName&gt;.json</code> here, or</p>
-          <div class="row" style="justify-content: center">
-            <button id="pick" class="primary hidden" type="button">Open save…</button>
-            <label class="button" id="pickFallback">Choose file…<input id="file" type="file" accept=".json,application/json" hidden /></label>
-          </div>
+      <div id="start">
+        <div class="card">
+          <h2>Before you start</h2>
+          <ol>
+            <li><strong>Go back to the game's main menu</strong> (or quit). While you are in a world the game keeps your character in memory and writes over the file.</li>
+            <li>Your saves are in <code>%LOCALAPPDATA%\RSDragonwilds\Saved\SaveCharacters</code>, one <code>&lt;CharacterName&gt;.json</code> per character. Paste that path into the File Explorer address bar.</li>
+            <li><strong>Copy that folder somewhere safe</strong> before you change anything.</li>
+          </ol>
         </div>
-        <div id="status" role="status"></div>
-      </section>
 
-      <div id="editor" class="hidden">
-        <section>
-          <h2>2. Worn gear</h2>
-          <table>
-            <thead><tr><th>Slot</th><th>Item</th><th class="hide-sm">Durability</th><th></th></tr></thead>
-            <tbody id="worn"></tbody>
-          </table>
+        <div class="card">
+          <h2>Open your character</h2>
+          <div id="drop">
+            <p>Drop <code>&lt;CharacterName&gt;.json</code> here, or</p>
+            <div class="row" style="justify-content: center">
+              <button id="pick" class="primary hidden" type="button">Open save…</button>
+              <label class="button" id="pickFallback">Choose file…<input id="file" type="file" accept=".json,application/json" hidden /></label>
+            </div>
+          </div>
+          <p id="openStatus" class="small" role="status" style="margin: 10px 0 0"></p>
+        </div>
+      </div>
+
+      <div id="app" class="hidden">
+        <div class="bar">
+          <div class="row">
+            <div class="grow">
+              <div class="who" id="who"></div>
+              <div id="changeCount" class="muted">No changes yet</div>
+            </div>
+            <button id="writeBack" class="primary hidden" type="button" disabled>Save</button>
+            <button id="download" type="button" disabled>Download</button>
+            <button id="openOther" type="button" class="quiet">Open another…</button>
+          </div>
+          <div id="toast" role="status"></div>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" data-tab="gear">Gear</button>
+          <button type="button" role="tab" data-tab="bag">Bag <span class="badge" id="bagBadge"></span></button>
+          <button type="button" role="tab" data-tab="add">Add items</button>
+          <button type="button" role="tab" data-tab="recipes">Recipes <span class="badge" id="recipeBadge"></span></button>
+        </div>
+
+        <section class="card" data-panel="gear">
+          <h2>Worn gear</h2>
+          <p class="muted small">To wear something from your bag, use <strong>Wear</strong> on the Bag tab.</p>
+          <div class="slots" id="slots"></div>
         </section>
 
-        <section>
-          <h2>3. Inventory</h2>
-          <p class="note" id="unknownHint"></p>
-          <table>
-            <thead><tr><th class="hide-sm">Slot</th><th>Item</th><th class="hide-sm">Durability / count</th><th></th></tr></thead>
-            <tbody id="inv"></tbody>
-          </table>
+        <section class="card" data-panel="bag">
+          <div class="row" style="margin-bottom: 8px">
+            <input id="bagSearch" type="search" placeholder="Filter your bag" aria-label="Filter your bag" />
+          </div>
+          <p class="note small" id="unknownHint"></p>
+          <div class="list" id="bag"></div>
         </section>
 
-        <section id="recipesSection">
-          <h2>4. Recipes</h2>
-          <p class="cat" id="recipeSummary"></p>
+        <section class="card" data-panel="add">
+          <h2>Add an item</h2>
+          <p class="muted small">New items go in the first free bag slot. <span id="freeSlots"></span> Gear starts at the game's own durability.</p>
+          <div class="row" style="margin-bottom: 8px">
+            <input id="addSearch" type="search" placeholder="Search all items, e.g. rune platebody" aria-label="Search all items" />
+            <select id="addCategory" aria-label="Category"></select>
+          </div>
+          <div class="list" id="addList"></div>
+          <p class="muted small" id="addMore"></p>
+        </section>
+
+        <section class="card" data-panel="recipes">
+          <h2>Recipes</h2>
+          <p class="muted small" id="recipeSummary"></p>
           <div class="row" style="margin-bottom: 8px">
             <input id="recipeSearch" type="search" placeholder="Search recipes, e.g. fire cape" aria-label="Search recipes" />
             <select id="recipeFilter" aria-label="Show">
@@ -150,22 +251,15 @@
               <option value="unlocked">Unlocked</option>
             </select>
           </div>
-          <table>
-            <thead><tr><th>Recipe</th><th class="hide-sm">Status</th><th></th></tr></thead>
-            <tbody id="recipes"></tbody>
-          </table>
-          <p class="cat" id="recipeMore"></p>
+          <div class="list" id="recipes"></div>
+          <p class="muted small" id="recipeMore"></p>
         </section>
 
-        <section>
-          <h2>5. Save it</h2>
-          <p>Put the edited file back in <code>SaveCharacters</code> under <strong>exactly the same name</strong>, replacing the old one, then start the game.</p>
-          <div class="row">
-            <button id="writeBack" class="primary hidden" type="button">Save over the original</button>
-            <button id="download" type="button">Download edited file</button>
-            <span id="saveStatus"></span>
-          </div>
-        </section>
+        <details class="card">
+          <summary>Changes since you opened the file <span class="badge" id="logBadge"></span></summary>
+          <ol id="log" class="small"></ol>
+          <p class="muted small">Some gear needs its recipe unlocked: the game takes the Fire Cape off characters without the Fire Cape recipe. If Steam Cloud brings back the old file, turn it off for the game while you swap the edited one in.</p>
+        </details>
       </div>
     </main>
 
@@ -177,6 +271,7 @@
         'use strict';
         const $ = (id) => document.getElementById(id);
         const ITEMS = self.DW_ITEMS || {};
+        const ITEM_IDS = Object.keys(ITEMS);
         const RECIPES = self.DW_RECIPES || {};
         const RECIPE_IDS = Object.keys(RECIPES);
         const RECIPES_FOR_ITEM = {};
@@ -184,73 +279,80 @@
           const made = RECIPES[id][2];
           if (made) (RECIPES_FOR_ITEM[made] = RECIPES_FOR_ITEM[made] || []).push(id);
         }
-        const RECIPE_LIMIT = 60;
-        // Gear the wearable slots take; other items only get a recipe hint in
-        // the Recipes section.
-        const WEARABLE_CATS = new Set(['Capes', 'Helms', 'Body', 'Legs', 'Rings', 'Amulets']);
-        const { WEARABLE_SLOTS, CAPE_SLOT } = DWSave;
+        const LIMIT = 60;
+        const { WEARABLE_SLOTS } = DWSave;
+        // Where each category is worn, and which categories wear down. Other
+        // items (except capes) stack.
+        const SLOT_FOR_CAT = { Helms: 0, Body: 1, Legs: 2, Capes: 3, Rings: 4 };
+        const DURABLE = new Set(['Helms', 'Body', 'Legs', 'Rings', 'Amulets', 'Melee Weapons', 'Bows', 'Crossbows',
+          'Staves', 'Shields', 'Tools']);
         const canPick = 'showOpenFilePicker' in window;
 
         let save = null;
         let originalText = '';
         let fileName = '';
         let fileHandle = null;
-        let dirty = false;
+        let changes = [];
 
-        function setStatus(msg, cls) {
-          const el = $('status');
-          el.textContent = msg;
-          el.className = cls || '';
+        // ---- small helpers ----------------------------------------------------
+
+        function h(tag, props, ...children) {
+          const el = document.createElement(tag);
+          for (const [k, v] of Object.entries(props || {})) {
+            if (k === 'class') el.className = v;
+            else if (k.startsWith('on')) el[k] = v;
+            else if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
+          }
+          for (const c of children.flat()) if (c != null && c !== false) el.append(c);
+          return el;
         }
 
-        function describe(item) {
-          const known = ITEMS[item.ItemData];
+        function describe(id) {
+          const known = ITEMS[id];
           return known
             ? { name: known[0], cat: known[1], known: true }
-            : { name: 'Unknown item', cat: 'newer than the item list', known: false };
+            : { name: 'Unknown item', cat: 'Not in the item list', known: false };
         }
 
-        function amount(item) {
-          if (typeof item.Count === 'number') return '× ' + item.Count;
-          if (typeof item.Durability === 'number') return String(Math.round(item.Durability));
-          return '—';
+        function stackable(cat) {
+          return !DURABLE.has(cat) && cat !== 'Capes';
         }
 
-        function cell(tr, html, cls) {
-          const td = document.createElement('td');
-          if (cls) td.className = cls;
-          if (typeof html === 'string') td.textContent = html;
-          else td.append(html);
-          tr.append(td);
-          return td;
+        function toast(msg, cls) {
+          $('toast').textContent = msg;
+          $('toast').className = cls || '';
         }
 
-        function itemLabel(item) {
-          const d = describe(item);
-          const wrap = document.createElement('div');
-          const name = document.createElement('div');
-          name.className = 'name';
-          name.textContent = d.name;
-          const meta = document.createElement('div');
-          meta.className = d.known ? 'cat' : 'id';
-          meta.textContent = d.known ? d.cat : d.cat + ' · ' + item.ItemData;
-          wrap.append(name, meta);
-          const locked = WEARABLE_CATS.has(d.cat) ? lockedRecipesFor(item.ItemData) : [];
-          if (locked.length) {
-            const hint = document.createElement('div');
-            hint.className = 'row lock';
-            hint.textContent = 'Recipe not unlocked; the game can take gear off you for that.';
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.textContent = 'Unlock recipe';
-            b.onclick = () => act(() => {
-              for (const id of locked) DWSave.unlockRecipe(save, id);
-              return 'Unlocked the recipe for ' + d.name + '.';
-            });
-            hint.append(b);
-            wrap.append(hint);
+        function words(input) {
+          return input.value.toLowerCase().split(/\s+/).filter(Boolean);
+        }
+
+        function matches(text, ws) {
+          const t = text.toLowerCase();
+          return ws.every((w) => t.includes(w));
+        }
+
+        // Runs an edit; on success records it, redraws and reports it.
+        function act(fn) {
+          try {
+            const msg = fn();
+            changes.push(msg);
+            render();
+            toast(msg, 'ok');
+          } catch (e) {
+            render();
+            toast(e.message, 'err');
           }
-          return wrap;
+        }
+
+        function numberField(label, value, min, onSet) {
+          const input = h('input', { type: 'number', min, step: 1, value, 'aria-label': label });
+          input.onchange = () => {
+            const n = Number(input.value);
+            if (n === value) return;
+            act(() => onSet(n));
+          };
+          return h('label', { class: 'field' }, label, input);
         }
 
         // Recipes that make this item, if the character knows none of them.
@@ -261,191 +363,302 @@
           return ids;
         }
 
-        function recipeName(id) {
-          return RECIPES[id] ? RECIPES[id][0] : 'Unknown recipe';
+        function recipeHint(item) {
+          const d = describe(item.ItemData);
+          if (!(d.cat in SLOT_FOR_CAT) && !DURABLE.has(d.cat)) return null;
+          const locked = lockedRecipesFor(item.ItemData);
+          if (!locked.length) return null;
+          return h('div', { class: 'lock' }, 'Recipe not unlocked; the game takes some gear off you for that.',
+            h('button', {
+              type: 'button',
+              onclick: () => act(() => {
+                for (const id of locked) DWSave.unlockRecipe(save, id);
+                return 'Unlocked the recipe for ' + d.name + '.';
+              }),
+            }, 'Unlock recipe'));
+        }
+
+        function itemLabel(item) {
+          const d = describe(item.ItemData);
+          return h('div', { class: 'label' },
+            h('div', { class: 'name' }, d.name),
+            h('div', { class: d.known ? 'meta' : 'meta id' }, d.known ? d.cat : d.cat + ' · ' + item.ItemData),
+            recipeHint(item));
+        }
+
+        function amountFields(where, slot, item) {
+          const d = describe(item.ItemData);
+          const fields = [];
+          if (typeof item.Count === 'number' || (d.known && stackable(d.cat))) {
+            fields.push(numberField('Qty', item.Count || 1, 1, (n) => {
+              DWSave.setCount(save, where, slot, n);
+              return d.name + ': quantity set to ' + n + '.';
+            }));
+          }
+          if (typeof item.Durability === 'number') {
+            fields.push(numberField('Durability', Math.round(item.Durability), 0, (n) => {
+              DWSave.setDurability(save, where, slot, n);
+              return d.name + ': durability set to ' + n + '.';
+            }));
+          }
+          return fields;
+        }
+
+        // ---- rendering --------------------------------------------------------
+
+        function render() {
+          const n = changes.length;
+          $('changeCount').textContent = n ? n + ' unsaved change' + (n === 1 ? '' : 's') : 'No unsaved changes';
+          $('changeCount').className = n ? 'pending' : 'muted';
+          $('writeBack').disabled = !n;
+          $('download').disabled = !n;
+          $('log').textContent = '';
+          for (const c of changes) $('log').append(h('li', null, c));
+          $('logBadge').textContent = n ? '(' + n + ')' : '';
+          renderGear();
+          renderBag();
+          renderAdd();
+          renderRecipes();
+        }
+
+        function renderGear() {
+          const box = $('slots');
+          box.textContent = '';
+          const loadout = DWSave.progress(save).Loadout;
+          for (const [slot, label] of Object.entries(WEARABLE_SLOTS)) {
+            const item = loadout[slot];
+            if (!item || !item.ItemData) {
+              box.append(h('div', { class: 'slot vacant' }, h('h3', null, label), h('div', { class: 'name' }, 'Nothing worn')));
+              continue;
+            }
+            const d = describe(item.ItemData);
+            box.append(h('div', { class: 'slot' },
+              h('h3', null, label),
+              itemLabel(item),
+              amountFields('Loadout', Number(slot), item),
+              h('div', { class: 'actions' }, h('button', {
+                type: 'button',
+                onclick: () => act(() => {
+                  const r = DWSave.unequip(save, Number(slot));
+                  return d.name + ' taken off, now in bag slot ' + r.slot + '.';
+                }),
+              }, 'Take off'))));
+          }
+        }
+
+        function wearButton(slot, item) {
+          const d = describe(item.ItemData);
+          const wear = (to) => act(() => {
+            const r = DWSave.equip(save, slot, to);
+            let msg = d.name + ' is now worn as ' + WEARABLE_SLOTS[to].toLowerCase() + '.';
+            if (r.unequipped) msg += ' ' + describe(r.unequipped.ItemData).name + ' went to bag slot ' + slot + '.';
+            return msg;
+          });
+          if (d.cat in SLOT_FOR_CAT) {
+            const to = SLOT_FOR_CAT[d.cat];
+            return h('button', { type: 'button', class: 'primary', onclick: () => wear(to) }, 'Wear');
+          }
+          if (d.known) return null;
+          // Unknown items might be gear from a newer patch: let the player pick.
+          const pick = h('select', { 'aria-label': 'Wear in slot' },
+            h('option', { value: '' }, 'Wear as…'),
+            Object.entries(WEARABLE_SLOTS).map(([s, l]) => h('option', { value: s }, l)));
+          pick.onchange = () => { if (pick.value !== '') wear(Number(pick.value)); };
+          return pick;
+        }
+
+        function renderBag() {
+          const list = $('bag');
+          list.textContent = '';
+          const ws = words($('bagSearch'));
+          const all = DWSave.inventoryItems(save).filter((x) => x.item.ItemData);
+          $('bagBadge').textContent = '(' + all.length + ')';
+          let unknown = 0;
+          let shown = 0;
+          for (const { slot, item } of all) {
+            const d = describe(item.ItemData);
+            if (!d.known) unknown++;
+            if (!matches(d.name + ' ' + d.cat + ' ' + item.ItemData, ws)) continue;
+            shown++;
+            list.append(h('div', { class: 'item' + (d.known ? '' : ' unknown') },
+              h('div', { class: 'slotno', title: 'Bag slot' }, '#' + slot),
+              itemLabel(item),
+              amountFields('Inventory', slot, item),
+              h('div', { class: 'actions' },
+                wearButton(slot, item),
+                h('button', {
+                  type: 'button',
+                  class: 'quiet',
+                  title: 'Remove from bag',
+                  onclick: () => act(() => {
+                    DWSave.removeItem(save, slot);
+                    return d.name + ' removed from bag slot ' + slot + '.';
+                  }),
+                }, 'Remove'))));
+          }
+          if (!shown) list.append(h('div', { class: 'empty' }, all.length ? 'Nothing in your bag matches.' : 'Your bag is empty.'));
+          $('unknownHint').textContent = unknown
+            ? 'Items marked "Unknown item" are newer than this page\'s item list. Capes show no quantity or durability, so an unknown item without either may be a cape.'
+            : '';
+        }
+
+        function renderAdd() {
+          const free = DWSave.firstFreeBagSlot(save);
+          const inv = DWSave.progress(save).Inventory;
+          const freeCount = Array.from({ length: 32 }, (_, i) => i).filter((s) => !(inv[s] && inv[s].ItemData)).length;
+          $('freeSlots').textContent = freeCount ? freeCount + ' of 32 slots are free.' : 'Your bag is full.';
+
+          const sel = $('addCategory');
+          if (!sel.options.length) {
+            const cats = [...new Set(ITEM_IDS.map((id) => ITEMS[id][1]))].sort();
+            sel.append(h('option', { value: '' }, 'All categories'), cats.map((c) => h('option', { value: c }, c)));
+          }
+          const ws = words($('addSearch'));
+          const cat = sel.value;
+          const list = $('addList');
+          list.textContent = '';
+          if (!ws.length && !cat) {
+            list.append(h('div', { class: 'empty' }, 'Type a name or pick a category.'));
+            $('addMore').textContent = '';
+            return;
+          }
+          const found = ITEM_IDS.filter((id) => (!cat || ITEMS[id][1] === cat) && matches(ITEMS[id].join(' ') + ' ' + id, ws));
+          for (const id of found.slice(0, LIMIT)) {
+            const [name, c] = ITEMS[id];
+            const qty = stackable(c) ? h('input', { type: 'number', min: 1, step: 1, value: 1, 'aria-label': 'Quantity' }) : null;
+            list.append(h('div', { class: 'item' },
+              h('div', { class: 'label' }, h('div', { class: 'name' }, name), h('div', { class: 'meta' }, c)),
+              qty ? h('label', { class: 'field' }, 'Qty', qty) : null,
+              h('div', { class: 'actions' }, h('button', {
+                type: 'button',
+                class: 'primary',
+                disabled: free === undefined,
+                onclick: () => act(() => {
+                  const n = qty ? Number(qty.value) : 1;
+                  const r = DWSave.addItem(save, id, n);
+                  return 'Added ' + (n > 1 ? n + ' × ' : '') + name + ' to bag slot ' + r.slot + '.';
+                }),
+              }, 'Add'))));
+          }
+          if (!found.length) list.append(h('div', { class: 'empty' }, 'No items match.'));
+          $('addMore').textContent = found.length > LIMIT ? 'Showing ' + LIMIT + ' of ' + found.length + '; search to narrow it down.' : '';
         }
 
         function renderRecipes() {
           const unlocked = DWSave.unlockedRecipes(save);
-          $('recipesSection').classList.toggle('hidden', !unlocked);
+          document.querySelector('[data-tab=recipes]').classList.toggle('hidden', !unlocked);
           if (!unlocked) return;
           const have = new Set(unlocked);
           const known = RECIPE_IDS.filter((id) => have.has(id)).length;
+          $('recipeBadge').textContent = '(' + known + '/' + RECIPE_IDS.length + ')';
           $('recipeSummary').textContent = known + ' of ' + RECIPE_IDS.length + ' recipes unlocked' +
-            (unlocked.length > known ? ' (plus ' + (unlocked.length - known) + ' this page does not know).' : '.');
+            (unlocked.length > known ? ', plus ' + (unlocked.length - known) + ' this page does not know.' : '.');
 
-          const words = $('recipeSearch').value.toLowerCase().split(/\s+/).filter(Boolean);
+          const ws = words($('recipeSearch'));
           const filter = $('recipeFilter').value;
-          const matches = RECIPE_IDS.filter((id) => {
+          const found = RECIPE_IDS.filter((id) => {
             if (filter === 'locked' && have.has(id)) return false;
             if (filter === 'unlocked' && !have.has(id)) return false;
             const [name, cat, , asset] = RECIPES[id];
-            const text = (name + ' ' + cat + ' ' + asset + ' ' + id).toLowerCase();
-            return words.every((w) => text.includes(w));
+            return matches(name + ' ' + cat + ' ' + asset + ' ' + id, ws);
           });
-
-          const body = $('recipes');
-          body.textContent = '';
-          for (const id of matches.slice(0, RECIPE_LIMIT)) {
+          const list = $('recipes');
+          list.textContent = '';
+          for (const id of found.slice(0, LIMIT)) {
             const [name, cat, , asset] = RECIPES[id];
             const on = have.has(id);
-            const tr = document.createElement('tr');
-            const label = document.createElement('div');
-            const n = document.createElement('div');
-            n.className = 'name';
-            n.textContent = name;
-            const meta = document.createElement('div');
-            meta.className = 'cat';
-            meta.textContent = cat + ' · ' + asset;
-            label.append(n, meta);
-            cell(tr, label);
-            cell(tr, on ? 'Unlocked' : 'Locked', 'hide-sm ' + (on ? 'unlocked' : 'cat'));
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.textContent = on ? 'Lock' : 'Unlock';
-            if (!on) b.className = 'primary';
-            b.onclick = () => act(() => {
-              if (on) DWSave.lockRecipe(save, id);
-              else DWSave.unlockRecipe(save, id);
-              return (on ? 'Locked ' : 'Unlocked ') + recipeName(id) + '.';
-            });
-            cell(tr, b, 'act');
-            body.append(tr);
+            list.append(h('div', { class: 'item' },
+              h('div', { class: 'label' }, h('div', { class: 'name' }, name), h('div', { class: 'meta' }, cat + ' · ' + asset)),
+              h('div', { class: 'actions' },
+                h('span', { class: on ? 'unlocked small' : 'muted small' }, on ? 'Unlocked' : 'Locked'),
+                h('button', {
+                  type: 'button',
+                  class: on ? '' : 'primary',
+                  onclick: () => act(() => {
+                    if (on) DWSave.lockRecipe(save, id);
+                    else DWSave.unlockRecipe(save, id);
+                    return (on ? 'Locked the ' : 'Unlocked the ') + name + ' recipe.';
+                  }),
+                }, on ? 'Lock' : 'Unlock'))));
           }
-          $('recipeMore').textContent = !matches.length ? 'No recipes match.'
-            : matches.length > RECIPE_LIMIT ? 'Showing ' + RECIPE_LIMIT + ' of ' + matches.length + '; search to narrow it down.' : '';
+          if (!found.length) list.append(h('div', { class: 'empty' }, 'No recipes match.'));
+          $('recipeMore').textContent = found.length > LIMIT ? 'Showing ' + LIMIT + ' of ' + found.length + '; search to narrow it down.' : '';
         }
 
+        // ---- tabs ---------------------------------------------------------------
+
+        function showTab(name) {
+          for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+          for (const p of document.querySelectorAll('[data-panel]')) p.classList.toggle('hidden', p.dataset.panel !== name);
+          try { localStorage.setItem('dw-tab', name); } catch (_) {}
+        }
+        for (const b of document.querySelectorAll('[data-tab]')) b.onclick = () => showTab(b.dataset.tab);
+        let firstTab = 'gear';
+        try { firstTab = localStorage.getItem('dw-tab') || 'gear'; } catch (_) {}
+        showTab(document.querySelector('[data-tab="' + firstTab + '"]') ? firstTab : 'gear');
+
+        $('bagSearch').oninput = () => save && renderBag();
+        $('addSearch').oninput = () => save && renderAdd();
+        $('addCategory').onchange = () => save && renderAdd();
         $('recipeSearch').oninput = () => save && renderRecipes();
         $('recipeFilter').onchange = () => save && renderRecipes();
 
-        function render() {
-          const worn = $('worn');
-          worn.textContent = '';
-          for (const [slot, label] of Object.entries(WEARABLE_SLOTS)) {
-            const item = DWSave.progress(save).Loadout[slot];
-            const tr = document.createElement('tr');
-            cell(tr, label);
-            if (item && item.ItemData) {
-              cell(tr, itemLabel(item));
-              cell(tr, amount(item), 'num hide-sm');
-              const b = document.createElement('button');
-              b.type = 'button';
-              b.textContent = 'Take off';
-              b.onclick = () => act(() => {
-                const r = DWSave.unequip(save, Number(slot));
-                return describe(r.item).name + ' moved to inventory slot ' + r.slot + '.';
-              });
-              cell(tr, b, 'act');
-            } else {
-              cell(tr, '—', 'cat');
-              cell(tr, '', 'hide-sm');
-              cell(tr, '');
-            }
-            worn.append(tr);
-          }
-
-          const inv = $('inv');
-          inv.textContent = '';
-          const items = DWSave.inventoryItems(save);
-          let unknown = 0;
-          for (const { slot, item } of items) {
-            if (!item.ItemData) continue;
-            const d = describe(item);
-            if (!d.known) unknown++;
-            const tr = document.createElement('tr');
-            if (!d.known) tr.className = 'unknown';
-            cell(tr, String(slot), 'num hide-sm');
-            cell(tr, itemLabel(item));
-            cell(tr, amount(item), 'num hide-sm');
-
-            const act_ = document.createElement('div');
-            act_.className = 'row';
-            act_.style.justifyContent = 'flex-end';
-            const wear = document.createElement('button');
-            wear.type = 'button';
-            wear.className = d.known ? '' : 'primary';
-            wear.textContent = 'Wear as cape';
-            wear.onclick = () => act(() => wearIn(slot, CAPE_SLOT));
-            const other = document.createElement('select');
-            other.setAttribute('aria-label', 'Wear in another slot');
-            other.innerHTML = '<option value="">Other slot…</option>' +
-              Object.entries(WEARABLE_SLOTS)
-                .filter(([s]) => Number(s) !== CAPE_SLOT)
-                .map(([s, l]) => '<option value="' + s + '">' + l + '</option>').join('');
-            other.onchange = () => {
-              if (other.value !== '') act(() => wearIn(slot, Number(other.value)));
-            };
-            act_.append(wear, other);
-            cell(tr, act_, 'act');
-            inv.append(tr);
-          }
-          $('unknownHint').textContent = unknown
-            ? 'Items marked "Unknown item" are newer than this page\'s item list, which was read from the game\'s files. Capes have no durability or count, so an unknown item with nothing in that column may be a cape. Wearing the wrong one is harmless: press Take off, or wear the right one over it.'
-            : '';
-          renderRecipes();
-          $('download').disabled = !dirty;
-          $('writeBack').disabled = !dirty;
-        }
-
-        function wearIn(invSlot, loadoutSlot) {
-          const r = DWSave.equip(save, invSlot, loadoutSlot);
-          let msg = describe(r.equipped).name + ' is now worn in the ' + WEARABLE_SLOTS[loadoutSlot] + ' slot.';
-          if (r.unequipped) msg += ' ' + describe(r.unequipped).name + ' went to inventory slot ' + invSlot + '.';
-          return msg;
-        }
-
-        function act(fn) {
-          try {
-            const msg = fn();
-            dirty = true;
-            render();
-            setStatus(msg + ' Now save the file (step 5).', 'ok');
-          } catch (e) {
-            setStatus(e.message, 'err');
-          }
-        }
+        // ---- opening and saving -----------------------------------------------
 
         function load(text, name, handle) {
+          let parsed;
           try {
-            save = DWSave.parse(text);
+            parsed = DWSave.parse(text);
           } catch (e) {
-            setStatus('Could not read ' + name + ': ' + e.message, 'err');
+            $('openStatus').textContent = 'Could not read ' + name + ': ' + e.message;
+            $('openStatus').className = 'small err';
             return;
           }
+          save = parsed;
           originalText = text;
           fileName = name;
           fileHandle = handle || null;
-          dirty = false;
+          changes = [];
           const who = (save.meta_data && save.meta_data.char_name) || name.replace(/\.json$/i, '');
-          setStatus('Loaded ' + who + '.', 'ok');
-          if (/\.backup$|\.verbackup$/i.test(name)) {
-            setStatus('Loaded ' + who + ' from a backup file. Save it as ' + who + '.json for the game to use it.', 'note');
-          }
+          $('who').textContent = who + ' · ' + name;
           $('writeBack').classList.toggle('hidden', !fileHandle);
-          $('editor').classList.remove('hidden');
+          $('start').classList.add('hidden');
+          $('app').classList.remove('hidden');
           render();
+          const current = document.querySelector('[data-tab][aria-selected=true]');
+          if (!current || current.classList.contains('hidden')) showTab('gear');
+          toast(/\.backup$|\.verbackup$/i.test(name)
+            ? 'Opened a backup file. Save it as ' + who + '.json for the game to use it.'
+            : 'Opened ' + who + '.', /\.backup$|\.verbackup$/i.test(name) ? 'note' : 'ok');
         }
 
         async function readFile(file, handle) {
           load(await file.text(), file.name, handle);
         }
 
+        async function pickFile() {
+          try {
+            const [handle] = await window.showOpenFilePicker({
+              id: 'dw-save',
+              types: [{ description: 'Dragonwilds character', accept: { 'application/json': ['.json'] } }],
+            });
+            await readFile(await handle.getFile(), handle);
+          } catch (e) {
+            if (e.name !== 'AbortError') toast(e.message, 'err');
+          }
+        }
+
         if (canPick) {
           $('pick').classList.remove('hidden');
-          $('pick').onclick = async () => {
-            try {
-              const [handle] = await window.showOpenFilePicker({
-                id: 'dw-save',
-                types: [{ description: 'Dragonwilds character', accept: { 'application/json': ['.json'] } }],
-              });
-              await readFile(await handle.getFile(), handle);
-            } catch (e) {
-              if (e.name !== 'AbortError') setStatus(e.message, 'err');
-            }
-          };
+          $('pick').onclick = pickFile;
         }
-        $('file').onchange = (e) => { if (e.target.files[0]) readFile(e.target.files[0]); };
+        $('file').onchange = (e) => { if (e.target.files[0]) readFile(e.target.files[0]); e.target.value = ''; };
+
+        $('openOther').onclick = () => {
+          if (changes.length && !confirm('Discard your unsaved changes?')) return;
+          if (canPick) pickFile();
+          else $('file').click();
+        };
 
         const drop = $('drop');
         drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
@@ -462,34 +675,41 @@
           if (file) readFile(file, handle && handle.kind === 'file' ? handle : null);
         });
 
+        function saved(msg) {
+          changes = [];
+          render();
+          toast(msg, 'ok');
+        }
+
         $('download').onclick = () => {
-          const blob = new Blob([DWSave.serialize(save, originalText)], { type: 'application/json' });
+          const text = DWSave.serialize(save, originalText);
           const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
+          a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
           a.download = fileName.replace(/\.json\.(\d+\.ver)?backup$/i, '.json');
           document.body.append(a);
           a.click();
           a.remove();
           setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-          $('saveStatus').textContent = 'Downloaded ' + a.download + '. Move it into SaveCharacters, replacing the old one.';
-          $('saveStatus').className = 'ok';
+          originalText = text;
+          saved('Downloaded ' + a.download + '. Move it into SaveCharacters, replacing the old one.');
         };
 
         $('writeBack').onclick = async () => {
           try {
+            const text = DWSave.serialize(save, originalText);
             const writable = await fileHandle.createWritable();
-            await writable.write(DWSave.serialize(save, originalText));
+            await writable.write(text);
             await writable.close();
-            originalText = DWSave.serialize(save, originalText);
-            dirty = false;
-            render();
-            $('saveStatus').textContent = 'Saved over ' + fileName + '. You can start the game.';
-            $('saveStatus').className = 'ok';
+            originalText = text;
+            saved('Saved ' + fileName + '. Load the character in the game.');
           } catch (e) {
-            $('saveStatus').textContent = 'Could not save: ' + e.message + ' Use Download instead.';
-            $('saveStatus').className = 'err';
+            toast('Could not save: ' + e.message + ' Use Download instead.', 'err');
           }
         };
+
+        window.addEventListener('beforeunload', (e) => {
+          if (changes.length) e.preventDefault();
+        });
       })();
     </script>
   </body>

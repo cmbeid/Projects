@@ -177,6 +177,57 @@ test('saves without a recipe list say so instead of inventing one', () => {
   assert.throws(() => DWSave.unlockRecipe(save, 'x'), /no recipe list/);
 });
 
+test('setCount writes Count where the game does and drops it at 1', () => {
+  const save = DWSave.parse(NEW_FORMAT);
+  DWSave.setCount(save, 'Inventory', 15, 25);
+  assert.deepEqual(Object.keys(save.GameProgress.Inventory[15]), ['GUID', 'ItemData', 'Count', 'AddedToInventoryTimestamp']);
+  const out = DWSave.serialize(save, NEW_FORMAT);
+  assert.equal(out, NEW_FORMAT.replace('"FireCapeIdNotInCatalog",\r\n', '"FireCapeIdNotInCatalog",\r\n\t\t\t\t"Count": 25,\r\n'));
+  DWSave.setCount(save, 'Inventory', 15, 1);
+  assert.equal(DWSave.serialize(save, NEW_FORMAT), NEW_FORMAT);
+  assert.throws(() => DWSave.setCount(save, 'Inventory', 15, 0), /at least 1/);
+  assert.throws(() => DWSave.setCount(save, 'Inventory', 15, 2.5), /whole number/);
+  assert.throws(() => DWSave.setCount(save, 'Inventory', 3, 2), /empty/);
+});
+
+test('setDurability updates in place or goes before NumUpgradesApplied', () => {
+  const save = sample();
+  DWSave.setDurability(save, 'Inventory', 1, 900);
+  assert.deepEqual(save.Inventory[1], { GUID: 'b', ItemData: 'y', Durability: 900 });
+  save.Inventory[0] = { GUID: 'w', ItemData: 'sword', NumUpgradesApplied: 2, AddedToInventoryTimestamp: 5 };
+  DWSave.setDurability(save, 'Inventory', 0, 1900);
+  assert.deepEqual(Object.keys(save.Inventory[0]), ['GUID', 'ItemData', 'Durability', 'NumUpgradesApplied', 'AddedToInventoryTimestamp']);
+  DWSave.setDurability(save, 'Loadout', 1, 7);
+  assert.equal(save.Loadout[1].Durability, 7);
+});
+
+test('addItem fills the first free bag slot with a fresh entry', () => {
+  const save = DWSave.parse(NEW_FORMAT);
+  const r = DWSave.addItem(save, '_QMgbMYhjU-9jAD_euFbyQ', 500);
+  assert.equal(r.slot, 0);
+  const item = save.GameProgress.Inventory[0];
+  assert.deepEqual(Object.keys(item), ['GUID', 'ItemData', 'Count', 'AddedToInventoryTimestamp']);
+  assert.match(item.GUID, /^[A-Za-z0-9_-]{22}$/);
+  assert.equal(item.Count, 500);
+  assert.ok(item.AddedToInventoryTimestamp > 6.39e17);
+  assert.notEqual(DWSave.addItem(save, '36kwMUzRF5L6DG-k7YgkSw').item.GUID, item.GUID);
+  assert.equal(save.GameProgress.Inventory[1].Count, undefined);
+  assert.throws(() => DWSave.addItem(save, 'not an id'), /not an item ID/);
+});
+
+test('addItem refuses when the bag is full', () => {
+  const save = sample();
+  for (let s = 0; s < 32; s++) save.Inventory[s] = { GUID: 'g' + s, ItemData: 'x' };
+  assert.throws(() => DWSave.addItem(save, '_QMgbMYhjU-9jAD_euFbyQ'), /full/);
+});
+
+test('removeItem empties the inventory slot', () => {
+  const save = sample();
+  assert.equal(DWSave.removeItem(save, 9), CAPE);
+  assert.equal(save.Inventory[9], undefined);
+  assert.throws(() => DWSave.removeItem(save, 9), /empty/);
+});
+
 test('numbers are written like printf %.17g', () => {
   const cases = { 0: '0', 1468: '1468', 2544458474: '2544458474', 0.1: '0.10000000000000001',
     1e-5: '1.0000000000000001e-05', 1e17: '1e+17', 639279712607330050: '6.3927971260733005e+17', '-2.5': '-2.5' };
