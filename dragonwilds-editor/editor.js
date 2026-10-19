@@ -13,9 +13,25 @@
   const WEARABLE_SLOTS = { 0: 'Head', 1: 'Body', 2: 'Legs', 3: 'Cape', 4: 'Ring' };
   const CAPE_SLOT = 3;
 
-  // Action bar is 0-7, the main bag 8-31. An unequipped item goes back into
-  // the first free one of these.
-  const BAG_SLOTS = Array.from({ length: 32 }, (_, i) => i);
+  // Inventory slots by section, as the game lays them out (MaxSlotIndex 119).
+  const SECTIONS = [
+    { key: 'hotbar', label: 'Hotbar', from: 0, to: 7 },
+    { key: 'bag', label: 'Bag', from: 8, to: 39 },
+    { key: 'runes', label: 'Runes', from: 40, to: 71 },
+    { key: 'arrows', label: 'Arrows', from: 72, to: 103 },
+    { key: 'quest', label: 'Quest items', from: 104, to: 119 },
+  ];
+  const SECTION = Object.fromEntries(SECTIONS.map((s) => [s.key, s]));
+
+  function sectionOf(slot) {
+    return SECTIONS.find((s) => slot >= s.from && slot <= s.to) || null;
+  }
+
+  // Where a new or unequipped item goes: its own pouch, or else the main bag
+  // and then the hotbar.
+  function sectionsFor(section) {
+    return section && section !== 'bag' && section !== 'hotbar' ? [section] : ['bag', 'hotbar'];
+  }
 
   // Newer saves (Version 80-something on) keep Inventory and Loadout under
   // GameProgress; older ones have them at the top level.
@@ -128,13 +144,33 @@
     return { equipped: item, unequipped: previous && previous.ItemData ? previous : null };
   }
 
-  function firstFreeBagSlot(save) {
+  function freeSlots(save, key) {
     const inv = progress(save).Inventory;
-    return BAG_SLOTS.find((s) => !(inv[s] && inv[s].ItemData));
+    const { from, to } = SECTION[key];
+    const out = [];
+    for (let s = from; s <= to; s++) if (!(inv[s] && inv[s].ItemData)) out.push(s);
+    return out;
+  }
+
+  // First free slot for an item that belongs in `section` (see sectionsFor).
+  function firstFreeSlot(save, section) {
+    for (const key of sectionsFor(section)) {
+      const free = freeSlots(save, key);
+      if (free.length) return free[0];
+    }
+    return undefined;
+  }
+
+  function fullError(section) {
+    const keys = sectionsFor(section);
+    const names = keys.map((k) => SECTION[k].label.toLowerCase());
+    return new Error(keys.length > 1
+      ? `Your ${names.join(' and ')} are full; free a slot first.`
+      : `Your ${names[0]} section is full; free a slot first.`);
   }
 
   // Takes the item off wearable loadout slot `loadoutSlot` and puts it in the
-  // first free bag slot.
+  // first free bag slot, or the hotbar if the bag is full.
   function unequip(save, loadoutSlot) {
     if (!(loadoutSlot in WEARABLE_SLOTS)) {
       throw new Error(`Loadout slot ${loadoutSlot} is not a wearable slot.`);
@@ -142,8 +178,8 @@
     const { Inventory, Loadout } = progress(save);
     const item = Loadout[loadoutSlot];
     if (!item || !item.ItemData) throw new Error(`Nothing is worn in the ${WEARABLE_SLOTS[loadoutSlot]} slot.`);
-    const slot = firstFreeBagSlot(save);
-    if (slot === undefined) throw new Error('Your bag and action bar are full; free a slot first.');
+    const slot = firstFreeSlot(save, 'bag');
+    if (slot === undefined) throw fullError('bag');
     Inventory[slot] = item;
     bumpMaxSlot(Inventory, slot);
     delete Loadout[loadoutSlot];
@@ -217,14 +253,16 @@
     return (Date.now() + 62135596800000) * 10000;
   }
 
-  // Puts a new item in the first free bag slot. Gear gets no Durability, so
-  // the game starts it at its own default.
-  function addItem(save, itemId, count) {
+  // Puts a new item in the first free slot of `section` ('runes', 'arrows',
+  // 'quest'; anything else means the bag, then the hotbar). Gear gets no
+  // Durability, so the game starts it at its own default.
+  function addItem(save, itemId, count, section) {
     const n = count === undefined ? 1 : count;
     wholeNumber(n, 1, 'Count');
     if (!/^[A-Za-z0-9_-]{22}$/.test(itemId)) throw new Error(`${itemId} is not an item ID.`);
-    const slot = firstFreeBagSlot(save);
-    if (slot === undefined) throw new Error('Your bag and action bar are full; free a slot first.');
+    if (section && !SECTION[section]) throw new Error(`Unknown inventory section ${section}.`);
+    const slot = firstFreeSlot(save, section);
+    if (slot === undefined) throw fullError(section);
     const item = { GUID: newGuid(), ItemData: itemId };
     if (n > 1) item.Count = n;
     item.AddedToInventoryTimestamp = ticksNow();
@@ -266,7 +304,8 @@
   }
 
   const api = { WEARABLE_SLOTS, CAPE_SLOT, progress, parse, serialize, formatNumber, inventoryItems, loadoutItems, equip, unequip,
-    unlockedRecipes, unlockRecipe, lockRecipe, setCount, setDurability, removeItem, addItem, firstFreeBagSlot };
+    unlockedRecipes, unlockRecipe, lockRecipe, setCount, setDurability, removeItem, addItem,
+    SECTIONS, sectionOf, freeSlots, firstFreeSlot };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.DWSave = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -14,9 +14,12 @@ Fire Cape. The save is read and written locally; nothing is uploaded.
 3. Open `index.html` (straight from disk is fine, or the Pages build) and load
    the character file. The tabs:
    - **Gear**: what is worn, with durability and **Take off**.
-   - **Bag**: filter, change **Qty** or **Durability**, **Wear** gear in its
-     slot, or **Remove** an item.
-   - **Add items**: search all items and add them to the first free bag slot.
+   - **Inventory**: grouped into hotbar, bag, runes, arrows and quest items.
+     Filter, change **Qty** or **Durability**, **Wear** gear in its slot, or
+     **Remove** an item.
+   - **Add items**: search all items and add them. Runes, arrows and quest
+     items go in their own section; everything else in the bag, then the
+     hotbar.
    - **Recipes**: search, then **Unlock** or **Lock**.
 4. Press **Save** to write over the original (Chrome/Edge), or **Download** and
    put the file back under the same name. Then load the character in the game.
@@ -33,6 +36,8 @@ the edited one in.
   number arrays on one line and numbers as `%.17g`. The editor writes the same
   way, so an unedited save round-trips byte for byte and an edit changes only
   the lines it touches.
+- `Inventory` slots are sectioned: 0–7 hotbar, 8–39 bag, 40–71 runes, 72–103
+  arrows and bolts, 104–119 quest items and keys (`MaxSlotIndex` 119).
 - `Loadout` slots 0–4 (head, body, legs, cape, ring) hold the item itself.
   Slots that hold only a `PlayerInventoryItemIndex` (weapon, shield, ammo and
   so on) point back into `Inventory`, and this editor does not touch them.
