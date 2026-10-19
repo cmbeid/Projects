@@ -150,6 +150,90 @@
     return { slot, item };
   }
 
+  // Item entries are { GUID, ItemData, Durability?, NumUpgradesApplied?,
+  // Count?, AddedToInventoryTimestamp } in that order. The game writes Count
+  // only for stacks of more than one, Durability only on gear that wears, and
+  // neither on capes.
+  const CONTAINERS = ['Inventory', 'Loadout'];
+
+  function entryAt(save, where, slot) {
+    if (!CONTAINERS.includes(where)) throw new Error(`Unknown container ${where}.`);
+    const container = progress(save)[where];
+    const item = container[slot];
+    if (!item || !item.ItemData) throw new Error(`${where} slot ${slot} is empty.`);
+    return { container, item };
+  }
+
+  // Rebuilds the entry with `key` set, placed before the first of `before`
+  // that is present, so new keys land where the game would write them.
+  function withKey(item, key, value, before) {
+    if (key in item) return Object.assign(item, { [key]: value });
+    const at = before.find((k) => k in item);
+    const out = {};
+    for (const k of Object.keys(item)) {
+      if (k === at) out[key] = value;
+      out[k] = item[k];
+    }
+    if (!at) out[key] = value;
+    return out;
+  }
+
+  function wholeNumber(n, min, what) {
+    if (!Number.isInteger(n) || n < min) throw new Error(`${what} must be a whole number of at least ${min}.`);
+  }
+
+  function setCount(save, where, slot, count) {
+    wholeNumber(count, 1, 'Count');
+    const { container, item } = entryAt(save, where, slot);
+    if (count === 1) delete item.Count;
+    else container[slot] = withKey(item, 'Count', count, ['AddedToInventoryTimestamp']);
+    return container[slot];
+  }
+
+  function setDurability(save, where, slot, durability) {
+    wholeNumber(durability, 0, 'Durability');
+    const { container, item } = entryAt(save, where, slot);
+    container[slot] = withKey(item, 'Durability', durability, ['NumUpgradesApplied', 'Count', 'AddedToInventoryTimestamp']);
+    return container[slot];
+  }
+
+  function removeItem(save, invSlot) {
+    const { container, item } = entryAt(save, 'Inventory', invSlot);
+    delete container[invSlot];
+    return item;
+  }
+
+  // 16 random bytes as 22 URL-safe base64 characters, like the game's GUIDs.
+  function newGuid() {
+    const bytes = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(bytes);
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  // .NET ticks (100 ns since 0001-01-01), which AddedToInventoryTimestamp uses.
+  function ticksNow() {
+    return (Date.now() + 62135596800000) * 10000;
+  }
+
+  // Puts a new item in the first free bag slot. Gear gets no Durability, so
+  // the game starts it at its own default.
+  function addItem(save, itemId, count) {
+    const n = count === undefined ? 1 : count;
+    wholeNumber(n, 1, 'Count');
+    if (!/^[A-Za-z0-9_-]{22}$/.test(itemId)) throw new Error(`${itemId} is not an item ID.`);
+    const slot = firstFreeBagSlot(save);
+    if (slot === undefined) throw new Error('Your bag and action bar are full; free a slot first.');
+    const item = { GUID: newGuid(), ItemData: itemId };
+    if (n > 1) item.Count = n;
+    item.AddedToInventoryTimestamp = ticksNow();
+    const inv = progress(save).Inventory;
+    inv[slot] = item;
+    bumpMaxSlot(inv, slot);
+    return { slot, item };
+  }
+
   // Progress.RecipesUnlocked lists the recipe IDs the character knows. Some
   // gear checks it on load: the Fire Cape is taken off a character that has
   // not unlocked RECIPE_Armour_T0_Cape_Fire.
@@ -182,7 +266,7 @@
   }
 
   const api = { WEARABLE_SLOTS, CAPE_SLOT, progress, parse, serialize, formatNumber, inventoryItems, loadoutItems, equip, unequip,
-    unlockedRecipes, unlockRecipe, lockRecipe };
+    unlockedRecipes, unlockRecipe, lockRecipe, setCount, setDurability, removeItem, addItem, firstFreeBagSlot };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.DWSave = api;
 })(typeof self !== 'undefined' ? self : this);
