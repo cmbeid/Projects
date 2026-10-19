@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dragonwilds Save Editor</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #12100e;
+        --panel: #1d1915;
+        --line: #3a3128;
+        --text: #efe6d8;
+        --muted: #a89a86;
+        --accent: #e8822a;
+        --accent-ink: #1a0f05;
+        --warn: #f2c14e;
+        --bad: #ef6b5b;
+        --good: #7fc77a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main { max-width: 52rem; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 24px; margin: 0 0 4px; }
+      h2 { font-size: 17px; margin: 0 0 12px; }
+      p { margin: 0 0 10px; }
+      .sub { color: var(--muted); margin-bottom: 20px; }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      ol { margin: 0; padding-left: 20px; }
+      li { margin-bottom: 6px; }
+      code {
+        background: #000a;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        font-size: 13px;
+        word-break: break-all;
+      }
+      button, label.button {
+        font: inherit;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #2b241d;
+        color: var(--text);
+        padding: 7px 12px;
+        cursor: pointer;
+      }
+      button:hover, label.button:hover { background: #362d24; }
+      button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+      button.primary:hover { background: #f39443; }
+      button:disabled { opacity: 0.45; cursor: default; }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      #drop {
+        border: 2px dashed var(--line);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        color: var(--muted);
+      }
+      #drop.over { border-color: var(--accent); color: var(--text); }
+      #status { min-height: 1.5em; margin-top: 10px; }
+      .ok { color: var(--good); }
+      .err { color: var(--bad); }
+      .note { color: var(--warn); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+      th { color: var(--muted); font-weight: 500; font-size: 13px; border-top: 0; }
+      td.num { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      td.act { text-align: right; white-space: nowrap; }
+      .name { font-weight: 600; }
+      .cat { color: var(--muted); font-size: 13px; }
+      .id { color: var(--muted); font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
+      tr.unknown .name { color: var(--warn); }
+      select { font: inherit; background: #2b241d; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+      .hidden { display: none; }
+      @media (max-width: 560px) {
+        th.hide-sm, td.hide-sm { display: none; }
+        td.act { white-space: normal; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Dragonwilds Save Editor</h1>
+      <p class="sub">Wear any item from your inventory, the Fire Cape included, by moving it into your equipment in the character save. Everything happens in this page; your save never leaves your computer.</p>
+
+      <section>
+        <h2>Before you start</h2>
+        <ol>
+          <li><strong>Quit the game fully.</strong> It keeps your character in memory and overwrites the file when it exits.</li>
+          <li>Your character saves are in <code>%LOCALAPPDATA%\RSDragonwilds\Saved\SaveCharacters</code>, one <code>&lt;CharacterName&gt;.json</code> per character. Paste that path into the File Explorer address bar, or press Win+R and paste it there.</li>
+          <li><strong>Copy the whole <code>SaveCharacters</code> folder somewhere safe</strong> before you change anything.</li>
+          <li>If Steam Cloud puts the old file back, turn it off for the game while you swap the edited one in (Steam &rarr; RuneScape: Dragonwilds &rarr; Properties &rarr; General).</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>1. Open your character</h2>
+        <div id="drop">
+          <p>Drop <code>&lt;CharacterName&gt;.json</code> here, or</p>
+          <div class="row" style="justify-content: center">
+            <button id="pick" class="primary hidden" type="button">Open save…</button>
+            <label class="button" id="pickFallback">Choose file…<input id="file" type="file" accept=".json,application/json" hidden /></label>
+          </div>
+        </div>
+        <div id="status" role="status"></div>
+      </section>
+
+      <div id="editor" class="hidden">
+        <section>
+          <h2>2. Worn gear</h2>
+          <table>
+            <thead><tr><th>Slot</th><th>Item</th><th class="hide-sm">Durability</th><th></th></tr></thead>
+            <tbody id="worn"></tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>3. Inventory</h2>
+          <p class="note" id="unknownHint"></p>
+          <table>
+            <thead><tr><th class="hide-sm">Slot</th><th>Item</th><th class="hide-sm">Durability / count</th><th></th></tr></thead>
+            <tbody id="inv"></tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>4. Save it</h2>
+          <p>Put the edited file back in <code>SaveCharacters</code> under <strong>exactly the same name</strong>, replacing the old one, then start the game.</p>
+          <div class="row">
+            <button id="writeBack" class="primary hidden" type="button">Save over the original</button>
+            <button id="download" type="button">Download edited file</button>
+            <span id="saveStatus"></span>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script src="items.js"></script>
+    <script src="editor.js"></script>
+    <script>
+      (function () {
+        'use strict';
+        const $ = (id) => document.getElementById(id);
+        const ITEMS = self.DW_ITEMS || {};
+        const { WEARABLE_SLOTS, CAPE_SLOT } = DWSave;
+        const canPick = 'showOpenFilePicker' in window;
+
+        let save = null;
+        let originalText = '';
+        let fileName = '';
+        let fileHandle = null;
+        let dirty = false;
+
+        function setStatus(msg, cls) {
+          const el = $('status');
+          el.textContent = msg;
+          el.className = cls || '';
+        }
+
+        function describe(item) {
+          const known = ITEMS[item.ItemData];
+          return known
+            ? { name: known[0], cat: known[1], known: true }
+            : { name: 'Unknown item', cat: 'newer than the item list', known: false };
+        }
+
+        function amount(item) {
+          if (typeof item.Count === 'number') return '× ' + item.Count;
+          if (typeof item.Durability === 'number') return String(Math.round(item.Durability));
+          return '';
+        }
+
+        function cell(tr, html, cls) {
+          const td = document.createElement('td');
+          if (cls) td.className = cls;
+          if (typeof html === 'string') td.textContent = html;
+          else td.append(html);
+          tr.append(td);
+          return td;
+        }
+
+        function itemLabel(item) {
+          const d = describe(item);
+          const wrap = document.createElement('div');
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = d.name;
+          const meta = document.createElement('div');
+          meta.className = d.known ? 'cat' : 'id';
+          meta.textContent = d.known ? d.cat : d.cat + ' · ' + item.ItemData;
+          wrap.append(name, meta);
+          return wrap;
+        }
+
+        function render() {
+          const worn = $('worn');
+          worn.textContent = '';
+          for (const [slot, label] of Object.entries(WEARABLE_SLOTS)) {
+            const item = save.Loadout[slot];
+            const tr = document.createElement('tr');
+            cell(tr, label);
+            if (item && item.ItemData) {
+              cell(tr, itemLabel(item));
+              cell(tr, amount(item), 'num hide-sm');
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.textContent = 'Take off';
+              b.onclick = () => act(() => {
+                const r = DWSave.unequip(save, Number(slot));
+                return describe(r.item).name + ' moved to inventory slot ' + r.slot + '.';
+              });
+              cell(tr, b, 'act');
+            } else {
+              cell(tr, '—', 'cat');
+              cell(tr, '', 'hide-sm');
+              cell(tr, '');
+            }
+            worn.append(tr);
+          }
+
+          const inv = $('inv');
+          inv.textContent = '';
+          const items = DWSave.inventoryItems(save);
+          let unknown = 0;
+          for (const { slot, item } of items) {
+            if (!item.ItemData) continue;
+            const d = describe(item);
+            if (!d.known) unknown++;
+            const tr = document.createElement('tr');
+            if (!d.known) tr.className = 'unknown';
+            cell(tr, String(slot), 'num hide-sm');
+            cell(tr, itemLabel(item));
+            cell(tr, amount(item), 'num hide-sm');
+
+            const act_ = document.createElement('div');
+            act_.className = 'row';
+            act_.style.justifyContent = 'flex-end';
+            const wear = document.createElement('button');
+            wear.type = 'button';
+            wear.className = d.known ? '' : 'primary';
+            wear.textContent = 'Wear as cape';
+            wear.onclick = () => act(() => wearIn(slot, CAPE_SLOT));
+            const other = document.createElement('select');
+            other.setAttribute('aria-label', 'Wear in another slot');
+            other.innerHTML = '<option value="">Other slot…</option>' +
+              Object.entries(WEARABLE_SLOTS)
+                .filter(([s]) => Number(s) !== CAPE_SLOT)
+                .map(([s, l]) => '<option value="' + s + '">' + l + '</option>').join('');
+            other.onchange = () => {
+              if (other.value !== '') act(() => wearIn(slot, Number(other.value)));
+            };
+            act_.append(wear, other);
+            cell(tr, act_, 'act');
+            inv.append(tr);
+          }
+          $('unknownHint').textContent = unknown
+            ? 'Items marked "Unknown item" are newer than this page\'s item list. The Fire Cape is one of them, so if you only see one unknown item that is cape-shaped in game, that\'s it. Its durability is shown next to it.'
+            : '';
+          $('download').disabled = !dirty;
+          $('writeBack').disabled = !dirty;
+        }
+
+        function wearIn(invSlot, loadoutSlot) {
+          const r = DWSave.equip(save, invSlot, loadoutSlot);
+          let msg = describe(r.equipped).name + ' is now worn in the ' + WEARABLE_SLOTS[loadoutSlot] + ' slot.';
+          if (r.unequipped) msg += ' ' + describe(r.unequipped).name + ' went to inventory slot ' + invSlot + '.';
+          return msg;
+        }
+
+        function act(fn) {
+          try {
+            const msg = fn();
+            dirty = true;
+            render();
+            setStatus(msg + ' Now save the file (step 4).', 'ok');
+          } catch (e) {
+            setStatus(e.message, 'err');
+          }
+        }
+
+        function load(text, name, handle) {
+          try {
+            save = DWSave.parse(text);
+          } catch (e) {
+            setStatus('Could not read ' + name + ': ' + e.message, 'err');
+            return;
+          }
+          originalText = text;
+          fileName = name;
+          fileHandle = handle || null;
+          dirty = false;
+          const who = (save.meta_data && save.meta_data.char_name) || name.replace(/\.json$/i, '');
+          setStatus('Loaded ' + who + '.', 'ok');
+          if (/\.backup$|\.verbackup$/i.test(name)) {
+            setStatus('Loaded ' + who + ' from a backup file. Save it as ' + who + '.json for the game to use it.', 'note');
+          }
+          $('writeBack').classList.toggle('hidden', !fileHandle);
+          $('editor').classList.remove('hidden');
+          render();
+        }
+
+        async function readFile(file, handle) {
+          load(await file.text(), file.name, handle);
+        }
+
+        if (canPick) {
+          $('pick').classList.remove('hidden');
+          $('pick').onclick = async () => {
+            try {
+              const [handle] = await window.showOpenFilePicker({
+                id: 'dw-save',
+                types: [{ description: 'Dragonwilds character', accept: { 'application/json': ['.json'] } }],
+              });
+              await readFile(await handle.getFile(), handle);
+            } catch (e) {
+              if (e.name !== 'AbortError') setStatus(e.message, 'err');
+            }
+          };
+        }
+        $('file').onchange = (e) => { if (e.target.files[0]) readFile(e.target.files[0]); };
+
+        const drop = $('drop');
+        drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+        drop.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          drop.classList.remove('over');
+          const entry = e.dataTransfer.items && e.dataTransfer.items[0];
+          let handle = null;
+          if (entry && entry.getAsFileSystemHandle) {
+            try { handle = await entry.getAsFileSystemHandle(); } catch (_) { handle = null; }
+          }
+          const file = e.dataTransfer.files[0];
+          if (file) readFile(file, handle && handle.kind === 'file' ? handle : null);
+        });
+
+        $('download').onclick = () => {
+          const blob = new Blob([DWSave.serialize(save, originalText)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = fileName.replace(/\.json\.(\d+\.ver)?backup$/i, '.json');
+          document.body.append(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+          $('saveStatus').textContent = 'Downloaded ' + a.download + '. Move it into SaveCharacters, replacing the old one.';
+          $('saveStatus').className = 'ok';
+        };
+
+        $('writeBack').onclick = async () => {
+          try {
+            const writable = await fileHandle.createWritable();
+            await writable.write(DWSave.serialize(save, originalText));
+            await writable.close();
+            originalText = DWSave.serialize(save, originalText);
+            dirty = false;
+            render();
+            $('saveStatus').textContent = 'Saved over ' + fileName + '. You can start the game.';
+            $('saveStatus').className = 'ok';
+          } catch (e) {
+            $('saveStatus').textContent = 'Could not save: ' + e.message + ' Use Download instead.';
+            $('saveStatus').className = 'err';
+          }
+        };
+      })();
+    </script>
+  </body>
+</html>

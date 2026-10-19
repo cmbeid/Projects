@@ -25,6 +25,7 @@ on:
        - 'hearthrise/**'
        - 'epochs/**'
        - 'voidwake/**'
+       - 'dragonwilds-editor/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -65,6 +66,7 @@ jobs:
             hearthrise/package-lock.json
             epochs/package-lock.json
             voidwake/package-lock.json
+            dragonwilds-editor/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -268,6 +270,18 @@ jobs:
         run: npm run build
         working-directory: voidwake
 
+      - name: Install (dragonwilds-editor)
+        run: npm ci
+        working-directory: dragonwilds-editor
+
+      - name: Test (dragonwilds-editor)
+        run: npm test
+        working-directory: dragonwilds-editor
+
+      - name: Build (dragonwilds-editor)
+        run: npm run build
+        working-directory: dragonwilds-editor
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -309,6 +323,9 @@ jobs:
 
           mkdir -p _site/voidwake
           cp -r voidwake/dist/. _site/voidwake/
+
+          mkdir -p _site/dragonwilds-editor
+          cp -r dragonwilds-editor/dist/. _site/dragonwilds-editor/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -424,6 +441,13 @@ jobs:
                     <span>
                       <span class="name">Voidwake</span>
                       <span class="desc">An RPG space survival game: gather the scattered ark across six sectors, keep your crew fed and breathing, and land on strange worlds to scavenge.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./dragonwilds-editor/">
+                    <span class="emoji" aria-hidden="true">🔥</span>
+                    <span>
+                      <span class="name">Dragonwilds Save Editor</span>
+                      <span class="desc">Wear any item from your RuneScape: Dragonwilds inventory, the Fire Cape included. Your save never leaves your computer.</span>
                     </span>
                   </a>
                 </div>

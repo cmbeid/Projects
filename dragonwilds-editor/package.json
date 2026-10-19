@@ -1,0 +1,10 @@
+{
+  "name": "dragonwilds-editor",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A browser-based character save editor for RuneScape: Dragonwilds.",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node --test"
+  }
+}
