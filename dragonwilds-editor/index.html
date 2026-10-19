@@ -267,7 +267,7 @@
             inv.append(tr);
           }
           $('unknownHint').textContent = unknown
-            ? 'Items marked "Unknown item" are newer than this page\'s item list, the Fire Cape among them. Capes have no durability or count, so look for an unknown item in your bag (slots 0-31) with nothing in that column. Wearing the wrong one is harmless: press Take off, or wear the right one over it.'
+            ? 'Items marked "Unknown item" are newer than this page\'s item list, which was read from the game\'s files. Capes have no durability or count, so an unknown item with nothing in that column may be a cape. Wearing the wrong one is harmless: press Take off, or wear the right one over it.'
             : '';
           $('download').disabled = !dirty;
           $('writeBack').disabled = !dirty;
