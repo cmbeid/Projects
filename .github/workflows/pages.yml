@@ -25,6 +25,7 @@ on:
        - 'hearthrise/**'
        - 'epochs/**'
        - 'voidwake/**'
+       - 'emberhold/**'
        - 'dragonwilds-editor/**'
        - '.github/workflows/pages.yml'
 
@@ -66,6 +67,7 @@ jobs:
             hearthrise/package-lock.json
             epochs/package-lock.json
             voidwake/package-lock.json
+            emberhold/package-lock.json
             dragonwilds-editor/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
@@ -270,6 +272,25 @@ jobs:
         run: npm run build
         working-directory: voidwake
 
+      - name: Install (emberhold)
+        run: npm ci
+        working-directory: emberhold
+
+      - name: Validate content (emberhold)
+        run: npm run validate
+        working-directory: emberhold
+
+      # Includes a bot playing eight hours on two seeds that has to reach a
+      # total level of 300, combat level 12 and five guild ranks without
+      # dying: a balance change that walls the early game fails here.
+      - name: Test (emberhold)
+        run: npm test
+        working-directory: emberhold
+
+      - name: Build (emberhold)
+        run: npm run build
+        working-directory: emberhold
+
       - name: Install (dragonwilds-editor)
         run: npm ci
         working-directory: dragonwilds-editor
@@ -323,6 +344,9 @@ jobs:
 
           mkdir -p _site/voidwake
           cp -r voidwake/dist/. _site/voidwake/
+
+          mkdir -p _site/emberhold
+          cp -r emberhold/dist/. _site/emberhold/
 
           mkdir -p _site/dragonwilds-editor
           cp -r dragonwilds-editor/dist/. _site/dragonwilds-editor/
@@ -441,6 +465,13 @@ jobs:
                     <span>
                       <span class="name">Voidwake</span>
                       <span class="desc">An RPG space survival game: gather the scattered ark across six sectors, keep your crew fed and breathing, and land on strange worlds to scavenge.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./emberhold/">
+                    <span class="emoji" aria-hidden="true">⚒️</span>
+                    <span>
+                      <span class="name">Emberhold</span>
+                      <span class="desc">An idle skilling and combat RPG in the spirit of Melvor Idle: thirty skills, mastery guilds, dungeons, slayer, a settlement, a ranch and a raid.</span>
                     </span>
                   </a>
                   <a class="card" href="./dragonwilds-editor/">

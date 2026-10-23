@@ -16,6 +16,7 @@ nothing at the root to install.
 | [`hearthrise/`](hearthrise/) | An incremental city-building game, portrait-first for the phone. Clear the ruins of a drowned city ward by ward and build it back on a grid per district, where every building likes or dislikes its neighbours. There are eight districts with their own hazards and 56 buildings, a Founder with stats, edicts and a passive tree, workshops and a Drafting Hall with 49 pieces of regalia, a 57-mission story with a choice at the top of the Spire, daily petitions, and the Tide as the prestige layer. The pixel art, sound effects and four-channel chiptune score are all made in code. |
 | [`epochs/`](epochs/) | An incremental city game through the ages, portrait-first for the phone. One city grows from a Stone Age campfire to the Space Age across eight eras: put citizens to work, build from 14 lines of buildings that each have a style for every era (81 in all) and modernize the old ones in place, research 80 techs, raise 15 wonders, and decide what the city does when the Chronicle asks. Launching the colony ship is the prestige layer: carry Heritage to a new world with its own traits. The pixel art, sound effects and a score that changes ensemble with every era are all made in code. |
 | [`voidwake/`](voidwake/) | An RPG space exploration survival game, portrait-first for the phone. Find the pieces of a broken colony ark across six sectors: jump across a star map on fuel and food, answer 70 events with crew stat checks, fight turn-based ship battles against a boss in every sector, and land your crew on nine kinds of world for real-time away missions with a thumb stick. Five crew classes with skill trees and gear, 15 upgradeable ship modules, a fabricator, three factions, a 36-mission story with three endings, and one persistent campaign with station checkpoints. The pixel art, sound effects and generative score are all made in code. |
+| [`emberhold/`](emberhold/) | An idle skilling and combat RPG in the spirit of Melvor Idle 1 and 2, portrait-first for the phone. Thirty skills, including the second game's Ranching, Hunting, Beastcrafting, Construction and Enchantment. Mastery guilds replace item mastery. Combat has a triangle and ten damage types that monsters resist or are weak to, plus prayer, spells, slayer, seven dungeons, a stronghold and the Rift. There are farming plots, an agility course, constellations, a survey map with dig sites and a museum, a settlement, a ranch, familiars, 16 quests, 32 pets, a wave raid, and four game modes (Standard, Hardcore, Adventure and Ancient Relics). It keeps playing for up to 24 hours offline. The pixel art and sound are all made in code. |
 | [`dragonwilds-editor/`](dragonwilds-editor/) | A browser-based character save editor for RuneScape: Dragonwilds. Wears any inventory item, such as the Fire Cape, by moving it into your equipment; the save never leaves your computer. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
@@ -45,7 +46,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 | `storied/` | http://s3.cmbeid.com/storied/index.html |
 
-`dragonwilds-editor/`, `simtowerweb/`, `pokefling/`, `pokedefense/`, `pokeharvest/`, `hollowdeep/`, `hearthrise/`, `epochs/` and `voidwake/` have no S3 workflow — they publish to Pages only.
+`dragonwilds-editor/`, `simtowerweb/`, `pokefling/`, `pokedefense/`, `pokeharvest/`, `hollowdeep/`, `hearthrise/`, `epochs/`, `voidwake/` and `emberhold/` have no S3 workflow — they publish to Pages only.
 
 ### GitHub Pages
 
@@ -66,6 +67,7 @@ them to publish.
 | `hearthrise/` | https://cmbeid.github.io/Projects/hearthrise/ |
 | `epochs/` | https://cmbeid.github.io/Projects/epochs/ |
 | `voidwake/` | https://cmbeid.github.io/Projects/voidwake/ |
+| `emberhold/` | https://cmbeid.github.io/Projects/emberhold/ |
 | `dragonwilds-editor/` | https://cmbeid.github.io/Projects/dragonwilds-editor/ |
 
 Pages serves from a subdirectory, so a project published there has to resolve
