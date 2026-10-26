@@ -6,6 +6,7 @@ import { RanchingPage } from './RanchingPage';
 import { ShopPage } from './ShopPage';
 import { CombatPage } from './CombatPage';
 import { CompletionLog, QuestsPage, ToolbeltPanel } from './ExtrasPages';
+import { StatsBar } from './StatsBar';
 import { describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
 import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from '../engine/items';
 import { toolbeltCap } from '../engine/bonuses';
@@ -529,7 +530,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
     ['more', '📊', 'More'],
   ];
   return (
-    <div class="app">
+    <div class={`app ${game.state.active ? 'has-statsbar' : ''}`}>
       <TopBar game={game} onOpenSkill={openSkill} onOpenFood={() => setFood(true)} />
       <main>
         {tab === 'skills' && (skill ? <SkillPage game={game} skill={skill} onBack={() => setSkill(null)} /> : <SkillList game={game} onOpen={openSkill} />)}
@@ -545,6 +546,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
           </>
         )}
       </main>
+      <StatsBar game={game} />
       <nav class="tabs">
         {tabs.map(([id, glyph, label]) => (
           <button
