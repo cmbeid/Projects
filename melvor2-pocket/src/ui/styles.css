@@ -246,3 +246,17 @@ button.danger, .row button.danger { background: var(--stop); border-color: #b830
 .statsbar { background: rgba(26, 28, 32, .98); }
 .sb-skill { display: inline-flex; align-items: center; gap: 6px; color: #39d0d0; }
 .sb-grid span { display: inline-flex; align-items: center; gap: 4px; }
+
+.dialogue .line { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #2f3237; line-height: 1.45; font-size: 14px; }
+.dialogue .line p { margin: 4px 0 0; }
+.dialogue .line strong { color: #39d0d0; }
+.dialogue .line.you { background: #1f3b3c; margin-left: 24px; }
+.dialogue .line.you strong { color: #8ff0f0; }
+.dialogue .line.npc { margin-right: 24px; }
+.dialogue .line.narration { background: none; color: var(--muted); font-style: italic; padding: 4px 2px; }
+button.link { background: none; border: 0; padding: 4px 0; color: #39d0d0; text-decoration: underline; text-align: left; font-size: 13px; }
+input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; font: inherit; }
+
+.guild .task { padding: 6px 0; border-top: 1px solid var(--line); }
+.guild .task.owned { opacity: .55; }
+.guild summary { color: #e9c46a; }

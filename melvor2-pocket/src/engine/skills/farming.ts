@@ -4,6 +4,7 @@ import type { Game } from '../game';
 import type { PlotState } from '../state';
 import { missingIngredients, spendIngredients } from './common';
 import { mod } from '../bonuses';
+import { goalMatches, questEvent } from '../quests';
 import type { SkillRecipe } from './types';
 
 const SKILL = 'Farming';
@@ -140,6 +141,9 @@ export function harvest(game: Game, plotId: string): void {
   game.addItem(r.Product.Item, game.rng.chance(doubling) ? q * 2 : q);
   game.addXp(SKILL, r.BaseExperience);
   game.itemSource = null;
+  questEvent(game, 'FarmingHarvestRecipe', (d) =>
+    goalMatches(d, 'Recipe', p.recipe ?? undefined) && goalMatches(d, 'Category', r.Category) ? 1 : 0,
+  );
   game.state.rng = game.rng.state;
   if (p.regrowsLeft > 0) {
     // Orchard trees regrow without replanting; watering and compost stay applied.

@@ -4,6 +4,7 @@ import type { HuntState } from '../state';
 import { levelForXp } from '../xp';
 import type { SkillHandler, SkillRecipe } from './types';
 import { bonusReader } from './common';
+import { goalMatches, questEvent } from '../quests';
 
 const bonus = (game: Game, a: HuntingAnimal) => bonusReader(game, 'HuntingAction', { entity: SKILL, animal: NS + a.Id, location: a.Location });
 
@@ -80,6 +81,7 @@ function canHunt(game: Game, a: HuntingAnimal): boolean {
 
 function resetTracking(game: Game, a: HuntingAnimal, s: HuntState): void {
   s.step = 0;
+  s.failedThisHunt = false;
   s.surveyFails = 0;
   s.species = null;
   s.requiredSteps = discovered(s)
@@ -90,6 +92,11 @@ function resetTracking(game: Game, a: HuntingAnimal, s: HuntState): void {
 function trap(game: Game, id: string, a: HuntingAnimal, s: HuntState): void {
   s.journalXp += a.BaseJournalTrappingExperience;
   s.trapped++;
+  questEvent(game, 'HuntingTrapAnimal', (d) =>
+    goalMatches(d, 'Animal', NS + a.Id) && goalMatches(d, 'Species', s.species ?? undefined) && !d.UsingBait && !(d.WithoutFail && s.failedThisHunt) ? 1 : 0,
+  );
+  questEvent(game, 'HuntingTrapAnimalLocation', (d) => (goalMatches(d, 'Location', a.Location) ? 1 : 0));
+  if (s.species) (game.state.stats.raresFound ??= {})[s.species] = true;
   // Size/weight roll: each is uniform in [0.5, 1.3] + journal level / 100; rewards scale with their average.
   const j = journalLevel(game, id) / 100;
   const mult = (game.rng.range(0.5 + j, 1.3 + j) + game.rng.range(0.5 + j, 1.3 + j)) / 2;
@@ -157,6 +164,7 @@ export const hunting: SkillHandler = {
         return loc.BaseSurveyInterval;
       }
       game.failed(SKILL, `${a.DisplayName} escaped`);
+      s.failedThisHunt = true;
       // The animal flees: track it further (reattempt chance is base 0).
       s.requiredSteps += a.BaseMinTrackingSteps;
       s.phase = 'tracking';

@@ -2,9 +2,13 @@
 import { useState } from 'preact/hooks';
 import { NS, all, displayName, itemName, type Item } from '../engine/content';
 import type { Game } from '../engine/game';
-import { advanceQuest, currentTask, quest, questState, quests, startQuest } from '../engine/quests';
+import { advanceQuest, currentTask, dialogueLine, quest, questState, quests, startQuest, type DialogueLine } from '../engine/quests';
 import { equipTool, fitsToolbelt, toolbeltItem, toolbeltSlotsFor, unequipTool } from '../engine/items';
 import { Bar, Costs, Icon, fmt } from './common';
+import {
+  bonusesFor, category, categoryOpen, describeTask, guildSkills, isDone, isSupported, points, pointsForRank, rankIndex, ranksFor, taskProgress,
+  tasksFor, totalPoints, type GuildBonus,
+} from '../engine/guild';
 
 const goalLabel = (type: string, data: Record<string, unknown>) => {
   const what = (data.Recipe ?? data.Enemy ?? data.Item ?? data.Category) as string | undefined;
@@ -25,8 +29,40 @@ function itemNameOrId(id: string): string {
   return n === id.replace(NS, '') ? displayName('Enemy', id) : n;
 }
 
+/** Full-screen story sheet for a quest step's dialogue. */
+function DialogueSheet({ game, title, lines, onClose }: { game: Game; title: string; lines: DialogueLine[]; onClose: () => void }) {
+  return (
+    <div class="sheet" onClick={onClose}>
+      <div class="sheet-body dialogue" onClick={(e) => e.stopPropagation()}>
+        <h2>{title}</h2>
+        {lines.map((l) => {
+          const d = dialogueLine(game, l);
+          return (
+            <div class={`line ${d.speaker ? (d.you ? 'you' : 'npc') : 'narration'}`}>
+              {d.speaker && <strong>{d.speaker}</strong>}
+              {d.text.split('\n').filter(Boolean).map((p) => <p>{p}</p>)}
+            </div>
+          );
+        })}
+        <button class="wide" onClick={onClose}>
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function QuestsPage({ game }: { game: Game }) {
   const [msg, setMsg] = useState('');
+  const [story, setStory] = useState<{ title: string; lines: DialogueLine[] } | null>(null);
+  /** Show a quest step's story (or the quest's ending). */
+  const showStep = (id: string) => {
+    const q = quest(id);
+    const s = questState(game, id);
+    if (!s) return;
+    if (s.done) setStory(q.CompletionDialogue?.length ? { title: `${q.DisplayName}: complete`, lines: q.CompletionDialogue } : null);
+    else if (q.Steps[s.step]?.Dialogue?.length) setStory({ title: q.DisplayName, lines: q.Steps[s.step].Dialogue });
+  };
   return (
     <div class="page">
       <h2>Quests</h2>
@@ -42,10 +78,22 @@ export function QuestsPage({ game }: { game: Game }) {
               <strong class="grow">{q.DisplayName}</strong>
               <span class="muted small">{s?.done ? 'Complete' : s ? `Step ${s.step + 1}/${q.Steps.length}` : unlocked ? 'Available' : 'Locked'}</span>
             </div>
+            {s?.done && quest(id).CompletionDialogue?.length && (
+              <button class="link" onClick={() => showStep(id)}>
+                Read the ending
+              </button>
+            )}
             {!s && unlocked && (
               <>
                 <div class="muted small">{q.Description}</div>
-                <button class="wide" onClick={() => setMsg(startQuest(game, id) ?? `Started ${q.DisplayName}.`)}>
+                <button
+                  class="wide"
+                  onClick={() => {
+                    const err = startQuest(game, id);
+                    setMsg(err ?? '');
+                    if (!err) showStep(id);
+                  }}
+                >
                   Start quest
                 </button>
               </>
@@ -53,6 +101,11 @@ export function QuestsPage({ game }: { game: Game }) {
             {s && t && (
               <>
                 <div class="muted small">{quest(id).Steps[s.step].Description}</div>
+                {quest(id).Steps[s.step].Dialogue?.length > 0 && (
+                  <button class="link" onClick={() => showStep(id)}>
+                    Read the story
+                  </button>
+                )}
                 {t.Goals.map((g) => (
                   <div>
                     <div class="small">
@@ -68,7 +121,14 @@ export function QuestsPage({ game }: { game: Game }) {
                   </>
                 )}
                 {(t.Costs || !t.Goals.length) && (
-                  <button class="wide" onClick={() => setMsg(advanceQuest(game, id) ?? '')}>
+                  <button
+                    class="wide"
+                    onClick={() => {
+                      const err = advanceQuest(game, id);
+                      setMsg(err ?? '');
+                      if (!err) showStep(id);
+                    }}
+                  >
                     Hand in
                   </button>
                 )}
@@ -78,6 +138,7 @@ export function QuestsPage({ game }: { game: Game }) {
         );
       })}
       <p class="muted small">Quest-only trees, rocks and enemies appear in their skills while their task is active.</p>
+      {story && <DialogueSheet game={game} title={story.title} lines={story.lines} onClose={() => setStory(null)} />}
     </div>
   );
 }
@@ -157,5 +218,90 @@ export function ToolbeltPanel({ game, entity }: { game: Game; entity: string }) 
           );
         })()}
     </details>
+  );
+}
+
+/** Mastery Guild for one skill: rank, points toward the next rank, rank bonuses and every task with progress. */
+export function GuildPanel({ game, skill, open = false }: { game: Game; skill: string; open?: boolean }) {
+  const [showDone, setShowDone] = useState(false);
+  const tasks = tasksFor(skill);
+  if (!tasks.length) return null;
+  const ranks = ranksFor(skill);
+  const ri = rankIndex(game, skill);
+  const pts = points(game, skill);
+  const next = ranks[ri + 1];
+  const shown = tasks.filter((t) => categoryOpen(game, t.Category) && (showDone || !isDone(game, t)));
+  const done = tasks.filter((t) => isDone(game, t)).length;
+  return (
+    <details class="toolbelt guild" open={open}>
+      <summary>
+        🏆 Mastery Guild · {ranks[ri].DisplayName} · {pts}/{totalPoints(skill)} pts
+      </summary>
+      <Bar value={pts - (ri ? pointsForRank(skill, ranks[ri]) : 0)} max={next ? pointsForRank(skill, next) - (ri ? pointsForRank(skill, ranks[ri]) : 0) : 1} />
+      <div class="muted small">
+        {next ? `${pointsForRank(skill, next) - pts} more points to ${next.DisplayName}` : 'Highest rank reached'} · {done}/{tasks.length} tasks done
+      </div>
+      {bonusesFor(skill).map((b) => (
+        <div class={`small ${game.requirementsMet(b.Requirements) ? 'req-done' : 'muted'}`}>
+          {game.requirementsMet(b.Requirements) ? '✓' : '🔒'} {b.DisplayName}: {guildBonusText(b)}
+        </div>
+      ))}
+      <label class="toggle small">
+        <input type="checkbox" checked={showDone} onChange={(e) => setShowDone((e.target as HTMLInputElement).checked)} />
+        Show finished tasks
+      </label>
+      {shown.map((t) => {
+        const max = Number(t.Goal?.Data.MaxProgress ?? 1);
+        const prog = isDone(game, t) ? max : taskProgress(game, t);
+        return (
+          <div class={`task ${isDone(game, t) ? 'owned' : ''}`}>
+            <div class="card-row">
+              <span class="grow small">{describeTask(t)}</span>
+              <span class="muted small">
+                {category(t.Category).DisplayName} · {category(t.Category).BasePoints} pt
+              </span>
+            </div>
+            {t.Goal && <Bar value={prog} max={max} />}
+            {!isSupported(t) && <div class="muted small">Can't be progressed in this version (needs combat effects, ward or hunting bait).</div>}
+          </div>
+        );
+      })}
+    </details>
+  );
+}
+
+function guildBonusText(b: GuildBonus): string {
+  const list = (b.Rewards.Bonuses?.Component ?? []) as { Stat: { Name: string }; Value: number }[];
+  return list
+    .map((x) => {
+      const pct = /Percent|Chance/.test(x.Stat.Name);
+      const v = pct ? `${Math.round(x.Value * 100)}%` : `${x.Value}`;
+      return `+${v} ${x.Stat.Name.replace(/^(Percent|Flat|Increased)/, '').replace('XPGained', 'XP').replace(/([a-z])([A-Z])/g, '$1 $2')}`;
+    })
+    .join(', ');
+}
+
+/** All guilds at a glance (More tab). */
+export function GuildOverview({ game }: { game: Game }) {
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div class="page">
+      <h2>Mastery Guilds</h2>
+      {guildSkills().map((s) => {
+        const ranks = ranksFor(s);
+        return (
+          <div class="card">
+            <button class="card-row plain" onClick={() => setOpen(open === s ? null : s)}>
+              <strong class="grow">{s}</strong>
+              <span class="muted small">
+                {ranks[rankIndex(game, s)].DisplayName} · {points(game, s)}/{totalPoints(s)}
+              </span>
+            </button>
+            <Bar value={points(game, s)} max={totalPoints(s)} />
+            {open === s && <GuildPanel game={game} skill={s} open />}
+          </div>
+        );
+      })}
+    </div>
   );
 }

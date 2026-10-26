@@ -6,6 +6,7 @@ import type { Bonus } from './combat/data';
 import { equipmentCap } from './combat/data';
 import { unlockedMinorNodes, type AstrologyNode } from './skills/astrology';
 import { shopPurchases } from './shop';
+import { guildBonuses } from './guild';
 
 interface RawBonus extends Bonus {
   Condition?: unknown;
@@ -52,6 +53,7 @@ export function activeBonuses(game: Game, includeEquipment = true): RawBonus[] {
     const count = set.Items.filter((i) => worn.includes(i)).length;
     for (const tier of set.Bonuses) if (count >= tier.ItemCount) out.push(...blockBonuses(tier.Modifiers));
   }
+  for (const b of guildBonuses(game)) out.push(...blockBonuses(b.Rewards.Bonuses as BonusBlock | null));
   for (const t of Object.values(game.state.toolbelt)) if (t.qty > 0) out.push(...blockBonuses(toolbeltCap(t.item)?.Bonuses));
   // Bonuses with conditions or scaling need runtime state the rebuild doesn't track yet, so they're left out.
   return out.filter((b) => b.Condition == null && b.Scaling == null);

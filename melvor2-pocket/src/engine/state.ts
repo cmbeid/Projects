@@ -18,6 +18,7 @@ export interface HuntState {
   species: string | null;
   journalXp: number;
   trapped: number;
+  failedThisHunt?: boolean;
 }
 
 export interface PlotState {
@@ -114,8 +115,12 @@ export interface GameState {
   equipment: Record<string, { item: string; qty: number }>;
   combat: CombatState;
   quests: Record<string, { step: number; task: number; progress: Record<string, number>; done: boolean }>;
+  /** Mastery Guild task progress and completed tasks. */
+  guild: { progress: Record<string, number>; done: Record<string, boolean> };
   /** Every item ever obtained, for the completion log. */
   found: Record<string, boolean>;
+  /** Names the quest dialogue uses for you and your companion. */
+  names: { player: string; companion: string };
   /** Pages unlocked by progression (skill pages, Combat, Bank, Shop, Quests). */
   unlocked: Record<string, boolean>;
   /** Set on saves from before progression gating; the game then unlocks everything once. */
@@ -129,6 +134,9 @@ export interface GameState {
     /** Items gained per skill (WoodcuttingItemGained...) and found overall (BankItemFound). */
     itemGained: Record<string, Record<string, number>>;
     itemsFound: Record<string, number>;
+    /** Hours each ranching animal type has spent alive, and rare hunting species found (guild tasks). */
+    ranchHoursAlive?: Record<string, number>;
+    raresFound?: Record<string, boolean>;
     itemsSold: number;
     goldFromSales: number;
   };
@@ -168,7 +176,9 @@ export function newState(now = Date.now(), seed = (now ^ 0x9e3779b9) >>> 0): Gam
     },
     quests: {},
     found: {},
+    guild: { progress: {}, done: {} },
     unlocked: {},
+    names: { player: 'Adventurer', companion: 'Rowan' },
     stats: { onlineMs: 0, offlineMs: 0, actions: {}, failures: {}, itemsSold: 0, goldFromSales: 0, itemGained: {}, itemsFound: {} },
   };
 }

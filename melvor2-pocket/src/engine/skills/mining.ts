@@ -36,6 +36,7 @@ export const mining: SkillHandler = {
     // Each hit either breaks the rock outright (chance p) or adds p to its prospecting progress.
     const minimum = b('FlatMinimumProspecting');
     let broke = game.rng.chance(p);
+    const early = broke;
     if (!broke) {
       const progress = (game.state.rockProgress[id] ?? minimum) + p;
       broke = progress >= BREAK_THRESHOLD;
@@ -44,6 +45,7 @@ export const mining: SkillHandler = {
       game.state.rockProgress[id] = minimum;
     }
     if (broke) {
+      if (early) questEvent(game, 'MiningEarlyBreak', (d) => (goalMatches(d, 'Recipe', NS + r.Id) ? 1 : 0));
       let q = r.Product.Quantity + Math.floor(b('FlatProductQuantity'));
       if (game.rng.chance(b('AdditionalProductQuantityChance'))) q++;
       if (game.rng.chance(doubling)) q *= 2;

@@ -2,6 +2,7 @@ import { NS, type Requirement } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler, SkillRecipe } from './types';
 import { bonusReader, recipeContext, recipeGetter, recipeList } from './common';
+import { goalMatches, questEvent } from '../quests';
 
 const SKILL = 'Thieving';
 /** Stun duration after a failed attempt (ThievingActionComponent.BaseStunInterval). */
@@ -92,6 +93,7 @@ export const thieving: SkillHandler = {
       return BASE_STUN_INTERVAL;
     }
     loot(game, r);
+    questEvent(game, 'ThievingPickpocketTargetType', (d) => (goalMatches(d, 'TargetType', r.RecipeType) && goalMatches(d, 'Location', r.Category) ? 1 : 0));
     const s = stage(game, id) + 1;
     if (s > maxStages(r)) {
       rollDrop(game, r, r.CompletionDropTable);

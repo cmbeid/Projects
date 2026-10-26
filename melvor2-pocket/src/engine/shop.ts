@@ -1,5 +1,5 @@
 // The shop: one-off upgrades and unlocks bought with gold and items.
-import { NS, all, type Ingredients, type ItemQuantity, type Requirement } from './content';
+import { NS, all, tryGet, type Ingredients, type ItemQuantity, type Requirement } from './content';
 import type { Game } from './game';
 import { missingIngredients, spendIngredients } from './skills/common';
 
@@ -32,7 +32,11 @@ const LEGACY_TOOLS = /^(Copper|Iron|Steel|Mithril|Adamant|Rune|Dawnsteel|Dragon)
 
 /** Hidden when the demo hides it (e.g. alpha-only purchases) or it's a refunded legacy tool. */
 export function shopVisible(game: Game, p: ShopPurchase): boolean {
-  return !LEGACY_TOOLS.test(p.Id) && !game.isDemoLocked(p.DisplayRequirements) && !game.isDemoLocked(p.Requirements);
+  if (LEGACY_TOOLS.test(p.Id) || game.isDemoLocked(p.DisplayRequirements) || game.isDemoLocked(p.Requirements)) return false;
+  // Purchases (and their category) stay hidden until their display requirements are met, e.g. a finished quest.
+  const sub = tryGet<{ Category: string }>('ShopSubcategory', p.Subcategory);
+  const cat = sub && tryGet<{ DisplayRequirements: Requirement[] | null }>('ShopCategory', sub.Category);
+  return game.requirementsMet(p.DisplayRequirements) && game.requirementsMet(cat?.DisplayRequirements);
 }
 
 export function buyBlockReason(game: Game, p: ShopPurchase): string | null {

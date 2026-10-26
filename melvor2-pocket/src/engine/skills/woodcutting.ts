@@ -41,13 +41,19 @@ export const woodcutting: SkillHandler = {
 
     let hp = Math.min(treeHp(game, id), max);
     let dmg = 1;
+    let instant = false;
     if (hp > 1) {
-      if (game.rng.chance(b('InstantCutChance'))) dmg = hp;
+      if (game.rng.chance(b('InstantCutChance'))) {
+        dmg = hp;
+        instant = true;
+      }
       else {
         if (game.rng.chance(b('WeakSpotChance'))) dmg = WEAK_SPOT_BASE + Math.floor(WEAK_SPOT_HP_SHARE * max);
         if (game.rng.chance(b('DoubleDamageChance'))) dmg *= 2;
       }
     }
+    questEvent(game, 'WoodcuttingDamageTree', (d) => (goalMatches(d, 'Recipe', NS + r.Id) ? Math.min(dmg, hp) : 0));
+    if (instant) questEvent(game, 'WoodcuttingInstantCut', (d) => (goalMatches(d, 'Recipe', NS + r.Id) ? 1 : 0));
     hp -= dmg;
     if (hp > 0) {
       game.state.treeHp[id] = hp;
