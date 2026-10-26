@@ -21,6 +21,7 @@ import { exportSave, forgetAssets, forgetContent, importSave, storeAssets, wipe 
 import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
 import { isBundle, unpackBundle } from '../bundle';
+import { LevelUpPopups, levelUpPopupsOn, setLevelUpPopups } from './LevelUp';
 import { recipeGroups, type RecipeView } from './recipes';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
@@ -402,6 +403,7 @@ function StatsPage({ game }: { game: Game }) {
 
 function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
   const [text, setText] = useState('');
+  const [popups, setPopups] = useState(levelUpPopupsOn());
   const [msg, setMsg] = useState('');
   return (
     <div class="page">
@@ -561,6 +563,13 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
           />
         </label>
       </section>
+      <section>
+        <h3>Notifications</h3>
+        <label class="toggle">
+          <input type="checkbox" checked={popups} onChange={(e) => { const on = (e.target as HTMLInputElement).checked; setLevelUpPopups(on); setPopups(on); }} />
+          Show level-up popups
+        </label>
+      </section>
       <SoundSettings />
       <section>
         <h3>About</h3>
@@ -653,6 +662,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
       </nav>
       {food && <FoodSheet game={game} onClose={() => setFood(false)} />}
       {offline && <OfflineModal s={offline} onClose={onCloseOffline} />}
+      <LevelUpPopups game={game} />
     </div>
   );
 }

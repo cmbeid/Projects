@@ -261,3 +261,18 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 .guild .task.owned { opacity: .55; }
 .guild summary { color: #e9c46a; }
 .wide-pick { width: 100%; margin: 8px 0; }
+
+/* Level-up announcement */
+.levelup-layer { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: calc(env(safe-area-inset-top) + 18vh) 16px 0; background: rgba(0, 0, 0, .35); animation: levelup-fade .2s ease-out; }
+.levelup-confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.levelup { position: relative; width: min(320px, 100%); overflow: hidden; background: var(--panel); border: 2px solid var(--accent); border-radius: 16px; padding: 22px 18px 20px; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); animation: levelup-pop .35s cubic-bezier(.2, 1.4, .4, 1); }
+.levelup-icon { display: flex; justify-content: center; margin-bottom: 6px; }
+.levelup h2 { margin: 4px 0 6px; font-size: 26px; color: var(--accent); }
+.levelup p { margin: 0; }
+.levelup-level { color: var(--good); }
+.levelup-milestones { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+.levelup-timer { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--accent); transform-origin: left; animation: levelup-timer linear forwards; }
+@keyframes levelup-fade { from { opacity: 0; } }
+@keyframes levelup-pop { from { transform: scale(.6); opacity: 0; } }
+@keyframes levelup-timer { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .levelup, .levelup-layer { animation: none; } }
