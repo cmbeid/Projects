@@ -1,5 +1,6 @@
 // Serialisable game state. Everything the simulation needs lives here so saves and offline replay are exact.
-export const SAVE_VERSION = 1;
+/** 2: progression gating. Older saves get every page unlocked (see Game constructor). */
+export const SAVE_VERSION = 2;
 
 export interface ActiveAction {
   skill: string;
@@ -115,12 +116,19 @@ export interface GameState {
   quests: Record<string, { step: number; task: number; progress: Record<string, number>; done: boolean }>;
   /** Every item ever obtained, for the completion log. */
   found: Record<string, boolean>;
+  /** Pages unlocked by progression (skill pages, Combat, Bank, Shop, Quests). */
+  unlocked: Record<string, boolean>;
+  /** Set on saves from before progression gating; the game then unlocks everything once. */
+  legacyUnlockAll?: boolean;
   stats: {
     onlineMs: number;
     offlineMs: number;
     actions: Record<string, number>;
     failures: Record<string, number>;
     deaths?: number;
+    /** Items gained per skill (WoodcuttingItemGained...) and found overall (BankItemFound). */
+    itemGained: Record<string, Record<string, number>>;
+    itemsFound: Record<string, number>;
     itemsSold: number;
     goldFromSales: number;
   };
@@ -160,6 +168,7 @@ export function newState(now = Date.now(), seed = (now ^ 0x9e3779b9) >>> 0): Gam
     },
     quests: {},
     found: {},
-    stats: { onlineMs: 0, offlineMs: 0, actions: {}, failures: {}, itemsSold: 0, goldFromSales: 0 },
+    unlocked: {},
+    stats: { onlineMs: 0, offlineMs: 0, actions: {}, failures: {}, itemsSold: 0, goldFromSales: 0, itemGained: {}, itemsFound: {} },
   };
 }

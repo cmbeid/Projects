@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game, msToTicks } from '../src/engine/game';
 import { newState } from '../src/engine/state';
+import { unlockEverything } from '../src/engine/navigation';
 import { get } from '../src/engine/content';
 import { successChance, type ThievingRecipe } from '../src/engine/skills/thieving';
 import { huntState } from '../src/engine/skills/hunting';
@@ -10,7 +11,12 @@ import { knowledge, unlockedMinorNodes } from '../src/engine/skills/astrology';
 import { buy, shopPurchases } from '../src/engine/shop';
 
 const id = (s: string) => `MelvorBase:${s}`;
-const fresh = (seed = 1) => new Game(newState(0, seed));
+/** Mechanics tests start with every page unlocked; progression gating has its own tests. */
+const fresh = (seed = 1) => {
+  const g = new Game(newState(0, seed));
+  unlockEverything(g);
+  return g;
+};
 const HOUR = 60 * 60 * 60; // ticks
 
 describe('player health', () => {
@@ -99,13 +105,12 @@ describe('shop and ranching', () => {
 });
 
 describe('astrology', () => {
-  it('studying builds knowledge and unlocks star nodes', () => {
+  it('is locked in the demo, like Herblore and Agility', () => {
     const g = fresh();
     g.toggle('Astrology', id('Deedree'));
-    g.advance(msToTicks(3000) * 12);
-    expect(knowledge(g, id('Deedree'))).toBe(12);
-    expect(unlockedMinorNodes(g, id('Deedree'))).toHaveLength(1);
-    expect(g.state.xp.Astrology).toBe(48);
+    expect(g.state.active).toBeNull();
+    expect(knowledge(g, id('Deedree'))).toBe(0);
+    expect(unlockedMinorNodes(g, id('Deedree'))).toHaveLength(0);
   });
 });
 

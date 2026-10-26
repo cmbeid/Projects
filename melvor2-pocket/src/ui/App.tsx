@@ -6,6 +6,7 @@ import { RanchingPage } from './RanchingPage';
 import { ShopPage } from './ShopPage';
 import { CombatPage } from './CombatPage';
 import { CompletionLog, QuestsPage, ToolbeltPanel } from './ExtrasPages';
+import { describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
 import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from '../engine/items';
 import { toolbeltCap } from '../engine/bonuses';
 import { bury, equip } from '../engine/combat/combat';
@@ -54,14 +55,31 @@ function SkillList({ game, onOpen }: { game: Game; onOpen: (s: string) => void }
         {all.map((skill) => {
           const xp = game.xp(skill);
           const running = game.state.active?.skill === skill;
-          const empty = skill === 'Agility' || skill === 'Herblore';
+          const demoLocked = isDemoLockedPage(game, skill);
+          const locked = !isUnlocked(game, skill);
+          if (locked) {
+            const reqs = navRequirements(skill).map((r) => describeRequirement(game, r));
+            return (
+              <div class="skill-tile disabled locked-tile">
+                <SkillBadge skill={skill} />
+                <div class="skill-meta">
+                  <strong>🔒 {skill}</strong>
+                  {demoLocked ? (
+                    <span>Locked in the demo</span>
+                  ) : (
+                    reqs.map((r) => <span class={r.done ? 'req-done' : ''}>{r.done ? '✓' : '•'} {r.text}</span>)
+                  )}
+                </div>
+              </div>
+            );
+          }
           return (
-            <button class={`skill-tile ${running ? 'running' : ''} ${empty ? 'disabled' : ''}`} onClick={() => onOpen(skill)}>
+            <button class={`skill-tile ${running ? 'running' : ''}`} onClick={() => onOpen(skill)}>
               <SkillBadge skill={skill} />
               <div class="skill-meta">
                 <strong>{skill}</strong>
                 <span>
-                  {empty ? 'Locked in the demo' : `Lv ${game.level(skill)} / ${LEVEL_CAP}`}
+                  Lv {game.level(skill)} / {LEVEL_CAP}
                   {PASSIVE_SKILLS.includes(skill) ? ' · background' : ''}
                   {COMBAT_SKILLS.includes(skill) ? ' · combat' : ''}
                 </span>
@@ -291,6 +309,23 @@ function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClose: () 
   );
 }
 
+/** Shown in place of a page the demo hasn't unlocked yet, with what's needed and progress. */
+function LockedPage({ game, page }: { game: Game; page: string }) {
+  const reqs = navRequirements(page).map((r) => describeRequirement(game, r));
+  return (
+    <div class="page">
+      <h2>🔒 {page}</h2>
+      <p class="muted">Unlock this by:</p>
+      {reqs.map((r) => (
+        <div class={`card-row req ${r.done ? 'req-done' : ''}`}>
+          <span>{r.done ? '✓' : '•'}</span>
+          <span class="grow">{r.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function FoodSheet({ game, onClose }: { game: Game; onClose: () => void }) {
   const foods = Object.keys(game.state.bank).filter((id) => game.foodHealing(id) > 0);
   return (
@@ -498,12 +533,12 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
       <TopBar game={game} onOpenSkill={openSkill} onOpenFood={() => setFood(true)} />
       <main>
         {tab === 'skills' && (skill ? <SkillPage game={game} skill={skill} onBack={() => setSkill(null)} /> : <SkillList game={game} onOpen={openSkill} />)}
-        {tab === 'bank' && <BankPage game={game} />}
-        {tab === 'combat' && <CombatPage game={game} />}
-        {tab === 'shop' && <ShopPage game={game} />}
+        {tab === 'bank' && (isUnlocked(game, 'Bank') ? <BankPage game={game} /> : <LockedPage game={game} page="Bank" />)}
+        {tab === 'combat' && (isUnlocked(game, 'Combat') ? <CombatPage game={game} /> : <LockedPage game={game} page="Combat" />)}
+        {tab === 'shop' && (isUnlocked(game, 'Shop') ? <ShopPage game={game} /> : <LockedPage game={game} page="Shop" />)}
         {tab === 'more' && (
           <>
-            <QuestsPage game={game} />
+            {isUnlocked(game, 'Quests') ? <QuestsPage game={game} /> : <LockedPage game={game} page="Quests" />}
             <CompletionLog game={game} />
             <StatsPage game={game} />
             <SettingsPage game={game} onSave={onSave} />

@@ -27,7 +27,8 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
 /** Fill in fields added after a save was written, so old saves keep loading. */
 function migrate(s: Partial<GameState>): GameState {
   const base = newState();
-  return { ...base, ...s, stats: { ...base.stats, ...s.stats }, version: SAVE_VERSION } as GameState;
+  const legacy = (s.version ?? 1) < 2;
+  return { ...base, ...s, stats: { ...base.stats, ...s.stats }, version: SAVE_VERSION, legacyUnlockAll: legacy || s.legacyUnlockAll } as GameState;
 }
 
 export async function load(): Promise<GameState | null> {

@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { Game, msToTicks } from '../src/engine/game';
 import { newState } from '../src/engine/state';
+import { unlockEverything } from '../src/engine/navigation';
 import { stepsLeft } from '../src/engine/skills/artisan';
 import { successChance } from '../src/engine/skills/cooking';
 import { get, type CookingRecipe } from '../src/engine/content';
 
 const id = (s: string) => `MelvorBase:${s}`;
-const fresh = (seed = 1) => new Game(newState(0, seed));
+/** Mechanics tests start with every page unlocked; progression gating has its own tests. */
+const fresh = (seed = 1) => {
+  const g = new Game(newState(0, seed));
+  unlockEverything(g);
+  return g;
+};
 const step = msToTicks(2000);
 
 describe('artisan skills', () => {

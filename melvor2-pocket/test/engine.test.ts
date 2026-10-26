@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game, MAX_OFFLINE_MS, TICK_MS, msToTicks } from '../src/engine/game';
 import { newState } from '../src/engine/state';
+import { unlockEverything } from '../src/engine/navigation';
 import { LEVEL_CAP, levelForXp, xpForLevel } from '../src/engine/xp';
 import { woodcutting } from '../src/engine/skills/woodcutting';
 import { mining } from '../src/engine/skills/mining';
@@ -9,7 +10,12 @@ import { firemaking } from '../src/engine/skills/firemaking';
 import type { FishingRecipe } from '../src/engine/content';
 
 const id = (s: string) => `MelvorBase:${s}`;
-const fresh = (seed = 1) => new Game(newState(0, seed));
+/** Mechanics tests start with every page unlocked; progression gating has its own tests. */
+const fresh = (seed = 1) => {
+  const g = new Game(newState(0, seed));
+  unlockEverything(g);
+  return g;
+};
 
 describe('experience table', () => {
   it('matches the game curve', () => {

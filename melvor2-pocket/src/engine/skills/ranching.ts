@@ -143,6 +143,15 @@ export function nextRanchingEvent(game: Game): number | null {
 }
 
 export function processRanching(game: Game): void {
+  game.itemSource = SKILL;
+  try {
+    processAnimals(game);
+  } finally {
+    game.itemSource = null;
+  }
+}
+
+function processAnimals(game: Game): void {
   const now = game.state.tick;
   const st = game.state.ranching;
   for (const a of [...st.animals]) {

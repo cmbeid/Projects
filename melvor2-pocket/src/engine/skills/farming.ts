@@ -134,10 +134,12 @@ export function harvest(game: Game, plotId: string): void {
   const p = plotState(game, plotId);
   if (!p || !isReady(game, p)) return;
   const r = farmingRecipe(p.recipe!);
+  game.itemSource = SKILL;
   const q = harvestQuantity(r, p, game);
   const doubling = mod(game, 'FarmingAction', 'DoublingChance', { entity: SKILL, recipe: NS + r.Id, category: r.Category });
   game.addItem(r.Product.Item, game.rng.chance(doubling) ? q * 2 : q);
   game.addXp(SKILL, r.BaseExperience);
+  game.itemSource = null;
   game.state.rng = game.rng.state;
   if (p.regrowsLeft > 0) {
     // Orchard trees regrow without replanting; watering and compost stay applied.
