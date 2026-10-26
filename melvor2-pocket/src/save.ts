@@ -19,9 +19,13 @@ function open(): Promise<IDBDatabase> {
 async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   const db = await open();
   return new Promise((resolve, reject) => {
-    const req = fn(db.transaction(STORE, mode).objectStore(STORE));
-    req.onsuccess = () => resolve(req.result);
+    const tx = db.transaction(STORE, mode);
+    const req = fn(tx.objectStore(STORE));
+    // Writes resolve once committed: a reload straight after a big Blob write would otherwise abort it.
+    if (mode === 'readwrite') tx.oncomplete = () => resolve(req.result);
+    else req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    tx.onabort = () => reject(tx.error ?? new Error('Storage write was aborted.'));
   });
 }
 
