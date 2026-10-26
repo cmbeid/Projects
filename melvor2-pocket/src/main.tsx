@@ -1,6 +1,7 @@
 import { render } from 'preact';
 import { contentLoaded, loadContent } from './engine/content';
-import { loadStoredContent } from './save';
+import { loadStoredAssets, loadStoredContent } from './save';
+import { loadAssetPack } from './art/assets';
 import { DataLoader } from './ui/DataLoader';
 import './ui/styles.css';
 
@@ -23,7 +24,22 @@ async function findContent(): Promise<boolean> {
   return contentLoaded();
 }
 
+/** Game images: stored in this browser, or served next to a local build (build:local copies the pack into dist). */
+async function findAssets(): Promise<void> {
+  try {
+    let blob = await loadStoredAssets();
+    if (!blob) {
+      const res = await fetch('./game-assets.pack');
+      if (res.ok) blob = await res.blob();
+    }
+    if (blob) await loadAssetPack(blob);
+  } catch {
+    // No pack, or a bad one: the generated art is used.
+  }
+}
+
 async function startGame() {
+  await findAssets();
   // The engine and UI read game data, so they load only once it's in place.
   const [{ Game }, { load, save }, { App }] = await Promise.all([import('./engine/game'), import('./save'), import('./ui/App')]);
   type Summary = ReturnType<InstanceType<typeof Game>['catchUp']>;

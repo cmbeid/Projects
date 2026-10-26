@@ -6,10 +6,11 @@
   "type": "module",
   "scripts": {
     "data": "node tools/build-data.mjs",
+    "assets": "node tools/build-assets.mjs",
     "data:upload": "node tools/upload-data.mjs",
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
-    "build:local": "npm run data && npm run build",
+    "build:local": "npm run data && npm run assets && npm run build && node -e \"require('fs').copyFileSync('data/game-assets.pack','dist/game-assets.pack')\"",
     "start": "node server/index.mjs",
     "test": "vitest run"
   },

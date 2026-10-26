@@ -333,6 +333,8 @@ jobs:
           fi
           mkdir -p data
           gh release download melvor2-data --repo "${GITHUB_REPOSITORY}" --pattern content.json --dir data --clobber
+          # Optional game images: served next to the app, which uses them when present.
+          gh release download melvor2-data --repo "${GITHUB_REPOSITORY}" --pattern game-assets.pack --dir public --clobber || echo "No game-assets.pack in the release; using generated art."
           node -e "const d = JSON.parse(require('fs').readFileSync('data/content.json', 'utf8')); if (d.Namespace !== 'MelvorBase' || !d.Objects?.Item?.length) throw new Error('data/content.json is not a Melvor content package'); console.log('Bundling game data:', d.Objects.Item.length, 'items')"
 
       # Data-free checks always run; with bundled data present the full engine suite runs as well.
