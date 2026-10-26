@@ -112,6 +112,16 @@ describe('astrology', () => {
     expect(knowledge(g, id('Deedree'))).toBe(0);
     expect(unlockedMinorNodes(g, id('Deedree'))).toHaveLength(0);
   });
+
+  it('can be played when the player opts in, since its data is complete', () => {
+    const g = fresh();
+    g.state.optIn = { Astrology: true };
+    g.toggle('Astrology', id('Deedree'));
+    expect(g.state.active?.skill).toBe('Astrology');
+    g.advance(msToTicks(3000) * 20);
+    expect(g.xp('Astrology')).toBeGreaterThan(0);
+    expect(knowledge(g, id('Deedree'))).toBeGreaterThan(0);
+  });
 });
 
 describe('beastcrafting and agility', () => {

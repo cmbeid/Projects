@@ -125,6 +125,8 @@ export interface GameState {
   unlocked: Record<string, boolean>;
   /** Set on saves from before progression gating; the game then unlocks everything once. */
   legacyUnlockAll?: boolean;
+  /** Skills the player chose to play although the demo locks them (their data is complete in the demo's files). */
+  optIn?: { Astrology?: boolean };
   stats: {
     onlineMs: number;
     offlineMs: number;

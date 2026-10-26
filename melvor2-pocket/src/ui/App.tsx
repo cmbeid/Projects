@@ -7,7 +7,7 @@ import { ShopPage } from './ShopPage';
 import { CombatPage } from './CombatPage';
 import { CompletionLog, GuildOverview, GuildPanel, QuestsPage, ToolbeltPanel } from './ExtrasPages';
 import { StatsBar } from './StatsBar';
-import { describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
+import { OPT_IN_SKILLS, describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
 import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from '../engine/items';
 import { toolbeltCap } from '../engine/bonuses';
 import { bury, equip } from '../engine/combat/combat';
@@ -614,6 +614,24 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
             }}
           />
         </label>
+      </section>
+      <section>
+        <h3>Locked in the demo</h3>
+        <p class="muted small">These skills are finished in the demo's files but locked in the demo. Turning one on lets you play it.</p>
+        {OPT_IN_SKILLS.map((s) => (
+          <label class="toggle">
+            <input
+              type="checkbox"
+              checked={!!game.state.optIn?.[s]}
+              onChange={(e) => {
+                game.state.optIn = { ...game.state.optIn, [s]: (e.target as HTMLInputElement).checked };
+                if (!game.state.optIn[s] && game.state.active?.skill === s) game.stop();
+                game.emit();
+              }}
+            />
+            Play {s}
+          </label>
+        ))}
       </section>
       <section>
         <h3>Display</h3>
