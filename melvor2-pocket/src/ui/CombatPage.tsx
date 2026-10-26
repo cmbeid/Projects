@@ -1,20 +1,14 @@
 import { useState } from 'preact/hooks';
 import { NS, all, displayName, itemName } from '../engine/content';
 import type { Game } from '../engine/game';
+import { type Bonus, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
 import {
-  type Bonus, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, equipmentCap, equipmentSlots, isDungeon,
-  stance as stanceData,
-} from '../engine/combat/data';
-import {
-  areaEnemies, canEquip, currentStance, enemyFighter, enemyMaxHp, equip, equipped, fight, newSlayerTask, occupiedSlots,
-  playerFighter, prayerPoints, slayerTaskRange, togglePrayer, unequip, weaponStances,
+  areaEnemies, enemyFighter, enemyMaxHp, fight, newSlayerTask, playerFighter, prayerPoints, slayerTaskRange, togglePrayer,
 } from '../engine/combat/combat';
-import {
-  accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit, protectionRating, powerRating,
-} from '../engine/combat/stats';
-import { Bar, Icon, fmt } from './common';
+import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit } from '../engine/combat/stats';
+import { Bar, HpBar, Icon, fmt, type BarMarker } from './common';
 import { assetUrl } from '../art/assets';
-import { ToolbeltPanel } from './ExtrasPages';
+import { EquipmentView } from './Equipment';
 
 type Sub = 'fight' | 'gear' | 'prayer' | 'slayer';
 
@@ -38,6 +32,10 @@ function FightView({ game }: { game: Game }) {
   const e = c.enemy ? enemyFighter(c.enemy) : null;
   const p = playerFighter(game, e?.style.Id);
   const pInt = Math.round(attackInterval(p) / (1000 / 60));
+  const food = game.state.selectedFood;
+  const youMarks: BarMarker[] = [];
+  if (food) youMarks.push({ at: game.autoEatAt(), kind: 'eat', label: `Auto-eat at ${game.autoEatAt()} HP`, icon: <Icon id={food} size={14} /> });
+  if (e && c.phase === 'fighting') youMarks.push({ at: maxHit(e), kind: 'hit', label: `Enemy max hit ${maxHit(e)}: below this, one hit could finish you` });
   return (
     <div class="fight">
       {/* The enemy stands on a stage over the combat scene, large as on the desktop; its stats sit underneath. */}
@@ -52,7 +50,7 @@ function FightView({ game }: { game: Game }) {
               <strong class="grow">{enemyData(c.enemy!).DisplayName}</strong>
               <span class="muted small">Lv {combatLevel(e, e.style)}</span>
             </div>
-            <Bar value={c.enemyHp} max={e.maxHp} color="#e0565b" />
+            <HpBar value={c.enemyHp} max={e.maxHp} color="#e0565b" markers={[{ at: maxHit(p), kind: 'hit', label: `Your max hit ${maxHit(p)}` }]} />
             <div class="muted small">
               {fmt(c.enemyHp)} / {fmt(e.maxHp)} HP · max hit {maxHit(e)} · {e.style.DisplayName}
             </div>
@@ -67,9 +65,9 @@ function FightView({ game }: { game: Game }) {
           <strong class="grow">You</strong>
           <span class="muted small">{p.stance.DisplayName}</span>
         </div>
-        <Bar value={game.hp()} max={game.maxHp()} color="#5fbf6a" />
+        <HpBar value={game.hp()} max={game.maxHp()} color="#5fbf6a" markers={youMarks} />
         <div class="muted small">
-          {game.hp()} / {game.maxHp()} HP · {game.state.selectedFood ? `${itemName(game.state.selectedFood, 2)} ×${fmt(game.count(game.state.selectedFood))}` : 'no food'}
+          {game.hp()} / {game.maxHp()} HP · {food ? `${itemName(food, 2)} ×${fmt(game.count(food))} · auto-eat at ${game.autoEatAt()} HP` : 'no food'}
         </div>
         {c.phase === 'fighting' && <Bar value={pInt - c.playerLeft} max={pInt} color="#e8b84a" />}
         {e && (
@@ -169,92 +167,6 @@ function AreaBrowser({ game }: { game: Game }) {
           );
         })}
       </div>
-    </>
-  );
-}
-
-function GearView({ game }: { game: Game }) {
-  const [slot, setSlot] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
-  const occupied = occupiedSlots(game);
-  const p = playerFighter(game);
-  const fitting = slot
-    ? Object.keys(game.state.bank).filter((i) => {
-        const cap = equipmentCap(i);
-        const s = equipmentSlots().find((x) => NS + x.Id === slot);
-        return cap && s && cap.Type === s.FitsType;
-      })
-    : [];
-  return (
-    <>
-      <div class="gear-grid">
-        {equipmentSlots().map((s) => {
-          const id = NS + s.Id;
-          const e = equipped(game, id);
-          return (
-            <button class={`gear ${slot === id ? 'sel' : ''} ${occupied.has(id) ? 'blocked' : ''}`} onClick={() => setSlot(slot === id ? null : id)}>
-              {e ? <Icon id={e.item} size={34} /> : <span class="muted small">{s.DisplayName}</span>}
-              {e && e.qty > 1 && <span class="qty">{fmt(e.qty)}</span>}
-            </button>
-          );
-        })}
-      </div>
-      {slot && (
-        <div class="card">
-          <strong>{displayName('EquipmentSlot', slot)}</strong>
-          {equipped(game, slot) && (
-            <div class="card-row">
-              <Icon id={equipped(game, slot)!.item} size={28} />
-              <span class="grow">{itemName(equipped(game, slot)!.item)}</span>
-              <button onClick={() => unequip(game, slot)}>Unequip</button>
-            </div>
-          )}
-          {!fitting.length && <div class="muted small">Nothing in your bank fits this slot.</div>}
-          {fitting.map((i) => (
-            <div class="card-row">
-              <Icon id={i} size={28} />
-              <span class="grow">
-                {itemName(i)} ×{fmt(game.count(i))}
-              </span>
-              <button disabled={!!canEquip(game, i)} onClick={() => setMsg(equip(game, i) ?? '')}>
-                {canEquip(game, i) ?? 'Equip'}
-              </button>
-            </div>
-          ))}
-          {msg && <div class="muted small">{msg}</div>}
-        </div>
-      )}
-      <ToolbeltPanel game={game} entity="Combat" />
-      <h3>Attack style</h3>
-      <div class="chips">
-        {weaponStances(game).map((s) => (
-          <button
-            class={currentStance(game) === s ? 'on' : ''}
-            onClick={() => {
-              game.state.combat.stance = s;
-              game.emit();
-            }}
-          >
-            {stanceData(s).DisplayName}
-          </button>
-        ))}
-      </div>
-      <dl class="stats">
-        <dt>Style</dt>
-        <dd>{p.style.DisplayName}</dd>
-        <dt>Attack interval</dt>
-        <dd>{(attackInterval(p) / 1000).toFixed(2)}s</dd>
-        <dt>Max hit</dt>
-        <dd>{maxHit(p)}</dd>
-        <dt>Accuracy rating</dt>
-        <dd>{fmt(accuracyRating(p))}</dd>
-        <dt>Power / protection</dt>
-        <dd>
-          {powerRating(p)} / {protectionRating(p)}
-        </dd>
-        <dt>Combat level</dt>
-        <dd>{combatLevel(p, p.style)}</dd>
-      </dl>
     </>
   );
 }
@@ -386,7 +298,7 @@ export function CombatPage({ game }: { game: Game }) {
         ))}
       </div>
       {sub === 'fight' && <AreaBrowser game={game} />}
-      {sub === 'gear' && <GearView game={game} />}
+      {sub === 'gear' && <EquipmentView game={game} />}
       {sub === 'prayer' && <PrayerMagicView game={game} />}
       {sub === 'slayer' && <SlayerView game={game} />}
     </div>
