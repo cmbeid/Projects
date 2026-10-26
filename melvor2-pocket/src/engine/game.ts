@@ -39,10 +39,22 @@ export const SKILLS: SkillHandler[] = [
 export const PASSIVE_SKILLS = ['Farming', 'Ranching'];
 const handlers = new Map(SKILLS.map((h) => [h.skill, h]));
 
+/** Milestones reached going from one level to another: the skill's recipes that need a level in (from, to]. */
+export function milestonesBetween(skill: string, from: number, to: number): number {
+  const h = handlers.get(skill);
+  if (!h) return 0;
+  let n = 0;
+  for (const id of h.recipes()) {
+    const level = h.recipe(id).Requirements?.find((r) => r.Type === `${NS}Level` && r.Data.Component?.Entity === NS + skill)?.Data.Level;
+    if (level !== undefined && level > from && level <= to) n++;
+  }
+  return n;
+}
+
 /** Things the UI reacts to (sounds); not sent during offline catch-up. */
 export type GameEvent =
   | { type: 'action'; skill: string; recipe: string }
-  | { type: 'levelUp'; skill: string }
+  | { type: 'levelUp'; skill: string; from: number; to: number }
   | { type: 'questComplete' }
   | { type: 'attack'; weaponType?: string };
 
@@ -345,7 +357,7 @@ export class Game {
     const after = this.level(skill);
     if (after > before) {
       this.note(`${skill} level ${after}!`, 'level');
-      this.signal({ type: 'levelUp', skill });
+      this.signal({ type: 'levelUp', skill, from: before, to: after });
     }
   }
 
