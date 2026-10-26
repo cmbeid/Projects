@@ -40,6 +40,27 @@ export function Bar({ value, max = 1, color }: { value: number; max?: number; co
   );
 }
 
+export interface BarMarker { at: number; kind: 'eat' | 'hit'; label: string; icon?: preact.ComponentChildren }
+
+/**
+ * A health bar with the desktop's markers: where auto-eat kicks in, and the opponent's max hit (below it, one hit could
+ * finish you). Markers outside the bar are left off.
+ */
+export function HpBar({ value, max, color, markers }: { value: number; max: number; color: string; markers: BarMarker[] }) {
+  return (
+    <div class="hpbar">
+      <Bar value={value} max={max} color={color} />
+      {markers
+        .filter((m) => m.at > 0 && m.at < max)
+        .map((m) => (
+          <span class={`hp-mark ${m.kind}`} style={{ left: `${(m.at / max) * 100}%` }} title={m.label} aria-label={m.label}>
+            <span class="hp-mark-icon">{m.icon ?? (m.kind === 'eat' ? '🍴' : '⚔')}</span>
+          </span>
+        ))}
+    </div>
+  );
+}
+
 /** Ingredient list with have/need counts, red when short. */
 export function Costs({ items, gold, have }: { items: { Item: string; Quantity: number }[]; gold?: number; have: (id: string) => number }) {
   return (

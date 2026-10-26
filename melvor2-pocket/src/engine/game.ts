@@ -472,9 +472,15 @@ export class Game {
     return Math.max(1, Math.floor(food.BaseHealing * (1 + pct) + mod(this, 'CombatFood', 'FlatHealing', { entity: 'Combat' })));
   }
 
+  /** HP at or below which the selected food is eaten: 25% of max, as on the desktop, plus any threshold bonuses. */
+  autoEatAt(): number {
+    const pct = Math.min(1, Math.max(0, 0.25 + mod(this, 'CombatFood', 'FlatAutoEatThreshold', { entity: 'Combat' })));
+    return Math.round(pct * this.maxHp());
+  }
+
   private autoEat(): void {
     const food = this.state.selectedFood;
-    if (!food || this.hp() > Math.round(0.25 * this.maxHp())) return;
+    if (!food || this.hp() > this.autoEatAt()) return;
     const have = this.count(food);
     const heal = this.foodHealing(food);
     if (!have || !heal) return;
