@@ -128,3 +128,22 @@ export function skillGlyph(skill: string): { glyph: string; color: string } {
   const [glyph, color] = SKILL_GLYPHS[skill.replace(/^\w+:/, '')] ?? ['•', hueColor(hash(skill))];
   return { glyph, color };
 }
+
+/** The game's own skill icon (from the loaded asset pack), if any. Uses the data's navigation entries. */
+export function skillIconUrl(skill: string): string | undefined {
+  const id = skill.replace(/^\w+:/, '');
+  const nav =
+    tryGet<{ Icon?: string }>('LegacySkillNavigationOption', `MelvorBase:Legacy${id}`) ??
+    tryGet<{ Icon?: string }>('SkillNavigationOption', `MelvorBase:${id}`) ??
+    tryGet<{ Icon?: string }>('CombatNavigationOption', `MelvorBase:${id}`);
+  return assetUrl(nav?.Icon);
+}
+
+/** Icons for the tab bar and other pages (Bank, Shop, Quests...), if the asset pack has them. */
+export function pageIconUrl(page: string): string | undefined {
+  for (const t of ['BankNavigationOption', 'ShopNavigationOption', 'QuestsNavigationOption', 'CombatNavigationOption', 'SimpleNavigationOption']) {
+    const nav = tryGet<{ Icon?: string }>(t, `MelvorBase:${page}`);
+    if (nav?.Icon) return assetUrl(nav.Icon);
+  }
+  return undefined;
+}

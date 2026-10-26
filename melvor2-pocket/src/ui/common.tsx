@@ -1,5 +1,6 @@
 // Small shared UI pieces.
-import { itemIcon, skillGlyph } from '../art/icons';
+import { itemIcon, skillGlyph, skillIconUrl } from '../art/icons';
+import { assetUrl } from '../art/assets';
 
 export const fmt = (n: number) => Math.floor(n).toLocaleString();
 
@@ -20,6 +21,8 @@ export function Icon({ id, size = 40 }: { id: string; size?: number }) {
 }
 
 export function SkillBadge({ skill, size = 36 }: { skill: string; size?: number }) {
+  const real = skillIconUrl(skill);
+  if (real) return <img class="badge-img" src={real} width={size} height={size} alt="" />;
   const { glyph, color } = skillGlyph(skill);
   return (
     <span class="badge" style={{ background: color, width: size, height: size, fontSize: size * 0.5 }}>
@@ -55,4 +58,10 @@ export function Costs({ items, gold, have }: { items: { Item: string; Quantity: 
       ))}
     </div>
   );
+}
+
+/** The game's art for a res:// path when the asset pack has it, otherwise an item icon. */
+export function Art({ path, fallbackItem, size = 44 }: { path?: string; fallbackItem: string; size?: number }) {
+  const url = assetUrl(path);
+  return url ? <img class="icon art" src={url} width={size} height={size} alt="" /> : <Icon id={fallbackItem} size={size} />;
 }

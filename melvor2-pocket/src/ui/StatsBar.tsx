@@ -4,8 +4,7 @@ import { useState } from 'preact/hooks';
 import { itemName } from '../engine/content';
 import type { Game } from '../engine/game';
 import { LEVEL_CAP, xpForLevel } from '../engine/xp';
-import { skillGlyph } from '../art/icons';
-import { Bar, Icon, duration, fmt } from './common';
+import { Bar, Icon, SkillBadge, duration, fmt } from './common';
 
 const WINDOWS: [string, number][] = [
   ['1 min', 60 * 60],
@@ -40,8 +39,8 @@ export function StatsBar({ game }: { game: Game }) {
   return (
     <div class={`statsbar ${open ? 'open' : ''}`}>
       <button class="statsbar-row" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <span class="sb-skill" style={{ color: skillGlyph(xpSkill).color }}>
-          {skillGlyph(a.skill).glyph} {recipeName}
+        <span class="sb-skill">
+          <SkillBadge skill={a.skill} size={18} /> {recipeName}
         </span>
         <span>Lv {level}</span>
         <span>{warming ? '…' : `${fmt(xpPerHour)} xp/h`}</span>
@@ -68,11 +67,11 @@ export function StatsBar({ game }: { game: Game }) {
               +
             </button>
           </div>
-          <Bar value={game.xp(xpSkill) - xpForLevel(level)} max={Math.max(1, xpForLevel(Math.min(LEVEL_CAP, level + 1)) - xpForLevel(level))} color={skillGlyph(xpSkill).color} />
+          <Bar value={game.xp(xpSkill) - xpForLevel(level)} max={Math.max(1, xpForLevel(Math.min(LEVEL_CAP, level + 1)) - xpForLevel(level))} />
           <div class="sb-grid">
             {Object.entries(r.xp).map(([skill, v]) => (
               <span>
-                {skillGlyph(skill).glyph} {fmt(v)} {skill} xp/h
+                <SkillBadge skill={skill} size={14} /> {fmt(v)} {skill} xp/h
               </span>
             ))}
             <span>{signed(r.gold)} gold/h</span>

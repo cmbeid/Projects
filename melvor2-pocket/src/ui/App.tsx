@@ -15,14 +15,16 @@ import { buryCap, equipmentCap } from '../engine/combat/data';
 
 const COMBAT_SKILLS = ['Attack', 'Strength', 'Defence', 'Hitpoints', 'Ranged', 'Magic', 'Prayer', 'Slayer'];
 import { LEVEL_CAP, levelProgress } from '../engine/xp';
-import { skillGlyph } from '../art/icons';
-import { Bar, Icon, SkillBadge, duration, fmt } from './common';
+import { pageIconUrl, skillGlyph } from '../art/icons';
+import { Art, Bar, Icon, SkillBadge, duration, fmt } from './common';
 import { exportSave, forgetAssets, forgetContent, importSave, storeAssets, wipe } from '../save';
 import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
 import { recipeGroups, type RecipeView } from './recipes';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
+/** Which game page's icon each tab uses. */
+const TAB_PAGE: Record<Tab, string> = { skills: 'Skills', bank: 'Bank', combat: 'Combat', shop: 'Shop', more: 'CompletionLog' };
 
 function TopBar({ game, onOpenSkill, onOpenFood }: { game: Game; onOpenSkill: (s: string) => void; onOpenFood: () => void }) {
   const a = game.state.active;
@@ -86,7 +88,7 @@ function SkillList({ game, onOpen }: { game: Game; onOpen: (s: string) => void }
                   {PASSIVE_SKILLS.includes(skill) ? ' · background' : ''}
                   {COMBAT_SKILLS.includes(skill) ? ' · combat' : ''}
                 </span>
-                <Bar value={levelProgress(xp)} color={skillGlyph(skill).color} />
+                <Bar value={levelProgress(xp)} />
               </div>
             </button>
           );
@@ -113,7 +115,7 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
           <span>
             Level {game.level(skill)} / {LEVEL_CAP} · {fmt(xp)} XP
           </span>
-          <Bar value={levelProgress(xp)} color={skillGlyph(skill).color} />
+          <Bar value={levelProgress(xp)} />
         </div>
       </div>
       <ToolbeltPanel game={game} entity={skill} />
@@ -166,7 +168,7 @@ function RecipeCard({ game, skill, r }: { game: Game; skill: string; r: RecipeVi
   return (
     <button class={`recipe ${running ? 'running' : ''} ${r.locked ? 'locked' : ''}`} onClick={() => game.toggle(skill, r.id)} disabled={!!r.locked}>
       <div class="recipe-icon">
-        <Icon id={r.icon} size={44} />
+        <Art path={r.art} fallbackItem={r.icon} size={52} />
         {r.makes && <span class="qty">×{r.makes}</span>}
       </div>
       <div class="recipe-body">
@@ -189,8 +191,9 @@ function RecipeCard({ game, skill, r }: { game: Game; skill: string; r: RecipeVi
           </div>
         )}
         {r.meter && !r.locked && <Bar value={r.meter.value} max={r.meter.max} color="#5fbf6a" />}
-        {running && <Bar value={1 - a!.ticksLeft / a!.waitTicks} color={skillGlyph(skill).color} />}
+        {running && <Bar value={1 - a!.ticksLeft / a!.waitTicks} />}
       </div>
+      {!r.locked && <span class={`go ${running ? 'stop' : ''}`}>{running ? 'Stop' : 'Start'}</span>}
     </button>
   );
 }
@@ -596,7 +599,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
               if (id === 'skills') setSkill(null);
             }}
           >
-            <span>{glyph}</span>
+            {pageIconUrl(TAB_PAGE[id]) ? <img class="tab-icon" src={pageIconUrl(TAB_PAGE[id])} alt="" /> : <span>{glyph}</span>}
             {label}
           </button>
         ))}

@@ -34,7 +34,7 @@ let offset = 0;
 let missing = 0;
 let skipped = 0;
 const MAX_IMAGE_BYTES = 64 * 1024;
-/** Monster art is bigger, and the combat screen shows it. */
+/** Monster and tree art is bigger, and the combat screen and tree cards show it. */
 const MAX_MONSTER_BYTES = 192 * 1024;
 for (const res of wanted) {
   const rel = res.replace('res://', '');
@@ -47,7 +47,7 @@ for (const res of wanted) {
     continue;
   }
   // Icon-sized art only: backgrounds and full scenes are large and the mobile UI doesn't use them.
-  const limit = res.includes("/Monsters/") ? MAX_MONSTER_BYTES : MAX_IMAGE_BYTES;
+  const limit = res.includes("/Monsters/") || res.includes("/Skills/Woodcutting/") ? MAX_MONSTER_BYTES : MAX_IMAGE_BYTES;
   if (webp.length > limit || /^res:\/\/Assets\/(Backgrounds|Quests|Shop)\//.test(res)) {
     skipped++;
     continue;

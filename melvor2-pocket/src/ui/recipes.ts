@@ -22,6 +22,8 @@ export interface RecipeView {
   xp: number;
   /** Item used for the card's icon. */
   icon: string;
+  /** The game's own art for this recipe (tree, rock, target...), used when the asset pack has it. */
+  art?: string;
   intervalText: string;
   locked: 'demo' | 'level' | null;
   /** Extra per-recipe status, e.g. tree HP. */
@@ -52,6 +54,13 @@ function base(game: Game, skill: string, r: SkillRecipe): Omit<RecipeView, 'icon
 }
 
 function view(game: Game, skill: string, r: SkillRecipe): RecipeView {
+  const v = viewWithoutArt(game, skill, r);
+  const src = r as { Media?: string; Icon?: string };
+  const art = skill === 'Woodcutting' || skill === 'Mining' || skill === 'Thieving' ? src.Media : skill === 'Hunting' || skill === 'Astrology' ? src.Icon : undefined;
+  return art && !art.includes('missing_artwork') ? { ...v, art } : v;
+}
+
+function viewWithoutArt(game: Game, skill: string, r: SkillRecipe): RecipeView {
   const id = NS + r.Id;
   if (ARTISAN.has(skill)) {
     const a = r as ArtisanRecipe;
