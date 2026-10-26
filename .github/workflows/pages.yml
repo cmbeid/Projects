@@ -309,12 +309,38 @@ jobs:
         run: npm ci
         working-directory: melvor2-pocket
 
-      # Only the data-free checks run here: the game data never enters the repo, so CI has none.
+      # Optional: bundle the game data so the site needs no content.json on first run. Off unless the
+      # repository variable MELVOR2_BUNDLE_DATA is 'true'. The data comes from the private release
+      # 'melvor2-data' (uploaded with `npm run data:upload`), never from git. Because a Pages site stays
+      # public unless the plan supports Pages access control, this refuses to run unless GitHub reports
+      # both a private repo and a private Pages site; otherwise the deploy fails rather than publishing it.
+      - name: Fetch game data (melvor2-pocket, private sites only)
+        if: vars.MELVOR2_BUNDLE_DATA == 'true'
+        working-directory: melvor2-pocket
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          set -euo pipefail
+          if [ "${REPO_PRIVATE}" != "true" ]; then
+            echo "::error::MELVOR2_BUNDLE_DATA is on but this repository is public. Make it private or set the variable to false."
+            exit 1
+          fi
+          pages_public="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.public')"
+          if [ "${pages_public}" != "false" ]; then
+            echo "::error::MELVOR2_BUNDLE_DATA is on but the Pages site is public (\"public\": ${pages_public}). A private repo's Pages site is still public unless the plan supports Pages access control (GitHub Enterprise Cloud) and it is set to private under Settings -> Pages. Not bundling the game data."
+            exit 1
+          fi
+          mkdir -p data
+          gh release download melvor2-data --repo "${GITHUB_REPOSITORY}" --pattern content.json --dir data --clobber
+          node -e "const d = JSON.parse(require('fs').readFileSync('data/content.json', 'utf8')); if (d.Namespace !== 'MelvorBase' || !d.Objects?.Item?.length) throw new Error('data/content.json is not a Melvor content package'); console.log('Bundling game data:', d.Objects.Item.length, 'items')"
+
+      # Data-free checks always run; with bundled data present the full engine suite runs as well.
       - name: Test (melvor2-pocket)
         run: npm test
         working-directory: melvor2-pocket
 
-      # Builds without game content; the player loads content.json from their own install in the browser.
+      # Without the data step this builds no game content, and the player loads content.json in the browser.
       - name: Build (melvor2-pocket)
         run: npm run build
         working-directory: melvor2-pocket

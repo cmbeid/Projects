@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "data": "node tools/build-data.mjs",
+    "data:upload": "node tools/upload-data.mjs",
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "build:local": "npm run data && npm run build",

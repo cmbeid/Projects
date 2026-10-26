@@ -18,6 +18,22 @@ Live at https://cmbeid.github.io/Projects/melvor2-pocket/ (HTTPS, so it installs
 3. Open the site and pick the file. It's stored in that browser and never uploaded anywhere. Settings → Game data
    lets you load a newer one.
 
+### Optional: bundle the data into a private Pages build
+
+If the repo is private **and** your plan supports Pages access control, the Pages build can include the game data,
+so the site needs no `content.json` on first run. Note that on GitHub Free, Pro and Team, a private repo's Pages site
+is still public: only GitHub Enterprise Cloud can make a Pages site private (Settings → Pages → visibility).
+
+1. Run `npm run data`, then `npm run data:upload`. This uploads `data/content.json` as the release asset
+   `melvor2-data`, and refuses if the repo isn't private.
+2. Set the repository variable `MELVOR2_BUNDLE_DATA` to `true` (Settings → Secrets and variables → Actions →
+   Variables).
+3. Re-run the Pages workflow.
+
+Before bundling, the build checks that the repo is private and that the Pages API reports the site as private.
+If either check fails, the deploy fails rather than publishing the data. To turn it off, set the variable to `false`.
+**Delete the `melvor2-data` release before ever making the repo public again.**
+
 ## Run it on your own network
 
 ```bash
