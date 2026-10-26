@@ -22,6 +22,7 @@ import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
 import { isBundle, unpackBundle } from '../bundle';
 import { LevelUpPopups, levelUpPopupsOn, setLevelUpPopups } from './LevelUp';
+import { backgroundMode, pageBackground, setBackgroundMode, type BackgroundMode } from '../art/background';
 import { recipeGroups, type RecipeView } from './recipes';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
@@ -53,8 +54,56 @@ function TopBar({ game, onOpenSkill, onOpenFood }: { game: Game; onOpenSkill: (s
   );
 }
 
+const skillOrder = () => [...SKILLS.map((h) => h.skill).filter((s) => s !== 'Combat'), ...PASSIVE_SKILLS, ...COMBAT_SKILLS];
+
+/** Wide screens (an unfolded phone, a tablet): the desktop's left-hand menu of pages and skills. */
+function Sidebar({ game, tab, skill, onTab, onSkill }: { game: Game; tab: Tab; skill: string | null; onTab: (t: Tab) => void; onSkill: (s: string) => void }) {
+  const page = (id: Tab, label: string, unlockKey: string) => {
+    const icon = pageIconUrl(TAB_PAGE[id]);
+    const locked = id !== 'more' && !isUnlocked(game, unlockKey);
+    return (
+      <button class={`side-item ${tab === id && (id !== 'skills' || !skill) ? 'on' : ''} ${locked ? 'locked' : ''}`} onClick={() => onTab(id)}>
+        {icon ? <img class="side-icon" src={icon} alt="" /> : <span class="side-icon" />}
+        <span class="side-name">{label}</span>
+        {locked && <span class="side-level">🔒</span>}
+      </button>
+    );
+  };
+  const skillRow = (s: string) => {
+    const locked = !isUnlocked(game, s);
+    const running = game.state.active?.skill === s;
+    return (
+      <button class={`side-item ${tab === 'skills' && skill === s ? 'on' : ''} ${running ? 'running' : ''} ${locked ? 'locked' : ''}`} onClick={() => !locked && onSkill(s)} disabled={locked}>
+        <SkillBadge skill={s} size={24} />
+        <span class="side-name">{s}</span>
+        <span class="side-level">{locked ? '🔒' : `${game.level(s)} / ${LEVEL_CAP}`}</span>
+      </button>
+    );
+  };
+  const order = skillOrder();
+  return (
+    <nav class="sidebar">
+      {page('skills', 'All skills', 'Skills')}
+      {page('bank', 'Bank', 'Bank')}
+      {page('shop', 'Shop', 'Shop')}
+      {page('combat', 'Combat', 'Combat')}
+      {page('more', 'Quests & more', 'Quests')}
+      <h4>Skills</h4>
+      {order.filter((s) => !COMBAT_SKILLS.includes(s)).map(skillRow)}
+      <h4>Combat</h4>
+      {order.filter((s) => COMBAT_SKILLS.includes(s)).map((s) => (
+        <button class={`side-item ${isUnlocked(game, 'Combat') ? '' : 'locked'}`} onClick={() => onTab('combat')}>
+          <SkillBadge skill={s} size={24} />
+          <span class="side-name">{s}</span>
+          <span class="side-level">{game.level(s)} / {LEVEL_CAP}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function SkillList({ game, onOpen }: { game: Game; onOpen: (s: string) => void }) {
-  const all = [...SKILLS.map((h) => h.skill).filter((s) => s !== 'Combat'), ...PASSIVE_SKILLS, ...COMBAT_SKILLS];
+  const all = skillOrder();
   return (
     <div class="page">
       <h2>Skills</h2>
@@ -148,9 +197,11 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
             {shown.map((g) => (
               <section>
                 {!useChips && <h3>{g.name}</h3>}
-                {g.recipes.map((r) => (
-                  <RecipeCard game={game} skill={skill} r={r} />
-                ))}
+                <div class="recipe-grid">
+                  {g.recipes.map((r) => (
+                    <RecipeCard game={game} skill={skill} r={r} />
+                  ))}
+                </div>
               </section>
             ))}
           </>
@@ -404,6 +455,7 @@ function StatsPage({ game }: { game: Game }) {
 function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
   const [text, setText] = useState('');
   const [popups, setPopups] = useState(levelUpPopupsOn());
+  const [bgMode, setBgMode] = useState(backgroundMode());
   const [msg, setMsg] = useState('');
   return (
     <div class="page">
@@ -564,6 +616,20 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
         </label>
       </section>
       <section>
+        <h3>Display</h3>
+        <label class="slider">
+          <span>Background</span>
+          <select value={bgMode} onChange={(e) => { const m = (e.target as HTMLSelectElement).value as BackgroundMode; setBackgroundMode(m); setBgMode(m); }}>
+            <option value="clock">Match my clock</option>
+            <option value="Day">Always day</option>
+            <option value="Sunset">Always sunset</option>
+            <option value="Night">Always night</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+        <p class="muted small">Needs the game images. Day from 8:00, sunset from 16:00, night from 20:00, as in the game.</p>
+      </section>
+      <section>
         <h3>Notifications</h3>
         <label class="toggle">
           <input type="checkbox" checked={popups} onChange={(e) => { const on = (e.target as HTMLInputElement).checked; setLevelUpPopups(on); setPopups(on); }} />
@@ -627,9 +693,23 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
     ['shop', '🛒', 'Shop'],
     ['more', '📊', 'More'],
   ];
+  // The desktop's scene for the page on show; the skills overview and the More tab use the quest village.
+  const bgPage = tab === 'skills' ? skill ?? 'Quests' : tab === 'bank' ? 'Bank' : tab === 'shop' ? 'Shop' : tab === 'combat' ? 'Combat' : 'Quests';
+  const bg = pageBackground(bgPage);
   return (
     <div class={`app ${game.state.active ? 'has-statsbar' : ''}`}>
+      {bg && <div class={`page-bg ${bg.blur ? 'blur' : ''}`} style={{ backgroundImage: `url(${bg.url})` }} />}
       <TopBar game={game} onOpenSkill={openSkill} onOpenFood={() => setFood(true)} />
+      <Sidebar
+        game={game}
+        tab={tab}
+        skill={skill}
+        onTab={(t) => {
+          setTab(t);
+          if (t === 'skills') setSkill(null);
+        }}
+        onSkill={openSkill}
+      />
       <main>
         {tab === 'skills' && (skill ? <SkillPage game={game} skill={skill} onBack={() => setSkill(null)} /> : <SkillList game={game} onOpen={openSkill} />)}
         {tab === 'bank' && (isUnlocked(game, 'Bank') ? <BankPage game={game} /> : <LockedPage game={game} page="Bank" />)}

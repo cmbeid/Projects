@@ -276,3 +276,46 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 @keyframes levelup-pop { from { transform: scale(.6); opacity: 0; } }
 @keyframes levelup-timer { to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .levelup, .levelup-layer { animation: none; } }
+
+/* Page backgrounds: the desktop's scene for the page, behind everything, blurred where the game blurs it. */
+.page-bg { position: fixed; inset: 0; z-index: -1; background-size: cover; background-position: center; pointer-events: none; }
+.page-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(23, 25, 29, .45), rgba(23, 25, 29, .7)); }
+.page-bg.blur { filter: blur(6px); transform: scale(1.06); }
+.app { position: relative; isolation: isolate; }
+
+/* Recipes: one column on a phone, more on wide screens. */
+.recipe-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.recipe-grid .recipe { margin-bottom: 0; }
+
+/* Desktop-style sidebar, shown only on wide screens. */
+.sidebar { display: none; }
+.sidebar h4 { margin: 14px 12px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.side-item { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 12px; background: none; border: 0; border-left: 3px solid transparent; text-align: left; font-size: 14px; }
+.side-item:hover:not(:disabled) { background: rgba(255, 255, 255, .05); }
+.side-item.on { background: rgba(26, 169, 169, .16); border-left-color: var(--accent); }
+.side-item.running .side-name { color: #39d0d0; }
+.side-item.locked { opacity: .45; }
+.side-icon { width: 24px; height: 24px; object-fit: contain; flex: none; }
+.side-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-level { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+/* Unfolded foldables and tablets: sidebar on the left, wide content, no bottom tabs, as on the desktop. */
+@media (min-width: 720px) {
+  :root { --side-w: 232px; }
+  .app { max-width: none; }
+  .top { max-width: none; }
+  .sidebar {
+    display: block; position: fixed; z-index: 4; left: 0; bottom: 0; width: var(--side-w);
+    top: calc(var(--top-h) + env(safe-area-inset-top)); padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
+    overflow-y: auto; background: rgba(28, 30, 34, .94); border-right: 1px solid #3a3d43;
+  }
+  .tabs { display: none; }
+  main { margin-left: var(--side-w); padding: calc(var(--top-h) + env(safe-area-inset-top) + 12px) 24px calc(24px + env(safe-area-inset-bottom)); }
+  .app.has-statsbar main { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .page { max-width: 1100px; margin: 0 auto; }
+  .statsbar { left: var(--side-w); max-width: none; bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .recipe-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .skill-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .sheet { align-items: center; }
+  .sheet-body { border-radius: 18px; max-width: 560px; }
+}

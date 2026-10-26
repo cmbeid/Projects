@@ -86,14 +86,23 @@ export function SoundSettings() {
                 refresh();
               }}
             >
-              <option value="shuffle">Shuffle</option>
+              <option value="shuffle">Like the desktop game</option>
               <option value="off">Off</option>
               {musicTracks().map((t) => (
                 <option value={NS + t.Id}>{t.TrackName}</option>
               ))}
             </select>
           </label>
-          {nowPlaying && <p class="muted small">Now playing: {nowPlaying}</p>}
+          {nowPlaying && (
+            <div class="row">
+              <p class="muted small">Now playing: {nowPlaying}</p>
+              {settings.track === 'shuffle' && (
+                <button class="small" onClick={() => { startMusic(); refresh(); }}>
+                  Next track
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
       {msg && <p class="muted">{msg}</p>}

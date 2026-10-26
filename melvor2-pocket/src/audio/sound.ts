@@ -141,17 +141,62 @@ function stopMusic(): void {
   nowPlaying = null;
 }
 
+// The desktop's rules: two playlists, Combat and NonCombat, each shuffled like a deck (no repeats until all have
+// played). Starting or stopping a fight switches list at once. Entering the game plays Story of a Hero first. The Main
+// Theme is title-screen only. Boss Battle loops while fighting an enemy whose data names it (the desktop demo loads that
+// override but never plays it; here it does).
+export type MusicMood = 'NonCombat' | 'Combat' | 'Boss';
+const PLAYLISTS: Record<Exclude<MusicMood, 'Boss'>, string[]> = {
+  NonCombat: ['Track1', 'Track2', 'Track3', 'Track4', 'Track5', 'Track6'],
+  Combat: ['Track7', 'Track8', 'Track9', 'Track10'],
+};
+const FIRST_TRACK = 'Track6';
+const BOSS_TRACK = 'BossTrack1';
+let mood: MusicMood = 'NonCombat';
+const played = new Set<string>();
+let started = false;
+
+function nextShuffled(tracks: MusicTrack[]): MusicTrack | undefined {
+  const list = PLAYLISTS[mood === 'Boss' ? 'Combat' : mood].map((id) => tracks.find((t) => t.Id === id)).filter((t) => !!t);
+  if (!list.length) return tracks[0];
+  const firstStart = !started;
+  started = true;
+  if (firstStart) {
+    const first = list.find((t) => t.Id === FIRST_TRACK);
+    if (first) {
+      played.add(first.Id);
+      return first;
+    }
+  }
+  if (list.every((t) => played.has(t.Id))) played.clear();
+  const left = list.filter((t) => !played.has(t.Id));
+  const pick = left[Math.floor(Math.random() * left.length)];
+  played.add(pick.Id);
+  return pick;
+}
+
+/** Tell the player what's happening; switching mood cuts to a track from the new list, as the desktop does. */
+export function setMusicMood(next: MusicMood): void {
+  if (next === mood) return;
+  mood = next;
+  played.clear();
+  if (settings.track === 'shuffle' && ctx) startMusic();
+}
+
 export function startMusic(): void {
   stopMusic();
   const tracks = musicTracks();
   if (!ctx || !musicGain || !tracks.length || settings.track === 'off') return;
-  const pick = settings.track === 'shuffle' ? tracks[Math.floor(Math.random() * tracks.length)] : tracks.find((t) => NS + t.Id === settings.track) ?? tracks[0];
+  const boss = settings.track === 'shuffle' && mood === 'Boss' ? tracks.find((t) => t.Id === BOSS_TRACK) : undefined;
+  const pick = boss ?? (settings.track === 'shuffle' ? nextShuffled(tracks) : tracks.find((t) => NS + t.Id === settings.track) ?? tracks[0]);
+  if (!pick) return;
+  const loop = !!boss || settings.track !== 'shuffle';
   nowPlaying = pick.TrackName;
   void bufferFor('music', pick.AudioStream).then((buf) => {
     if (!buf || !ctx || !musicGain || nowPlaying !== pick.TrackName) return;
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.loop = settings.track !== 'shuffle';
+    src.loop = loop;
     src.connect(musicGain);
     src.onended = () => {
       if (musicSource === src) startMusic();
