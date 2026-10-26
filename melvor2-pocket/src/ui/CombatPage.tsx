@@ -1,0 +1,384 @@
+import { useState } from 'preact/hooks';
+import { NS, all, displayName, itemName } from '../engine/content';
+import type { Game } from '../engine/game';
+import {
+  type Bonus, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, equipmentCap, equipmentSlots, isDungeon,
+  stance as stanceData,
+} from '../engine/combat/data';
+import {
+  areaEnemies, canEquip, currentStance, enemyFighter, enemyMaxHp, equip, equipped, fight, newSlayerTask, occupiedSlots,
+  playerFighter, prayerPoints, slayerTaskRange, togglePrayer, unequip, weaponStances,
+} from '../engine/combat/combat';
+import {
+  accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit, protectionRating, powerRating,
+} from '../engine/combat/stats';
+import { Bar, Icon, fmt } from './common';
+import { ToolbeltPanel } from './ExtrasPages';
+
+type Sub = 'fight' | 'gear' | 'prayer' | 'slayer';
+
+const words = (s: string) => s.replace(NS, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+
+/** "+10 Stab Defence Bonus", "+5% Max Hit". */
+function bonusLabel(b: Bonus): string {
+  const pct = /^Percent|Chance$|BasedOn/.test(b.Stat.Name);
+  const value = pct ? `${Math.round(b.Value * 100)}%` : `${b.Value}`;
+  const sign = b.Value > 0 ? '+' : '';
+  const what = b.Stat.Name === 'FlatCombatStatValue' && b.LocalContext?.CombatStat ? b.LocalContext.CombatStat : b.Stat.Name.replace(/^(Flat|Percent)/, '');
+  return `${sign}${value} ${words(what)}`;
+}
+
+interface AreaLike { Id: string; DisplayName: string; Category: string; UnlockRequirements: never[] | null; DisplayRequirements: never[] | null }
+
+function FightView({ game }: { game: Game }) {
+  const c = game.state.combat;
+  const fighting = game.state.active?.skill === 'Combat';
+  if (!fighting || !c.area) return null;
+  const e = c.enemy ? enemyFighter(c.enemy) : null;
+  const p = playerFighter(game, e?.style.Id);
+  const pInt = Math.round(attackInterval(p) / (1000 / 60));
+  return (
+    <div class="fight">
+      <div class="fighter enemy">
+        {e && c.phase === 'fighting' ? (
+          <>
+            <div class="card-row">
+              <strong class="grow">{enemyData(c.enemy!).DisplayName}</strong>
+              <span class="muted small">Lv {combatLevel(e, e.style)}</span>
+            </div>
+            <Bar value={c.enemyHp} max={e.maxHp} color="#e0565b" />
+            <div class="muted small">
+              {fmt(c.enemyHp)} / {fmt(e.maxHp)} HP · max hit {maxHit(e)} · {e.style.DisplayName}
+            </div>
+            <Bar value={Math.round(attackInterval(e) / (1000 / 60)) - c.enemyLeft} max={Math.round(attackInterval(e) / (1000 / 60))} color="#9a7ae0" />
+          </>
+        ) : (
+          <div class="muted">Looking for an enemy…</div>
+        )}
+      </div>
+      <div class="vs">⚔️ {area(c.area).DisplayName}</div>
+      <div class="fighter you">
+        <div class="card-row">
+          <strong class="grow">You</strong>
+          <span class="muted small">{p.stance.DisplayName}</span>
+        </div>
+        <Bar value={game.hp()} max={game.maxHp()} color="#5fbf6a" />
+        <div class="muted small">
+          {game.hp()} / {game.maxHp()} HP · {game.state.selectedFood ? `${itemName(game.state.selectedFood, 2)} ×${fmt(game.count(game.state.selectedFood))}` : 'no food'}
+        </div>
+        {c.phase === 'fighting' && <Bar value={pInt - c.playerLeft} max={pInt} color="#e8b84a" />}
+        {e && (
+          <div class="muted small">
+            Hit {Math.round(hitChance(accuracyRating(p, area(c.area).Darkness), evasionRating(e, p.stance)) * 100)}% · {minHit(p, maxHit(p))}–{maxHit(p)} dmg ·
+            enemy hits you {Math.round(hitChance(accuracyRating(e), evasionRating(p, e.stance)) * 100)}%
+          </div>
+        )}
+      </div>
+      {isDungeon(c.area) && (
+        <div class="muted small">
+          Stage {c.dungeonStage + 1} / {(area(c.area) as Dungeon).Enemies.length} · completed {c.dungeonsDone[c.area] ?? 0}×
+        </div>
+      )}
+      <button class="danger wide" onClick={() => game.stop('You ran away.')}>
+        Run away
+      </button>
+    </div>
+  );
+}
+
+function AreaBrowser({ game }: { game: Game }) {
+  // Hide demo-locked and quest areas, and areas whose enemies are all locked in the demo.
+  const areas = [...all<AreaLike>('CombatArea'), ...all<AreaLike>('Dungeon')].filter(
+    (a) =>
+      !game.isDemoLocked(a.UnlockRequirements) &&
+      !game.isDemoLocked(a.DisplayRequirements) &&
+      (!a.Category.endsWith('Quests') || (!!a.DisplayRequirements?.length && game.requirementsMet(a.DisplayRequirements))) &&
+      areaEnemies(NS + a.Id).some((x) => !game.isDemoLocked(enemyData(x).Requirements)),
+  );
+  const cats = [...new Set(areas.map((a) => a.Category))];
+  const [cat, setCat] = useState(cats[0]);
+  const [open, setOpen] = useState<string | null>(null);
+  const [msg, setMsg] = useState('');
+  const catName = (c: string) => displayName('CombatAreaCategory', c);
+  return (
+    <>
+      <div class="chips">
+        {cats.map((c) => (
+          <button class={c === cat ? 'on' : ''} onClick={() => setCat(c)}>
+            {catName(c)}
+          </button>
+        ))}
+      </div>
+      {msg && <p class="muted">{msg}</p>}
+      {areas
+        .filter((a) => a.Category === cat)
+        .map((a) => {
+          const id = NS + a.Id;
+          const unlocked = game.requirementsMet(a.UnlockRequirements);
+          const enemies = [...new Set(areaEnemies(id))].filter((x) => !game.isDemoLocked(enemyData(x).Requirements));
+          const start = (enemyId: string | null) => {
+            fight(game, id, enemyId);
+            setMsg(game.state.active?.skill === 'Combat' ? '' : game.log[0]?.text ?? '');
+          };
+          return (
+            <div class="card">
+              <button class="card-row plain" onClick={() => setOpen(open === id ? null : id)}>
+                <strong class="grow">{a.DisplayName}</strong>
+                <span class="muted small">
+                  {unlocked ? `${enemies.length} enemies` : 'Locked'}
+                  {area(id).Darkness ? ' · dark' : ''}
+                </span>
+              </button>
+              {open === id && unlocked && isDungeon(id) && (
+                <button class="wide" onClick={() => start(null)}>
+                  Start dungeon
+                </button>
+              )}
+              {open === id &&
+                unlocked &&
+                !isDungeon(id) &&
+                enemies.map((x) => {
+                  const ef = enemyFighter(x);
+                  return (
+                    <div class="card-row">
+                      <div class="grow">
+                        <div>{enemyData(x).DisplayName}</div>
+                        <div class="muted small">
+                          Lv {combatLevel(ef, ef.style)} · {fmt(enemyMaxHp(x))} HP · {ef.style.DisplayName} · killed {fmt(game.state.combat.kills[x] ?? 0)}
+                        </div>
+                      </div>
+                      <button onClick={() => start(x)}>Fight</button>
+                    </div>
+                  );
+                })}
+              {open === id && isDungeon(id) && (
+                <div class="muted small">
+                  {(area(id) as Dungeon).Enemies.map((s) => `${s.Count}× ${s.Enemies.map((x) => enemyData(x.Enemy).DisplayName).join('/')}`).join(' → ')}
+                </div>
+              )}
+            </div>
+          );
+        })}
+    </>
+  );
+}
+
+function GearView({ game }: { game: Game }) {
+  const [slot, setSlot] = useState<string | null>(null);
+  const [msg, setMsg] = useState('');
+  const occupied = occupiedSlots(game);
+  const p = playerFighter(game);
+  const fitting = slot
+    ? Object.keys(game.state.bank).filter((i) => {
+        const cap = equipmentCap(i);
+        const s = equipmentSlots().find((x) => NS + x.Id === slot);
+        return cap && s && cap.Type === s.FitsType;
+      })
+    : [];
+  return (
+    <>
+      <div class="gear-grid">
+        {equipmentSlots().map((s) => {
+          const id = NS + s.Id;
+          const e = equipped(game, id);
+          return (
+            <button class={`gear ${slot === id ? 'sel' : ''} ${occupied.has(id) ? 'blocked' : ''}`} onClick={() => setSlot(slot === id ? null : id)}>
+              {e ? <Icon id={e.item} size={34} /> : <span class="muted small">{s.DisplayName}</span>}
+              {e && e.qty > 1 && <span class="qty">{fmt(e.qty)}</span>}
+            </button>
+          );
+        })}
+      </div>
+      {slot && (
+        <div class="card">
+          <strong>{displayName('EquipmentSlot', slot)}</strong>
+          {equipped(game, slot) && (
+            <div class="card-row">
+              <Icon id={equipped(game, slot)!.item} size={28} />
+              <span class="grow">{itemName(equipped(game, slot)!.item)}</span>
+              <button onClick={() => unequip(game, slot)}>Unequip</button>
+            </div>
+          )}
+          {!fitting.length && <div class="muted small">Nothing in your bank fits this slot.</div>}
+          {fitting.map((i) => (
+            <div class="card-row">
+              <Icon id={i} size={28} />
+              <span class="grow">
+                {itemName(i)} ×{fmt(game.count(i))}
+              </span>
+              <button disabled={!!canEquip(game, i)} onClick={() => setMsg(equip(game, i) ?? '')}>
+                {canEquip(game, i) ?? 'Equip'}
+              </button>
+            </div>
+          ))}
+          {msg && <div class="muted small">{msg}</div>}
+        </div>
+      )}
+      <ToolbeltPanel game={game} entity="Combat" />
+      <h3>Attack style</h3>
+      <div class="chips">
+        {weaponStances(game).map((s) => (
+          <button
+            class={currentStance(game) === s ? 'on' : ''}
+            onClick={() => {
+              game.state.combat.stance = s;
+              game.emit();
+            }}
+          >
+            {stanceData(s).DisplayName}
+          </button>
+        ))}
+      </div>
+      <dl class="stats">
+        <dt>Style</dt>
+        <dd>{p.style.DisplayName}</dd>
+        <dt>Attack interval</dt>
+        <dd>{(attackInterval(p) / 1000).toFixed(2)}s</dd>
+        <dt>Max hit</dt>
+        <dd>{maxHit(p)}</dd>
+        <dt>Accuracy rating</dt>
+        <dd>{fmt(accuracyRating(p))}</dd>
+        <dt>Power / protection</dt>
+        <dd>
+          {powerRating(p)} / {protectionRating(p)}
+        </dd>
+        <dt>Combat level</dt>
+        <dd>{combatLevel(p, p.style)}</dd>
+      </dl>
+    </>
+  );
+}
+
+function PrayerMagicView({ game }: { game: Game }) {
+  const [msg, setMsg] = useState('');
+  const c = game.state.combat;
+  const p = playerFighter(game);
+  const spells = allSpells().filter((s) => !game.isDemoLocked(s.UnlockRequirements));
+  return (
+    <>
+      <h3>Prayer · {fmt(prayerPoints(game))} points</h3>
+      <p class="muted small">Bury bones from the bank for prayer points. Each active prayer costs points every enemy attack.</p>
+      {msg && <p class="muted">{msg}</p>}
+      {allPrayers()
+        .filter((x) => !game.isDemoLocked(x.UnlockRequirements))
+        .map((x) => {
+          const id = NS + x.Id;
+          const on = c.prayers.includes(id);
+          const ok = game.requirementsMet(x.UnlockRequirements);
+          return (
+            <div class="card-row prayer">
+              <div class="grow">
+                <div>{x.DisplayName}</div>
+                <div class="muted small">
+                  {x.Bonuses.Component.map((b) => bonusLabel(b)).join(', ')}
+                </div>
+              </div>
+              <button class={on ? 'on' : ''} disabled={!ok} onClick={() => setMsg(togglePrayer(game, id) ?? '')}>
+                {ok ? (on ? 'On' : `${x.Cost.Quantity} pt`) : 'Locked'}
+              </button>
+            </div>
+          );
+        })}
+      <h3>Spells {p.style.UsesSpells ? '' : '(equip a staff or wand to cast)'}</h3>
+      {spells.map((s) => {
+        const id = NS + s.Id;
+        const ok = game.requirementsMet(s.UnlockRequirements);
+        return (
+          <div class="card-row">
+            <div class="grow">
+              <div>
+                {s.DisplayName} <span class="muted small">{displayName('SpellBook', s.Book)}</span>
+              </div>
+              <div class="ingredients">
+                {s.RuneCosts.map((r) => (
+                  <span class={game.count(r.Item) < r.Quantity ? 'short' : ''}>
+                    <Icon id={r.Item} size={16} />
+                    {fmt(game.count(r.Item))}/{r.Quantity}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button
+              class={c.spell === id ? 'on' : ''}
+              disabled={!ok}
+              onClick={() => {
+                c.spell = c.spell === id ? null : id;
+                game.emit();
+              }}
+            >
+              {ok ? (c.spell === id ? 'Selected' : 'Select') : 'Locked'}
+            </button>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function SlayerView({ game }: { game: Game }) {
+  const [msg, setMsg] = useState('');
+  const t = game.state.combat.slayer;
+  return (
+    <>
+      <p class="muted">
+        Slayer level {game.level('Slayer')} · {fmt(game.currency(`${NS}SlayerCoins`))} slayer coins
+      </p>
+      {t && t.left > 0 && (
+        <div class="card">
+          <strong>
+            Task: {t.left} × {enemyData(t.enemy).DisplayName}
+          </strong>
+          <div class="muted small">From {displayName('SlayerMaster', t.master)}. Kill them in any area they appear in.</div>
+        </div>
+      )}
+      {msg && <p class="muted">{msg}</p>}
+      {allSlayerMasters()
+        .filter((m) => !game.isDemoLocked(m.UnlockRequirements))
+        .map((m) => {
+          const id = NS + m.Id;
+          const [min, max] = slayerTaskRange(game, id);
+          const active = t && t.left > 0;
+          return (
+            <div class="card-row">
+              <div class="grow">
+                <div>{m.DisplayName}</div>
+                <div class="muted small">
+                  {min}–{max} kills · {m.Areas.map((a) => area(a).DisplayName).join(', ')} · done {game.state.combat.slayerTasksDone[id] ?? 0}
+                </div>
+              </div>
+              <button disabled={!game.requirementsMet(m.UnlockRequirements)} onClick={() => setMsg(newSlayerTask(game, id) ?? '')}>
+                {active ? `Reroll (${m.RerollCost.Quantity})` : 'New task'}
+              </button>
+            </div>
+          );
+        })}
+    </>
+  );
+}
+
+export function CombatPage({ game }: { game: Game }) {
+  const [sub, setSub] = useState<Sub>('fight');
+  const subs: [Sub, string][] = [
+    ['fight', 'Fight'],
+    ['gear', 'Equipment'],
+    ['prayer', 'Prayer & Magic'],
+    ['slayer', 'Slayer'],
+  ];
+  return (
+    <div class="page">
+      <h2>Combat</h2>
+      <FightView game={game} />
+      <div class="chips">
+        {subs.map(([id, label]) => (
+          <button class={sub === id ? 'on' : ''} onClick={() => setSub(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {sub === 'fight' && <AreaBrowser game={game} />}
+      {sub === 'gear' && <GearView game={game} />}
+      {sub === 'prayer' && <PrayerMagicView game={game} />}
+      {sub === 'slayer' && <SlayerView game={game} />}
+    </div>
+  );
+}

@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Built from your local Steam install by tools/build-data.mjs. Never commit or share.
+data/

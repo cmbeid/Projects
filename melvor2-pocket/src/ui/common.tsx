@@ -1,0 +1,58 @@
+// Small shared UI pieces.
+import { itemIcon, skillGlyph } from '../art/icons';
+
+export const fmt = (n: number) => Math.floor(n).toLocaleString();
+
+export function duration(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d) return `${d}d ${h}h`;
+  return h ? `${h}h ${m}m` : m ? `${m}m ${s % 60}s` : `${s}s`;
+}
+
+/** Simulation ticks (60 per second) to a duration string. */
+export const ticksToDuration = (ticks: number) => duration((ticks / 60) * 1000);
+
+export function Icon({ id, size = 40 }: { id: string; size?: number }) {
+  return <img class="icon" src={itemIcon(id)} width={size} height={size} alt="" />;
+}
+
+export function SkillBadge({ skill, size = 36 }: { skill: string; size?: number }) {
+  const { glyph, color } = skillGlyph(skill);
+  return (
+    <span class="badge" style={{ background: color, width: size, height: size, fontSize: size * 0.5 }}>
+      {glyph}
+    </span>
+  );
+}
+
+export function Bar({ value, max = 1, color }: { value: number; max?: number; color?: string }) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+  return (
+    <div class="bar">
+      <div style={{ width: `${pct}%`, background: color }} />
+    </div>
+  );
+}
+
+/** Ingredient list with have/need counts, red when short. */
+export function Costs({ items, gold, have }: { items: { Item: string; Quantity: number }[]; gold?: number; have: (id: string) => number }) {
+  return (
+    <div class="ingredients">
+      {gold ? (
+        <span>
+          <Icon id="MelvorBase:GoldPieces" size={18} />
+          {fmt(gold)}
+        </span>
+      ) : null}
+      {items.map((i) => (
+        <span class={have(i.Item) < i.Quantity ? 'short' : ''}>
+          <Icon id={i.Item} size={18} />
+          {fmt(have(i.Item))}/{fmt(i.Quantity)}
+        </span>
+      ))}
+    </div>
+  );
+}
