@@ -1,6 +1,7 @@
 import { configList, get, type Requirement } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler, SkillRecipe } from './types';
+import { mod } from '../bonuses';
 
 const SKILL = 'Astrology';
 
@@ -42,7 +43,8 @@ export const astrology: SkillHandler = {
   fire(game, id) {
     const c = constellation(id);
     const before = unlockedMinorNodes(game, id).length;
-    game.state.astrology.knowledge[id] = knowledge(game, id) + c.BaseKnowledge;
+    const gain = c.BaseKnowledge * (1 + mod(game, 'AstrologyAction', 'PercentKnowledge', { entity: SKILL, constellation: id }));
+    game.state.astrology.knowledge[id] = knowledge(game, id) + gain;
     game.addXp(SKILL, c.BaseExperience);
     if (unlockedMinorNodes(game, id).length > before) {
       game.notice(`${c.DisplayName}: a new star node is unlocked`);

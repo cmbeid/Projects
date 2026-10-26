@@ -395,3 +395,4 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 .diff .down { color: var(--bad); }
 .diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px 10px; font-size: 11.5px; }
 .equip-row .need { color: #ffb36b; margin-top: 3px; }
+.card-option { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--muted); }

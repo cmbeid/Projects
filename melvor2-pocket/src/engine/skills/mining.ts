@@ -2,7 +2,7 @@ import type { MiningRecipe } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler } from './types';
 import { questEvent, goalMatches } from '../quests';
-import { NS } from '../content';
+import { NS, configList } from '../content';
 import { bonusReader, recipeContext, recipeGetter, recipeList, rollItemChances } from './common';
 
 const SKILL = 'Mining';
@@ -32,6 +32,11 @@ export const mining: SkillHandler = {
     const doubling = b('DoublingChance');
     const p = breakChance(r, game);
     rollItemChances(game, r.RandomProductsPerHit, doubling, b('FlatOnHitItemChance'), b('PercentOnHitItemChance'));
+    // By-products the desktop rolls on every hit: the skill's stone and essence items, at bonus-given chances.
+    for (const [list, chance] of [['StoneItems', b('StoneItemChance')], ['EssenceItems', b('EssenceItemChance')]] as const) {
+      if (chance <= 0) continue;
+      for (const it of configList(SKILL, list)) if (game.rng.chance(chance)) game.addItem(it, game.rng.chance(doubling) ? 2 : 1);
+    }
 
     // Each hit either breaks the rock outright (chance p) or adds p to its prospecting progress.
     const minimum = b('FlatMinimumProspecting');
@@ -56,6 +61,8 @@ export const mining: SkillHandler = {
       }
       game.addItem(r.Product.Item, q);
       game.addXp(SKILL, r.BaseExperience * xpMult);
+      const bar = (r as MiningRecipe & { BarItem?: string | null }).BarItem;
+      if (bar && game.rng.chance(b('BarItemChance'))) game.addItem(bar, game.rng.chance(doubling) ? 2 : 1);
       questEvent(game, 'MiningMineRock', (d) => (goalMatches(d, 'Recipe', NS + r.Id) && goalMatches(d, 'Category', r.Category) ? 1 : 0));
     }
     return interval(game, r);

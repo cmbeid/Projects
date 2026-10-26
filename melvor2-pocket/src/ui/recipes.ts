@@ -1,6 +1,6 @@
 // View helpers: how each skill's recipes are grouped, labelled and illustrated.
 import {
-  NS, configList, displayName, type ArtisanRecipe, type CookingRecipe, type FiremakingRecipe, type FishingRecipe, type Ingredients,
+  NS, configList, displayName, itemName, type ArtisanRecipe, type CookingRecipe, type FiremakingRecipe, type FishingRecipe, type Ingredients,
   type MiningRecipe, type WoodcuttingRecipe,
 } from '../engine/content';
 import type { Game } from '../engine/game';
@@ -10,7 +10,9 @@ import { breakChance } from '../engine/skills/mining';
 import { maxSteps, stepsLeft } from '../engine/skills/artisan';
 import { successChance as cookChance } from '../engine/skills/cooking';
 import { maxStages, stage as thievingStage, successChance, type ThievingRecipe } from '../engine/skills/thieving';
-import { trapChance, trapsFor, type HuntingAnimal } from '../engine/skills/hunting';
+import { huntState, trapChance, trapsFor, type HuntingAnimal } from '../engine/skills/hunting';
+
+const fmtCount = (n: number) => Math.floor(n).toLocaleString();
 import { knowledge, unlockedMinorNodes, type Constellation } from '../engine/skills/astrology';
 
 export interface IngredientView { item: string; need: number; have: number }
@@ -32,6 +34,8 @@ export interface RecipeView {
   ingredients?: IngredientView[];
   /** Product quantity per item, when more than 1. */
   makes?: number;
+  /** A per-recipe switch shown on the card, e.g. Hunting's "Use bait". */
+  option?: { label: string; on: boolean; toggle: () => void };
 }
 
 function ingredientViews(game: Game, ing: Ingredients): IngredientView[] {
@@ -99,6 +103,16 @@ function viewWithoutArt(game: Game, skill: string, r: SkillRecipe): RecipeView {
         intervalText: `${secs(h.BaseMinTrapInterval)}–${secs(h.BaseMaxTrapInterval)} trap`,
         detail: `${Math.round(trapChance(game, h) * 100)}% trap${h.EnableTrapless && !traps.length ? ' (trapless)' : traps.length ? '' : ' · needs a trap'}${st?.trapped ? ` · caught ${st.trapped}` : ''}${phase}`,
         meter: st?.phase === 'tracking' ? { value: st.step, max: st.requiredSteps, label: 'Tracking' } : undefined,
+        option: h.PreferredBait
+          ? {
+              label: `Use ${itemName(h.PreferredBait)} (${fmtCount(game.count(h.PreferredBait))})`,
+              on: !!st?.bait,
+              toggle: () => {
+                huntState(game, id).bait = !huntState(game, id).bait;
+                game.emit();
+              },
+            }
+          : undefined,
       };
     }
     case 'Astrology': {

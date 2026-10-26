@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { all, item, itemName, type Item } from '../engine/content';
+import { NS, all, item, itemName, type Item } from '../engine/content';
 import { Game, OfflineSummary, PASSIVE_SKILLS, SKILLS } from '../engine/game';
 import { FarmingPage } from './FarmingPage';
 import { RanchingPage } from './RanchingPage';
@@ -9,7 +9,8 @@ import { CompletionLog, GuildOverview, GuildPanel, QuestsPage, ToolbeltPanel } f
 import { StatsBar } from './StatsBar';
 import { OPT_IN_SKILLS, describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
 import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from '../engine/items';
-import { toolbeltCap } from '../engine/bonuses';
+import { fishingBaitCap, toolbeltCap } from '../engine/bonuses';
+import { describeBlock } from '../engine/describe';
 import { bury, equip } from '../engine/combat/combat';
 import { buryCap, equipmentCap } from '../engine/combat/data';
 
@@ -17,7 +18,7 @@ const COMBAT_SKILLS = ['Attack', 'Strength', 'Defence', 'Hitpoints', 'Ranged', '
 import { LEVEL_CAP, levelProgress } from '../engine/xp';
 import { pageIconUrl, skillGlyph } from '../art/icons';
 import { Art, Bar, Icon, SkillBadge, duration, fmt } from './common';
-import { exportSave, forgetAssets, forgetContent, importSave, storeAssets, wipe } from '../save';
+import { exportSave, forceRefresh, forgetAssets, forgetContent, importSave, storeAssets, wipe } from '../save';
 import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
 import { isBundle, unpackBundle } from '../bundle';
@@ -173,6 +174,7 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
       <GuildPanel game={game} skill={skill} />
       {skill === 'Farming' && <FarmingPage game={game} />}
       {skill === 'Ranching' && <RanchingPage game={game} />}
+      {skill === 'Fishing' && <FishingBait game={game} />}
       {!PASSIVE_SKILLS.includes(skill) && (() => {
         const groups = recipeGroups(game, skill)
           .map((g) => ({ ...g, recipes: g.recipes.filter((r) => showLocked || r.locked !== 'demo') }))
@@ -216,6 +218,36 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
   );
 }
 
+/** Fishing bait, as on the desktop: pick one; it's used up one per catch and its bonus applies while you have some. */
+function FishingBait({ game }: { game: Game }) {
+  const baits = all<{ Id: string; Capabilities: Record<string, unknown> | null }>('Item').filter((i) => i.Capabilities?.[`${NS}FishingBait`]);
+  const sel = game.state.fishingBait ?? null;
+  const pick = (id: string | null) => {
+    game.state.fishingBait = id;
+    game.bonusesChanged();
+    game.emit();
+  };
+  return (
+    <section class="bait">
+      <h3>Bait</h3>
+      <div class="chips">
+        <button class={!sel ? 'on' : ''} onClick={() => pick(null)}>
+          None
+        </button>
+        {baits.map((b) => {
+          const id = NS + b.Id;
+          return (
+            <button class={sel === id ? 'on' : ''} disabled={!game.count(id) && sel !== id} onClick={() => pick(id)}>
+              <Icon id={id} size={18} /> {itemName(id)} ×{fmt(game.count(id))}
+            </button>
+          );
+        })}
+      </div>
+      {sel && <p class="muted small">{describeBlock(fishingBaitCap(sel)?.Bonuses as never).join(' · ')}{game.count(sel) ? '' : ' · none left, so no bonus'}</p>}
+    </section>
+  );
+}
+
 function RecipeCard({ game, skill, r }: { game: Game; skill: string; r: RecipeView }) {
   const a = game.state.active;
   const running = a?.skill === skill && a.recipe === r.id;
@@ -243,6 +275,12 @@ function RecipeCard({ game, skill, r }: { game: Game; skill: string; r: RecipeVi
               </span>
             ))}
           </div>
+        )}
+        {r.option && !r.locked && (
+          <label class="card-option" onClick={(e) => e.stopPropagation()}>
+            <input type="checkbox" checked={r.option.on} onChange={r.option.toggle} />
+            {r.option.label}
+          </label>
         )}
         {r.meter && !r.locked && <Bar value={r.meter.value} max={r.meter.max} color="#5fbf6a" />}
         {running && <Bar value={1 - a!.ticksLeft / a!.waitTicks} />}
@@ -452,7 +490,7 @@ function StatsPage({ game }: { game: Game }) {
   );
 }
 
-function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
+function SettingsPage({ game, onSave }: { game: Game; onSave: () => void | Promise<unknown> }) {
   const [text, setText] = useState('');
   const [popups, setPopups] = useState(levelUpPopupsOn());
   const [bgMode, setBgMode] = useState(backgroundMode());
@@ -661,6 +699,19 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
           A personal, portrait-mode rebuild of the Melvor Idle 2 Demo for the web. Game data comes from your own install; all art here
           is generated. Not affiliated with Games By Malcs.
         </p>
+        <p class="muted small">Version built {__BUILD_TIME__}.</p>
+        <button
+          class="wide"
+          onClick={async () => {
+            setMsg('Refreshing…');
+            // Wait for the save to commit: the reload would otherwise cut it off.
+            await onSave();
+            await forceRefresh();
+          }}
+        >
+          Force refresh (get the latest version)
+        </button>
+        <p class="muted small">Your save, game data, images and sound stay in this browser.</p>
       </section>
     </div>
   );
@@ -692,7 +743,7 @@ function OfflineModal({ s, onClose }: { s: OfflineSummary; onClose: () => void }
   );
 }
 
-export function App({ game, offline, onCloseOffline, onSave }: { game: Game; offline: OfflineSummary | null; onCloseOffline: () => void; onSave: () => void }) {
+export function App({ game, offline, onCloseOffline, onSave }: { game: Game; offline: OfflineSummary | null; onCloseOffline: () => void; onSave: () => void | Promise<unknown> }) {
   const [tab, setTab] = useState<Tab>('skills');
   const [skill, setSkill] = useState<string | null>(null);
   const openSkill = (s: string) => {

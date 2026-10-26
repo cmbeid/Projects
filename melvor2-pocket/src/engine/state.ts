@@ -19,6 +19,10 @@ export interface HuntState {
   journalXp: number;
   trapped: number;
   failedThisHunt?: boolean;
+  /** Use the animal's preferred bait while hunting it (the desktop's per-animal bait toggle). */
+  bait?: boolean;
+  /** Failed trap attempts in a row: each adds the trap's fail bonus again until a catch. */
+  trapFails?: number;
 }
 
 export interface PlotState {
@@ -71,7 +75,9 @@ export interface CombatState {
   dungeonCount: number;
   kills: Record<string, number>;
   dungeonsDone: Record<string, number>;
-  slayer: { master: string; enemy: string; left: number } | null;
+  slayer: { master: string; enemy: string; left: number; extended?: boolean } | null;
+  /** Enemies blocked from slayer tasks, by block slot id (each master has its own slots). */
+  slayerBlocks?: Record<string, string>;
   slayerTasksDone: Record<string, number>;
   damageDealt: number;
   damageTaken: number;
@@ -127,6 +133,8 @@ export interface GameState {
   legacyUnlockAll?: boolean;
   /** Skills the player chose to play although the demo locks them (their data is complete in the demo's files). */
   optIn?: { Astrology?: boolean };
+  /** Fishing bait in use: consumed one per catch, its bonuses apply while any is in the bank. */
+  fishingBait?: string | null;
   stats: {
     onlineMs: number;
     offlineMs: number;

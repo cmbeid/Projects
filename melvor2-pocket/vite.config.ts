@@ -6,6 +6,8 @@ export default defineConfig({
   // Relative paths so the app works from any subfolder (GitHub Pages serves it under /Projects/melvor2-pocket/).
   base: './',
   plugins: [preact()],
+  // Shown in Settings so you can tell whether a refresh picked up a new build.
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
   build: { target: 'es2022', chunkSizeWarningLimit: 6000 },
   test: {
     environment: 'node',
