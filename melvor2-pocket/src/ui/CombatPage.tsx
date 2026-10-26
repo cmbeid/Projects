@@ -40,10 +40,14 @@ function FightView({ game }: { game: Game }) {
   const pInt = Math.round(attackInterval(p) / (1000 / 60));
   return (
     <div class="fight">
-      <div class="fighter enemy">
+      {/* The enemy stands on a stage over the combat scene, large as on the desktop; its stats sit underneath. */}
+      <div class="fight-stage">
+        <div class="stage-area">⚔️ {area(c.area).DisplayName}</div>
         {e && c.phase === 'fighting' ? (
           <>
-            {assetUrl(enemyData(c.enemy!).Sprite) && <img class="enemy-sprite" src={assetUrl(enemyData(c.enemy!).Sprite)} alt="" />}
+            <div class="enemy-art">
+              {assetUrl(enemyData(c.enemy!).Sprite) ? <img class="enemy-sprite" src={assetUrl(enemyData(c.enemy!).Sprite)} alt="" /> : <Icon id={c.enemy!} size={96} />}
+            </div>
             <div class="card-row">
               <strong class="grow">{enemyData(c.enemy!).DisplayName}</strong>
               <span class="muted small">Lv {combatLevel(e, e.style)}</span>
@@ -55,10 +59,9 @@ function FightView({ game }: { game: Game }) {
             <Bar value={Math.round(attackInterval(e) / (1000 / 60)) - c.enemyLeft} max={Math.round(attackInterval(e) / (1000 / 60))} color="#9a7ae0" />
           </>
         ) : (
-          <div class="muted">Looking for an enemy…</div>
+          <div class="enemy-art searching muted">Looking for an enemy…</div>
         )}
       </div>
-      <div class="vs">⚔️ {area(c.area).DisplayName}</div>
       <div class="fighter you">
         <div class="card-row">
           <strong class="grow">You</strong>
@@ -76,14 +79,16 @@ function FightView({ game }: { game: Game }) {
           </div>
         )}
       </div>
-      {isDungeon(c.area) && (
-        <div class="muted small">
-          Stage {c.dungeonStage + 1} / {(area(c.area) as Dungeon).Enemies.length} · completed {c.dungeonsDone[c.area] ?? 0}×
-        </div>
-      )}
-      <button class="danger wide" onClick={() => game.stop('You ran away.')}>
-        Run away
-      </button>
+      <div class="fight-actions">
+        {isDungeon(c.area) && (
+          <div class="muted small grow">
+            Stage {c.dungeonStage + 1} / {(area(c.area) as Dungeon).Enemies.length} · completed {c.dungeonsDone[c.area] ?? 0}×
+          </div>
+        )}
+        <button class="danger run" onClick={() => game.stop('You ran away.')}>
+          Run away
+        </button>
+      </div>
     </div>
   );
 }
@@ -112,6 +117,7 @@ function AreaBrowser({ game }: { game: Game }) {
         ))}
       </div>
       {msg && <p class="muted">{msg}</p>}
+      <div class="area-grid">
       {areas
         .filter((a) => a.Category === cat)
         .map((a) => {
@@ -143,6 +149,7 @@ function AreaBrowser({ game }: { game: Game }) {
                   const ef = enemyFighter(x);
                   return (
                     <div class="card-row">
+                      {assetUrl(enemyData(x).Sprite) && <img class="enemy-thumb" src={assetUrl(enemyData(x).Sprite)} alt="" />}
                       <div class="grow">
                         <div>{enemyData(x).DisplayName}</div>
                         <div class="muted small">
@@ -161,6 +168,7 @@ function AreaBrowser({ game }: { game: Game }) {
             </div>
           );
         })}
+      </div>
     </>
   );
 }

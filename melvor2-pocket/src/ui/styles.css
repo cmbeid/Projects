@@ -243,7 +243,7 @@ h3 { color: #c9cdd4; }
 .recipe .go.stop { background: var(--stop); border-color: #b8302b; }
 button.danger, .row button.danger { background: var(--stop); border-color: #b8302b; color: #fff; }
 .sheet-body { background: #26282d; border-top: 1px solid #45484f; }
-.statsbar { background: rgba(26, 28, 32, .98); }
+.statsbar { background: #1a1c20; }
 .sb-skill { display: inline-flex; align-items: center; gap: 6px; color: #39d0d0; }
 .sb-grid span { display: inline-flex; align-items: center; gap: 4px; }
 
@@ -318,4 +318,31 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
   .skill-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
   .sheet { align-items: center; }
   .sheet-body { border-radius: 18px; max-width: 560px; }
+}
+
+/* Combat: the enemy stands large on a stage over the combat scene. */
+.fight { display: grid; gap: 10px; margin-bottom: 12px; }
+.fight-stage {
+  position: relative; display: flex; flex-direction: column; gap: 5px; padding: 10px 12px 12px; border-radius: 14px; overflow: hidden;
+  border: 1px solid #6a2a2e; background: linear-gradient(180deg, rgba(20, 22, 26, .1) 0%, rgba(20, 22, 26, .25) 45%, rgba(24, 26, 30, .92) 72%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+}
+.stage-area { align-self: flex-start; font-size: 12px; padding: 3px 10px; border-radius: 10px; background: rgba(0, 0, 0, .45); color: #d6dbe2; }
+.enemy-art { height: clamp(170px, 30vh, 280px); display: flex; align-items: flex-end; justify-content: center; }
+.enemy-art.searching { align-items: center; }
+.fight-stage .enemy-sprite { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .6)); }
+.fight-actions { display: flex; align-items: center; gap: 10px; }
+.fight-actions .run { margin-left: auto; min-height: 44px; padding: 0 22px; border-radius: 10px; font-weight: 600; }
+.area-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.area-grid .card { margin: 0; }
+.enemy-thumb { width: 40px; height: 40px; object-fit: contain; flex: none; }
+
+/* Wide screens: you on the left, the enemy on the right, as on the desktop; areas in columns. */
+@media (min-width: 720px) {
+  .fight { grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; align-items: start; }
+  .fight-stage { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
+  .fight .fighter.you { grid-column: 1; grid-row: 1; }
+  .fight-actions { grid-column: 1; grid-row: 2; align-self: start; }
+  .enemy-art { height: clamp(220px, 36vh, 400px); }
+  .area-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-items: start; }
 }

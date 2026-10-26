@@ -24,15 +24,19 @@ export function navRequirements(page: string): Requirement[] {
   return navs().get(navFor(page))?.Requirements ?? [];
 }
 
+/** Demo-locked skills whose content ships complete, which the player can choose to play in Settings. */
+export const OPT_IN_SKILLS = ['Astrology'] as const;
+const optedIn = (game: Game, id: string) => (OPT_IN_SKILLS as readonly string[]).includes(id) && !!game.state.optIn?.[id as 'Astrology'];
+
 export function isDemoLockedPage(game: Game, page: string): boolean {
-  return game.isDemoLocked(navRequirements(page));
+  return !optedIn(game, navFor(page)) && game.isDemoLocked(navRequirements(page));
 }
 
 /** Whether a page (skill, 'Combat', 'Bank', 'Shop', 'Quests') is open. Pages the demo doesn't gate are always open. */
 export function isUnlocked(game: Game, page: string): boolean {
   const id = navFor(page);
   if (!navs().has(id)) return true;
-  return !!game.state.unlocked[id];
+  return !!game.state.unlocked[id] || optedIn(game, id);
 }
 
 /** Record any newly met unlocks. Returns true if something unlocked. */
