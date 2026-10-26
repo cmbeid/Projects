@@ -175,3 +175,6 @@ button.plain { background: none; border: 0; padding: 0; text-align: left; width:
 .sb-items .pos { color: var(--good); }
 .sb-items .neg { color: var(--bad); }
 .app.has-statsbar main { padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 56px); }
+
+.small-pick { min-height: 44px; margin: 0; padding: 0 16px; font-size: 14px; flex: 1 1 40%; }
+.enemy-sprite { width: 72px; height: 72px; object-fit: contain; align-self: center; }

@@ -17,7 +17,8 @@ const COMBAT_SKILLS = ['Attack', 'Strength', 'Defence', 'Hitpoints', 'Ranged', '
 import { LEVEL_CAP, levelProgress } from '../engine/xp';
 import { skillGlyph } from '../art/icons';
 import { Bar, Icon, SkillBadge, duration, fmt } from './common';
-import { exportSave, forgetContent, importSave, wipe } from '../save';
+import { exportSave, forgetAssets, forgetContent, importSave, storeAssets, wipe } from '../save';
+import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { recipeGroups, type RecipeView } from './recipes';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
@@ -462,6 +463,43 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
       <section>
         <h3>Game data</h3>
         <p class="muted">The game's content comes from your own install's content.json, stored in this browser.</p>
+        <p class="muted">
+          Game images: {hasAssetPack() ? 'using your game-assets.pack' : 'generated art'}. Build the pack on your PC with{' '}
+          <code>npm run assets</code> and load it here to use the game's own icons; anything it lacks stays generated.
+        </p>
+        <div class="row">
+          <label class="file-pick small-pick">
+            <input
+              type="file"
+              accept=".pack"
+              onChange={async (e) => {
+                const f = (e.target as HTMLInputElement).files?.[0];
+                if (!f) return;
+                try {
+                  const n = await loadAssetPack(f);
+                  await storeAssets(f);
+                  setMsg(`Loaded ${n} game images.`);
+                  game.emit();
+                } catch (err) {
+                  setMsg((err as Error).message);
+                }
+              }}
+            />
+            Load game images
+          </label>
+          {hasAssetPack() && (
+            <button
+              onClick={async () => {
+                await forgetAssets();
+                clearAssetPack();
+                setMsg('Using generated art.');
+                game.emit();
+              }}
+            >
+              Use generated art
+            </button>
+          )}
+        </div>
         <button
           class="wide"
           onClick={async () => {

@@ -1,3 +1,6 @@
+import { tryGet } from '../engine/content';
+import { assetUrl } from './assets';
+
 // Procedurally generated SVG icons. No game artwork is used: the shape comes from keywords in the
 // item id, the colour from a material/tier palette, and small variations from a hash of the id.
 
@@ -96,8 +99,10 @@ function body(shape: Shape, c: string, v: number): string {
 
 const cache = new Map<string, string>();
 
-/** Data URL for an item icon. */
+/** Item icon: the game's own image when an asset pack is loaded and has it, otherwise generated art. */
 export function itemIcon(id: string): string {
+  const real = assetUrl(tryGet<{ Icon?: string }>('Item', id)?.Icon);
+  if (real) return real;
   let url = cache.get(id);
   if (!url) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${body(itemShape(id), itemColor(id), hash(id))}</svg>`;

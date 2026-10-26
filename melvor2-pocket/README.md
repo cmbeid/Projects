@@ -24,7 +24,7 @@ If the repo is private **and** your plan supports Pages access control, the Page
 so the site needs no `content.json` on first run. Note that on GitHub Free, Pro and Team, a private repo's Pages site
 is still public: only GitHub Enterprise Cloud can make a Pages site private (Settings → Pages → visibility).
 
-1. Run `npm run data`, then `npm run data:upload`. This uploads `data/content.json` as the release asset
+1. Run `npm run data` (and `npm run assets` for the game's images), then `npm run data:upload`. This uploads `data/content.json` as the release asset
    `melvor2-data`, and refuses if the repo isn't private.
 2. Set the repository variable `MELVOR2_BUNDLE_DATA` to `true` (Settings → Secrets and variables → Actions →
    Variables).
@@ -33,6 +33,14 @@ is still public: only GitHub Enterprise Cloud can make a Pages site private (Set
 Before bundling, the build checks that the repo is private and that the Pages API reports the site as private.
 If either check fails, the deploy fails rather than publishing the data. To turn it off, set the variable to `false`.
 **Delete the `melvor2-data` release before ever making the repo public again.**
+
+### Optional: the game's own images
+
+The app draws its own icons. To use the game's real icons and monster art instead, build an image pack from your
+install with `npm run assets` (after `npm run data`). It writes `data/game-assets.pack`, about 25 MB of icon-sized
+images; large backgrounds and scenes are left out. Then load it in **Settings → Game data → Load game images**.
+It's stored in that browser, and anything the pack doesn't have keeps the generated art. "Use generated art" turns
+it off again. `npm run build:local` includes the pack in your home-network build automatically.
 
 ## Run it on your own network
 

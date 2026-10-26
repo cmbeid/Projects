@@ -24,6 +24,7 @@ export interface Drops {
 export interface Enemy {
   Id: string;
   DisplayName: string;
+  Sprite?: string;
   Levels: { Key: string; Value: number }[];
   Stats: StatBlock;
   DamageType: string;

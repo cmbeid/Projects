@@ -13,6 +13,7 @@ import {
   accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit, protectionRating, powerRating,
 } from '../engine/combat/stats';
 import { Bar, Icon, fmt } from './common';
+import { assetUrl } from '../art/assets';
 import { ToolbeltPanel } from './ExtrasPages';
 
 type Sub = 'fight' | 'gear' | 'prayer' | 'slayer';
@@ -42,6 +43,7 @@ function FightView({ game }: { game: Game }) {
       <div class="fighter enemy">
         {e && c.phase === 'fighting' ? (
           <>
+            {assetUrl(enemyData(c.enemy!).Sprite) && <img class="enemy-sprite" src={assetUrl(enemyData(c.enemy!).Sprite)} alt="" />}
             <div class="card-row">
               <strong class="grow">{enemyData(c.enemy!).DisplayName}</strong>
               <span class="muted small">Lv {combatLevel(e, e.style)}</span>

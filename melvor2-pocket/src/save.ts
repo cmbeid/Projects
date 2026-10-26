@@ -5,6 +5,7 @@ const DB = 'melvor2-pocket';
 const STORE = 'saves';
 const KEY = 'slot1';
 const CONTENT_KEY = 'content';
+const ASSETS_KEY = 'assets';
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -75,4 +76,21 @@ export async function storeContent(data: unknown): Promise<void> {
 
 export async function forgetContent(): Promise<void> {
   await run('readwrite', (st) => st.delete(CONTENT_KEY));
+}
+
+/** The optional game-assets.pack (game images), kept in this browser as a Blob. */
+export async function loadStoredAssets(): Promise<Blob | null> {
+  try {
+    return (await run<Blob | undefined>('readonly', (st) => st.get(ASSETS_KEY))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function storeAssets(blob: Blob): Promise<void> {
+  await run('readwrite', (st) => st.put(blob, ASSETS_KEY));
+}
+
+export async function forgetAssets(): Promise<void> {
+  await run('readwrite', (st) => st.delete(ASSETS_KEY));
 }
