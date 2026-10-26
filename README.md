@@ -18,6 +18,7 @@ nothing at the root to install.
 | [`voidwake/`](voidwake/) | An RPG space exploration survival game, portrait-first for the phone. Find the pieces of a broken colony ark across six sectors: jump across a star map on fuel and food, answer 70 events with crew stat checks, fight turn-based ship battles against a boss in every sector, and land your crew on nine kinds of world for real-time away missions with a thumb stick. Five crew classes with skill trees and gear, 15 upgradeable ship modules, a fabricator, three factions, a 36-mission story with three endings, and one persistent campaign with station checkpoints. The pixel art, sound effects and generative score are all made in code. |
 | [`emberhold/`](emberhold/) | An idle skilling and combat RPG in the spirit of Melvor Idle 1 and 2, portrait-first for the phone. Thirty skills, including the second game's Ranching, Hunting, Beastcrafting, Construction and Enchantment. Mastery guilds replace item mastery. Combat has a triangle and ten damage types that monsters resist or are weak to, plus prayer, spells, slayer, seven dungeons, a stronghold and the Rift. There are farming plots, an agility course, constellations, a survey map with dig sites and a museum, a settlement, a ranch, familiars, 16 quests, 32 pets, a wave raid, and four game modes (Standard, Hardcore, Adventure and Ancient Relics). It keeps playing for up to 24 hours offline. The pixel art and sound are all made in code. |
 | [`dragonwilds-editor/`](dragonwilds-editor/) | A browser-based character save editor for RuneScape: Dragonwilds. Wears any inventory item, such as the Fire Cape, by moving it into your equipment; the save never leaves your computer. |
+| [`melvor2-pocket/`](melvor2-pocket/) | A portrait-mode web rebuild of the Melvor Idle 2 Demo for the phone, with every demo skill, combat, the shop, quests and offline progress. It ships no game data: you build `content.json` from your own Steam install and load it in your own browser. |
 | [`simtowerweb/`](simtowerweb/) | A playable remake of SimTower (1994) — elevator scheduling, tenants and star ratings, with a portrait phone layout. It ships GPL-3.0 community sprites so it runs out of the box; the original bitmaps are not redistributable, so it reads them from a copy the player supplies, in the player's own browser. |
 
 ## Working on one
@@ -46,7 +47,7 @@ credentials are stored in GitHub and a new repo needs no per-repo setup — see
 | `starseed/` | http://s3.cmbeid.com/starseed/index.html |
 | `storied/` | http://s3.cmbeid.com/storied/index.html |
 
-`dragonwilds-editor/`, `simtowerweb/`, `pokefling/`, `pokedefense/`, `pokeharvest/`, `hollowdeep/`, `hearthrise/`, `epochs/`, `voidwake/` and `emberhold/` have no S3 workflow — they publish to Pages only.
+`melvor2-pocket/`, `dragonwilds-editor/`, `simtowerweb/`, `pokefling/`, `pokedefense/`, `pokeharvest/`, `hollowdeep/`, `hearthrise/`, `epochs/`, `voidwake/` and `emberhold/` have no S3 workflow — they publish to Pages only.
 
 ### GitHub Pages
 
@@ -69,6 +70,7 @@ them to publish.
 | `voidwake/` | https://cmbeid.github.io/Projects/voidwake/ |
 | `emberhold/` | https://cmbeid.github.io/Projects/emberhold/ |
 | `dragonwilds-editor/` | https://cmbeid.github.io/Projects/dragonwilds-editor/ |
+| `melvor2-pocket/` | https://cmbeid.github.io/Projects/melvor2-pocket/ |
 
 Pages serves from a subdirectory, so a project published there has to resolve
 its own assets relatively — `base: './'` in the Vite config, and no

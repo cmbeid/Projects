@@ -27,6 +27,7 @@ on:
        - 'voidwake/**'
        - 'emberhold/**'
        - 'dragonwilds-editor/**'
+       - 'melvor2-pocket/**'
        - '.github/workflows/pages.yml'
 
 permissions:
@@ -69,6 +70,7 @@ jobs:
             voidwake/package-lock.json
             emberhold/package-lock.json
             dragonwilds-editor/package-lock.json
+            melvor2-pocket/package-lock.json
 
       # Unlike the S3 workflows, this one builds every project into a single
       # site, so all of them have to pass for any of them to publish. A failure
@@ -303,6 +305,20 @@ jobs:
         run: npm run build
         working-directory: dragonwilds-editor
 
+      - name: Install (melvor2-pocket)
+        run: npm ci
+        working-directory: melvor2-pocket
+
+      # Only the data-free checks run here: the game data never enters the repo, so CI has none.
+      - name: Test (melvor2-pocket)
+        run: npm test
+        working-directory: melvor2-pocket
+
+      # Builds without game content; the player loads content.json from their own install in the browser.
+      - name: Build (melvor2-pocket)
+        run: npm run build
+        working-directory: melvor2-pocket
+
       # One Pages site, many projects: each gets a subdirectory, mirroring the
       # prefixes used on S3. Adding a project means building it and copying it
       # in beside the others, then giving it a card below.
@@ -350,6 +366,9 @@ jobs:
 
           mkdir -p _site/dragonwilds-editor
           cp -r dragonwilds-editor/dist/. _site/dragonwilds-editor/
+
+          mkdir -p _site/melvor2-pocket
+          cp -r melvor2-pocket/dist/. _site/melvor2-pocket/
 
           cat > _site/index.html <<'HTML'
           <!doctype html>
@@ -479,6 +498,13 @@ jobs:
                     <span>
                       <span class="name">Dragonwilds Save Editor</span>
                       <span class="desc">Wear any item from your RuneScape: Dragonwilds inventory, the Fire Cape included. Your save never leaves your computer.</span>
+                    </span>
+                  </a>
+                  <a class="card" href="./melvor2-pocket/">
+                    <span class="emoji" aria-hidden="true">🪓</span>
+                    <span>
+                      <span class="name">Melvor 2 Pocket</span>
+                      <span class="desc">A portrait rebuild of the Melvor Idle 2 Demo for the phone. Ships no game data: load content.json from your own install.</span>
                     </span>
                   </a>
                 </div>

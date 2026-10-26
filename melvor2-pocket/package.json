@@ -1,0 +1,24 @@
+{
+  "name": "melvor2-pocket",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal portrait-mode web rebuild of the Melvor Idle 2 Demo. Ships no game data: it loads content.json from your own install.",
+  "type": "module",
+  "scripts": {
+    "data": "node tools/build-data.mjs",
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "build:local": "npm run data && npm run build",
+    "start": "node server/index.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "preact": "10.24.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "2.9.1",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vitest": "2.1.5"
+  }
+}
