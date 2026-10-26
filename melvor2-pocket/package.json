@@ -7,12 +7,13 @@
   "scripts": {
     "data": "node tools/build-data.mjs",
     "assets": "node tools/build-assets.mjs",
+    "audio": "node tools/build-audio.mjs --music",
     "data:upload": "node tools/upload-data.mjs",
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
-    "build:local": "npm run data && npm run assets && npm run build && node -e \"require('fs').copyFileSync('data/game-assets.pack','dist/game-assets.pack')\"",
     "start": "node server/index.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:local": "npm run data && npm run assets && npm run audio && npm run build && node -e \"for (const f of ['game-assets','game-sounds','game-music']) require('fs').copyFileSync('data/'+f+'.pack','dist/'+f+'.pack')\""
   },
   "dependencies": {
     "preact": "10.24.3"

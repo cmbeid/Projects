@@ -38,6 +38,13 @@ export const SKILLS: SkillHandler[] = [
 export const PASSIVE_SKILLS = ['Farming', 'Ranching'];
 const handlers = new Map(SKILLS.map((h) => [h.skill, h]));
 
+/** Things the UI reacts to (sounds); not sent during offline catch-up. */
+export type GameEvent =
+  | { type: 'action'; skill: string; recipe: string }
+  | { type: 'levelUp'; skill: string }
+  | { type: 'questComplete' }
+  | { type: 'attack'; weaponType?: string };
+
 export interface LogEntry { tick: number; text: string; kind: 'item' | 'level' | 'info' | 'stop' }
 
 export interface OfflineSummary {
@@ -70,6 +77,13 @@ export class Game {
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  events = new Set<(e: GameEvent) => void>();
+
+  signal(e: GameEvent): void {
+    if (this.quiet) return;
+    for (const fn of this.events) fn(e);
   }
 
   emit(): void {
@@ -310,7 +324,10 @@ export class Game {
     this.state.xp[skill] = this.xp(skill) + amount * (1 + pct);
     this.track('xp', skill, amount * (1 + pct));
     const after = this.level(skill);
-    if (after > before) this.note(`${skill} level ${after}!`, 'level');
+    if (after > before) {
+      this.note(`${skill} level ${after}!`, 'level');
+      this.signal({ type: 'levelUp', skill });
+    }
   }
 
   // ---- actions ---------------------------------------------------------------------------
@@ -464,6 +481,7 @@ export class Game {
     const stats = this.state.stats.actions;
     stats[skill] = (stats[skill] ?? 0) + 1;
     const nextMs = h.fire(this, recipe);
+    this.signal({ type: 'action', skill, recipe });
     checkUnlocks(this);
     const a = this.state.active;
     if (!a) return;

@@ -69,6 +69,7 @@ export function advanceQuest(game: Game, id: string): string | null {
     for (const r of q.Rewards?.Items ?? []) game.addItem(r.Item, r.Quantity);
     for (const c of q.Rewards?.Currency ?? []) game.addCurrency(c.Currency, c.Quantity);
     game.notice(`Quest complete: ${q.DisplayName}`);
+    game.signal({ type: 'questComplete' });
   }
   game.bonusesChanged();
   game.emit();

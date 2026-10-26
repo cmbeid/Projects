@@ -19,6 +19,7 @@ import { skillGlyph } from '../art/icons';
 import { Bar, Icon, SkillBadge, duration, fmt } from './common';
 import { exportSave, forgetAssets, forgetContent, importSave, storeAssets, wipe } from '../save';
 import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
+import { SoundSettings } from './SoundSettings';
 import { recipeGroups, type RecipeView } from './recipes';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
@@ -511,6 +512,7 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
           Load different game data
         </button>
       </section>
+      <SoundSettings />
       <section>
         <h3>About</h3>
         <p class="muted">

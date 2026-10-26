@@ -42,6 +42,13 @@ images; large backgrounds and scenes are left out. Then load it in **Settings â†
 It's stored in that browser, and anything the pack doesn't have keeps the generated art. "Use generated art" turns
 it off again. `npm run build:local` includes the pack in your home-network build automatically.
 
+### Optional: the game's own sounds and music
+
+`npm run audio` builds `data/game-sounds.pack` (about 8 MB: skill action sounds, tree and rock hits, weapon swings,
+level-up jingles) and `data/game-music.pack` (about 26 MB: the 12 music tracks, converted to mono at 24 kHz to fit
+on a phone). Load either or both in **Settings â†’ Sound**, where you can also set volumes and pick a track or
+shuffle. Without them the game is silent. Audio starts after your first tap, as browsers require.
+
 ## Run it on your own network
 
 ```bash
