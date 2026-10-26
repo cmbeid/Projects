@@ -21,6 +21,7 @@ import type { Bonus } from './combat/data';
 import { BASE_BANK_SLOTS, activeBonuses, mod } from './bonuses';
 import { goalActive, goalMatches, questEvent } from './quests';
 import { checkUnlocks, isUnlocked, unlockEverything } from './navigation';
+import { Tracker, type TrackEvent } from './tracker';
 
 export const TICKS_PER_SECOND = 60;
 export const TICK_MS = 1000 / TICKS_PER_SECOND;
@@ -164,6 +165,20 @@ export class Game {
     return this.state.stats.itemGained[skill]?.[item] ?? 0;
   }
 
+  /** Rates for the bottom stats bar (not saved). */
+  tracker = new Tracker();
+
+  /** Record a gain/loss for the stats bar: only while the active action is doing it, not offline or passives. */
+  private track(kind: TrackEvent['kind'], id: string, amount: number): void {
+    const a = this.state.active;
+    if (!a || this.quiet || this.itemSource || this.manual) return;
+    this.tracker.sync(`${a.skill}|${a.recipe}`, this.state.tick);
+    this.tracker.add({ tick: this.state.tick, kind, id, amount });
+  }
+
+  /** Set during player actions (selling, eating) so they don't count towards action rates. */
+  private manual = false;
+
   /** Skill credited for items added outside the active action (farming harvests, ranching...). */
   itemSource: string | null = null;
 
@@ -200,6 +215,7 @@ export class Game {
     this.state.bank[id] = (this.state.bank[id] ?? 0) + quantity;
     this.note(`+${quantity} ${itemName(id, quantity)}`, 'item');
     this.state.found[id] = true;
+    this.track('item', id, quantity);
     const st = this.state.stats;
     st.itemsFound[id] = (st.itemsFound[id] ?? 0) + quantity;
     const source = this.itemSource ?? this.state.active?.skill;
@@ -214,11 +230,15 @@ export class Game {
     if (have < quantity) return false;
     if (have === quantity) delete this.state.bank[id];
     else this.state.bank[id] = have - quantity;
+    this.track('item', id, -quantity);
     return true;
   }
 
   addCurrency(currency: string, quantity: number): void {
-    if (currency === GOLD) this.state.gold += quantity;
+    if (currency === GOLD) {
+      this.state.gold += quantity;
+      this.track('gold', currency, quantity);
+    }
     else this.state.currencies[currency] = (this.state.currencies[currency] ?? 0) + quantity;
   }
 
@@ -264,11 +284,13 @@ export class Game {
     const q = Math.min(quantity, this.count(id));
     const price = item(id).SellsFor;
     if (q <= 0 || !price) return 0;
+    this.manual = true;
     this.removeItem(id, q);
     const gold = price.Quantity * q;
     this.addCurrency(price.Currency, gold);
     this.state.stats.itemsSold += q;
     this.state.stats.goldFromSales += gold;
+    this.manual = false;
     checkUnlocks(this);
     this.emit();
     return gold;
@@ -286,6 +308,7 @@ export class Game {
     // PercentXPGained bonuses (astrology nodes, gear, shop) scale every XP gain for the skill.
     const pct = mod(this, 'Experience', 'PercentXPGained', { entity: skill });
     this.state.xp[skill] = this.xp(skill) + amount * (1 + pct);
+    this.track('xp', skill, amount * (1 + pct));
     const after = this.level(skill);
     if (after > before) this.note(`${skill} level ${after}!`, 'level');
   }
@@ -323,6 +346,7 @@ export class Game {
     this.state.thieving.stunned = false;
     const ticks = msToTicks(this.handler(skill).interval(this, recipe));
     this.state.active = { skill, recipe, waitTicks: ticks, ticksLeft: ticks };
+    this.tracker.sync(`${skill}|${recipe}`, this.state.tick);
     this.emit();
   }
 
@@ -418,7 +442,11 @@ export class Game {
 
   eat(id: string): void {
     const heal = this.foodHealing(id);
-    if (!heal || this.hp() >= this.maxHp() || !this.removeItem(id, 1)) return;
+    if (!heal || this.hp() >= this.maxHp()) return;
+    this.manual = true;
+    const ate = this.removeItem(id, 1);
+    this.manual = false;
+    if (!ate) return;
     this.heal(heal);
     this.emit();
   }
