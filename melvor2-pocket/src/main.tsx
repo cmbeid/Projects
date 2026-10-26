@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { contentLoaded, loadContent } from './engine/content';
 import { loadStoredAssets, loadStoredContent } from './save';
 import { loadAssetPack } from './art/assets';
+import { actionSound, levelUpSound, loadSoundPack, playSound, questSound, unlockAudioOnFirstTap, weaponSound } from './audio/sound';
 import { DataLoader } from './ui/DataLoader';
 import './ui/styles.css';
 
@@ -38,8 +39,26 @@ async function findAssets(): Promise<void> {
   }
 }
 
+/** Optional sound and music packs: stored in this browser, or served next to a local build. */
+async function findSounds(): Promise<void> {
+  const { loadStoredBlob } = await import('./save');
+  for (const which of ['sounds', 'music'] as const) {
+    try {
+      let blob = await loadStoredBlob(which);
+      if (!blob) {
+        const res = await fetch(`./game-${which}.pack`);
+        if (res.ok) blob = await res.blob();
+      }
+      if (blob) await loadSoundPack(blob, which);
+    } catch {
+      // No pack: that part stays silent.
+    }
+  }
+}
+
 async function startGame() {
-  await findAssets();
+  await Promise.all([findAssets(), findSounds()]);
+  unlockAudioOnFirstTap();
   // The engine and UI read game data, so they load only once it's in place.
   const [{ Game }, { load, save }, { App }] = await Promise.all([import('./engine/game'), import('./save'), import('./ui/App')]);
   type Summary = ReturnType<InstanceType<typeof Game>['catchUp']>;
@@ -67,6 +86,14 @@ async function startGame() {
 
   const draw = () => render(<App game={game} offline={offline} onCloseOffline={() => setOffline(null)} onSave={persist} />, root);
   game.subscribe(draw);
+  game.events.add((e) => {
+    if (e.type === 'action' && e.skill !== 'Combat') {
+      const r = game.handler(e.skill).recipe(e.recipe) as { Category?: string; Location?: string };
+      playSound(actionSound(e.skill, r));
+    } else if (e.type === 'attack') playSound(weaponSound(e.weaponType));
+    else if (e.type === 'levelUp') playSound(levelUpSound(e.skill));
+    else if (e.type === 'questComplete') playSound(questSound());
+  });
   draw();
 }
 

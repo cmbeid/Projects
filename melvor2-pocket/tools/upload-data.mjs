@@ -8,7 +8,7 @@ import fs from 'node:fs';
 const REPO = process.env.MELVOR2_REPO || 'cmbeid/Projects';
 const TAG = 'melvor2-data';
 const FILE = 'data/content.json';
-/** Optional: game images, uploaded too when it has been built (npm run assets). */
+/** Optional: game images and audio, uploaded too when built (npm run assets, npm run audio). */
 const ASSETS = 'data/game-assets.pack';
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -30,7 +30,7 @@ try {
 } catch {
   exists = false;
 }
-const files = fs.existsSync(ASSETS) ? [FILE, ASSETS] : [FILE];
+const files = [FILE, ASSETS, 'data/game-sounds.pack', 'data/game-music.pack'].filter((f) => fs.existsSync(f));
 if (exists) {
   gh('release', 'upload', TAG, ...files, '--repo', REPO, '--clobber');
 } else {

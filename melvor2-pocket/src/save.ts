@@ -94,3 +94,20 @@ export async function storeAssets(blob: Blob): Promise<void> {
 export async function forgetAssets(): Promise<void> {
   await run('readwrite', (st) => st.delete(ASSETS_KEY));
 }
+
+/** Optional sound/music packs, kept in this browser as Blobs. */
+export async function loadStoredBlob(key: 'sounds' | 'music'): Promise<Blob | null> {
+  try {
+    return (await run<Blob | undefined>('readonly', (st) => st.get(key))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function storeBlob(key: 'sounds' | 'music', blob: Blob): Promise<void> {
+  await run('readwrite', (st) => st.put(blob, key));
+}
+
+export async function forgetBlob(key: 'sounds' | 'music'): Promise<void> {
+  await run('readwrite', (st) => st.delete(key));
+}

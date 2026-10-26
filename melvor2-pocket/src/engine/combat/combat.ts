@@ -345,6 +345,7 @@ function playerTurn(game: Game): boolean {
     return false;
   }
   payAttack(game, cost.items);
+  game.signal({ type: 'attack', weaponType: weaponCap(weaponOf(game))?.Type });
   const dark = darkness(game, c.area!);
   const enemyAsDefender = enemyFighter(c.enemy!, undefined, p.style.Id);
   c.playerLeft = toTicks(attackInterval(p));
