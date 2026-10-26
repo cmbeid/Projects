@@ -10,7 +10,12 @@ export interface StatBlock {
 export interface Bonus {
   Stat: { StatsType: string; Name: string };
   Value: number;
-  LocalContext?: { Component?: { Entity: string; Component: string }; CombatStat?: string | null; CombatStyle?: string | null } | null;
+  LocalContext?: {
+    Component?: { Entity: string; Component: string };
+    CombatStat?: string | null;
+    CombatStyle?: string | null;
+    CombatLevel?: string | null;
+  } | null;
 }
 export interface Bonuses { Global: Bonus[]; Component: Bonus[] }
 
@@ -128,6 +133,9 @@ export interface SlayerMaster {
   BaseTaskLength: number;
   RerollCost: { Currency: string; Quantity: number };
   RewardCurrency: string;
+  /** Slots for blocking enemies from tasks, unlocked by tasks completed for this master. */
+  BlockSlots: { Id: string; UnlockRequirements: Requirement[] | null }[] | null;
+  BlockCost: { Currency: string; Quantity: number };
 }
 
 export interface TriangleBonus { PlayerStyle: string; EnemyStyle: string; Bonuses: Bonuses }

@@ -3,7 +3,8 @@ import { NS, all, displayName, itemName } from '../engine/content';
 import type { Game } from '../engine/game';
 import { type Bonus, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
 import {
-  areaEnemies, enemyFighter, enemyMaxHp, fight, newSlayerTask, playerFighter, prayerPoints, slayerTaskRange, togglePrayer,
+  areaEnemies, blockSlayerEnemy, enemyFighter, enemyMaxHp, extendSlayerTask, fight, newSlayerTask, playerFighter, prayerPoints, slayerBlockCost,
+  slayerBlockSlots, slayerExtensionCost, slayerRerollCost, slayerTaskRange, togglePrayer, unblockSlayerEnemy,
 } from '../engine/combat/combat';
 import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit } from '../engine/combat/stats';
 import { Bar, HpBar, Icon, fmt, type BarMarker } from './common';
@@ -251,6 +252,17 @@ function SlayerView({ game }: { game: Game }) {
             Task: {t.left} × {enemyData(t.enemy).DisplayName}
           </strong>
           <div class="muted small">From {displayName('SlayerMaster', t.master)}. Kill them in any area they appear in.</div>
+          <div class="row">
+            <button disabled={!!t.extended} onClick={() => setMsg(extendSlayerTask(game) ?? '')}>
+              {t.extended ? 'Extended' : `Extend (${fmt(slayerExtensionCost(game, t.master))})`}
+            </button>
+            <button
+              disabled={!slayerBlockSlots(game, t.master).some((s) => s.unlocked)}
+              onClick={() => setMsg(blockSlayerEnemy(game) ?? '')}
+            >
+              Block enemy ({fmt(slayerBlockCost(game, t.master))})
+            </button>
+          </div>
         </div>
       )}
       {msg && <p class="muted">{msg}</p>}
@@ -267,9 +279,19 @@ function SlayerView({ game }: { game: Game }) {
                 <div class="muted small">
                   {min}–{max} kills · {m.Areas.map((a) => area(a).DisplayName).join(', ')} · done {game.state.combat.slayerTasksDone[id] ?? 0}
                 </div>
+                {slayerBlockSlots(game, id).map((s) => (
+                  <div class="muted small">
+                    Block slot: {!s.unlocked ? 'locked' : s.enemy ? enemyData(s.enemy).DisplayName : 'empty'}
+                    {s.enemy && (
+                      <button class="link" onClick={() => unblockSlayerEnemy(game, s.id)}>
+                        {' '}unblock
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
               <button disabled={!game.requirementsMet(m.UnlockRequirements)} onClick={() => setMsg(newSlayerTask(game, id) ?? '')}>
-                {active ? `Reroll (${m.RerollCost.Quantity})` : 'New task'}
+                {active ? `Reroll (${fmt(slayerRerollCost(game, id))})` : 'New task'}
               </button>
             </div>
           );

@@ -11,7 +11,7 @@ import {
   style as styleData, triangleBonuses, weaponCap, type Dungeon, type CombatArea,
 } from './data';
 import {
-  combatLevel, type Fighter, accuracyRating, addStats, applyBonuses, attackInterval, evasionRating, hitChance, maxHit, minHit, reduceDamage,
+  combatLevel, type Fighter, accuracyRating, addStats, applyBonuses, attackInterval, finishStats, evasionRating, hitChance, maxHit, minHit, reduceDamage,
 } from './stats';
 
 export const SPAWN_INTERVAL_MS = 3000;
@@ -131,7 +131,9 @@ export function playerFighter(game: Game, enemyStyle?: string): Fighter {
   if (sty.UsesSpells && sp) addStats(f.stats, spellData(sp).Stats);
   for (const p of game.state.combat.prayers) applyBonuses(f, forStyle(prayerData(p).Bonuses.Component, sty.Id));
   for (const b of game.globalBonuses()) if (b.Stat.StatsType === `${NS}Character`) applyBonuses(f, forStyle([b], sty.Id));
+  applyBonuses(f, (st as { Bonuses?: { Component: Bonus[] } }).Bonuses?.Component ?? []);
   if (enemyStyle) applyBonuses(f, triangle(sty.Id, enemyStyle, 'Player'));
+  finishStats(f);
   return f;
 }
 
@@ -146,6 +148,7 @@ export function enemyFighter(id: string, stanceId?: string, playerStyle?: string
   f.power = pr.power;
   f.protection = pr.protection;
   if (playerStyle) applyBonuses(f, triangle(playerStyle, sty.Id, 'Enemy'));
+  finishStats(f);
   return f;
 }
 
@@ -160,21 +163,35 @@ export function areaEnemies(id: string): string[] {
 }
 
 function darkness(game: Game, areaId: string): number {
-  const light = playerFighter(game).mods.FlatLight ?? 0;
-  return Math.max(0, area(areaId).Darkness - light);
+  const f = playerFighter(game);
+  return Math.max(0, Math.floor(area(areaId).Darkness * (1 + (f.mods.PercentDarkness ?? 0))) - (f.mods.FlatLight ?? 0));
 }
 
 function rollDrops(game: Game, d: Drops): void {
   const doubling = mod(game, 'CombatLoot', 'ItemDoublingChance', { entity: 'Combat' });
-  const add = (item: string, q: number) => game.addItem(item, game.rng.chance(doubling) ? q * 2 : q);
+  // Bones and other buriables have their own extra doubling bonus on top.
+  const buriable = mod(game, 'CombatLoot', 'BuriableDoublingChance', { entity: 'Combat' });
+  const add = (item: string, q: number) => game.addItem(item, game.rng.chance(doubling + (buryCap(item) ? buriable : 0)) ? q * 2 : q);
+  const currencyDoubling = mod(game, 'CombatLoot', 'CurrencyDoublingChance', { entity: 'Combat' });
   for (const f of d.FixedItems) add(f.Item, game.rng.intInclusive(f.MinQuantity, f.MaxQuantity));
   for (const t of d.ItemTables) {
     if (!game.rng.chance(t.Chance) || !t.Table.length) continue;
     const pick = game.rng.weighted(t.Table.map((x) => ({ ...x, Weight: x.Weight ?? 1 })));
     add(pick.Item, game.rng.intInclusive(pick.MinQuantity, pick.MaxQuantity));
   }
-  for (const c of d.FixedCurrencies) game.addCurrency(c.Currency, game.rng.intInclusive(c.MinQuantity, c.MaxQuantity));
+  for (const c of d.FixedCurrencies) {
+    const q = game.rng.intInclusive(c.MinQuantity, c.MaxQuantity);
+    game.addCurrency(c.Currency, game.rng.chance(currencyDoubling) ? q * 2 : q);
+  }
 }
+
+/** Time between kills and the next spawn, with Flat/Percent spawn interval bonuses. */
+const spawnInterval = (game: Game) =>
+  Math.max(250, (SPAWN_INTERVAL_MS + mod(game, 'CombatAction', 'FlatSpawnInterval', { entity: 'Combat' })) * (1 + mod(game, 'CombatAction', 'PercentSpawnInterval', { entity: 'Combat' })));
+
+/** Prayer points a turn costs: each active prayer's cost plus any flat prayer cost bonus. */
+const prayerTurnCost = (game: Game) =>
+  game.state.combat.prayers.reduce((s, x) => s + Math.max(0, prayerData(x).Cost.Quantity + mod(game, 'Prayer', 'FlatPrayerCost', { entity: 'Combat', prayer: x })), 0);
 
 // ---- prayer, slayer, burying --------------------------------------------------------------------
 
@@ -210,9 +227,72 @@ export function bury(game: Game, itemId: string, qty: number): void {
   game.emit();
 }
 
+// Slayer costs and rewards follow the desktop's formulas, with their Percent/Flat bonuses.
+const slayerMod = (game: Game, masterId: string, name: string, currency?: string) =>
+  mod(game, 'SlayerTasks', name, { master: masterId, currency });
+
 export function slayerTaskRange(game: Game, masterId: string): [number, number] {
   const m = slayerMaster(masterId);
-  return [Math.max(1, m.BaseTaskLength), Math.max(1, m.BaseTaskLength + 3 * game.level('Slayer'))];
+  const pct = 1 + slayerMod(game, masterId, 'PercentTaskLength');
+  return [Math.max(1, Math.floor(m.BaseTaskLength * pct)), Math.max(1, Math.floor((m.BaseTaskLength + 3 * game.level('Slayer')) * pct))];
+}
+
+export function slayerRerollCost(game: Game, masterId: string): number {
+  const m = slayerMaster(masterId);
+  return Math.max(1, Math.floor(m.RerollCost.Quantity * (1 + slayerMod(game, masterId, 'PercentRerollCost', m.RerollCost.Currency))));
+}
+
+/** Extending doubles a task once (adds the master's base length) for half the reroll price. */
+export function slayerExtensionCost(game: Game, masterId: string): number {
+  const m = slayerMaster(masterId);
+  return Math.max(1, Math.floor(Math.floor(m.RerollCost.Quantity / 2) * (1 + slayerMod(game, masterId, 'PercentExtensionCost', m.RerollCost.Currency))));
+}
+
+export function slayerBlockCost(game: Game, masterId: string): number {
+  const m = slayerMaster(masterId);
+  return Math.max(1, Math.floor(m.BlockCost.Quantity * (1 + slayerMod(game, masterId, 'PercentBlockCost', m.BlockCost.Currency))));
+}
+
+/** A master's block slots: unlocked ones (by tasks done for that master) and what each is blocking. */
+export function slayerBlockSlots(game: Game, masterId: string): { id: string; unlocked: boolean; enemy?: string }[] {
+  const m = slayerMaster(masterId);
+  const blocks = game.state.combat.slayerBlocks ?? {};
+  return (m.BlockSlots ?? []).map((s) => ({ id: s.Id, unlocked: game.requirementsMet(s.UnlockRequirements), enemy: blocks[s.Id] }));
+}
+
+export function extendSlayerTask(game: Game): string | null {
+  const t = game.state.combat.slayer;
+  if (!t || t.left <= 0) return 'No task to extend';
+  if (t.extended) return 'Already extended';
+  const m = slayerMaster(t.master);
+  const cost = slayerExtensionCost(game, t.master);
+  if (game.currency(m.RerollCost.Currency) < cost) return `Need ${cost} slayer coins`;
+  game.addCurrency(m.RerollCost.Currency, -cost);
+  t.left += m.BaseTaskLength;
+  t.extended = true;
+  game.emit();
+  return null;
+}
+
+/** Block the current task's enemy from this master's future tasks (replacing a slot's old block if all are full). */
+export function blockSlayerEnemy(game: Game): string | null {
+  const t = game.state.combat.slayer;
+  if (!t) return 'No task';
+  const slots = slayerBlockSlots(game, t.master).filter((s) => s.unlocked);
+  if (!slots.length) return 'No block slots unlocked yet';
+  const slot = slots.find((s) => !s.enemy) ?? slots[0];
+  const m = slayerMaster(t.master);
+  const cost = slayerBlockCost(game, t.master);
+  if (game.currency(m.BlockCost.Currency) < cost) return `Need ${cost} slayer coins`;
+  game.addCurrency(m.BlockCost.Currency, -cost);
+  (game.state.combat.slayerBlocks ??= {})[slot.id] = t.enemy;
+  game.emit();
+  return null;
+}
+
+export function unblockSlayerEnemy(game: Game, slotId: string): void {
+  if (game.state.combat.slayerBlocks) delete game.state.combat.slayerBlocks[slotId];
+  game.emit();
 }
 
 export function newSlayerTask(game: Game, masterId: string): string | null {
@@ -222,12 +302,14 @@ export function newSlayerTask(game: Game, masterId: string): string | null {
   const c = game.state.combat;
   if (c.slayer && c.slayer.left > 0) {
     // Rerolling an active task costs slayer coins.
-    if (game.currency(m.RerollCost.Currency) < m.RerollCost.Quantity) return `Need ${m.RerollCost.Quantity} slayer coins`;
-    game.addCurrency(m.RerollCost.Currency, -m.RerollCost.Quantity);
+    const cost = slayerRerollCost(game, masterId);
+    if (game.currency(m.RerollCost.Currency) < cost) return `Need ${cost} slayer coins`;
+    game.addCurrency(m.RerollCost.Currency, -cost);
   }
+  const blocked = new Set(slayerBlockSlots(game, masterId).map((s) => s.enemy));
   const options = m.Areas.filter((a) => !game.isDemoLocked(area(a).UnlockRequirements))
     .flatMap((a) => areaEnemies(a))
-    .filter((e) => !game.isDemoLocked(enemyData(e).Requirements));
+    .filter((e) => !game.isDemoLocked(enemyData(e).Requirements) && !blocked.has(e));
   if (!options.length) return 'No enemies available';
   const [min, max] = slayerTaskRange(game, masterId);
   c.slayer = { master: masterId, enemy: options[game.rng.intInclusive(0, options.length - 1)], left: game.rng.intInclusive(min, max) };
@@ -241,7 +323,9 @@ function onSlayerKill(game: Game, enemyId: string): void {
   if (!t || t.enemy !== enemyId || t.left <= 0) return;
   const hp = enemyMaxHp(enemyId);
   game.addXp('Slayer', hp / 8 + 4);
-  game.addCurrency(slayerMaster(t.master).RewardCurrency, Math.max(1, Math.floor(0.1 * hp ** 1.15)));
+  const cur = slayerMaster(t.master).RewardCurrency;
+  const reward = 0.1 * hp ** 1.15 * (1 + slayerMod(game, t.master, 'PercentRewardCurrency', cur)) + slayerMod(game, t.master, 'FlatRewardCurrency', cur);
+  game.addCurrency(cur, Math.max(1, Math.floor(reward)));
   t.left--;
   if (t.left === 0) {
     const done = game.state.combat.slayerTasksDone;
@@ -263,7 +347,10 @@ function attackCost(game: Game, f: Fighter): { items: [string, number][] } | str
   if (f.style.UsesSpells) {
     const sp = game.state.combat.spell;
     if (!sp) return 'Select a spell to fight with magic.';
-    const costs = spellData(sp).RuneCosts;
+    // Staves and wands lower the cost of their element's runes (FlatRuneCost), down to free.
+    const costs = spellData(sp)
+      .RuneCosts.map((r) => ({ Item: r.Item, Quantity: Math.max(0, r.Quantity + mod(game, 'MagicSpell', 'FlatRuneCost', { entity: 'Combat', spell: sp, rune: r.Item })) }))
+      .filter((r) => r.Quantity > 0);
     for (const r of costs) if (game.count(r.Item) < r.Quantity) return `You need ${r.Quantity} ${itemName(r.Item, r.Quantity)}.`;
     return { items: costs.map((r) => [r.Item, r.Quantity]) };
   }
@@ -289,7 +376,7 @@ function startSpawning(game: Game): void {
   const c = game.state.combat;
   c.phase = 'spawning';
   c.enemy = null;
-  c.spawnLeft = toTicks(SPAWN_INTERVAL_MS);
+  c.spawnLeft = toTicks(spawnInterval(game));
 }
 
 function pickEnemy(game: Game): string {
@@ -363,7 +450,7 @@ function playerTurn(game: Game): boolean {
   // Combat XP is per point of damage, split by the stance (e.g. Stab: 0.4 Attack + 0.133 Hitpoints).
   for (const g of p.stance.ExperienceGain) game.addXp(local(g.Component.Entity), g.ExperiencePerDamage * dealt);
   if (c.prayers.length) {
-    const cost = c.prayers.reduce((s, x) => s + prayerData(x).Cost.Quantity, 0);
+    const cost = prayerTurnCost(game);
     game.addXp('Prayer', Math.sqrt(3 + 0.2 * dealt * cost));
   }
   if (c.enemyHp <= 0) {
@@ -394,7 +481,7 @@ function enemyTurn(game: Game): boolean {
   c.enemyLeft = toTicks(attackInterval(e));
   // Prayers drain their cost at the start of each enemy attack turn.
   if (c.prayers.length) {
-    const cost = c.prayers.reduce((s, x) => s + prayerData(x).Cost.Quantity, 0);
+    const cost = prayerTurnCost(game);
     if (game.rng.chance(mod(game, 'Prayer', 'CostPreservationChance', { entity: 'Combat' }))) {
       // preserved: no cost this turn
     } else if (prayerPoints(game) >= cost) {

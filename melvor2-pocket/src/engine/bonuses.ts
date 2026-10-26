@@ -28,6 +28,9 @@ export interface BonusContext {
 
 const PLACEHOLDER = 'Placeholder:Placeholder';
 
+export const fishingBaitCap = (itemId: string) =>
+  (tryGet<{ Capabilities: Record<string, unknown> | null }>('Item', itemId)?.Capabilities ?? {})[`${NS}FishingBait`] as { Bonuses: BonusBlock | null } | undefined;
+
 export const toolbeltCap = (itemId: string) =>
   (tryGet<{ Capabilities: Record<string, unknown> | null }>('Item', itemId)?.Capabilities ?? {})[`${NS}Toolbelt`] as ToolbeltCap | undefined;
 
@@ -44,8 +47,11 @@ export function activeBonuses(game: Game, includeEquipment = true): RawBonus[] {
     const n = game.state.purchases[NS + p.Id] ?? 0;
     if (n && p.Provides.Bonuses) out.push(...blockBonuses(p.Provides.Bonuses as BonusBlock, n));
   }
-  for (const c of all<{ Id: string }>('AstrologyConstellation')) {
-    for (const node of unlockedMinorNodes(game, NS + c.Id)) out.push(...blockBonuses(get<AstrologyNode>('AstrologyNode', node).Bonuses as BonusBlock));
+  for (const c of all<{ Id: string; PerMinorNodeBonuses?: BonusBlock | null }>('AstrologyConstellation')) {
+    const nodes = unlockedMinorNodes(game, NS + c.Id);
+    for (const node of nodes) out.push(...blockBonuses(get<AstrologyNode>('AstrologyNode', node).Bonuses as BonusBlock));
+    // Each unlocked minor node also adds the constellation's own bonus (e.g. +2% knowledge for it).
+    if (nodes.length) out.push(...blockBonuses(c.PerMinorNodeBonuses, nodes.length));
   }
   const worn = Object.values(game.state.equipment).map((e) => e.item);
   if (includeEquipment) for (const it of worn) out.push(...blockBonuses(equipmentCap(it)?.Bonuses as BonusBlock | null));
@@ -55,6 +61,8 @@ export function activeBonuses(game: Game, includeEquipment = true): RawBonus[] {
   }
   for (const b of guildBonuses(game)) out.push(...blockBonuses(b.Rewards.Bonuses as BonusBlock | null));
   for (const t of Object.values(game.state.toolbelt)) if (t.qty > 0) out.push(...blockBonuses(toolbeltCap(t.item)?.Bonuses));
+  const bait = game.state.fishingBait;
+  if (bait && game.count(bait) > 0) out.push(...blockBonuses(fishingBaitCap(bait)?.Bonuses));
   // Bonuses with conditions or scaling need runtime state the rebuild doesn't track yet, so they're left out.
   return out.filter((b) => b.Condition == null && b.Scaling == null);
 }

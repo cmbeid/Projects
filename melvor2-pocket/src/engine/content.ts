@@ -95,7 +95,14 @@ export interface Named { Id: string; DisplayName: string | { Singular: string } 
 type Objects = Record<string, { Id: string }[]>;
 type EntityConfig = Record<string, Record<string, { Priority: number; Id: string }[]>>;
 
-export interface ContentPackage { Namespace: string; Objects: Objects; EntityConfig: EntityConfig }
+export interface ContentPackage {
+  Namespace: string;
+  Objects: Objects;
+  EntityConfig: EntityConfig;
+  /** The game's wording for each bonus, used by describe.ts. */
+  GlobalModifierDescriptions?: unknown[];
+  ComponentModifierDescriptions?: unknown[];
+}
 
 let pkg: ContentPackage = { Namespace: 'MelvorBase', Objects: {}, EntityConfig: {} };
 const byType = new Map<string, Map<string, unknown>>();
@@ -116,6 +123,9 @@ export function loadContent(data: unknown): void {
 }
 
 export const contentLoaded = () => byType.size > 0;
+
+/** The whole loaded package, for code that walks it (bonus descriptions). */
+export const contentData = () => pkg;
 
 export function get<T>(type: string, id: string): T {
   const o = byType.get(type)?.get(id);

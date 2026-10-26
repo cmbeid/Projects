@@ -115,3 +115,19 @@ export async function storeBlob(key: 'sounds' | 'music', blob: Blob): Promise<vo
 export async function forgetBlob(key: 'sounds' | 'music'): Promise<void> {
   await run('readwrite', (st) => st.delete(key));
 }
+
+/**
+ * Get the latest version of the app: drop the service worker and its cached files, then reload past any HTTP cache.
+ * IndexedDB (save, game data, packs) is untouched.
+ */
+export async function forceRefresh(): Promise<void> {
+  try {
+    for (const r of (await navigator.serviceWorker?.getRegistrations()) ?? []) await r.unregister();
+    for (const k of await caches.keys()) await caches.delete(k);
+  } catch {
+    // Without service workers or caches there's nothing to clear.
+  }
+  const url = new URL(location.href);
+  url.searchParams.set('refresh', String(Date.now()));
+  location.replace(url.toString());
+}

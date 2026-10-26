@@ -30,14 +30,31 @@ export function addStats(into: Record<string, number>, block: StatBlock | null |
 }
 
 /** Apply character bonuses: FlatCombatStatValue adds to a stat, everything else sums into mods. */
-export function applyBonuses(f: Pick<Fighter, 'stats' | 'mods'>, bonuses: Bonus[]): void {
+export function applyBonuses(f: Pick<Fighter, 'stats' | 'mods' | 'levels'>, bonuses: Bonus[]): void {
   for (const b of bonuses) {
     if (b.Stat.Name === 'FlatCombatStatValue' && b.LocalContext?.CombatStat) {
       const k = local(b.LocalContext.CombatStat);
       f.stats[k] = (f.stats[k] ?? 0) + b.Value;
+    } else if (b.Stat.Name === 'PercentCombatStatValue' && b.LocalContext?.CombatStat) {
+      // Applied on top of the flat totals by finishStats, once every source is in.
+      const k = `PercentCombatStatValue:${local(b.LocalContext.CombatStat)}`;
+      f.mods[k] = (f.mods[k] ?? 0) + b.Value;
+    } else if (b.Stat.Name === 'FlatCombatLevel' && b.LocalContext?.CombatLevel) {
+      // e.g. the Block, Long-Range and Defensive stances: +3 effective Defence.
+      const k = local(b.LocalContext.CombatLevel);
+      f.levels[k] = (f.levels[k] ?? 1) + b.Value;
     } else {
       f.mods[b.Stat.Name] = (f.mods[b.Stat.Name] ?? 0) + b.Value;
     }
+  }
+}
+
+/** Scale combat stats by their PercentCombatStatValue bonuses. Call once all flat stats are added. */
+export function finishStats(f: Pick<Fighter, 'stats' | 'mods'>): void {
+  for (const [k, v] of Object.entries(f.mods)) {
+    if (!k.startsWith('PercentCombatStatValue:')) continue;
+    const stat = k.slice('PercentCombatStatValue:'.length);
+    f.stats[stat] = Math.floor((f.stats[stat] ?? 0) * (1 + v));
   }
 }
 
