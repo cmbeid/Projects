@@ -12,11 +12,13 @@ once. Never commit `data/` (it's git-ignored).
 Live at https://cmbeid.github.io/Projects/melvor2-pocket/ (HTTPS, so it installs to your home screen and plays offline).
 
 1. On a PC with the Melvor Idle 2 Demo installed through Steam, in this folder, run `npm install` and then
-   `npm run data`. This reads the game's data pack out of `Melvor2.exe` and writes `data/content.json`. Set
-   `MELVOR2_EXE` if the game isn't in the default Steam folder.
-2. Copy `data/content.json` to your phone (cloud drive, email to yourself, USB…).
-3. Open the site and pick the file. It's stored in that browser and never uploaded anywhere. Settings → Game data
-   lets you load a newer one.
+   `npm run bundle`. This reads your install and writes `data/melvor2-pocket.bundle` (about 67 MB): the game data,
+   the game's images, sounds and music in one file. Set `MELVOR2_EXE` if the game isn't in the default Steam folder.
+2. Copy `data/melvor2-pocket.bundle` to your phone (cloud drive, email to yourself, USB…).
+3. Open the site and pick the file. Everything is stored in that browser and never uploaded anywhere. Settings →
+   Game data → Load everything from a bundle loads a newer one.
+
+   `npm run data` alone makes just `data/content.json`, which also works (with generated art and no sound).
 
 ### Optional: bundle the data into a private Pages build
 
@@ -65,7 +67,7 @@ PORT=8137 npm start    # serves dist/ on your network and prints the address for
 - `tools/extract-pck.mjs` reads the Godot pack embedded in the exe; `tools/build-data.mjs` builds `data/content.json`
   and fails on broken references.
 - `src/engine` is a deterministic tick engine (60 ticks/s, seeded RNG): online play and offline catch-up give identical
-  results. Mechanics follow the game's own rules (notes kept outside this repo).
+  results. Mechanics follow the game's own rules, written up in `melvor2-research/notes/formulas.md`.
 - `src/ui` is a Preact portrait UI. All art is generated SVG (`src/art/icons.ts`); no game artwork or audio is used.
 - Saves live in IndexedDB (autosave every 10 s and when the app is hidden), with export/import in Settings.
 

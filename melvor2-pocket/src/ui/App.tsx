@@ -20,6 +20,7 @@ import { Art, Bar, Icon, SkillBadge, duration, fmt } from './common';
 import { exportSave, forgetAssets, forgetContent, importSave, storeAssets, wipe } from '../save';
 import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
+import { isBundle, unpackBundle } from '../bundle';
 import { recipeGroups, type RecipeView } from './recipes';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
@@ -468,6 +469,24 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
       <section>
         <h3>Game data</h3>
         <p class="muted">The game's content comes from your own install's content.json, stored in this browser.</p>
+        <label class="file-pick small-pick wide-pick">
+          <input
+            type="file"
+            onChange={async (e) => {
+              const f = (e.target as HTMLInputElement).files?.[0];
+              if (!f) return;
+              try {
+                if (!(await isBundle(f))) throw new Error("That isn't a melvor2-pocket.bundle. Build it with `npm run bundle` on your PC.");
+                setMsg('Unpacking…');
+                await unpackBundle(f);
+                location.reload();
+              } catch (err) {
+                setMsg((err as Error).message);
+              }
+            }}
+          />
+          Load everything from a bundle
+        </label>
         <p class="muted">
           Game images: {hasAssetPack() ? 'using your game-assets.pack' : 'generated art'}. Build the pack on your PC with{' '}
           <code>npm run assets</code> and load it here to use the game's own icons; anything it lacks stays generated.

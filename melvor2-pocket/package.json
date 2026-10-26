@@ -8,6 +8,7 @@
     "data": "node tools/build-data.mjs",
     "assets": "node tools/build-assets.mjs",
     "audio": "node tools/build-audio.mjs --music",
+    "bundle": "npm run data && npm run assets && npm run audio && node tools/build-bundle.mjs",
     "data:upload": "node tools/upload-data.mjs",
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
