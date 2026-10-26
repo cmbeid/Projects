@@ -1,8 +1,8 @@
 import { render } from 'preact';
-import { contentLoaded, loadContent } from './engine/content';
+import { contentLoaded, loadContent, tryGet } from './engine/content';
 import { loadStoredAssets, loadStoredContent } from './save';
 import { loadAssetPack } from './art/assets';
-import { actionSound, levelUpSound, loadSoundPack, playSound, questSound, unlockAudioOnFirstTap, weaponSound } from './audio/sound';
+import { actionSound, levelUpSound, loadSoundPack, playSound, questSound, setMusicMood, unlockAudioOnFirstTap, weaponSound, type MusicMood } from './audio/sound';
 import { DataLoader } from './ui/DataLoader';
 import './ui/styles.css';
 
@@ -86,6 +86,18 @@ async function startGame() {
 
   const draw = () => render(<App game={game} offline={offline} onCloseOffline={() => setOffline(null)} onSave={persist} />, root);
   game.subscribe(draw);
+  // Music follows combat: its own playlist while fighting, the boss track against an enemy that names one.
+  // Between spawns the mood holds, so a dungeon boss's track doesn't restart each wave.
+  let mood: MusicMood = 'NonCombat';
+  game.subscribe(() => {
+    if (game.state.active?.skill !== 'Combat') mood = 'NonCombat';
+    else {
+      const enemy = game.state.combat.enemy;
+      if (enemy) mood = tryGet<{ OverrideMusicTrack?: string | null }>('Enemy', enemy)?.OverrideMusicTrack ? 'Boss' : 'Combat';
+      else if (mood === 'NonCombat') mood = 'Combat';
+    }
+    setMusicMood(mood);
+  });
   game.events.add((e) => {
     if (e.type === 'action' && e.skill !== 'Combat') {
       const r = game.handler(e.skill).recipe(e.recipe) as { Category?: string; Location?: string };
