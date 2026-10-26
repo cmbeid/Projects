@@ -1,6 +1,8 @@
 import type { CookingRecipe } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler } from './types';
+import { goalMatches, questEvent } from '../quests';
+import { NS } from '../content';
 import { LACK_OF_RESOURCES, bonusReader, missingIngredients, recipeContext, recipeGetter, recipeList, spendIngredients } from './common';
 
 const bonus = (game: Game, r: CookingRecipe) => bonusReader(game, 'CookingAction', recipeContext('Cooking', r));
@@ -33,6 +35,7 @@ export const cooking: SkillHandler = {
     // Ingredients are used up whether or not the cook succeeds, unless preserved.
     const preserved = game.rng.chance(b('PreservationChance')) || (!success && game.rng.chance(b('PreservationChanceOnFail')));
     if (!preserved) spendIngredients(game, r.Ingredients);
+    else for (const ing of r.Ingredients.Items) questEvent(game, 'PreserveCookingItem', (d) => (goalMatches(d, 'Item', ing.Item) ? ing.Quantity : 0));
     if (success) {
       const roll = game.rng.next();
       let cumulative = 0;
@@ -43,6 +46,9 @@ export const cooking: SkillHandler = {
         break;
       }
       game.addXp(SKILL, r.BaseExperience);
+      questEvent(game, 'CookRecipe', (d) =>
+        goalMatches(d, 'Recipe', NS + r.Id) && goalMatches(d, 'Category', r.Category) && goalMatches(d, 'Subcategory', r.Subcategory ?? undefined) ? 1 : 0,
+      );
     } else {
       game.failed(SKILL, r.DisplayName);
     }

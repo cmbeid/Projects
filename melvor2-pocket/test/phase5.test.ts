@@ -121,3 +121,18 @@ describe('grain mill', () => {
     expect(g.state.mill.recipe).toBeNull();
   });
 });
+
+describe('quest-gated shop items', () => {
+  it('stay hidden until their quest is complete', () => {
+    const g = fresh();
+    const belt = shopPurchases().find((p) => p.Id === 'BruiserBelt')!;
+    const cutting = shopPurchases().find((p) => p.Id === 'TaintedTreantCutting')!;
+    expect(shopVisible(g, belt)).toBe(false);
+    expect(shopVisible(g, cutting)).toBe(false);
+    for (const q of ['MQ1', 'MQ2', 'MQ3', 'MQ4', 'MQ5', 'MQ6', 'MQ7']) g.state.quests[id(q)] = { step: 0, task: 0, progress: {}, done: true };
+    expect(shopVisible(g, cutting)).toBe(true);
+    expect(shopVisible(g, belt)).toBe(false);
+    g.state.quests[id('MQ8')] = { step: 0, task: 0, progress: {}, done: true };
+    expect(shopVisible(g, belt)).toBe(true);
+  });
+});

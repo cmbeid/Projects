@@ -4,13 +4,14 @@ import type { Game } from '../game';
 import type { SkillHandler, SkillRecipe } from '../skills/types';
 import { mod } from '../bonuses';
 import { goalMatches, questEvent } from '../quests';
+import type { GoalContext } from '../guild';
 import {
   COMBAT_LEVELS, DEFAULT_WEAPON, type Bonus, type Drops, allSlayerMasters, area, attack as attackData, buryCap, enemy as enemyData,
   equipmentCap, equipmentSlots, isDungeon, prayer as prayerData, slayerMaster, spell as spellData, stance as stanceData,
   style as styleData, triangleBonuses, weaponCap, type Dungeon, type CombatArea,
 } from './data';
 import {
-  type Fighter, accuracyRating, addStats, applyBonuses, attackInterval, evasionRating, hitChance, maxHit, minHit, reduceDamage,
+  combatLevel, type Fighter, accuracyRating, addStats, applyBonuses, attackInterval, evasionRating, hitChance, maxHit, minHit, reduceDamage,
 } from './stats';
 
 export const SPAWN_INTERVAL_MS = 3000;
@@ -315,7 +316,7 @@ function enemyKilled(game: Game): void {
   const id = c.enemy!;
   c.kills[id] = (c.kills[id] ?? 0) + 1;
   const styleId = playerFighter(game).style.Id;
-  questEvent(game, 'CombatKillEnemy', (d) => (goalMatches(d, 'Enemy', id) && goalMatches(d, 'PlayerCombatStyle', NS + styleId) ? 1 : 0));
+  questEvent(game, 'CombatKillEnemy', (d) => (goalMatches(d, 'Enemy', id) && goalMatches(d, 'PlayerCombatStyle', NS + styleId) ? 1 : 0), combatContext(game));
   rollDrops(game, enemyData(id).Drops);
   onSlayerKill(game, id);
   if (isDungeon(c.area!)) {
@@ -356,6 +357,9 @@ function playerTurn(game: Game): boolean {
   const dealt = Math.min(c.enemyHp, reduceDamage(raw, p, enemyAsDefender, enemyAsDefender.mods.ResistanceCombatTriangle ?? 0));
   c.enemyHp -= dealt;
   c.damageDealt += dealt;
+  const gctx = combatContext(game);
+  questEvent(game, 'CombatDamageEnemy', () => dealt, gctx);
+  questEvent(game, 'CombatSingleHitDamage', (d) => (dealt >= Number(d.MinDamage ?? 0) ? 1 : 0), gctx);
   // Combat XP is per point of damage, split by the stance (e.g. Stab: 0.4 Attack + 0.133 Hitpoints).
   for (const g of p.stance.ExperienceGain) game.addXp(local(g.Component.Entity), g.ExperiencePerDamage * dealt);
   if (c.prayers.length) {
@@ -393,7 +397,10 @@ function enemyTurn(game: Game): boolean {
     const cost = c.prayers.reduce((s, x) => s + prayerData(x).Cost.Quantity, 0);
     if (game.rng.chance(mod(game, 'Prayer', 'CostPreservationChance', { entity: 'Combat' }))) {
       // preserved: no cost this turn
-    } else if (prayerPoints(game) >= cost) game.addCurrency(`${NS}PrayerPoints`, -cost);
+    } else if (prayerPoints(game) >= cost) {
+      game.addCurrency(`${NS}PrayerPoints`, -cost);
+      questEvent(game, 'SpendPrayerCurrency', () => cost, combatContext(game));
+    }
     else {
       c.prayers = [];
       game.notice('You ran out of prayer points.');
@@ -405,7 +412,10 @@ function enemyTurn(game: Game): boolean {
   for (const hit of atk.Hits) {
     for (let i = 0; i < hit.Count; i++) {
       if (atk.IsAvoidable && game.rng.chance(Math.min(1, p.mods.AvoidanceChance ?? 0))) continue;
-      if (!game.rng.chance(hitChance(accuracyRating(e, dark), evasionRating(p, e.stance, dark)))) continue;
+      if (!game.rng.chance(hitChance(accuracyRating(e, dark), evasionRating(p, e.stance, dark)))) {
+        questEvent(game, 'CombatEvadeAttacks', () => 1, combatContext(game));
+        continue;
+      }
       const max = maxHit(e, e.mods.MaxHitCombatTriangle ?? 0);
       let raw = 0;
       for (const d of hit.Damage) {
@@ -501,3 +511,17 @@ export function fight(game: Game, areaId: string, enemyId: string | null): void 
 }
 
 export const slayerMasters = () => allSlayerMasters();
+
+/** The fight's situation, for guild goal conditions (enemy level, your style and stance, slayer task, prayers). */
+export function combatContext(game: Game): GoalContext {
+  const c = game.state.combat;
+  const p = playerFighter(game);
+  const e = c.enemy ? enemyFighter(c.enemy) : null;
+  return {
+    enemyLevel: e ? combatLevel(e, e.style) : undefined,
+    style: NS + p.style.Id,
+    stance: NS + p.stance.Id,
+    onSlayerTask: !!c.slayer && c.slayer.left > 0 && c.slayer.enemy === c.enemy,
+    prayerCost: c.prayers.reduce((s, x) => s + prayerData(x).Cost.Quantity, 0),
+  };
+}

@@ -5,7 +5,7 @@ import { FarmingPage } from './FarmingPage';
 import { RanchingPage } from './RanchingPage';
 import { ShopPage } from './ShopPage';
 import { CombatPage } from './CombatPage';
-import { CompletionLog, QuestsPage, ToolbeltPanel } from './ExtrasPages';
+import { CompletionLog, GuildOverview, GuildPanel, QuestsPage, ToolbeltPanel } from './ExtrasPages';
 import { StatsBar } from './StatsBar';
 import { describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
 import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from '../engine/items';
@@ -119,6 +119,7 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
         </div>
       </div>
       <ToolbeltPanel game={game} entity={skill} />
+      <GuildPanel game={game} skill={skill} />
       {skill === 'Farming' && <FarmingPage game={game} />}
       {skill === 'Ranching' && <RanchingPage game={game} />}
       {!PASSIVE_SKILLS.includes(skill) && (() => {
@@ -515,6 +516,32 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void }) {
           Load different game data
         </button>
       </section>
+      <section>
+        <h3>Names</h3>
+        <p class="muted">Used in quest dialogue.</p>
+        <label class="slider">
+          <span>You</span>
+          <input
+            class="text"
+            value={game.state.names.player}
+            maxLength={24}
+            onInput={(e) => {
+              game.state.names.player = (e.target as HTMLInputElement).value || 'Adventurer';
+            }}
+          />
+        </label>
+        <label class="slider">
+          <span>Companion</span>
+          <input
+            class="text"
+            value={game.state.names.companion}
+            maxLength={24}
+            onInput={(e) => {
+              game.state.names.companion = (e.target as HTMLInputElement).value || 'Rowan';
+            }}
+          />
+        </label>
+      </section>
       <SoundSettings />
       <section>
         <h3>About</h3>
@@ -583,6 +610,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
         {tab === 'more' && (
           <>
             {isUnlocked(game, 'Quests') ? <QuestsPage game={game} /> : <LockedPage game={game} page="Quests" />}
+            <GuildOverview game={game} />
             <CompletionLog game={game} />
             <StatsPage game={game} />
             <SettingsPage game={game} onSave={onSave} />

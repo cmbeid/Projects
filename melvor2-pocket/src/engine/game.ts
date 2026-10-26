@@ -21,6 +21,7 @@ import type { Bonus } from './combat/data';
 import { BASE_BANK_SLOTS, activeBonuses, mod } from './bonuses';
 import { goalActive, goalMatches, questEvent } from './quests';
 import { checkUnlocks, isUnlocked, unlockEverything } from './navigation';
+import { checkGuild, hasRank } from './guild';
 import { Tracker, type TrackEvent } from './tracker';
 
 export const TICKS_PER_SECOND = 60;
@@ -122,6 +123,10 @@ export class Game {
         const d = r.Data as { ShopPurchase?: string; Amount?: number };
         return (this.state.purchases[d.ShopPurchase ?? ''] ?? 0) >= (d.Amount ?? 1);
       }
+      case `${NS}MasteryGuildRank`: {
+        const d = r.Data as { Component?: { Entity: string }; Rank?: string };
+        return hasRank(this, (d.Component?.Entity ?? '').replace(NS, ''), d.Rank ?? '');
+      }
       case `${NS}QuestComplete`: {
         const d = r.Data as { Quest?: string };
         return !!this.state.quests[d.Quest ?? '']?.done;
@@ -193,6 +198,16 @@ export class Game {
   /** Set during player actions (selling, eating) so they don't count towards action rates. */
   private manual = false;
 
+  private lastGuildCheck = -Infinity;
+
+  /** Hunting journal level for an amount of journal XP. */
+  levelForJournalXp(xp: number): number {
+    return levelForXp(xp, 99);
+  }
+
+  /** Combat situation for goal conditions; set by the combat module. */
+  combatContext: () => import('./guild').GoalContext = () => ({});
+
   /** Skill credited for items added outside the active action (farming harvests, ranching...). */
   itemSource: string | null = null;
 
@@ -234,6 +249,10 @@ export class Game {
     st.itemsFound[id] = (st.itemsFound[id] ?? 0) + quantity;
     const source = this.itemSource ?? this.state.active?.skill;
     if (source) (st.itemGained[source] ??= {})[id] = (st.itemGained[source][id] ?? 0) + quantity;
+    if (source) {
+      const value = (item(id).SellsFor?.Quantity ?? 0) * quantity;
+      questEvent(this, 'ActionGainItemValue', (d) => (d.Component?.Entity === NS + source ? value : 0));
+    }
     const skill = this.state.active?.skill;
     if (skill) questEvent(this, 'ActionGainItem', (d) => (d.Component?.Entity === NS + skill && goalMatches(d, 'Item', id) ? quantity : 0));
     return true;
@@ -453,7 +472,9 @@ export class Game {
     const keep = mod(this, 'CombatFood', 'FoodPreservationChance', { entity: 'Combat' });
     for (let i = 0; i < n; i++) if (!this.rng.chance(keep)) eaten++;
     this.removeItem(food, eaten);
+    const before = this.hp();
     this.heal(n * heal);
+    if (this.state.active?.skill === 'Combat') questEvent(this, 'CombatHealFromAutoEat', () => this.hp() - before, this.combatContext());
     this.note(`Ate ${n} ${itemName(food, n)}`, 'info');
   }
 
@@ -483,6 +504,11 @@ export class Game {
     const nextMs = h.fire(this, recipe);
     this.signal({ type: 'action', skill, recipe });
     checkUnlocks(this);
+    // State-based guild tasks (levels, items owned, gear) are checked about once a second of game time.
+    if (this.state.tick - this.lastGuildCheck >= 60) {
+      this.lastGuildCheck = this.state.tick;
+      checkGuild(this);
+    }
     const a = this.state.active;
     if (!a) return;
     if (nextMs == null) {

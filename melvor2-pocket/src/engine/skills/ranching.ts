@@ -4,6 +4,7 @@ import type { Game } from '../game';
 import type { RanchAnimal } from '../state';
 import { missingIngredients, spendIngredients } from './common';
 import { mod } from '../bonuses';
+import { goalMatches, questEvent } from '../quests';
 
 const SKILL = 'Ranching';
 const TICKS_PER_MS = 60 / 1000;
@@ -128,6 +129,7 @@ export function pet(game: Game, id: number): void {
   if (!a || game.state.tick < a.petDueAt) return;
   a.petDueAt = game.state.tick + ticks(PET_INTERVAL_MS);
   game.addXp(SKILL, PET_XP);
+  questEvent(game, 'RanchingPetAnimal', (d) => (goalMatches(d, 'Animal', a.animal) && goalMatches(d, 'Variant', a.variant) ? 1 : 0));
   game.emit();
 }
 
@@ -177,6 +179,8 @@ function processAnimals(game: Game): void {
       }
       game.addXp(SKILL, r.BaseExperience * (1 + variantBonus(a, 'PercentXPGained')));
       a.nextProductAt += ticks(r.ProductInterval);
+      const alive = (game.state.stats.ranchHoursAlive ??= {});
+      alive[a.animal] = (alive[a.animal] ?? 0) + r.ProductInterval / 3_600_000;
     }
     if (now >= a.diesAt) {
       st.animals = st.animals.filter((x) => x !== a);

@@ -51,13 +51,19 @@ export function artisan(skill: string): SkillHandler {
       }
       const max = maxSteps(r, game, skill);
       let left = Math.min(stepsLeft(game, id), max);
-      left -= left > 1 && game.rng.chance(b('SkipStepChance')) ? 2 : 1;
+      const skipped = left > 1 && game.rng.chance(b('SkipStepChance'));
+      left -= skipped ? 2 : 1;
+      const matchRecipe = (d: Record<string, unknown> & { Component?: { Entity: string } }) =>
+        d.Component?.Entity === NS + skill && goalMatches(d, 'Recipe', NS + r.Id) && goalMatches(d, 'Category', r.Category) && goalMatches(d, 'Subcategory', r.Subcategory ?? undefined);
+      questEvent(game, 'ArtisanCompleteStep', (d) => (matchRecipe(d) ? (skipped ? 2 : 1) : 0));
+      if (skipped) questEvent(game, 'ArtisanSkipStep', (d) => (d.Component?.Entity === NS + skill ? 1 : 0));
       if (left > 0) {
         game.state.recipeSteps[id] = left;
         return interval(game, skill, r);
       }
       game.state.recipeSteps[id] = max;
       if (!game.rng.chance(b('PreservationChance'))) spendIngredients(game, costs);
+      else for (const ing of costs.Items) questEvent(game, 'ArtisanPreserveItem', (d) => (d.Component?.Entity === NS + skill && goalMatches(d, 'Item', ing.Item) ? ing.Quantity : 0));
       const doubling = b('DoublingChance');
       const flatQ = b('FlatProductQuantity');
       const pctQ = b('PercentProductQuantity');
@@ -69,6 +75,8 @@ export function artisan(skill: string): SkillHandler {
         if (game.addItem(p.Item, q)) made += q;
       }
       game.addXp(skill, r.BaseExperience);
+      const goalCats = (r as { GoalCategories?: string[] }).GoalCategories ?? [];
+      questEvent(game, 'ArtisanCreateRecipeGoalCategory', (d) => (d.Component?.Entity === NS + skill && goalCats.includes(String(d.GoalCategory)) ? 1 : 0));
       questEvent(game, 'ArtisanCreateRecipe', (d) =>
         d.Component?.Entity === NS + skill && goalMatches(d, 'Recipe', NS + r.Id) && goalMatches(d, 'Category', r.Category) && goalMatches(d, 'Subcategory', r.Subcategory ?? undefined)
           ? (d.UseOutputQuantity ? made : 1)

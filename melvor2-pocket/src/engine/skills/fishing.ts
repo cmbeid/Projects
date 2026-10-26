@@ -2,6 +2,7 @@ import type { FishingRecipe } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler } from './types';
 import { bonusReader, recipeGetter, recipeList } from './common';
+import { goalMatches, questEvent } from '../quests';
 import { NS } from '../content';
 
 const SKILL = 'Fishing';
@@ -43,6 +44,7 @@ export const fishing: SkillHandler = {
       }
     }
     game.addXp(SKILL, r.BaseExperience);
+    questEvent(game, 'FishingFishRecipe', (d) => (goalMatches(d, 'Recipe', NS + r.Id) ? 1 : 0));
     return rollInterval(game, r);
   },
 };

@@ -2,19 +2,22 @@
 import { NS, all, get, type Ingredients, type Requirement } from './content';
 import type { Game } from './game';
 import { missingIngredients, spendIngredients } from './skills/common';
+import { guildEvent, type GoalContext } from './guild';
 
 export interface QuestGoal {
   Type: string;
   Data: { Id: string; MaxProgress: number; Component?: { Entity: string }; [k: string]: unknown };
 }
 export interface QuestTask { Id: string; Goals: QuestGoal[]; Costs: Ingredients | null }
-export interface QuestStep { Id: string; Description: string; CompletedDescription: string; TasksInOrder: QuestTask[] }
+export interface DialogueLine { Npc: string; DialogueText: string }
+export interface QuestStep { Id: string; Description: string; CompletedDescription: string; TasksInOrder: QuestTask[]; Dialogue: DialogueLine[] }
 export interface Quest {
   Id: string;
   DisplayName: string;
   Description: string;
   Category: string;
   Steps: QuestStep[];
+  CompletionDialogue: DialogueLine[] | null;
   Rewards: { Items: { Item: string; Quantity: number }[]; Currency: { Currency: string; Quantity: number }[] } | null;
   Requirements: Requirement[] | null;
 }
@@ -77,7 +80,11 @@ export function advanceQuest(game: Game, id: string): string | null {
 }
 
 /** Feed an event to every active goal of the given type; `amount` returns how much the event counts for a goal. */
-export function questEvent(game: Game, type: string, amount: (data: QuestGoal['Data']) => number): void {
+/** Goal data as events see it: any goal's fields (quest or guild). */
+export type GoalData = Record<string, unknown> & { Component?: { Entity: string } };
+
+export function questEvent(game: Game, type: string, amount: (data: GoalData) => number, ctx: GoalContext = {}): void {
+  guildEvent(game, type, amount, ctx);
   for (const id of Object.keys(game.state.quests)) {
     const s = game.state.quests[id];
     const t = currentTask(game, id);
@@ -98,10 +105,19 @@ export function questEvent(game: Game, type: string, amount: (data: QuestGoal['D
 }
 
 /** Matches a goal field against an event value: unset (null) fields match anything. */
-export const goalMatches = (data: QuestGoal['Data'], key: string, value: string | undefined) => data[key] == null || data[key] === value;
+export const goalMatches = (data: GoalData, key: string, value: string | undefined) => data[key] == null || data[key] === value;
 
 /** Whether a quest goal is the current active one (for QuestTaskGoalActive display requirements). */
 export function goalActive(game: Game, questId: string, step: number, task: number): boolean {
   const s = questState(game, questId);
   return !!s && !s.done && s.step === step && s.task === task;
+}
+
+/** Speaker name and text for a dialogue line, with the [Player Name] / [Companion Name] placeholders filled in. */
+export function dialogueLine(game: Game, line: DialogueLine): { speaker: string | null; text: string; you: boolean } {
+  const fill = (t: string) => t.replace(/\[Player Name\]/g, game.state.names.player).replace(/\[Companion Name\]/g, game.state.names.companion);
+  const npc = line.Npc.replace(NS, '');
+  const speaker =
+    npc === 'System' ? null : npc === 'Player' ? game.state.names.player : npc === 'Companion' ? game.state.names.companion : get<{ DisplayName: string }>('NPC', line.Npc).DisplayName;
+  return { speaker, text: fill(line.DialogueText), you: npc === 'Player' };
 }
