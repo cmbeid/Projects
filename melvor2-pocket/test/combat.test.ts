@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/engine/game';
 import { newState } from '../src/engine/state';
+import { unlockEverything } from '../src/engine/navigation';
 import {
   accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, resistance,
 } from '../src/engine/combat/stats';
 import { areaEnemies, bury, enemyFighter, equip, fight, newSlayerTask, playerFighter, prayerPoints, togglePrayer, unequip } from '../src/engine/combat/combat';
 
 const id = (s: string) => `MelvorBase:${s}`;
-const fresh = (seed = 1) => new Game(newState(0, seed));
+/** Mechanics tests start with every page unlocked; progression gating has its own tests. */
+const fresh = (seed = 1) => {
+  const g = new Game(newState(0, seed));
+  unlockEverything(g);
+  return g;
+};
 const MIN = 60 * 60; // ticks
 
 describe('combat formulas (worked by hand from the game code)', () => {

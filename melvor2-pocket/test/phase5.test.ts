@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game, msToTicks } from '../src/engine/game';
 import { newState } from '../src/engine/state';
+import { unlockEverything } from '../src/engine/navigation';
 import { mod } from '../src/engine/bonuses';
 import { equipTool, open, unequipTool } from '../src/engine/items';
 import { advanceQuest, currentTask, quest, startQuest } from '../src/engine/quests';
@@ -8,7 +9,12 @@ import { setMill } from '../src/engine/skills/farming';
 import { buy, shopPurchases, shopVisible } from '../src/engine/shop';
 
 const id = (s: string) => `MelvorBase:${s}`;
-const fresh = (seed = 1) => new Game(newState(0, seed));
+/** Mechanics tests start with every page unlocked; progression gating has its own tests. */
+const fresh = (seed = 1) => {
+  const g = new Game(newState(0, seed));
+  unlockEverything(g);
+  return g;
+};
 
 describe('bonuses', () => {
   it('toolbelt items add their bonuses to the right skill and location only', () => {

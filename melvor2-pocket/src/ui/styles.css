@@ -154,3 +154,7 @@ button.plain { background: none; border: 0; padding: 0; text-align: left; width:
 .file-pick { display: flex; align-items: center; justify-content: center; min-height: 52px; margin-top: 16px; border-radius: 12px; background: var(--accent); color: #14161c; font-weight: 700; cursor: pointer; }
 .file-pick input { display: none; }
 .file-pick.busy { opacity: .6; }
+
+.locked-tile .skill-meta span { font-size: 12px; }
+.req-done { color: var(--good) !important; }
+.req { padding: 8px 0; border-bottom: 1px solid var(--line); }

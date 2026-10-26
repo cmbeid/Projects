@@ -20,6 +20,7 @@ import { combat } from './combat/combat';
 import type { Bonus } from './combat/data';
 import { BASE_BANK_SLOTS, activeBonuses, mod } from './bonuses';
 import { goalActive, goalMatches, questEvent } from './quests';
+import { checkUnlocks, isUnlocked, unlockEverything } from './navigation';
 
 export const TICKS_PER_SECOND = 60;
 export const TICK_MS = 1000 / TICKS_PER_SECOND;
@@ -56,6 +57,11 @@ export class Game {
   constructor(state: GameState = newState()) {
     this.state = state;
     this.rng = new Rng(state.rng);
+    if (state.legacyUnlockAll) {
+      unlockEverything(this);
+      delete state.legacyUnlockAll;
+    }
+    checkUnlocks(this);
   }
 
   // ---- observers -------------------------------------------------------------------------
@@ -114,6 +120,18 @@ export class Game {
         const d = r.Data as { Quest?: string; Step?: number; Task?: number };
         return goalActive(this, d.Quest ?? '', d.Step ?? 0, d.Task ?? 0);
       }
+      case `${NS}ItemStatistic`: {
+        const d = r.Data as { Statistic?: string; Item?: string; Value?: number };
+        return this.itemStatistic((d.Statistic ?? '').replace(NS, ''), d.Item ?? '') >= (d.Value ?? 1);
+      }
+      case `${NS}CurrencyStatistic`: {
+        const d = r.Data as { Statistic?: string; Value?: number };
+        return d.Statistic === `${NS}BankCurrencyFromSale` && this.state.stats.goldFromSales >= (d.Value ?? 1);
+      }
+      case `${NS}HuntingAnimalStatistic`: {
+        const d = r.Data as { Animal?: string; Value?: number };
+        return (this.state.hunting[d.Animal ?? '']?.trapped ?? 0) >= (d.Value ?? 1);
+      }
       case `${NS}EnemyStatistic`: {
         const d = r.Data as { Enemy?: string; Value?: number };
         return (this.state.combat.kills[d.Enemy ?? ''] ?? 0) >= (d.Value ?? 1);
@@ -138,6 +156,16 @@ export class Game {
     for (const r of reqs.slice(1)) result = r.Data.IsOr ? result || this.requirementMet(r) : result && this.requirementMet(r);
     return result;
   }
+
+  /** 'WoodcuttingItemGained' style per-skill item counts, or 'BankItemFound' for items found from any source. */
+  itemStatistic(stat: string, item: string): number {
+    if (stat === 'BankItemFound') return this.state.stats.itemsFound[item] ?? 0;
+    const skill = stat.replace(/ItemGained$/, '');
+    return this.state.stats.itemGained[skill]?.[item] ?? 0;
+  }
+
+  /** Skill credited for items added outside the active action (farming harvests, ranching...). */
+  itemSource: string | null = null;
 
   /** Whether an item is equipped in any toolbelt slot. */
   toolbeltHas(id: string, quantity: number): boolean {
@@ -172,6 +200,10 @@ export class Game {
     this.state.bank[id] = (this.state.bank[id] ?? 0) + quantity;
     this.note(`+${quantity} ${itemName(id, quantity)}`, 'item');
     this.state.found[id] = true;
+    const st = this.state.stats;
+    st.itemsFound[id] = (st.itemsFound[id] ?? 0) + quantity;
+    const source = this.itemSource ?? this.state.active?.skill;
+    if (source) (st.itemGained[source] ??= {})[id] = (st.itemGained[source][id] ?? 0) + quantity;
     const skill = this.state.active?.skill;
     if (skill) questEvent(this, 'ActionGainItem', (d) => (d.Component?.Entity === NS + skill && goalMatches(d, 'Item', id) ? quantity : 0));
     return true;
@@ -237,6 +269,7 @@ export class Game {
     this.addCurrency(price.Currency, gold);
     this.state.stats.itemsSold += q;
     this.state.stats.goldFromSales += gold;
+    checkUnlocks(this);
     this.emit();
     return gold;
   }
@@ -281,7 +314,7 @@ export class Game {
       this.stop();
       return;
     }
-    const reason = this.blockReason(skill, recipe);
+    const reason = isUnlocked(this, skill) ? this.blockReason(skill, recipe) : 'That skill is still locked';
     if (reason) {
       this.note(reason, 'stop');
       this.emit();
@@ -403,6 +436,7 @@ export class Game {
     const stats = this.state.stats.actions;
     stats[skill] = (stats[skill] ?? 0) + 1;
     const nextMs = h.fire(this, recipe);
+    checkUnlocks(this);
     const a = this.state.active;
     if (!a) return;
     if (nextMs == null) {
