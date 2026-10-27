@@ -57,7 +57,8 @@ export type GameEvent =
   | { type: 'action'; skill: string; recipe: string }
   | { type: 'levelUp'; skill: string; from: number; to: number }
   | { type: 'questComplete' }
-  | { type: 'attack'; weaponType?: string };
+  | { type: 'attack'; weaponType?: string }
+  | { type: 'item'; id: string; quantity: number; bank: number };
 
 export interface LogEntry { tick: number; text: string; kind: 'item' | 'level' | 'info' | 'stop' }
 
@@ -322,6 +323,7 @@ export class Game {
     this.note(`+${quantity} ${itemName(id, quantity)}`, 'item');
     this.state.found[id] = true;
     this.track('item', id, quantity);
+    this.signal({ type: 'item', id, quantity, bank: this.state.bank[id] });
     if (this.offlineGroups) add(this.offlineGroup().gained, id, quantity);
     const st = this.state.stats;
     st.itemsFound[id] = (st.itemsFound[id] ?? 0) + quantity;

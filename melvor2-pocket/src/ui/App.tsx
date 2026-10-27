@@ -25,6 +25,7 @@ import { exportSave, forceRefresh, forgetAssets, forgetContent, importSave, stor
 import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
 import { isBundle, unpackBundle } from '../bundle';
+import { ItemToasts, itemToastsOn, setItemToasts } from './ItemToasts';
 import { LevelUpPopups, levelUpPopupsOn, setLevelUpPopups } from './LevelUp';
 import { BankPage, bankTabs, moveToTab } from './BankPage';
 import { backgroundMode, pageBackground, raining, setBackgroundMode, setWeatherOn, weatherAt, weatherOn, type BackgroundMode } from '../art/background';
@@ -624,6 +625,7 @@ function StatsPage({ game }: { game: Game }) {
 function SettingsPage({ game, onSave }: { game: Game; onSave: () => void | Promise<unknown> }) {
   const [text, setText] = useState('');
   const [popups, setPopups] = useState(levelUpPopupsOn());
+  const [toasts, setToastsPref] = useState(itemToastsOn());
   const [bgMode, setBgMode] = useState(backgroundMode());
   const [weather, setWeather] = useState(weatherOn());
   const [msg, setMsg] = useState('');
@@ -827,6 +829,10 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void | Promi
           <input type="checkbox" checked={popups} onChange={(e) => { const on = (e.target as HTMLInputElement).checked; setLevelUpPopups(on); setPopups(on); }} />
           Show level-up popups
         </label>
+        <label class="toggle">
+          <input type="checkbox" checked={toasts} onChange={(e) => { const on = (e.target as HTMLInputElement).checked; setItemToasts(on); setToastsPref(on); }} />
+          Item notifications (amount gained and bank total)
+        </label>
       </section>
       <SoundSettings />
       <section>
@@ -999,6 +1005,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
       </nav>
       {food && <FoodSheet game={game} onClose={() => setFood(false)} />}
       {offline && <OfflineModal s={offline} onClose={onCloseOffline} />}
+      <ItemToasts game={game} />
       <LevelUpPopups game={game} />
     </div>
   );

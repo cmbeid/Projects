@@ -446,3 +446,12 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 .summary-row .loss { color: #ff6b6b; }
 .summary-row .rate { min-width: 72px; text-align: right; }
 .center { text-align: center; }
+
+/* Item notifications: small cards stacked above the stats bar, like the desktop's. */
+.item-toasts { position: fixed; z-index: 6; right: 12px; bottom: calc(var(--tabs-h, 64px) + 64px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
+.item-toast { pointer-events: auto; display: flex; align-items: center; gap: 8px; min-width: 180px; max-width: 280px; padding: 6px 12px 6px 8px; border-radius: 12px; background: rgba(33, 35, 40, .95); border: 1px solid #45484f; box-shadow: 0 4px 14px rgba(0, 0, 0, .4); font-size: 14px; animation: toast-in .2s ease-out; }
+.toast-qty { color: #4cd964; animation: toast-bump .25s ease-out; }
+.toast-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast-bank { color: var(--muted); font-size: 12px; padding: 2px 6px; border-radius: 6px; background: rgba(255, 255, 255, .06); }
+@keyframes toast-in { from { opacity: 0; transform: translateX(20px); } }
+@keyframes toast-bump { from { transform: scale(1.3); } }
