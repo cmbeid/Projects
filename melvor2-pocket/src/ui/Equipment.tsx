@@ -5,13 +5,14 @@ import { useState } from 'preact/hooks';
 import { NS, itemName, tryGet } from '../engine/content';
 import type { Game } from '../engine/game';
 import { DEFAULT_WEAPON, equipmentCap, equipmentSlots, stance as stanceData, type StatBlock } from '../engine/combat/data';
-import { canEquip, currentStance, equip, equipped, occupiedSlots, playerFighter, unequip, weaponStances } from '../engine/combat/combat';
+import { canEquip, currentStance, targetSlot, equip, equipped, occupiedSlots, playerFighter, unequip, weaponStances } from '../engine/combat/combat';
 import { accuracyRating, attackInterval, combatLevel, maxHit, minHit, powerRating, protectionRating } from '../engine/combat/stats';
 import { assetUrl } from '../art/assets';
 import { Icon, fmt } from './common';
 import { ToolbeltPanel } from './ExtrasPages';
 import { currentLoadout, loadoutSlots, loadoutUnlocked, swapLoadout } from '../engine/combat/loadouts';
 import { describeRequirement } from '../engine/navigation';
+import { describeBlock } from '../engine/describe';
 
 interface SlotData { Id: string; DisplayName: string; FitsType: string; GridPosition: { X: number; Y: number }; UnlockRequirements: never[] | null }
 interface CombatStat { DisplayName: string; IsPercent: boolean }
@@ -70,6 +71,65 @@ function statDiff(game: Game, slot: string, itemId: string): { key: string; delt
     .map((key) => ({ key, delta: (next.get(key) ?? 0) - (prev.get(key) ?? 0) }))
     .filter((d) => d.delta !== 0)
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+/** What an equippable item gives, as the desktop's item details show it, and the change against what it would replace. */
+export function ItemBonuses({ game, id }: { game: Game; id: string }) {
+  const cap = equipmentCap(id);
+  if (!cap) return null;
+  const stats = [...itemStats(id)].filter(([, v]) => v !== 0);
+  const bonuses = describeBlock(cap.Bonuses);
+  const slot = targetSlot(game, id);
+  const replaced = slot ? replacedBy(game, slot, id) : [];
+  const diff = slot ? statDiff(game, slot, id) : [];
+  const unmet = cap.Requirements?.map((r) => describeRequirement(game, r)).filter((r) => !r.done) ?? [];
+  return (
+    <div class="item-bonuses">
+      {stats.length > 0 && (
+        <div class="diff">
+          {stats.map(([k, v]) => (
+            <span>
+              {v > 0 && !/AttackInterval$/.test(k) ? '+' : ''}
+              {formatStat(k, v)} {statLabel(k)}
+            </span>
+          ))}
+        </div>
+      )}
+      {bonuses.length > 0 && (
+        <ul class="bonus-list">
+          {bonuses.map((b) => (
+            <li>{b}</li>
+          ))}
+        </ul>
+      )}
+      {!stats.length && !bonuses.length && <p class="muted small">No stats or bonuses.</p>}
+      {unmet.map((r) => (
+        <div class="need small">Needs {r.text}</div>
+      ))}
+      {slot && !replaced.includes(id) && (
+        <>
+          <div class="muted small">
+            Compared with {replaced.filter((r) => r !== DEFAULT_WEAPON).map(itemName).join(' + ') || 'an empty slot'}:
+          </div>
+          <div class="diff">
+            {diff.length ? (
+              diff.map((d) => {
+                const good = lowerIsBetter(d.key) ? d.delta < 0 : d.delta > 0;
+                return (
+                  <span class={good ? 'up' : 'down'}>
+                    {d.delta > 0 ? '+' : '−'}
+                    {formatStat(d.key, Math.abs(d.delta))} {statLabel(d.key)}
+                  </span>
+                );
+              })
+            ) : (
+              <span class="muted">No stat changes</span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export function EquipmentView({ game }: { game: Game }) {
