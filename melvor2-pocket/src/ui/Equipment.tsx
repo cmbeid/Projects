@@ -106,10 +106,12 @@ export function ItemBonuses({ game, id }: { game: Game; id: string }) {
       {unmet.map((r) => (
         <div class="need small">Needs {r.text}</div>
       ))}
-      {slot && !replaced.includes(id) && (
+      {/* With nothing in the slot the change is just the stats above, so only say the slot is empty. */}
+      {slot && !replaced.length && <div class="muted small">Nothing equipped in this slot yet.</div>}
+      {slot && replaced.length > 0 && !replaced.includes(id) && (
         <>
           <div class="muted small">
-            Compared with {replaced.filter((r) => r !== DEFAULT_WEAPON).map(itemName).join(' + ') || 'an empty slot'}:
+            Compared with {replaced.filter((r) => r !== DEFAULT_WEAPON).map(itemName).join(' + ') || 'bare hands'}:
           </div>
           <div class="diff">
             {diff.length ? (
