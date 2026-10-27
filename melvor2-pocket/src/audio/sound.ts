@@ -118,14 +118,25 @@ function bufferFor(which: 'sounds' | 'music', path: string): Promise<AudioBuffer
 
 const lastPlayed = new Map<string, number>();
 
+let burstStart = 0;
+let burstCount = 0;
+
 /** Play a sound effect by its res:// path, at most every 150 ms per sound. */
 export function playSound(path: string | null | undefined): void {
-  if (!path || !ctx || !packs.sounds || settings.sfx <= 0) return;
+  // Never queue sounds while hidden or paused: a suspended context would play them all at once on return.
+  const live = () => !!ctx && ctx.state === 'running' && !document.hidden;
+  if (!path || !live() || !packs.sounds || settings.sfx <= 0) return;
   const now = performance.now();
   if (now - (lastPlayed.get(path) ?? 0) < 150) return;
+  // A catch-up after a short gap can fire many different sounds in one frame; play only a few.
+  if (now - burstStart > 150) {
+    burstStart = now;
+    burstCount = 0;
+  }
+  if (++burstCount > 3) return;
   lastPlayed.set(path, now);
   void bufferFor('sounds', path).then((buf) => {
-    if (!buf || !ctx || !sfxGain) return;
+    if (!buf || !ctx || !sfxGain || !live() || performance.now() - now > 500) return;
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.connect(sfxGain);
