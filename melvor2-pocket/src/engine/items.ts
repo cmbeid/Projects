@@ -24,20 +24,28 @@ const caps = (id: string) => tryGet<{ Capabilities: Record<string, unknown> | nu
 export const openableCap = (id: string) => caps(id)[`${NS}Openable`] as OpenableCap | undefined;
 
 /** Open up to `qty` containers (bird nests, geodes...): fixed drops plus one weighted roll each. */
-export function open(game: Game, id: string, qty: number): void {
+/** Open up to qty of an item; returns what came out, by item id. */
+export function open(game: Game, id: string, qty: number): Record<string, number> {
   const cap = openableCap(id);
   const n = Math.min(qty, game.count(id));
-  if (!cap || n <= 0) return;
+  if (!cap || n <= 0) return {};
+  const got: Record<string, number> = {};
   game.removeItem(id, n);
-  for (let i = 0; i < n; i++) {
-    for (const d of cap.AlwaysDrops) game.addItem(d.Item, d.Quantity);
-    if (cap.DropTable.length) {
-      const d = game.rng.weighted(cap.DropTable);
-      game.addItem(d.Item, game.rng.intInclusive(d.MinQuantity, d.MaxQuantity));
+  game.collecting = got;
+  try {
+    for (let i = 0; i < n; i++) {
+      for (const d of cap.AlwaysDrops) game.addItem(d.Item, d.Quantity);
+      if (cap.DropTable.length) {
+        const d = game.rng.weighted(cap.DropTable);
+        game.addItem(d.Item, game.rng.intInclusive(d.MinQuantity, d.MaxQuantity));
+      }
     }
+  } finally {
+    game.collecting = null;
   }
   game.state.rng = game.rng.state;
   game.emit();
+  return got;
 }
 
 export const itemUpgrades = () => all<ItemUpgrade>('ItemUpgrade');

@@ -98,6 +98,8 @@ export class Game {
   private listeners = new Set<() => void>();
   /** Set while replaying offline time so the log isn't flooded. */
   private quiet = false;
+  /** While set, gained items are tallied here instead of raising item notifications (e.g. opening a geode). */
+  collecting: Record<string, number> | null = null;
   /** While replaying offline time: gains and uses per skill, for the welcome-back summary. */
   private offlineGroups: Record<string, OfflineGroup> | null = null;
   private offlineGroup(): OfflineGroup {
@@ -323,7 +325,8 @@ export class Game {
     this.note(`+${quantity} ${itemName(id, quantity)}`, 'item');
     this.state.found[id] = true;
     this.track('item', id, quantity);
-    this.signal({ type: 'item', id, quantity, bank: this.state.bank[id] });
+    if (this.collecting) this.collecting[id] = (this.collecting[id] ?? 0) + quantity;
+    else this.signal({ type: 'item', id, quantity, bank: this.state.bank[id] });
     if (this.offlineGroups) add(this.offlineGroup().gained, id, quantity);
     const st = this.state.stats;
     st.itemsFound[id] = (st.itemsFound[id] ?? 0) + quantity;

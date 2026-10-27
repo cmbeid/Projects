@@ -66,9 +66,12 @@ describe('items', () => {
   it('opens geodes for their fixed and weighted drops', () => {
     const g = fresh(3);
     g.addItem(id('Geode'), 5);
-    open(g, id('Geode'), 5);
+    const got = open(g, id('Geode'), 5);
     expect(g.count(id('Geode'))).toBe(0);
     expect(g.count(id('GeodeDust'))).toBe(50);
+    // The returned tally (shown in the rewards popup) matches what reached the bank.
+    expect(got[id('GeodeDust')]).toBe(50);
+    expect(Object.values(got).reduce((a, b) => a + b, 0)).toBeGreaterThan(50);
   });
 });
 
