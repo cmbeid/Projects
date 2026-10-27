@@ -7,7 +7,8 @@ import { successChance, type ThievingRecipe } from '../src/engine/skills/thievin
 import { huntState } from '../src/engine/skills/hunting';
 import { buyPlot, harvest, harvestQuantity, isReady, plant, plotState, farmingRecipe, water } from '../src/engine/skills/farming';
 import { buyAnimal, buyLand, build, animalsIn, maintenance, repair, repairCost } from '../src/engine/skills/ranching';
-import { knowledge, unlockedMinorNodes } from '../src/engine/skills/astrology';
+import { availableMajorPicks, knowledge, unlockMajorNode, unlockedMinorNodes } from '../src/engine/skills/astrology';
+import { mod } from '../src/engine/bonuses';
 import { buy, shopPurchases } from '../src/engine/shop';
 
 const id = (s: string) => `MelvorBase:${s}`;
@@ -141,6 +142,17 @@ describe('astrology', () => {
     g.advance(msToTicks(3000) * 20);
     expect(g.xp('Astrology')).toBeGreaterThan(0);
     expect(knowledge(g, id('Deedree'))).toBeGreaterThan(0);
+  });
+
+  it('earns a major node pick every few minor nodes, and its bonus applies', () => {
+    const g = fresh();
+    g.state.optIn = { Astrology: true };
+    g.state.astrology.knowledge[id('Deedree')] = 1e9;
+    const per = get<{ MinorNodesPerMajorNode: number }>('AstrologyConstellation', id('Deedree')).MinorNodesPerMajorNode;
+    expect(availableMajorPicks(g, id('Deedree'))).toBe(Math.floor(unlockedMinorNodes(g, id('Deedree')).length / per));
+    const before = mod(g, 'WoodcuttingAction', 'WeakSpotChance', { entity: 'Woodcutting', category: id('Trees') });
+    expect(unlockMajorNode(g, id('Deedree'), id('DeedreeMajor2'))).toBeNull();
+    expect(mod(g, 'WoodcuttingAction', 'WeakSpotChance', { entity: 'Woodcutting', category: id('Trees') })).toBeGreaterThan(before);
   });
 });
 

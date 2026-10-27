@@ -1,8 +1,12 @@
 // Combat: the player and one enemy each attack on their own turn timer, as in CharacterComponent.
-import { NS, itemName, type Requirement } from '../content';
+import { NS, all, itemName, tryGet, type Requirement } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler, SkillRecipe } from '../skills/types';
 import { mod, resolveConditional } from '../bonuses';
+import {
+  type EffectRef, type FightOps, type Side, type TriggeredEffect, afterAttack, afterDefended, applyEffect, clearEffects, effectData, effectModifiers,
+  effectsOn, endTurn, fireTriggers, isStunned, nextProc, other, sideOf, tickDamageOverTime,
+} from './effects';
 import { goalMatches, questEvent } from '../quests';
 import type { GoalContext } from '../guild';
 import {
@@ -112,6 +116,8 @@ function triangle(playerStyle: string, enemyStyle: string, who: 'Player' | 'Enem
 const forStyle = (bonuses: Bonus[], styleId: string) =>
   bonuses.filter((b) => !b.LocalContext?.CombatStyle || b.LocalContext.CombatStyle === styleId);
 
+const isCharacterStat = (b: Bonus) => b.Stat.StatsType === `${NS}Character`;
+
 export function playerFighter(game: Game, enemyStyle?: string): Fighter {
   const levels: Record<string, number> = {};
   for (const l of COMBAT_LEVELS) levels[l] = game.level(l);
@@ -125,13 +131,14 @@ export function playerFighter(game: Game, enemyStyle?: string): Fighter {
     const pr = addStats(f.stats, cap?.Stats);
     f.power += pr.power;
     f.protection += pr.protection;
-    if (cap?.Bonuses) applyBonuses(f, forStyle(resolveConditional(game, cap.Bonuses.Component), sty.Id));
+    if (cap?.Bonuses) applyBonuses(f, forStyle(resolveConditional(game, cap.Bonuses.Component).filter(isCharacterStat), sty.Id));
   }
   const sp = game.state.combat.spell;
   if (sty.UsesSpells && sp) addStats(f.stats, spellData(sp).Stats);
   for (const p of game.state.combat.prayers) applyBonuses(f, forStyle(prayerData(p).Bonuses.Component, sty.Id));
   for (const b of game.globalBonuses()) if (b.Stat.StatsType === `${NS}Character`) applyBonuses(f, forStyle([b], sty.Id));
   applyBonuses(f, (st as { Bonuses?: { Component: Bonus[] } }).Bonuses?.Component ?? []);
+  applyBonuses(f, forStyle(sideBonuses(game, 'player').filter(isCharacterStat), sty.Id));
   if (enemyStyle) applyBonuses(f, triangle(sty.Id, enemyStyle, 'Player'));
   finishStats(f);
   return f;
@@ -171,7 +178,12 @@ function rollDrops(game: Game, d: Drops): void {
   const doubling = mod(game, 'CombatLoot', 'ItemDoublingChance', { entity: 'Combat' });
   // Bones and other buriables have their own extra doubling bonus on top.
   const buriable = mod(game, 'CombatLoot', 'BuriableDoublingChance', { entity: 'Combat' });
-  const add = (item: string, q: number) => game.addItem(item, game.rng.chance(doubling + (buryCap(item) ? buriable : 0)) ? q * 2 : q);
+  const loot = game.state.combat.loot;
+  const add = (item: string, q: number) => {
+    const n = game.rng.chance(doubling + (buryCap(item) ? buriable : 0)) ? q * 2 : q;
+    game.addItem(item, n);
+    if (loot) loot.items[item] = (loot.items[item] ?? 0) + n;
+  };
   const currencyDoubling = mod(game, 'CombatLoot', 'CurrencyDoublingChance', { entity: 'Combat' });
   for (const f of d.FixedItems) add(f.Item, game.rng.intInclusive(f.MinQuantity, f.MaxQuantity));
   for (const t of d.ItemTables) {
@@ -180,8 +192,9 @@ function rollDrops(game: Game, d: Drops): void {
     add(pick.Item, game.rng.intInclusive(pick.MinQuantity, pick.MaxQuantity));
   }
   for (const c of d.FixedCurrencies) {
-    const q = game.rng.intInclusive(c.MinQuantity, c.MaxQuantity);
-    game.addCurrency(c.Currency, game.rng.chance(currencyDoubling) ? q * 2 : q);
+    const q = game.rng.intInclusive(c.MinQuantity, c.MaxQuantity) * (game.rng.chance(currencyDoubling) ? 2 : 1);
+    game.addCurrency(c.Currency, q);
+    if (loot) loot.currencies[c.Currency] = (loot.currencies[c.Currency] ?? 0) + q;
   }
 }
 
@@ -393,19 +406,27 @@ function spawn(game: Game): void {
   c.enemy = pickEnemy(game);
   c.enemyHp = enemyMaxHp(c.enemy);
   c.phase = 'fighting';
-  const e = enemyFighter(c.enemy);
+  clearEffects(game);
+  const e = liveEnemyFighter(game);
   c.playerLeft = toTicks(attackInterval(playerFighter(game, e.style.Id)));
   c.enemyLeft = toTicks(attackInterval(e));
+  // AtStartOfFight triggers (e.g. a slime's regeneration, a passive's opening buff).
+  const ops = fightOps(game);
+  fireTriggers(game, triggersFor(game, 'player'), 'player', 'AtStartOfFight', ops);
+  fireTriggers(game, triggersFor(game, 'enemy'), 'enemy', 'AtStartOfFight', ops);
 }
 
 function enemyKilled(game: Game): void {
   const c = game.state.combat;
   const id = c.enemy!;
   c.kills[id] = (c.kills[id] ?? 0) + 1;
+  if (c.loot) c.loot.kills++;
   const styleId = playerFighter(game).style.Id;
   questEvent(game, 'CombatKillEnemy', (d) => (goalMatches(d, 'Enemy', id) && goalMatches(d, 'PlayerCombatStyle', NS + styleId) ? 1 : 0), combatContext(game));
   rollDrops(game, enemyData(id).Drops);
   onSlayerKill(game, id);
+  // The fight is over: every effect on both sides ends with it.
+  clearEffects(game);
   if (isDungeon(c.area!)) {
     const d = area(c.area!) as Dungeon;
     c.dungeonCount++;
@@ -423,52 +444,317 @@ function enemyKilled(game: Game): void {
   startSpawning(game);
 }
 
+// ---- the fight: turns, attacks and combat effects (CharacterComponent.PerformAttack) ---------------------------
+
+interface AttackHit { Count: number; Damage: { Character: string; Formula: { Type: string; Data: { Percent?: number; Damage?: number } } }[] }
+interface FullAttack {
+  Id: string;
+  DisplayName: string;
+  Hits: AttackHit[];
+  IsAvoidable: boolean;
+  PreHitEffects: { Effect: EffectRef; Chance: number; AppliesTo: 'Self' | 'Target' }[];
+  OnHitEffects: { Effect: EffectRef; Chance: number; AppliesTo: 'Self' | 'Target' }[];
+}
+interface PassiveData { Modifiers: { Global?: Bonus[]; Component?: Bonus[]; CombatEffect?: TriggeredEffect[] } }
+interface AreaEffect { Modifiers: { Global?: Bonus[]; Component?: Bonus[]; CombatEffect?: TriggeredEffect[] }; Magnitude: number }
+
+const enemyPassives = (enemyId: string | null) =>
+  ((enemyId && enemyData(enemyId).Passives) || []).map((p) => tryGet<PassiveData>('CombatPassive', p)).filter((p): p is PassiveData => !!p);
+
+/** The current area's effect, unless a shop purchase has removed it. */
+function currentAreaEffect(game: Game): AreaEffect | null {
+  const a = game.state.combat.area;
+  const effect = a ? ((area(a) as { Effect?: AreaEffect | null }).Effect ?? null) : null;
+  if (!effect || mod(game, 'CombatAreas', 'DisableAreaEffect', { entity: 'Combat', area: a! }) > 0) return null;
+  return effect;
+}
+
+/** Your element: the spell's when casting, else the weapon's. */
+function playerElement(game: Game): string | undefined {
+  const st = styleData(stanceData(currentStance(game)).CombatStyle);
+  if (st.UsesSpells && game.state.combat.spell) return (spellData(game.state.combat.spell) as { Element?: string }).Element;
+  return (weaponCap(weaponOf(game)) as { Elements?: string[] } | undefined)?.Elements?.[0];
+}
+
+/** Elemental matchup bonuses for the current fight (e.g. Air vs Earth: +15% max hit). */
+function elementalBonuses(game: Game): Bonus[] {
+  const enemy = game.state.combat.enemy;
+  if (!enemy) return [];
+  const mine = playerElement(game);
+  const theirs = (enemyData(enemy) as { Element?: string }).Element;
+  return all<{ PlayerElement: string; EnemyElement: string; Bonuses: { Global?: Bonus[]; Component?: Bonus[] } }>('ElementalBonus')
+    .filter((e) => e.PlayerElement === mine && e.EnemyElement === theirs)
+    .flatMap((e) => [...(e.Bonuses.Global ?? []), ...(e.Bonuses.Component ?? [])]);
+}
+
+const componentOf = (b: Bonus) => (b.LocalContext as { Component?: { Component?: string } } | null | undefined)?.Component?.Component;
+
+/**
+ * Fight-only bonuses for one side: its active effects' modifiers, plus enemy passives, the area effect and elemental
+ * matchups, each sorted to Player or Enemy by its context marker.
+ */
+function sideBonuses(game: Game, side: Side): Bonus[] {
+  const out: Bonus[] = [...effectModifiers(game, side)];
+  const fighting = game.state.active?.skill === 'Combat' && game.state.combat.phase === 'fighting';
+  const pool: Bonus[] = [];
+  if (fighting) for (const p of enemyPassives(game.state.combat.enemy)) pool.push(...(p.Modifiers.Global ?? []), ...(p.Modifiers.Component ?? []));
+  const ae = game.state.active?.skill === 'Combat' ? currentAreaEffect(game) : null;
+  if (ae) for (const b of [...(ae.Modifiers.Global ?? []), ...(ae.Modifiers.Component ?? [])]) pool.push({ ...b, Value: b.Value * (ae.Magnitude ?? 1) });
+  if (fighting) pool.push(...elementalBonuses(game));
+  for (const b of pool) if ((sideOf(componentOf(b)) ?? 'player') === side) out.push(b);
+  return out;
+}
+
+/** Triggered effects owned by a side: gear, astrology, prayers, the area effect and enemy passives. */
+function triggersFor(game: Game, side: Side): TriggeredEffect[] {
+  const pool = [...game.combatEffects()];
+  const ae = currentAreaEffect(game);
+  if (ae) pool.push(...(ae.Modifiers.CombatEffect ?? []));
+  for (const p of enemyPassives(game.state.combat.enemy)) pool.push(...(p.Modifiers.CombatEffect ?? []));
+  return pool.filter((t) => (sideOf(t.Character?.Component) ?? 'player') === side);
+}
+
+/**
+ * "Target" stats a defender holds against its attacker: immunity to a combat style, extra damage taken from attacks of
+ * a style or element (e.g. Drenched: +25% from Water magic).
+ */
+function targetStat(game: Game, defender: Side, name: string, attacker: Fighter, attackerElement?: string): number {
+  let v = 0;
+  const lists = [sideBonuses(game, defender), ...(defender === 'player' ? [game.bonuses()] : [])];
+  for (const list of lists) {
+    for (const b of list) {
+      if (b.Stat.StatsType !== `${NS}Target` || b.Stat.Name !== name) continue;
+      const lc = (b.LocalContext ?? {}) as { CombatStyle?: string | null; Element?: string | null };
+      if (lc.CombatStyle && lc.CombatStyle !== NS + attacker.style.Id) continue;
+      if (lc.Element && lc.Element !== attackerElement) continue;
+      v += b.Value;
+    }
+  }
+  return v;
+}
+
+/** The enemy as it fights right now: its passives, effects, area effect and elemental modifiers applied. */
+export function liveEnemyFighter(game: Game, stanceId?: string, playerStyle?: string): Fighter {
+  const f = enemyFighter(game.state.combat.enemy!, stanceId, playerStyle);
+  applyBonuses(f, sideBonuses(game, 'enemy').filter((b) => b.Stat.StatsType === `${NS}Character`));
+  finishStats(f);
+  return f;
+}
+
+let acting: Side | null = null;
+let lastDamage = 0;
+
+function fightOps(game: Game): FightOps {
+  const c = game.state.combat;
+  const fighter = (s: Side) => (s === 'player' ? playerFighter(game) : liveEnemyFighter(game));
+  return {
+    hp: (s) => (s === 'player' ? game.hp() : c.enemyHp),
+    maxHp: (s) => fighter(s).maxHp,
+    maxHit: (s) => maxHit(fighter(s)),
+    damage: (s, amount, source) => effectDamage(game, s, amount, source),
+    heal: (s, amount) => {
+      if (s === 'player') game.heal(amount);
+      else c.enemyHp = Math.min(fighter('enemy').maxHp, c.enemyHp + amount);
+    },
+    get acting() {
+      return acting;
+    },
+    get lastDamage() {
+      return lastDamage;
+    },
+    effectStat: (s, name, effectId) => {
+      const lists = [sideBonuses(game, s), ...(s === 'player' ? [game.bonuses()] : [])];
+      let v = 0;
+      for (const list of lists) {
+        for (const b of list) {
+          if (b.Stat.StatsType !== `${NS}CombatEffect` || b.Stat.Name !== name) continue;
+          const eff = (b.LocalContext as { Effect?: string | null } | null)?.Effect;
+          if (!eff || eff === effectId) v += b.Value;
+        }
+      }
+      return v;
+    },
+    ticks: toTicks,
+  };
+}
+
+/** Damage from an effect (ModifyEffectDamage), with effect lifesteal. Handles a death; returns true if one happened. */
+function effectDamage(game: Game, target: Side, amount: number, source: Side): boolean {
+  const src = source === 'player' ? playerFighter(game) : liveEnemyFighter(game);
+  const tgt = target === 'player' ? playerFighter(game) : liveEnemyFighter(game);
+  const dealt = Math.max(1, Math.floor(amount * (1 + (src.mods.PercentDamageDealt ?? 0)) * (1 + (tgt.mods.PercentDamageTaken ?? 0))));
+  return applyDamage(game, target, dealt);
+}
+
+/** Take HP off a side and handle death (enemy killed, or you die). Returns true if that side died. */
+function applyDamage(game: Game, target: Side, dealt: number): boolean {
+  const c = game.state.combat;
+  if (target === 'enemy') {
+    const hit = Math.min(c.enemyHp, dealt);
+    c.enemyHp -= hit;
+    c.damageDealt += hit;
+    if (c.enemyHp <= 0) {
+      enemyKilled(game);
+      return true;
+    }
+    return false;
+  }
+  c.damageTaken += dealt;
+  if (game.damage(dealt)) {
+    deathPenalty(game);
+    clearEffects(game);
+    game.stop('You died in combat.');
+    return true;
+  }
+  return false;
+}
+
+function rollAttack(list: { Attack: string; Chance: number }[] | null | undefined, game: Game): string {
+  const roll = game.rng.next();
+  let acc = 0;
+  for (const a of list ?? []) {
+    acc += a.Chance;
+    if (roll < acc) return a.Attack;
+  }
+  return `${NS}Normal`;
+}
+
+/** Your attack: a spell's own attack when casting one, else your weapon's special attacks by chance, else a normal hit. */
+function playerAttackId(game: Game, p: Fighter): string {
+  const sp = game.state.combat.spell;
+  const override = p.style.UsesSpells && sp ? (spellData(sp) as { AttackOverride?: string | null }).AttackOverride : null;
+  if (override) return override;
+  return rollAttack((equipmentCap(weaponOf(game)) as { Attacks?: { Attack: string; Chance: number }[] | null } | undefined)?.Attacks, game);
+}
+
+/**
+ * One attack from `side`: every hit of it, with immunity, accuracy, damage formulas, crits, negation, reflection,
+ * lifesteal, pre-hit and on-hit effects, and the attacker's and defender's triggers. Returns false if the fight ended.
+ */
+function performAttack(game: Game, side: Side, atk: FullAttack, a: Fighter, d: Fighter, aElement?: string): boolean {
+  const c = game.state.combat;
+  const ops = fightOps(game);
+  const foe = other(side);
+  const dark = darkness(game, c.area!);
+  const aTriggers = triggersFor(game, side);
+  const dTriggers = triggersFor(game, foe);
+  const immune = targetStat(game, foe, 'ImmunityFrom', a, aElement) > 0;
+  const extraTaken = targetStat(game, foe, 'PercentDamageTakenFromAttacks', a, aElement);
+  let attacks = 0;
+  let hits = 0;
+  for (const hit of atk.Hits) {
+    for (let i = 0; i < hit.Count; i++) {
+      for (const e of atk.PreHitEffects) if (game.rng.chance(e.Chance)) applyEffect(game, e.Effect, e.AppliesTo === 'Self' ? side : foe, side, ops, e.AppliesTo !== 'Self' && immune);
+      const avoided = side === 'enemy' && atk.IsAvoidable && game.rng.chance(Math.min(1, d.mods.AvoidanceChance ?? 0));
+      const landed =
+        !immune && !avoided && (!atk.IsAvoidable || game.rng.chance(hitChance(accuracyRating(a, dark), evasionRating(d, a.stance, dark), a.mods.FlatHitChance ?? 0)));
+      attacks++;
+      let dealt = 0;
+      if (landed) {
+        const max = maxHit(a, a.mods.MaxHitCombatTriangle ?? 0);
+        let raw = 0;
+        for (const dmg of hit.Damage) {
+          const who = dmg.Character === 'Defender' ? d : a;
+          const whoSide = dmg.Character === 'Defender' ? foe : side;
+          const pct = dmg.Formula.Data.Percent ?? 1;
+          switch (local(dmg.Formula.Type)) {
+            case 'CurrentHitpoints':
+              raw += Math.floor(ops.hp(whoSide) * pct);
+              break;
+            case 'MaxHit':
+              raw += Math.floor(maxHit(who) * pct);
+              break;
+            case 'Fixed':
+              raw += dmg.Formula.Data.Damage ?? 0;
+              break;
+            default:
+              raw += Math.floor(game.rng.intInclusive(minHit(a, max), max) * pct);
+          }
+        }
+        if (game.rng.chance(Math.max(0, Math.min(1, a.mods.FlatCriticalHitChance ?? 0)))) raw = Math.floor(raw * Math.max(1, 1.5 + (a.mods.FlatCriticalHitMultiplier ?? 0)));
+        if (game.rng.chance(d.mods.AttackDamageNegationChance ?? 0)) raw = 0;
+        if (raw > 0) {
+          const dd: Fighter = { ...d, mods: { ...d.mods, PercentDamageTaken: (d.mods.PercentDamageTaken ?? 0) + extraTaken } };
+          dealt = Math.min(ops.hp(foe), reduceDamage(raw, a, dd, dd.mods.ResistanceCombatTriangle ?? 0));
+        }
+        hits++;
+      }
+      lastDamage = dealt;
+      if (side === 'player' && dealt > 0) {
+        const gctx = combatContext(game);
+        questEvent(game, 'CombatDamageEnemy', () => dealt, gctx);
+        questEvent(game, 'CombatSingleHitDamage', (q) => (dealt >= Number(q.MinDamage ?? 0) ? 1 : 0), gctx);
+        // Combat XP is per point of damage, split by the stance (e.g. Stab: 0.4 Attack + 0.133 Hitpoints).
+        for (const g of a.stance.ExperienceGain) game.addXp(local(g.Component.Entity), g.ExperiencePerDamage * dealt);
+        if (c.prayers.length) game.addXp('Prayer', Math.sqrt(3 + 0.2 * dealt * prayerTurnCost(game)));
+      }
+      if (side === 'enemy' && !landed) questEvent(game, 'CombatEvadeAttacks', () => 1, combatContext(game));
+      if (dealt > 0) {
+        // Lifesteal (unless disabled) heals the attacker; reflection hurts it.
+        const ls = (a.mods.DisableLifesteal ?? 0) > 0 ? 0 : a.stats.Lifesteal ?? 0;
+        if (applyDamage(game, foe, dealt)) return false;
+        if (ls > 0) ops.heal(side, Math.max(1, Math.floor(dealt * ls)));
+        const reflect = d.mods.PercentAttackReflect ?? 0;
+        if (reflect > 0 && Math.floor(dealt * reflect) > 0 && applyDamage(game, side, Math.floor(dealt * reflect))) return false;
+      }
+      if (landed) for (const e of atk.OnHitEffects) if (game.rng.chance(e.Chance)) applyEffect(game, e.Effect, e.AppliesTo === 'Self' ? side : foe, side, ops, e.AppliesTo !== 'Self' && immune);
+      // Triggers, as the desktop names them.
+      const first = attacks === 1;
+      fireTriggers(game, aTriggers, side, 'OnAttack', ops, immune);
+      if (first) fireTriggers(game, aTriggers, side, 'OnFirstAttack', ops, immune);
+      fireTriggers(game, dTriggers, foe, 'WhenAttacked', ops);
+      if (first) fireTriggers(game, dTriggers, foe, 'WhenFirstAttacked', ops);
+      if (landed) {
+        fireTriggers(game, aTriggers, side, 'OnHit', ops, immune);
+        if (hits === 1) fireTriggers(game, aTriggers, side, 'OnFirstHit', ops, immune);
+        if (first) fireTriggers(game, aTriggers, side, 'OnFirstAttackHit', ops, immune);
+        fireTriggers(game, dTriggers, foe, 'WhenHit', ops);
+        if (hits === 1) fireTriggers(game, dTriggers, foe, 'WhenFirstHit', ops);
+      } else {
+        fireTriggers(game, aTriggers, side, 'OnMiss', ops, immune);
+        if (attacks - hits === 1) fireTriggers(game, aTriggers, side, 'OnFirstMiss', ops, immune);
+        if (first) fireTriggers(game, aTriggers, side, 'OnFirstAttackMiss', ops, immune);
+        fireTriggers(game, dTriggers, foe, 'WhenAttackEvaded', ops);
+        if (attacks - hits === 1) fireTriggers(game, dTriggers, foe, 'WhenFirstAttackEvaded', ops);
+      }
+      afterAttack(game, side, ops);
+      afterDefended(game, foe, ops);
+      if (c.phase !== 'fighting' || game.state.active?.skill !== 'Combat') return false;
+    }
+  }
+  return true;
+}
+
+/** End a side's turn: its effects tick. Returns false if the fight ended (an end-of-turn effect killed someone). */
+function finishTurn(game: Game, side: Side): boolean {
+  const died = endTurn(game, side, fightOps(game));
+  acting = null;
+  return !died && game.state.combat.phase === 'fighting' && game.state.active?.skill === 'Combat';
+}
+
 function playerTurn(game: Game): boolean {
   const c = game.state.combat;
-  const e = enemyFighter(c.enemy!);
+  const e = liveEnemyFighter(game);
   const p = playerFighter(game, e.style.Id);
+  c.playerLeft = toTicks(attackInterval(p));
+  acting = 'player';
+  // A stunned character loses its turn (the turn still ends, so the stun counts down).
+  if (isStunned(game, 'player')) return finishTurn(game, 'player');
   const cost = attackCost(game, p);
   if (typeof cost === 'string') {
+    acting = null;
     game.stop(cost);
     return false;
   }
   payAttack(game, cost.items);
   game.signal({ type: 'attack', weaponType: weaponCap(weaponOf(game))?.Type });
-  const dark = darkness(game, c.area!);
-  const enemyAsDefender = enemyFighter(c.enemy!, undefined, p.style.Id);
-  c.playerLeft = toTicks(attackInterval(p));
-  if (!game.rng.chance(hitChance(accuracyRating(p, dark), evasionRating(enemyAsDefender, p.stance, dark), p.mods.FlatHitChance ?? 0))) return true;
-  const max = maxHit(p, p.mods.MaxHitCombatTriangle ?? 0);
-  let raw = game.rng.intInclusive(minHit(p, max), max);
-  if (game.rng.chance(Math.max(0, Math.min(1, p.mods.FlatCriticalHitChance ?? 0)))) raw = Math.floor(raw * Math.max(1, 1.5 + (p.mods.FlatCriticalHitMultiplier ?? 0)));
-  const dealt = Math.min(c.enemyHp, reduceDamage(raw, p, enemyAsDefender, enemyAsDefender.mods.ResistanceCombatTriangle ?? 0));
-  c.enemyHp -= dealt;
-  c.damageDealt += dealt;
-  const gctx = combatContext(game);
-  questEvent(game, 'CombatDamageEnemy', () => dealt, gctx);
-  questEvent(game, 'CombatSingleHitDamage', (d) => (dealt >= Number(d.MinDamage ?? 0) ? 1 : 0), gctx);
-  // Combat XP is per point of damage, split by the stance (e.g. Stab: 0.4 Attack + 0.133 Hitpoints).
-  for (const g of p.stance.ExperienceGain) game.addXp(local(g.Component.Entity), g.ExperiencePerDamage * dealt);
-  if (c.prayers.length) {
-    const cost = prayerTurnCost(game);
-    game.addXp('Prayer', Math.sqrt(3 + 0.2 * dealt * cost));
+  const enemyAsDefender = liveEnemyFighter(game, undefined, p.style.Id);
+  const atk = attackData(playerAttackId(game, p)) as unknown as FullAttack;
+  if (!performAttack(game, 'player', atk, p, enemyAsDefender, playerElement(game))) {
+    acting = null;
+    return game.state.active?.skill === 'Combat';
   }
-  if (c.enemyHp <= 0) {
-    enemyKilled(game);
-    return true;
-  }
-  return true;
-}
-
-function rollEnemyAttack(game: Game, id: string): string {
-  const specials = enemyData(id).Attacks;
-  const roll = game.rng.next();
-  let acc = 0;
-  for (const a of specials) {
-    acc += a.Chance;
-    if (roll < acc) return a.Attack;
-  }
-  return `${NS}Normal`;
+  return finishTurn(game, 'player');
 }
 
 function enemyTurn(game: Game): boolean {
@@ -476,9 +762,10 @@ function enemyTurn(game: Game): boolean {
   const e0 = enemyData(c.enemy!);
   const stanceId = game.rng.weighted(e0.Stances).Stance;
   const p0 = playerFighter(game);
-  const e = enemyFighter(c.enemy!, stanceId, p0.style.Id);
+  const e = liveEnemyFighter(game, stanceId, p0.style.Id);
   const p = playerFighter(game, e.style.Id);
   c.enemyLeft = toTicks(attackInterval(e));
+  acting = 'enemy';
   // Prayers drain their cost at the start of each enemy attack turn.
   if (c.prayers.length) {
     const cost = prayerTurnCost(game);
@@ -487,41 +774,35 @@ function enemyTurn(game: Game): boolean {
     } else if (prayerPoints(game) >= cost) {
       game.addCurrency(`${NS}PrayerPoints`, -cost);
       questEvent(game, 'SpendPrayerCurrency', () => cost, combatContext(game));
-    }
-    else {
+    } else {
       c.prayers = [];
       game.notice('You ran out of prayer points.');
       game.bonusesChanged();
     }
   }
-  const atk = attackData(rollEnemyAttack(game, c.enemy!));
-  const dark = darkness(game, c.area!);
-  for (const hit of atk.Hits) {
-    for (let i = 0; i < hit.Count; i++) {
-      if (atk.IsAvoidable && game.rng.chance(Math.min(1, p.mods.AvoidanceChance ?? 0))) continue;
-      if (!game.rng.chance(hitChance(accuracyRating(e, dark), evasionRating(p, e.stance, dark)))) {
-        questEvent(game, 'CombatEvadeAttacks', () => 1, combatContext(game));
-        continue;
-      }
-      const max = maxHit(e, e.mods.MaxHitCombatTriangle ?? 0);
-      let raw = 0;
-      for (const d of hit.Damage) {
-        const pct = d.Formula.Data.Percent ?? 1;
-        const kind = local(d.Formula.Type);
-        if (kind === 'CurrentHitpoints') raw += Math.floor(game.hp() * pct);
-        else if (kind === 'MaxHit') raw += Math.floor(max * pct);
-        else raw += Math.floor(game.rng.intInclusive(minHit(e, max), max) * pct);
-      }
-      const dealt = reduceDamage(Math.max(1, raw), e, p, p.mods.ResistanceCombatTriangle ?? 0);
-      c.damageTaken += dealt;
-      if (game.damage(dealt)) {
-        deathPenalty(game);
-        game.stop('You died in combat.');
-        return false;
-      }
-    }
+  if (isStunned(game, 'enemy')) return finishTurn(game, 'enemy');
+  const atk = attackData(rollAttack(e0.Attacks, game)) as unknown as FullAttack;
+  if (!performAttack(game, 'enemy', atk, e, p, (e0 as { Element?: string }).Element)) {
+    acting = null;
+    return game.state.active?.skill === 'Combat';
   }
-  return true;
+  return finishTurn(game, 'enemy');
+}
+
+/** Auto-eating can trigger effects (FoodEaten triggers on gear). */
+export function onFoodEaten(game: Game): void {
+  if (game.state.active?.skill !== 'Combat' || game.state.combat.phase !== 'fighting') return;
+  fireTriggers(game, triggersFor(game, 'player'), 'player', 'FoodEaten', fightOps(game));
+}
+
+/** Effects on a side for display: name, and turns, stacks or attacks left. */
+export function effectsView(game: Game, side: Side): { name: string; detail: string; positive: boolean; icon?: string }[] {
+  return effectsOn(game, side).map((e) => {
+    const data = effectData(e.kind, NS + e.id);
+    const detail =
+      e.turns != null ? `${e.turns} turn${e.turns === 1 ? '' : 's'}` : e.attacks != null ? `${e.attacks} attack${e.attacks === 1 ? '' : 's'}` : e.stacks > 1 ? `×${e.stacks}` : '';
+    return { name: data?.DisplayName ?? e.id, detail, positive: !!data?.IsPositive, icon: data?.Icon };
+  });
 }
 
 /** On death you lose the item in one random equipment slot (10% of a stack), unless a bonus prevents it. */
@@ -541,7 +822,9 @@ function deathPenalty(game: Game): void {
 
 function nextEventTicks(game: Game): number {
   const c = game.state.combat;
-  return c.phase === 'spawning' ? c.spawnLeft : Math.min(c.playerLeft, c.enemyLeft);
+  if (c.phase === 'spawning') return c.spawnLeft;
+  const proc = nextProc(game);
+  return Math.min(c.playerLeft, c.enemyLeft, proc ?? Infinity);
 }
 
 export interface AreaRecipe extends SkillRecipe {
@@ -559,6 +842,9 @@ export const combat: SkillHandler = {
     const c = game.state.combat;
     c.dungeonStage = 0;
     c.dungeonCount = 0;
+    c.paused = false;
+    c.loot = { items: {}, currencies: {}, kills: 0, since: game.state.tick };
+    clearEffects(game);
     startSpawning(game);
     c.pending = c.spawnLeft;
     return c.spawnLeft * TICK_MS;
@@ -571,6 +857,11 @@ export const combat: SkillHandler = {
   },
   fire(game) {
     const c = game.state.combat;
+    // Paused: nothing moves; check back in a second.
+    if (c.paused) {
+      c.pending = 60;
+      return 1000;
+    }
     const elapsed = c.pending;
     if (c.phase === 'spawning') {
       c.spawnLeft -= elapsed;
@@ -578,14 +869,37 @@ export const combat: SkillHandler = {
     } else {
       c.playerLeft -= elapsed;
       c.enemyLeft -= elapsed;
+      // Damage over time runs on its own timers between turns.
+      const died = tickDamageOverTime(game, elapsed, fightOps(game));
+      if (died === 'player' || game.state.active?.skill !== 'Combat') return null;
       // The player acts first when both turns land on the same tick.
-      if (c.playerLeft <= 0 && !playerTurn(game)) return null;
-      if (c.phase === 'fighting' && c.enemyLeft <= 0 && !enemyTurn(game)) return null;
+      if (c.phase === 'fighting' && c.playerLeft <= 0 && !playerTurn(game)) {
+        if (game.state.active?.skill !== 'Combat') return null;
+      }
+      if (c.phase === 'fighting' && c.enemyLeft <= 0 && !enemyTurn(game)) {
+        if (game.state.active?.skill !== 'Combat') return null;
+      }
     }
     c.pending = Math.max(1, nextEventTicks(game));
     return c.pending * TICK_MS;
   },
 };
+
+/** What an enemy (or a dungeon's reward) can drop, with the chance of each per kill. */
+export function dropChances(d: Drops): { item: string; chance: number; min: number; max: number }[] {
+  const out: { item: string; chance: number; min: number; max: number }[] = [];
+  for (const f of d.FixedItems) out.push({ item: f.Item, chance: 1, min: f.MinQuantity, max: f.MaxQuantity });
+  for (const t of d.ItemTables) {
+    const total = t.Table.reduce((s, x) => s + (x.Weight ?? 1), 0) || 1;
+    for (const x of t.Table) out.push({ item: x.Item, chance: (t.Chance * (x.Weight ?? 1)) / total, min: x.MinQuantity, max: x.MaxQuantity });
+  }
+  return out;
+}
+
+export function togglePause(game: Game): void {
+  game.state.combat.paused = !game.state.combat.paused;
+  game.emit();
+}
 
 /** Start fighting a specific enemy in an area (or a dungeon run). */
 export function fight(game: Game, areaId: string, enemyId: string | null): void {

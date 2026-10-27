@@ -37,6 +37,8 @@ export interface Enemy {
   Drops: Drops;
   Attacks: { Attack: string; Chance: number }[];
   Requirements: Requirement[] | null;
+  Passives?: string[] | null;
+  Element?: string | null;
 }
 
 export interface CombatArea {

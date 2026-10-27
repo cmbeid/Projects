@@ -16,9 +16,10 @@ import { thieving } from './skills/thieving';
 import { hunting } from './skills/hunting';
 import { astrology } from './skills/astrology';
 import { agility } from './skills/agility';
-import { combat } from './combat/combat';
+import { combat, onFoodEaten } from './combat/combat';
 import type { Bonus } from './combat/data';
-import { BASE_BANK_SLOTS, activeBonuses, conditionKey, mod } from './bonuses';
+import { BASE_BANK_SLOTS, activeBonuses, activeCombatEffects, conditionKey, mod } from './bonuses';
+import type { TriggeredEffect } from './combat/effects';
 import { goalActive, goalMatches, questEvent } from './quests';
 import { checkUnlocks, isUnlocked, unlockEverything } from './navigation';
 import { checkGuild, hasRank } from './guild';
@@ -302,7 +303,7 @@ export class Game {
     ).length;
   }
 
-  private bonusCache: { version: number; key: string; all: Bonus[]; noGear: Bonus[] } | null = null;
+  private bonusCache: { version: number; key: string; all: Bonus[]; noGear: Bonus[]; effects?: TriggeredEffect[] } | null = null;
 
   private bonusLists(): { all: Bonus[]; noGear: Bonus[] } {
     // Conditional bonuses depend on the fight, the slayer task and so on, so those are part of the cache key.
@@ -311,6 +312,12 @@ export class Game {
       this.bonusCache = { version: this.bonusVersion, key, all: activeBonuses(this), noGear: activeBonuses(this, false) };
     }
     return this.bonusCache;
+  }
+
+  /** Triggered combat effects from gear, astrology, guild and prayers, cached with the bonuses. */
+  combatEffects(): TriggeredEffect[] {
+    const cache = this.bonusLists() as { effects?: TriggeredEffect[] };
+    return (cache.effects ??= activeCombatEffects(this));
   }
 
   /** All active bonuses (shop, astrology, equipment, sets, toolbelt), cached until something changes. */
@@ -495,6 +502,7 @@ export class Game {
     const before = this.hp();
     this.heal(n * heal);
     if (this.state.active?.skill === 'Combat') questEvent(this, 'CombatHealFromAutoEat', () => this.hp() - before, this.combatContext());
+    onFoodEaten(this);
     this.note(`Ate ${n} ${itemName(food, n)}`, 'info');
   }
 
@@ -524,8 +532,9 @@ export class Game {
     const nextMs = h.fire(this, recipe);
     this.signal({ type: 'action', skill, recipe });
     checkUnlocks(this);
-    // State-based guild tasks (levels, items owned, gear) are checked about once a second of game time.
-    if (this.state.tick - this.lastGuildCheck >= 60) {
+    // State-based guild tasks (levels, items owned, gear) are checked about once a second of game time, and every
+    // ten seconds while catching up on time away (they only need to be noticed, not to the second).
+    if (this.state.tick - this.lastGuildCheck >= (this.quiet ? 600 : 60)) {
       this.lastGuildCheck = this.state.tick;
       checkGuild(this);
     }

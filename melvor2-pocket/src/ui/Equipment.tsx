@@ -10,6 +10,7 @@ import { accuracyRating, attackInterval, combatLevel, maxHit, minHit, powerRatin
 import { assetUrl } from '../art/assets';
 import { Icon, fmt } from './common';
 import { ToolbeltPanel } from './ExtrasPages';
+import { currentLoadout, loadoutSlots, loadoutUnlocked, swapLoadout } from '../engine/combat/loadouts';
 import { describeRequirement } from '../engine/navigation';
 
 interface SlotData { Id: string; DisplayName: string; FitsType: string; GridPosition: { X: number; Y: number }; UnlockRequirements: never[] | null }
@@ -79,6 +80,7 @@ export function EquipmentView({ game }: { game: Game }) {
   const p = playerFighter(game);
   return (
     <div class="equip-layout">
+      <Loadouts game={game} />
       <div class="doll" style={{ gridTemplateRows: `repeat(${rows}, auto)` }}>
         {slots.map((s) => {
           const id = NS + s.Id;
@@ -145,6 +147,29 @@ export function EquipmentView({ game }: { game: Game }) {
         <ToolbeltPanel game={game} entity="Combat" />
       </div>
       {slot && <EquipSheet game={game} slot={slot} onClose={() => setSlot(null)} />}
+    </div>
+  );
+}
+
+/** Loadout slots, as on the desktop: tap one to switch your whole set (gear, stance, spell, prayers, food, toolbelt). */
+function Loadouts({ game }: { game: Game }) {
+  const [msg, setMsg] = useState('');
+  const cur = currentLoadout(game);
+  return (
+    <div class="loadouts">
+      <div class="chips">
+        {loadoutSlots().map((l) => {
+          const id = NS + l.Id;
+          const open = loadoutUnlocked(game, id);
+          return (
+            <button class={cur === id ? 'on' : ''} disabled={!open} onClick={() => setMsg(swapLoadout(game, id) ?? '')}>
+              {open ? '' : '🔒 '}
+              {l.DisplayName}
+            </button>
+          );
+        })}
+      </div>
+      {msg && <p class="muted small">{msg}</p>}
     </div>
   );
 }

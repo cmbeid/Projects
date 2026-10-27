@@ -86,6 +86,12 @@ export interface CombatState {
   slayer: { master: string; enemy: string; left: number; extended?: boolean } | null;
   /** Enemies blocked from slayer tasks, by block slot id (each master has its own slots). */
   slayerBlocks?: Record<string, string>;
+  /** Pause Fight: timers stand still until resumed. */
+  paused?: boolean;
+  /** Loot History for the current combat session (since you last started fighting). */
+  loot?: { items: Record<string, number>; currencies: Record<string, number>; kills: number; since: number };
+  /** Combat effects on each side during the current fight. */
+  effects?: { player: import('./combat/effects').ActiveEffect[]; enemy: import('./combat/effects').ActiveEffect[] };
   slayerTasksDone: Record<string, number>;
   damageDealt: number;
   damageTaken: number;
@@ -117,7 +123,7 @@ export interface GameState {
   hunting: Record<string, HuntState>;
   farming: { plots: Record<string, PlotState> };
   ranching: RanchingState;
-  astrology: { knowledge: Record<string, number> };
+  astrology: { knowledge: Record<string, number>; /** Major nodes chosen, by constellation. */ major?: Record<string, string[]> };
   /** Shop purchases by id → times bought. */
   purchases: Record<string, number>;
   /** Skill toolbelt slots → equipped item. */
@@ -143,6 +149,8 @@ export interface GameState {
   optIn?: { Astrology?: boolean };
   /** Fishing bait in use: consumed one per catch, its bonuses apply while any is in the bank. */
   fishingBait?: string | null;
+  /** Equipment loadouts: the slot in use and what each other slot holds. */
+  loadouts?: { current: string; saved: Record<string, import('./combat/loadouts').SavedLoadout> };
   stats: {
     onlineMs: number;
     offlineMs: number;
