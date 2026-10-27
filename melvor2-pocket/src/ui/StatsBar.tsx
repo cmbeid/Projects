@@ -34,7 +34,8 @@ export function StatsBar({ game }: { game: Game }) {
   const items = Object.entries(r.items).filter(([, v]) => Math.abs(v) >= 0.01).sort((x, y) => y[1] - x[1]);
   const depleting = items.filter(([, v]) => v < 0).map(([id, v]) => ({ id, left: game.count(id) / -v }));
   const soonest = depleting.sort((x, y) => x.left - y.left)[0];
-  const warming = r.spanTicks < 60 * 10;
+  // Until an action has paid out there's nothing to measure.
+  const warming = r.spanTicks <= 0;
 
   return (
     <div class={`statsbar ${open ? 'open' : ''}`}>

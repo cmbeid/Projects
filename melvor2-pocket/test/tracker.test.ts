@@ -17,6 +17,25 @@ describe('stats bar rates', () => {
     expect(r.items[id('NormalLog')]).toBeCloseTo(1200, -1);
   });
 
+  it('stays steady between payouts instead of jumping with each action', () => {
+    const g = new Game(newState(0, 1));
+    unlockEverything(g);
+    g.toggle('Woodcutting', id('NormalTree'));
+    const seen: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      g.advance(msToTicks(500));
+      const r = g.tracker.rates(g.state.tick, HOUR);
+      if (r.spanTicks > 0) seen.push(r.xp.Woodcutting);
+    }
+    expect(seen.length).toBeGreaterThan(30);
+    for (const v of seen) expect(v).toBeCloseTo(3600, -1);
+    // A sliding window that starts mid-action is just as steady.
+    for (let i = 0; i < 12; i++) {
+      g.advance(msToTicks(500));
+      expect(g.tracker.rates(g.state.tick, msToTicks(10_000)).xp.Woodcutting).toBeCloseTo(3600, -1);
+    }
+  });
+
   it('shows ingredients being used up, and ignores selling', () => {
     const g = new Game(newState(0, 1));
     unlockEverything(g);

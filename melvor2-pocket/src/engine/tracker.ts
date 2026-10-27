@@ -30,16 +30,25 @@ export class Tracker {
     }
   }
 
-  /** Per-hour rates over the last `windowTicks` (or since the action started, if shorter). */
+  /**
+   * Per-hour rates over the last `windowTicks` (or since the action started, if shorter). Measured between action
+   * completions, not up to "now", so the rate doesn't saw up and down as each action pays out.
+   */
   rates(now: number, windowTicks: number) {
-    const start = Math.max(this.since, now - windowTicks);
-    const span = Math.max(1, now - start);
-    const perHour = (n: number) => (n * TICKS_PER_HOUR) / span;
+    const windowStart = Math.max(this.since, now - windowTicks);
+    const inWindow = this.events.filter((e) => e.tick >= windowStart);
+    // Anchor on the action's start when it's in the window; otherwise on the first payout in it (whose gains belong
+    // to the action before, so they're left out).
+    const fromStart = windowStart === this.since;
+    const anchor = fromStart ? this.since : inWindow[0]?.tick ?? now;
+    const last = inWindow.length ? inWindow[inWindow.length - 1].tick : anchor;
+    const span = Math.max(0, last - anchor);
+    const perHour = (n: number) => (span > 0 ? (n * TICKS_PER_HOUR) / span : 0);
     const xp: Record<string, number> = {};
     const items: Record<string, number> = {};
     let gold = 0;
-    for (const e of this.events) {
-      if (e.tick < start) continue;
+    for (const e of inWindow) {
+      if (!fromStart && e.tick <= anchor) continue;
       if (e.kind === 'xp') xp[e.id] = (xp[e.id] ?? 0) + e.amount;
       else if (e.kind === 'gold') gold += e.amount;
       else items[e.id] = (items[e.id] ?? 0) + e.amount;
