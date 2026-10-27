@@ -28,6 +28,7 @@ import { isBundle, unpackBundle } from '../bundle';
 import { ItemToasts, itemToastsOn, setItemToasts } from './ItemToasts';
 import { LevelUpPopups, levelUpPopupsOn, setLevelUpPopups } from './LevelUp';
 import { BankPage, bankTabs, moveToTab } from './BankPage';
+import { ItemBonuses } from './Equipment';
 import { backgroundMode, pageBackground, raining, setBackgroundMode, setWeatherOn, weatherAt, weatherOn, type BackgroundMode } from '../art/background';
 import { recipeGroups, type RecipeView } from './recipes';
 
@@ -401,6 +402,7 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
           </div>
         </div>
         {it.Description && <p class="muted">{it.Description}</p>}
+        <ItemBonuses game={game} id={id} />
         {(openableCap(id) || toolbeltCap(id) || upgradesFrom(id).length > 0) && (
           <div class="row">
             {openableCap(id) && <button onClick={() => openItem(game, id, 1)}>Open 1</button>}

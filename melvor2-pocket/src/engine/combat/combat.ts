@@ -30,7 +30,7 @@ export function equipped(game: Game, slot: string): { item: string; qty: number 
 }
 
 /** Slots an item goes into: its type's slot (rings fill the first free ring slot), plus any slots it occupies. */
-function targetSlot(game: Game, itemId: string): string | null {
+export function targetSlot(game: Game, itemId: string): string | null {
   const cap = equipmentCap(itemId);
   if (!cap) return null;
   const fits = equipmentSlots().filter((s) => s.FitsType === cap.Type);
