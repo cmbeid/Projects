@@ -619,10 +619,10 @@ export class Game {
   }
 
   /** Bring the simulation up to wall-clock time. Returns a summary when the gap counts as offline. */
-  catchUp(now = Date.now()): OfflineSummary | null {
+  catchUp(now = Date.now(), minOfflineMs = MIN_OFFLINE_MS): OfflineSummary | null {
     const elapsed = Math.max(0, now - this.state.lastUpdate);
     this.state.lastUpdate = now;
-    if (elapsed < MIN_OFFLINE_MS) {
+    if (elapsed < minOfflineMs) {
       this.state.stats.onlineMs += elapsed;
       this.advanceMs(elapsed);
       return null;
