@@ -1,3 +1,4 @@
+import { settings as soundSettings, toggleMute } from '../audio/sound';
 import { useState } from 'preact/hooks';
 import { NS, all, displayName, get, item, itemName, tryGet, type Item } from '../engine/content';
 import { Game, OfflineSummary, PASSIVE_SKILLS, SKILLS, type OfflineGroup } from '../engine/game';
@@ -54,6 +55,9 @@ function TopBar({ game, onOpenSkill, onOpenFood }: { game: Game; onOpenSkill: (s
       ) : (
         <span class="idle">Idle</span>
       )}
+      <button class="mute" onClick={() => { toggleMute(); game.emit(); }} aria-label={soundSettings.muted ? 'Unmute' : 'Mute'}>
+        {soundSettings.muted ? '🔇' : '🔊'}
+      </button>
     </header>
   );
 }

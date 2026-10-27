@@ -37,6 +37,7 @@ main { padding: calc(var(--top-h) + env(safe-area-inset-top) + 8px) 16px calc(va
 .active .badge { grid-row: span 2; }
 .active-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .idle { flex: 1; text-align: right; color: var(--muted); font-size: 14px; }
+.mute { flex: none; width: 36px; height: 36px; display: grid; place-items: center; font-size: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0; }
 
 .tabs {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
