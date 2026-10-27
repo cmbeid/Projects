@@ -1,7 +1,7 @@
 // Settings → Sound: load the optional sound/music packs, volumes and track choice.
 import { useState } from 'preact/hooks';
 import { NS } from '../engine/content';
-import { clearSoundPack, hasSoundPack, loadSoundPack, musicTracks, nowPlaying, saveSettings, settings, startMusic } from '../audio/sound';
+import { applyVisibility, clearSoundPack, hasSoundPack, loadSoundPack, musicTracks, nowPlaying, saveSettings, settings, startMusic } from '../audio/sound';
 import { forgetBlob, storeBlob } from '../save';
 
 export function SoundSettings() {
@@ -104,6 +104,21 @@ export function SoundSettings() {
             </div>
           )}
         </>
+      )}
+      {(hasSoundPack('sounds') || hasSoundPack('music')) && (
+        <label class="toggle">
+          <input
+            type="checkbox"
+            checked={settings.muteHidden}
+            onChange={(e) => {
+              settings.muteHidden = (e.target as HTMLInputElement).checked;
+              saveSettings();
+              applyVisibility();
+              refresh();
+            }}
+          />
+          Mute when the game isn't visible
+        </label>
       )}
       {msg && <p class="muted">{msg}</p>}
     </section>
