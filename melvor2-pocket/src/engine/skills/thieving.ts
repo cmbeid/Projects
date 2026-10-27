@@ -1,4 +1,4 @@
-import { NS, type Requirement } from '../content';
+import { NS, tryGet, type Requirement } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler, SkillRecipe } from './types';
 import { bonusReader, recipeContext, recipeGetter, recipeList } from './common';
@@ -24,10 +24,39 @@ export interface ThievingRecipe extends SkillRecipe {
   RareDropTable: Drop[];
   CompletionDropTable: Drop[];
   AccessRequirements: Requirement[] | null;
+  HeistBonuses?: string[] | null;
 }
 
 const recipe = recipeGetter<ThievingRecipe>('ThievingRecipe');
-const bonus = (game: Game, r: ThievingRecipe) => bonusReader(game, 'ThievingAction', { ...recipeContext(SKILL, r), recipeType: r.RecipeType });
+interface Mod { Stat: { StatsType: string; Name: string }; Value: number }
+interface Unlockable { Id: string; Bonuses: Mod[]; Requirements: Requirement[] | null }
+
+/**
+ * Bonuses for one target: the global ones, plus its location's distractions once bought (they apply to every target
+ * there) and the target's own heist bonuses once their requirement (e.g. finding a key) is met, as on the desktop.
+ */
+function bonus(game: Game, r: ThievingRecipe) {
+  const base = bonusReader(game, 'ThievingAction', { ...recipeContext(SKILL, r), recipeType: r.RecipeType });
+  const loc = tryGet<{ AvailableDistractions?: string[] }>('ThievingLocation', r.Category ?? '');
+  const sources = [
+    ...(loc?.AvailableDistractions ?? []).map((d) => tryGet<Unlockable>('ThievingDistraction', d)),
+    ...(r.HeistBonuses ?? []).map((h) => tryGet<Unlockable>('ThievingHeistBonus', h)),
+  ].filter((u): u is Unlockable => !!u && !game.isDemoLocked(u.Requirements) && game.requirementsMet(u.Requirements));
+  return (name: string) => {
+    let v = base(name);
+    for (const u of sources) for (const m of u.Bonuses) if (m.Stat.Name === name && m.Stat.StatsType === `${NS}ThievingAction`) v += m.Value;
+    return v;
+  };
+}
+
+/** Thieving distractions available at a location, with whether each is active. */
+export function distractions(game: Game, locationId: string): { name: string; active: boolean; locked: boolean; bonuses: Mod[] }[] {
+  const loc = tryGet<{ AvailableDistractions?: string[] }>('ThievingLocation', locationId);
+  return (loc?.AvailableDistractions ?? [])
+    .map((d) => tryGet<Unlockable & { DisplayName: string }>('ThievingDistraction', d))
+    .filter((u): u is Unlockable & { DisplayName: string } => !!u)
+    .map((u) => ({ name: u.DisplayName, locked: game.isDemoLocked(u.Requirements), active: !game.isDemoLocked(u.Requirements) && game.requirementsMet(u.Requirements), bonuses: u.Bonuses }));
+}
 
 /** Chance to succeed: (100 + stealth) / (100 + perception), where stealth is your Thieving level. */
 export function successChance(game: Game, r: ThievingRecipe): number {
@@ -37,7 +66,7 @@ export function successChance(game: Game, r: ThievingRecipe): number {
   return Math.min(1, (100 + stealth) / (100 + perception));
 }
 
-export const maxStages = (r: ThievingRecipe) => Math.max(1, r.Stages);
+export const maxStages = (r: ThievingRecipe, game?: Game) => Math.max(1, r.Stages + (game ? bonus(game, r)('FlatStages') : 0));
 
 export function stage(game: Game, id: string): number {
   return game.state.thieving.stage[id] ?? 1;
@@ -81,21 +110,32 @@ export const thieving: SkillHandler = {
       t.stunned = false;
       return interval(game, r);
     }
+    const b = bonus(game, r);
     if (!game.rng.chance(successChance(game, r))) {
       game.failed(SKILL, r.DisplayName);
-      // Damage is a uniform roll from 1 to the target's Damage; avoidance chances are base 0.
-      const died = r.Damage > 0 && game.damage(game.rng.intInclusive(1, r.Damage));
+      // Damage is a uniform roll from 1 to the target's Damage, unless a damage avoidance bonus dodges it.
+      const died = r.Damage > 0 && !game.rng.chance(b('DamageAvoidanceChance')) && game.damage(game.rng.intInclusive(1, r.Damage));
       if (died) {
         game.stop('You were knocked out while thieving.');
         return null;
       }
+      // A stun avoidance bonus lets you carry straight on.
+      if (game.rng.chance(b('StunAvoidanceChance'))) return interval(game, r);
       t.stunned = true;
-      return BASE_STUN_INTERVAL;
+      return Math.max(250, Math.floor((BASE_STUN_INTERVAL + b('FlatStunInterval')) * (1 + b('PercentStunInterval'))));
     }
     loot(game, r);
+    // Sometimes you also pickpocket every other target of the same type in the area (each needs its own success).
+    if (game.rng.chance(b('SameAreaPickpocketChance'))) {
+      for (const other of recipeList(SKILL).map((x) => recipe(x))) {
+        if (other.Id === r.Id || other.Category !== r.Category || other.RecipeType !== r.RecipeType) continue;
+        if (game.isDemoLocked(other.Requirements) || !game.requirementsMet(other.Requirements)) continue;
+        if (game.rng.chance(successChance(game, other))) loot(game, other);
+      }
+    }
     questEvent(game, 'ThievingPickpocketTargetType', (d) => (goalMatches(d, 'TargetType', r.RecipeType) && goalMatches(d, 'Location', r.Category) ? 1 : 0));
-    const s = stage(game, id) + 1;
-    if (s > maxStages(r)) {
+    const s = stage(game, id) + (game.rng.chance(b('SkipStageChance')) ? 2 : 1);
+    if (s > maxStages(r, game)) {
       rollDrop(game, r, r.CompletionDropTable);
       game.addXp(SKILL, r.BaseExperience);
       t.stage[id] = 1;

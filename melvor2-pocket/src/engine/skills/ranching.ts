@@ -56,16 +56,71 @@ export function animalsIn(game: Game, enc: string): RanchAnimal[] {
   return game.state.ranching.animals.filter((a) => a.enclosure === enc);
 }
 
+// ---- enclosure maintenance (ActiveRanchingEnclosure): -1% an hour while occupied; safety follows it ----------------
+
+const BASE_MAINTENANCE_MS = 3_600_000;
+const ranchMod = (game: Game, name: string, ctx: Record<string, string | undefined> = {}) => mod(game, 'RanchingAction', name, { entity: SKILL, ...ctx });
+const maintenanceInterval = (game: Game) =>
+  Math.max(60_000, Math.floor((BASE_MAINTENANCE_MS + ranchMod(game, 'FlatMaintenanceInterval')) * (1 + ranchMod(game, 'PercentMaintenanceInterval'))));
+
+export const maintenance = (game: Game, enc: string) => game.state.ranching.maintenance?.[enc]?.value ?? 1;
+
+/** What repairing an enclosure to 100% costs: a share of its build cost per 1% missing, at least 1 of each. */
+export function repairCost(game: Game, enc: string): Ingredients {
+  const m = maintenance(game, enc);
+  const q = (base: number) => Math.max(1, Math.ceil(Math.floor(base / 1000) * (100 * (1 - m))));
+  const c = enclosure(enc).Costs;
+  return { Items: c.Items.map((i) => ({ Item: i.Item, Quantity: q(i.Quantity) })), Currencies: c.Currencies.map((x) => ({ Currency: x.Currency, Quantity: q(x.Quantity) })) };
+}
+
+export function repair(game: Game, enc: string): string | null {
+  if (maintenance(game, enc) >= 1) return null;
+  const cost = repairCost(game, enc);
+  const missing = missingIngredients(game, cost);
+  if (missing) return missing;
+  spendIngredients(game, cost);
+  game.state.ranching.maintenance![enc].value = 1;
+  game.emit();
+  return null;
+}
+
+function processMaintenance(game: Game): void {
+  const now = game.state.tick;
+  const st = game.state.ranching;
+  for (const slot of st.land) {
+    const enc = slot.enclosure;
+    if (!enc) continue;
+    const m = ((st.maintenance ??= {})[enc] ??= { value: 1, nextAt: now + ticks(maintenanceInterval(game)) });
+    while (now >= m.nextAt) {
+      m.nextAt += ticks(maintenanceInterval(game));
+      if (!animalsIn(game, enc).length || game.rng.chance(ranchMod(game, 'EnclosureMaintenanceSkipChance'))) continue;
+      const before = m.value;
+      m.value = Math.max(0, Math.round((m.value - 0.01) * 100) / 100);
+      if (before >= 0.75 && m.value < 0.75) game.notice(`${enclosure(enc).DisplayName} needs repairs.`);
+    }
+  }
+}
+
 /** Satisfaction and happiness follow ActiveRanchingAnimal: fed +0.5, safe +0.4, petted +0.04, pack bonuses. */
 export function happiness(game: Game, a: RanchAnimal): number {
   const r = ranchAnimal(a.animal);
-  const safety = 1; // enclosure maintenance is not modelled; enclosures count as fully maintained
+  const safety = maintenance(game, a.enclosure);
   let satisfaction = (a.hunger >= 0.5 ? 0.5 : 0) + (safety >= 0.5 ? 0.4 : 0);
   if (r.RequiresPets && game.state.tick < a.petDueAt) satisfaction += 0.04;
   const pack = animalsIn(game, a.enclosure).filter((x) => x.animal === a.animal).length;
   for (const b of r.PackSatisfactionBonuses) if (pack >= b.AnimalCount) satisfaction += b.Satisfaction;
-  return Math.max(0, a.hunger * 0.3 + (safety >= 0.75 ? 1 : safety) * 0.3 + satisfaction * 0.4);
+  const flat = ranchMod(game, 'FlatHappiness', { animal: a.animal });
+  return Math.max(0, a.hunger * 0.3 + (safety >= 0.75 ? 1 : safety) * 0.3 + satisfaction * 0.4 + flat);
 }
+
+/** Food per meal and time between products, with their Flat/Percent bonuses. */
+const eats = (game: Game, r: RanchingAnimal, animal: string) =>
+  r.Eats.map((e) => ({
+    Item: e.Item,
+    Quantity: Math.max(1, Math.floor((e.Quantity + ranchMod(game, 'FlatEatsQuantity', { animal })) * (1 + ranchMod(game, 'PercentEatsQuantity', { animal })))),
+  }));
+const productInterval = (game: Game, r: RanchingAnimal, animal: string) =>
+  Math.max(1000, Math.floor((r.ProductInterval + ranchMod(game, 'FlatProductInterval', { animal })) * (1 + ranchMod(game, 'PercentProductInterval', { animal }))));
 
 export function buyLand(game: Game, id: string): string | null {
   const l = land(id);
@@ -93,6 +148,10 @@ export function build(game: Game, landId: string, encId: string): string | null 
   spendIngredients(game, e.Costs);
   slot.enclosure = encId;
   for (const a of game.state.ranching.animals) if (a.enclosure === upgradingFrom) a.enclosure = encId;
+  // A new (or upgraded) enclosure starts fully maintained, with its upkeep clock running from now.
+  const m = (game.state.ranching.maintenance ??= {});
+  if (upgradingFrom) delete m[upgradingFrom];
+  m[encId] = { value: 1, nextAt: game.state.tick + ticks(maintenanceInterval(game)) };
   game.emit();
   return null;
 }
@@ -141,12 +200,17 @@ export function nextRanchingEvent(game: Game): number | null {
       if (t !== Infinity && (next == null || t < next)) next = t;
     }
   }
+  // Occupied enclosures wear down on their own timer.
+  for (const [enc, m] of Object.entries(game.state.ranching.maintenance ?? {})) {
+    if (animalsIn(game, enc).length && (next == null || m.nextAt < next)) next = m.nextAt;
+  }
   return next;
 }
 
 export function processRanching(game: Game): void {
   game.itemSource = SKILL;
   try {
+    processMaintenance(game);
     processAnimals(game);
   } finally {
     game.itemSource = null;
@@ -165,11 +229,14 @@ function processAnimals(game: Game): void {
     while (now >= a.nextProductAt && a.nextProductAt < a.diesAt) {
       // Eat first: a fed animal is at full hunger, an unfed one loses 0.1.
       const ctx = { entity: SKILL, animal: a.animal };
-      const fed = r.Eats.every((e) => game.count(e.Item) >= e.Quantity);
-      if (fed && !game.rng.chance(mod(game, 'RanchingAction', 'FoodPreservationChance', ctx))) for (const e of r.Eats) game.removeItem(e.Item, e.Quantity);
+      const meal = eats(game, r, a.animal);
+      const fed = meal.every((e) => game.count(e.Item) >= e.Quantity);
+      if (fed && !game.rng.chance(mod(game, 'RanchingAction', 'FoodPreservationChance', ctx))) for (const e of meal) game.removeItem(e.Item, e.Quantity);
       a.hunger = fed ? 1 : Math.max(0, a.hunger - 0.1);
+      // A starving animal, or one in a ruined enclosure, produces nothing.
+      const producing = a.hunger > 0 && maintenance(game, a.enclosure) > 0;
       const doubled = game.rng.chance(mod(game, 'RanchingAction', 'DoublingChance', ctx)) ? 2 : 1;
-      const mult = doubled * happiness(game, a) * (1 + variantBonus(a, 'PercentProductQuantity') + mod(game, 'RanchingAction', 'PercentProductQuantity', ctx));
+      const mult = producing ? doubled * happiness(game, a) * (1 + variantBonus(a, 'PercentProductQuantity') + mod(game, 'RanchingAction', 'PercentProductQuantity', ctx)) : 0;
       for (const p of r.Products) {
         const key = NS + 'carry:' + p.Item;
         const total = (st.carry[key] ?? 0) + p.Quantity * mult;
@@ -178,7 +245,7 @@ function processAnimals(game: Game): void {
         if (whole > 0) game.addItem(p.Item, whole);
       }
       game.addXp(SKILL, r.BaseExperience * (1 + variantBonus(a, 'PercentXPGained')));
-      a.nextProductAt += ticks(r.ProductInterval);
+      a.nextProductAt += ticks(productInterval(game, r, a.animal));
       const alive = (game.state.stats.ranchHoursAlive ??= {});
       alive[a.animal] = (alive[a.animal] ?? 0) + r.ProductInterval / 3_600_000;
     }

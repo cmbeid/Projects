@@ -6,7 +6,7 @@ import { get } from '../src/engine/content';
 import { successChance, type ThievingRecipe } from '../src/engine/skills/thieving';
 import { huntState } from '../src/engine/skills/hunting';
 import { buyPlot, harvest, harvestQuantity, isReady, plant, plotState, farmingRecipe, water } from '../src/engine/skills/farming';
-import { buyAnimal, buyLand, build, animalsIn } from '../src/engine/skills/ranching';
+import { buyAnimal, buyLand, build, animalsIn, maintenance, repair, repairCost } from '../src/engine/skills/ranching';
 import { knowledge, unlockedMinorNodes } from '../src/engine/skills/astrology';
 import { buy, shopPurchases } from '../src/engine/shop';
 
@@ -101,6 +101,26 @@ describe('shop and ranching', () => {
     expect(g.count(id('Egg'))).toBeGreaterThan(0);
     expect(g.count(id('Grain'))).toBe(1000 - 2 * 10 * 10);
     expect(animalsIn(g, id('ChickenCoopI')).every((a) => a.variant !== id('ChickenChild'))).toBe(true);
+  });
+});
+
+describe('enclosure maintenance', () => {
+  it('wears 1% an hour while animals live there, and repairs back to full for a share of the build cost', () => {
+    const g = fresh();
+    g.state.gold = 1e9;
+    for (const [it, n] of [['NormalLog', 10000], ['Grain', 10000]] as const) g.addItem(id(it), n);
+    g.state.purchases[id('GrainMill')] = 1;
+    g.state.xp.Ranching = 1e7;
+    expect(buyLand(g, id('Land1'))).toBeNull();
+    expect(build(g, id('Land1'), id('ChickenCoopI'))).toBeNull();
+    expect(buyAnimal(g, id('ChickenCoopI'), id('Chicken'))).toBeNull();
+    g.advance(10 * HOUR + 10);
+    expect(maintenance(g, id('ChickenCoopI'))).toBeCloseTo(0.9, 5);
+    const logs = g.count(id('NormalLog'));
+    expect(repairCost(g, id('ChickenCoopI')).Items[0].Quantity).toBeGreaterThan(0);
+    expect(repair(g, id('ChickenCoopI'))).toBeNull();
+    expect(maintenance(g, id('ChickenCoopI'))).toBe(1);
+    expect(g.count(id('NormalLog'))).toBeLessThan(logs);
   });
 });
 

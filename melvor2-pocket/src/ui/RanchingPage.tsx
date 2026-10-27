@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { NS, itemName } from '../engine/content';
 import type { Game } from '../engine/game';
 import {
-  animalsIn, buyAnimal, buyLand, build, enclosure, enclosureIds, happiness, land, landIds, pet, ranchAnimal, variant,
+  animalsIn, buyAnimal, buyLand, build, enclosure, enclosureIds, happiness, land, landIds, maintenance, pet, ranchAnimal, repair, repairCost, variant,
 } from '../engine/skills/ranching';
 import { Bar, Costs, Icon, fmt, ticksToDuration } from './common';
 
@@ -67,6 +67,16 @@ export function RanchingPage({ game }: { game: Game }) {
               <span class="muted small">
                 {animals.length}/{e.AnimalLimit}
               </span>
+            </div>
+            <div class="card-row">
+              <span class={`small grow ${maintenance(game, slot.enclosure!) < 0.75 ? 'warn' : 'muted'}`}>
+                Maintenance {Math.round(maintenance(game, slot.enclosure!) * 100)}%
+              </span>
+              {maintenance(game, slot.enclosure!) < 1 && (
+                <button onClick={() => setMsg(repair(game, slot.enclosure!) ?? '')}>
+                  Repair ({[...repairCost(game, slot.enclosure!).Items.map((i) => `${i.Quantity} ${itemName(i.Item, i.Quantity)}`), ...repairCost(game, slot.enclosure!).Currencies.map((c) => `${c.Quantity} gold`)].join(', ')})
+                </button>
+              )}
             </div>
             {animals.map((a) => {
               const r = ranchAnimal(a.animal);

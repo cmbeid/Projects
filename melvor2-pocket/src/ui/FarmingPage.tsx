@@ -2,11 +2,69 @@ import { useState } from 'preact/hooks';
 import { NS, itemName } from '../engine/content';
 import type { Game } from '../engine/game';
 import {
-  buyPlot, category, categoryIds, compost, compostItems, farmingRecipe, harvest, harvestPenalty, harvestQuantity, isReady,
-  plant, plot, plotIds, plotState, recipesFor, water,
+  automationCost, automationUnlocked, buyPlot, category, categoryIds, compost, compostItems, farmingRecipe, growInterval, harvest, harvestPenalty,
+  harvestQuantity, isFlower, isReady, plant, plot, plotIds, plotState, recipesFor, water,
 } from '../engine/skills/farming';
 import { Bar, Costs, Icon, fmt, ticksToDuration } from './common';
-import { GRAIN_MILL_INTERVAL_MS, millRecipe, millRecipeIds, setMill } from '../engine/skills/farming';
+import { describeBlock } from '../engine/describe';
+import {
+  GRAIN_MILL_INTERVAL_MS, depositToMill, millCapacity, millRecipe, millRecipeIds, millStorageItems, milled, setMill, withdrawFromMill,
+} from '../engine/skills/farming';
+
+/** Per-plot automation, as on the desktop (unlocked by the Farmhand purchases): each automated step costs the recipe's automation cost. */
+function Automation({ game, pid, recipe, canWater, canCompost, flower }: { game: Game; pid: string; recipe: string; canWater: boolean; canCompost: boolean; flower: boolean }) {
+  const p = plotState(game, pid)!;
+  const a = (p.auto ??= {});
+  const r = farmingRecipe(recipe);
+  const cost = automationCost(game, r);
+  const toggle = (key: 'harvest' | 'water', on: boolean) => {
+    a[key] = on;
+    game.emit();
+  };
+  return (
+    <details class="automation">
+      <summary>
+        Automation{a.harvest || a.replant ? ' · on' : ''} <span class="muted small">({[...cost.Items.map((i) => `${i.Quantity} ${itemName(i.Item, i.Quantity)}`), ...cost.Currencies.map((x) => `${x.Quantity} gold`)].join(', ') || 'free'} per step)</span>
+      </summary>
+      {!flower && (
+        <label class="toggle">
+          <input type="checkbox" checked={!!a.harvest} onChange={(e) => toggle('harvest', (e.target as HTMLInputElement).checked)} />
+          Harvest when ready
+        </label>
+      )}
+      <label class="toggle">
+        <input
+          type="checkbox"
+          checked={a.replant === recipe}
+          onChange={(e) => {
+            a.replant = (e.target as HTMLInputElement).checked ? recipe : null;
+            game.emit();
+          }}
+        />
+        Replant {r.DisplayName} afterwards
+      </label>
+      {canWater && (
+        <label class="toggle">
+          <input type="checkbox" checked={!!a.water} onChange={(e) => toggle('water', (e.target as HTMLInputElement).checked)} />
+          Water when replanting
+        </label>
+      )}
+      {canCompost && (
+        <label class="toggle">
+          <input
+            type="checkbox"
+            checked={!!a.compost}
+            onChange={(e) => {
+              a.compost = (e.target as HTMLInputElement).checked ? (compostItems().find((i) => game.count(i) > 0) ?? compostItems()[0]) : null;
+              game.emit();
+            }}
+          />
+          Compost when replanting{a.compost ? ` (${itemName(a.compost)})` : ''}
+        </label>
+      )}
+    </details>
+  );
+}
 
 export function FarmingPage({ game }: { game: Game }) {
   const cats = categoryIds().filter((c) => plotIds().some((p) => plot(p).Category === c));
@@ -32,6 +90,23 @@ export function FarmingPage({ game }: { game: Game }) {
           {game.state.mill.recipe && (
             <Bar value={Math.round(GRAIN_MILL_INTERVAL_MS * 0.06) - (game.state.mill.readyAt - game.state.tick)} max={Math.round(GRAIN_MILL_INTERVAL_MS * 0.06)} color="#e8b84a" />
           )}
+          <div class="mill-storage">
+            <div class="muted small">Storage (up to {fmt(millCapacity(game))} of each)</div>
+            {millStorageItems().map((i) => (
+              <div class="card-row">
+                <Icon id={i} size={24} />
+                <span class="grow small">
+                  {itemName(i, 2)}: {fmt(milled(game, i))} stored · {fmt(game.count(i))} in bank
+                </span>
+                <button disabled={!game.count(i) || milled(game, i) >= millCapacity(game)} onClick={() => depositToMill(game, i)}>
+                  Deposit
+                </button>
+                <button disabled={!milled(game, i)} onClick={() => withdrawFromMill(game, i)}>
+                  Withdraw
+                </button>
+              </div>
+            ))}
+          </div>
           {millRecipeIds()
             .filter((r) => !game.isDemoLocked(millRecipe(r).Requirements))
             .map((r) => {
@@ -113,22 +188,31 @@ export function FarmingPage({ game }: { game: Game }) {
         }
         const r = farmingRecipe(p.recipe);
         const ready = isReady(game, p);
-        const total = Math.round((p.regrowsLeft < r.Regrows ? r.RegrowInterval : r.BaseInterval) * 0.06);
+        const total = Math.round(growInterval(game, r, p.regrowsLeft < r.Regrows) * 0.06);
         const left = Math.max(0, p.readyAt - game.state.tick);
+        const flower = isFlower(r);
+        const blooming = flower && p.providingUntil != null;
+        const flowerBonus = flower ? describeBlock(r.BonusesWhenGrown as never).join(', ') : '';
         return (
           <div class="card">
             <div class="card-row">
-              <Icon id={r.Product.Item} size={36} />
+              <Icon id={flower ? (r.Ingredients.Items[0]?.Item ?? r.Product.Item) : r.Product.Item} size={36} />
               <div class="grow">
                 <strong>{r.DisplayName}</strong>
                 <div class="muted small">
-                  {ready ? 'Ready to harvest' : `${ticksToDuration(left)} left`} · ~{fmt(harvestQuantity(r, p))} {itemName(r.Product.Item, 2)}
-                  {harvestPenalty(r, p) > 0 ? ` (−${harvestPenalty(r, p)}% disease/pests)` : ''}
+                  {flower
+                    ? blooming
+                      ? `In bloom: ${flowerBonus} · ${ticksToDuration(Math.max(0, p.providingUntil! - game.state.tick))} left`
+                      : `${ticksToDuration(left)} until it blooms · then ${flowerBonus} for ${ticksToDuration((r.GrownInterval ?? 0) * 0.06)}`
+                    : `${ready ? 'Ready to harvest' : `${ticksToDuration(left)} left`} · ~${fmt(harvestQuantity(r, p, game))} ${itemName(r.Product.Item, 2)}`}
+                  {!flower && harvestPenalty(r, p, game) > 0 ? ` (−${harvestPenalty(r, p, game)}% disease/pests)` : ''}
                 </div>
               </div>
               {ready && <button onClick={() => harvest(game, pid)}>Harvest</button>}
             </div>
-            {!ready && <Bar value={total - left} max={total} color="#6abf3a" />}
+            {!ready && !blooming && <Bar value={total - left} max={total} color="#6abf3a" />}
+            {blooming && <Bar value={p.providingUntil! - game.state.tick} max={Math.round((r.GrownInterval ?? 1) * 0.06)} color="#0091ba" />}
+            {automationUnlocked(game, r) && <Automation game={game} pid={pid} recipe={p.recipe} canWater={c.CanWater} canCompost={c.CanCompost} flower={flower} />}
             <div class="row small-buttons">
               {c.CanWater && (
                 <button disabled={p.watered} onClick={() => water(game, pid)}>

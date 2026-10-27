@@ -82,7 +82,7 @@ function viewWithoutArt(game: Game, skill: string, r: SkillRecipe): RecipeView {
   switch (skill) {
     case 'Thieving': {
       const t = r as ThievingRecipe;
-      const stages = maxStages(t);
+      const stages = maxStages(t, game);
       const loot = t.CommonDropTable[0]?.Item ?? t.RareDropTable[0]?.Item;
       return {
         ...base(game, skill, r),

@@ -7,6 +7,7 @@ import { equipmentCap } from './combat/data';
 import { unlockedMinorNodes, type AstrologyNode } from './skills/astrology';
 import { shopPurchases } from './shop';
 import { guildBonuses } from './guild';
+import { flowerBonuses } from './skills/farming';
 
 interface RawBonus extends Bonus {
   Condition?: unknown;
@@ -61,10 +62,57 @@ export function activeBonuses(game: Game, includeEquipment = true): RawBonus[] {
   }
   for (const b of guildBonuses(game)) out.push(...blockBonuses(b.Rewards.Bonuses as BonusBlock | null));
   for (const t of Object.values(game.state.toolbelt)) if (t.qty > 0) out.push(...blockBonuses(toolbeltCap(t.item)?.Bonuses));
+  // Flowers: in bloom they give their bonus in full; while growing, only if a bonus scales it in (Deedree's node).
+  const whileGrowing = out.filter((b) => b.Stat.Name === 'PercentBonusesWhileGrowing').reduce((s, b) => s + b.Value, 0);
+  for (const f of flowerBonuses(game, whileGrowing)) out.push(...blockBonuses(f.block as BonusBlock, f.times));
   const bait = game.state.fishingBait;
   if (bait && game.count(bait) > 0) out.push(...blockBonuses(fishingBaitCap(bait)?.Bonuses));
-  // Bonuses with conditions or scaling need runtime state the rebuild doesn't track yet, so they're left out.
-  return out.filter((b) => b.Condition == null && b.Scaling == null);
+  return resolveConditional(game, out);
+}
+
+interface Condition { Type: string; Data: { Area?: string | null; Category?: string | null; Slot?: string | null } }
+interface Scaling { Type: string; Data: { Experience?: { Entity: string } } }
+
+/**
+ * Bonuses with a condition apply only while it holds (fighting your slayer task, fighting in an area or category, a slot
+ * equipped); ones with Level scaling are multiplied by that skill's level. Unknown kinds stay off.
+ */
+export function resolveConditional<T extends Bonus>(game: Game, list: T[]): T[] {
+  const out: T[] = [];
+  for (const b of list as (T & RawBonus)[]) {
+    const cond = b.Condition as Condition | null | undefined;
+    if (cond && !conditionHolds(game, cond)) continue;
+    const scaling = b.Scaling as Scaling | null | undefined;
+    if (scaling) {
+      if (scaling.Type !== `${NS}Level` || !scaling.Data.Experience) continue;
+      out.push({ ...b, Value: b.Value * game.level(scaling.Data.Experience.Entity.replace(NS, '')) });
+    } else out.push(b);
+  }
+  return out;
+}
+
+function conditionHolds(game: Game, c: Condition): boolean {
+  const combat = game.state.combat;
+  const fighting = game.state.active?.skill === 'Combat' && !!combat.area;
+  switch (c.Type.replace(NS, '')) {
+    case 'FightingSlayerTask':
+      return fighting && !!combat.slayer && combat.slayer.left > 0 && combat.enemy === combat.slayer.enemy;
+    case 'CombatInArea': {
+      if (!fighting) return false;
+      const a = tryGet<{ Category?: string }>('CombatArea', combat.area!) ?? tryGet<{ Category?: string }>('Dungeon', combat.area!);
+      return (!c.Data.Area || c.Data.Area === combat.area) && (!c.Data.Category || c.Data.Category === a?.Category);
+    }
+    case 'EquipmentSlotEquipped':
+      return !!c.Data.Slot && !!game.state.equipment[c.Data.Slot];
+    default:
+      return false;
+  }
+}
+
+/** The state conditional bonuses read, so the cache can tell when to recompute them. */
+export function conditionKey(game: Game): string {
+  const c = game.state.combat;
+  return [game.state.active?.skill, c.area, c.enemy, c.slayer?.enemy, c.slayer?.left ? 1 : 0, Object.keys(game.state.equipment).join(','), game.level('Strength')].join('|');
 }
 
 function matches(b: RawBonus, statsType: string, ctx: BonusContext): boolean {

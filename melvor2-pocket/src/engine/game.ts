@@ -18,7 +18,7 @@ import { astrology } from './skills/astrology';
 import { agility } from './skills/agility';
 import { combat } from './combat/combat';
 import type { Bonus } from './combat/data';
-import { BASE_BANK_SLOTS, activeBonuses, mod } from './bonuses';
+import { BASE_BANK_SLOTS, activeBonuses, conditionKey, mod } from './bonuses';
 import { goalActive, goalMatches, questEvent } from './quests';
 import { checkUnlocks, isUnlocked, unlockEverything } from './navigation';
 import { checkGuild, hasRank } from './guild';
@@ -302,11 +302,13 @@ export class Game {
     ).length;
   }
 
-  private bonusCache: { version: number; all: Bonus[]; noGear: Bonus[] } | null = null;
+  private bonusCache: { version: number; key: string; all: Bonus[]; noGear: Bonus[] } | null = null;
 
   private bonusLists(): { all: Bonus[]; noGear: Bonus[] } {
-    if (!this.bonusCache || this.bonusCache.version !== this.bonusVersion) {
-      this.bonusCache = { version: this.bonusVersion, all: activeBonuses(this), noGear: activeBonuses(this, false) };
+    // Conditional bonuses depend on the fight, the slayer task and so on, so those are part of the cache key.
+    const key = conditionKey(this);
+    if (!this.bonusCache || this.bonusCache.version !== this.bonusVersion || this.bonusCache.key !== key) {
+      this.bonusCache = { version: this.bonusVersion, key, all: activeBonuses(this), noGear: activeBonuses(this, false) };
     }
     return this.bonusCache;
   }

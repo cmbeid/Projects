@@ -32,6 +32,12 @@ export interface PlotState {
   regrowsLeft: number;
   watered: boolean;
   compost: string | null;
+  /** Flowers: once grown they give their bonus until this tick, then the plot clears. */
+  providingUntil?: number;
+  /** Automation (unlocked by Farmhand purchases): each automated step costs the recipe's automation cost. */
+  auto?: { harvest?: boolean; replant?: string | null; water?: boolean; compost?: string | null };
+  /** Tick automation last looked at this plot, so an unaffordable step isn't retried in a loop. */
+  autoCheckedAt?: number;
 }
 
 export interface RanchAnimal {
@@ -55,6 +61,8 @@ export interface RanchingState {
   nextId: number;
   /** Fractional products waiting to round up into whole items. */
   carry: Record<string, number>;
+  /** Enclosure upkeep: 1 = fully maintained, losing 1% an hour while animals live there; when it next drops. */
+  maintenance?: Record<string, { value: number; nextAt: number }>;
 }
 
 export interface CombatState {
@@ -115,7 +123,7 @@ export interface GameState {
   /** Skill toolbelt slots → equipped item. */
   toolbelt: Record<string, { item: string; qty: number }>;
   /** The Grain Mill's selected recipe and when its current batch finishes. */
-  mill: { recipe: string | null; readyAt: number };
+  mill: { recipe: string | null; readyAt: number; storage?: Record<string, number> };
   /** Currencies other than gold (slayer coins, prayer points). */
   currencies: Record<string, number>;
   equipment: Record<string, { item: string; qty: number }>;

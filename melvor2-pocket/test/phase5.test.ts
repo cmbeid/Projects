@@ -5,7 +5,7 @@ import { unlockEverything } from '../src/engine/navigation';
 import { mod } from '../src/engine/bonuses';
 import { equipTool, open, unequipTool } from '../src/engine/items';
 import { advanceQuest, currentTask, quest, startQuest } from '../src/engine/quests';
-import { setMill } from '../src/engine/skills/farming';
+import { depositToMill, milled, setMill } from '../src/engine/skills/farming';
 import { buy, shopPurchases, shopVisible } from '../src/engine/shop';
 
 const id = (s: string) => `MelvorBase:${s}`;
@@ -109,16 +109,26 @@ describe('quests', () => {
 });
 
 describe('grain mill', () => {
-  it('mills wheat into flour every 5 minutes in the background', () => {
+  it('mills wheat from its own storage into flour every 5 minutes in the background', () => {
     const g = fresh();
     g.state.xp.Farming = 1e9;
     g.state.purchases[id('GrainMill')] = 1;
     g.addItem(id('Wheat'), 30);
+    expect(setMill(g, id('Flour'))).toMatch(/^Deposit/);
+    expect(depositToMill(g, id('Wheat'))).toBe(30);
+    expect(g.count(id('Wheat'))).toBe(0);
     expect(setMill(g, id('Flour'))).toBeNull();
     g.advance(60 * 60 * 16); // 16 minutes
     expect(g.count(id('Flour'))).toBe(150);
-    expect(g.count(id('Wheat'))).toBe(0);
+    expect(milled(g, id('Wheat'))).toBe(0);
     expect(g.state.mill.recipe).toBeNull();
+  });
+
+  it('stores up to 6,000 of each grain', () => {
+    const g = fresh();
+    g.addItem(id('Wheat'), 7000);
+    expect(depositToMill(g, id('Wheat'))).toBe(6000);
+    expect(g.count(id('Wheat'))).toBe(1000);
   });
 });
 
