@@ -1,7 +1,7 @@
 // Background systems that schedule their own events on the simulation clock.
 import type { Game } from './game';
 import { nextRanchingEvent, processRanching } from './skills/ranching';
-import { nextMillEvent, processMill } from './skills/farming';
+import { nextFarmingEvent, nextMillEvent, processFarming, processMill } from './skills/farming';
 
 export interface PassiveHandler {
   /** Absolute tick of the next event, or null if nothing is pending. */
@@ -13,4 +13,5 @@ export interface PassiveHandler {
 export const PASSIVES: PassiveHandler[] = [
   { nextEvent: nextRanchingEvent, process: processRanching },
   { nextEvent: nextMillEvent, process: processMill },
+  { nextEvent: nextFarmingEvent, process: processFarming },
 ];

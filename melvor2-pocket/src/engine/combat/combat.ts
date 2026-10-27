@@ -2,7 +2,7 @@
 import { NS, itemName, type Requirement } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler, SkillRecipe } from '../skills/types';
-import { mod } from '../bonuses';
+import { mod, resolveConditional } from '../bonuses';
 import { goalMatches, questEvent } from '../quests';
 import type { GoalContext } from '../guild';
 import {
@@ -125,7 +125,7 @@ export function playerFighter(game: Game, enemyStyle?: string): Fighter {
     const pr = addStats(f.stats, cap?.Stats);
     f.power += pr.power;
     f.protection += pr.protection;
-    if (cap?.Bonuses) applyBonuses(f, forStyle(cap.Bonuses.Component, sty.Id));
+    if (cap?.Bonuses) applyBonuses(f, forStyle(resolveConditional(game, cap.Bonuses.Component), sty.Id));
   }
   const sp = game.state.combat.spell;
   if (sty.UsesSpells && sp) addStats(f.stats, spellData(sp).Stats);

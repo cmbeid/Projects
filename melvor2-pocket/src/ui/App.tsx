@@ -10,7 +10,8 @@ import { StatsBar } from './StatsBar';
 import { OPT_IN_SKILLS, describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
 import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from '../engine/items';
 import { fishingBaitCap, toolbeltCap } from '../engine/bonuses';
-import { describeBlock } from '../engine/describe';
+import { describeBlock, describeBonus } from '../engine/describe';
+import { distractions } from '../engine/skills/thieving';
 import { bury, equip } from '../engine/combat/combat';
 import { buryCap, equipmentCap } from '../engine/combat/data';
 
@@ -175,6 +176,7 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
       {skill === 'Farming' && <FarmingPage game={game} />}
       {skill === 'Ranching' && <RanchingPage game={game} />}
       {skill === 'Fishing' && <FishingBait game={game} />}
+      {skill === 'Thieving' && <ThievingDistractions game={game} />}
       {!PASSIVE_SKILLS.includes(skill) && (() => {
         const groups = recipeGroups(game, skill)
           .map((g) => ({ ...g, recipes: g.recipes.filter((r) => showLocked || r.locked !== 'demo') }))
@@ -215,6 +217,35 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
       </label>}
       <Log game={game} />
     </div>
+  );
+}
+
+/** Distractions per location: bought in the shop, each makes every target there easier (or safer). */
+function ThievingDistractions({ game }: { game: Game }) {
+  const [open, setOpen] = useState(false);
+  const locs = all<{ Id: string; DisplayName: string }>('ThievingLocation').filter((l) => distractions(game, NS + l.Id).some((d) => !d.locked));
+  const active = locs.reduce((n, l) => n + distractions(game, NS + l.Id).filter((d) => d.active).length, 0);
+  return (
+    <section class="card">
+      <button class="card-row plain" onClick={() => setOpen(!open)}>
+        <strong class="grow">Distractions</strong>
+        <span class="muted small">{active} active {open ? '▾' : '▸'}</span>
+      </button>
+      {open &&
+        locs.map((l) => (
+          <div>
+            <div class="muted small">{l.DisplayName}</div>
+            {distractions(game, NS + l.Id)
+              .filter((d) => !d.locked)
+              .map((d) => (
+                <div class={`small ${d.active ? '' : 'muted'}`}>
+                  {d.active ? '✓' : '•'} {d.name}: {d.bonuses.map((x) => describeBonus(x)).join(', ')}
+                  {!d.active && ' (buy it in the Shop)'}
+                </div>
+              ))}
+          </div>
+        ))}
+    </section>
   );
 }
 
