@@ -389,6 +389,45 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
   const it = item(id);
   const have = game.count(id);
   const price = it.SellsFor?.Quantity ?? 0;
+  const [opened, setOpened] = useState<{ n: number; got: Record<string, number> } | null>(null);
+  const openN = (n: number) => {
+    const count = Math.min(n, have);
+    setOpened({ n: count, got: openItem(game, id, count) });
+  };
+  if (opened)
+    return (
+      <div class="sheet" onClick={onClose}>
+        <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
+          <div class="sheet-head">
+            <Icon id={id} size={56} />
+            <div>
+              <strong>
+                Opened {fmt(opened.n)} {itemName(id, opened.n)}
+              </strong>
+              <div class="muted">You received:</div>
+            </div>
+          </div>
+          <div class="opened-list">
+            {Object.entries(opened.got)
+              .sort((a, b) => b[1] - a[1])
+              .map(([i, q]) => (
+                <div class="opened-row">
+                  <Icon id={i} size={36} />
+                  <span class="grow">{itemName(i, q)}</span>
+                  <strong class="good">+{fmt(q)}</strong>
+                  <span class="muted small">{fmt(game.count(i))} in bank</span>
+                </div>
+              ))}
+            {!Object.keys(opened.got).length && <p class="muted">Nothing (is your bank full?)</p>}
+          </div>
+          <div class="row">
+            {have > 0 && <button onClick={() => openN(1)}>Open another</button>}
+            {have > 1 && <button onClick={() => openN(have)}>Open all ({fmt(have)})</button>}
+            <button onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </div>
+    );
   return (
     <div class="sheet" onClick={onClose}>
       <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
@@ -405,8 +444,8 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
         <ItemBonuses game={game} id={id} />
         {(openableCap(id) || toolbeltCap(id) || upgradesFrom(id).length > 0) && (
           <div class="row">
-            {openableCap(id) && <button onClick={() => openItem(game, id, 1)}>Open 1</button>}
-            {openableCap(id) && <button onClick={() => openItem(game, id, have)}>Open all</button>}
+            {openableCap(id) && <button onClick={() => openN(1)}>Open 1</button>}
+            {openableCap(id) && <button onClick={() => openN(have)}>Open all</button>}
             {toolbeltCap(id) && (
               <button
                 onClick={() => {

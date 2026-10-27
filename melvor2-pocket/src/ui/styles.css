@@ -458,3 +458,7 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 
 .item-bonuses { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
 .item-bonuses .bonus-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--accent, #8fd); }
+
+.opened-list { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; margin: 8px 0 12px; }
+.opened-row { display: flex; align-items: center; gap: 10px; }
+.opened-row .good { color: var(--good); }
