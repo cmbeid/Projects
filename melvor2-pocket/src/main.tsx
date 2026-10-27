@@ -56,6 +56,9 @@ async function findSounds(): Promise<void> {
   }
 }
 
+/** After being hidden this long, coming back shows the welcome-back summary. */
+const OFFLINE_AFTER_HIDDEN_MS = 3000;
+
 async function startGame() {
   await Promise.all([findAssets(), findSounds()]);
   unlockAudioOnFirstTap();
@@ -72,15 +75,25 @@ async function startGame() {
 
   const persist = () => save(game.state).catch((e) => console.error('save failed', e));
 
-  // One loop drives everything. If the browser suspended the tab, the next catchUp sees the gap as offline time.
+  // One loop drives everything while the game is on screen. As soon as it's hidden the loop stops, and on return the
+  // whole time away is run as offline progress (with its summary), not as a trickle of throttled background ticks.
   setInterval(() => {
+    if (document.hidden) return;
     const summary = game.catchUp();
     if (summary) setOffline(summary);
     game.emit();
   }, LOOP_MS);
   setInterval(persist, AUTOSAVE_MS);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') persist();
+    if (document.hidden) {
+      const settled = game.catchUp(); // settle up to the moment you left
+      if (settled) setOffline(settled);
+      persist();
+      return;
+    }
+    const summary = game.catchUp(Date.now(), OFFLINE_AFTER_HIDDEN_MS);
+    if (summary) setOffline(summary);
+    game.emit();
   });
   window.addEventListener('pagehide', persist);
 
