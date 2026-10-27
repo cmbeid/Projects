@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { NS, all, item, itemName, type Item } from '../engine/content';
+import { NS, all, get, item, itemName, type Item } from '../engine/content';
 import { Game, OfflineSummary, PASSIVE_SKILLS, SKILLS } from '../engine/game';
 import { FarmingPage } from './FarmingPage';
 import { RanchingPage } from './RanchingPage';
@@ -12,6 +12,7 @@ import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from 
 import { fishingBaitCap, toolbeltCap } from '../engine/bonuses';
 import { describeBlock, describeBonus } from '../engine/describe';
 import { distractions } from '../engine/skills/thieving';
+import { availableMajorPicks, unlockMajorNode, unlockedMajorNodes, unlockedMinorNodes, type AstrologyNode } from '../engine/skills/astrology';
 import { bury, equip } from '../engine/combat/combat';
 import { buryCap, equipmentCap } from '../engine/combat/data';
 
@@ -177,6 +178,7 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
       {skill === 'Ranching' && <RanchingPage game={game} />}
       {skill === 'Fishing' && <FishingBait game={game} />}
       {skill === 'Thieving' && <ThievingDistractions game={game} />}
+      {skill === 'Astrology' && <MajorNodes game={game} />}
       {!PASSIVE_SKILLS.includes(skill) && (() => {
         const groups = recipeGroups(game, skill)
           .map((g) => ({ ...g, recipes: g.recipes.filter((r) => showLocked || r.locked !== 'demo') }))
@@ -217,6 +219,46 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
       </label>}
       <Log game={game} />
     </div>
+  );
+}
+
+/** Astrology major nodes: one pick for every few minor nodes in a constellation, as on the desktop. */
+function MajorNodes({ game }: { game: Game }) {
+  const [msg, setMsg] = useState('');
+  const cons = all<{ Id: string; DisplayName: string; MajorNodes: string[] }>('AstrologyConstellation').filter(
+    (c) => unlockedMinorNodes(game, NS + c.Id).length > 0 || unlockedMajorNodes(game, NS + c.Id).length > 0,
+  );
+  if (!cons.length) return null;
+  return (
+    <section class="card">
+      <strong>Major nodes</strong>
+      {msg && <div class="muted small">{msg}</div>}
+      {cons.map((c) => {
+        const id = NS + c.Id;
+        const picks = availableMajorPicks(game, id);
+        const have = unlockedMajorNodes(game, id);
+        return (
+          <div class="major">
+            <div class="muted small">
+              {c.DisplayName} · {picks > 0 ? `${picks} to choose` : 'unlock more minor nodes for another pick'}
+            </div>
+            {c.MajorNodes.map((n) => {
+              const node = get<AstrologyNode>('AstrologyNode', n);
+              const text = [node.Description?.replace(/\[\/?[a-z]+(=[^\]]*)?\]/g, ''), ...describeBlock(node.Bonuses as never)].filter(Boolean).join(' · ');
+              const on = have.includes(n);
+              return (
+                <div class="card-row">
+                  <span class={`grow small ${on ? '' : 'muted'}`}>
+                    {on ? '★' : '☆'} {text || node.DisplayName}
+                  </span>
+                  {!on && picks > 0 && <button onClick={() => setMsg(unlockMajorNode(game, id, n) ?? '')}>Unlock</button>}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </section>
   );
 }
 

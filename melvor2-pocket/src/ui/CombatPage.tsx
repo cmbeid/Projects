@@ -1,13 +1,13 @@
 import { useState } from 'preact/hooks';
 import { NS, all, displayName, itemName } from '../engine/content';
 import type { Game } from '../engine/game';
-import { type Bonus, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
+import { type Bonus, type Drops, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
 import {
-  areaEnemies, blockSlayerEnemy, enemyFighter, enemyMaxHp, extendSlayerTask, fight, newSlayerTask, playerFighter, prayerPoints, slayerBlockCost,
+  areaEnemies, blockSlayerEnemy, dropChances, effectsView, liveEnemyFighter, togglePause, enemyFighter, enemyMaxHp, extendSlayerTask, fight, newSlayerTask, playerFighter, prayerPoints, slayerBlockCost,
   slayerBlockSlots, slayerExtensionCost, slayerRerollCost, slayerTaskRange, togglePrayer, unblockSlayerEnemy,
 } from '../engine/combat/combat';
 import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit } from '../engine/combat/stats';
-import { Bar, HpBar, Icon, fmt, type BarMarker } from './common';
+import { Bar, HpBar, Icon, fmt, ticksToDuration, type BarMarker } from './common';
 import { assetUrl } from '../art/assets';
 import { EquipmentView } from './Equipment';
 
@@ -26,11 +26,29 @@ function bonusLabel(b: Bonus): string {
 
 interface AreaLike { Id: string; DisplayName: string; Category: string; UnlockRequirements: never[] | null; DisplayRequirements: never[] | null }
 
+/** Effects on a fighter: buffs in green, debuffs in red, with turns, attacks or stacks left. */
+function EffectChips({ game, side }: { game: Game; side: 'player' | 'enemy' }) {
+  const list = effectsView(game, side);
+  if (!list.length) return null;
+  return (
+    <div class="effect-chips">
+      {list.map((e) => (
+        <span class={`effect-chip ${e.positive ? 'good' : 'bad'}`}>
+          {assetUrl(e.icon) && !/missing_artwork|icon\.svg/.test(e.icon ?? '') && <img src={assetUrl(e.icon)} alt="" />}
+          {e.name}
+          {e.detail && <small> {e.detail}</small>}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function FightView({ game }: { game: Game }) {
+  const [sheet, setSheet] = useState<'loot' | null>(null);
   const c = game.state.combat;
   const fighting = game.state.active?.skill === 'Combat';
   if (!fighting || !c.area) return null;
-  const e = c.enemy ? enemyFighter(c.enemy) : null;
+  const e = c.enemy && c.phase === 'fighting' ? liveEnemyFighter(game) : c.enemy ? enemyFighter(c.enemy) : null;
   const p = playerFighter(game, e?.style.Id);
   const pInt = Math.round(attackInterval(p) / (1000 / 60));
   const food = game.state.selectedFood;
@@ -56,6 +74,7 @@ function FightView({ game }: { game: Game }) {
               {fmt(c.enemyHp)} / {fmt(e.maxHp)} HP · max hit {maxHit(e)} · {e.style.DisplayName}
             </div>
             <Bar value={Math.round(attackInterval(e) / (1000 / 60)) - c.enemyLeft} max={Math.round(attackInterval(e) / (1000 / 60))} color="#9a7ae0" />
+            <EffectChips game={game} side="enemy" />
           </>
         ) : (
           <div class="enemy-art searching muted">Looking for an enemy…</div>
@@ -71,6 +90,7 @@ function FightView({ game }: { game: Game }) {
           {game.hp()} / {game.maxHp()} HP · {food ? `${itemName(food, 2)} ×${fmt(game.count(food))} · auto-eat at ${game.autoEatAt()} HP` : 'no food'}
         </div>
         {c.phase === 'fighting' && <Bar value={pInt - c.playerLeft} max={pInt} color="#e8b84a" />}
+        <EffectChips game={game} side="player" />
         {e && (
           <div class="muted small">
             Hit {Math.round(hitChance(accuracyRating(p, area(c.area).Darkness), evasionRating(e, p.stance)) * 100)}% · {minHit(p, maxHit(p))}–{maxHit(p)} dmg ·
@@ -84,9 +104,91 @@ function FightView({ game }: { game: Game }) {
             Stage {c.dungeonStage + 1} / {(area(c.area) as Dungeon).Enemies.length} · completed {c.dungeonsDone[c.area] ?? 0}×
           </div>
         )}
+        {food && (
+          <button class="eat" disabled={game.hp() >= game.maxHp() || !game.count(food)} onClick={() => game.eat(food)}>
+            <Icon id={food} size={20} /> Eat <small>+{game.foodHealing(food)} HP</small>
+          </button>
+        )}
+        <button class={`pause ${c.paused ? 'on' : ''}`} onClick={() => togglePause(game)}>
+          {c.paused ? '▶ Resume' : '❚❚ Pause'}
+        </button>
+        <button onClick={() => setSheet('loot')}>Loot</button>
         <button class="danger run" onClick={() => game.stop('You ran away.')}>
           Run away
         </button>
+      </div>
+      {sheet === 'loot' && <LootHistory game={game} onClose={() => setSheet(null)} />}
+    </div>
+  );
+}
+
+/** Loot History: what this combat session has dropped, as on the desktop. */
+function LootHistory({ game, onClose }: { game: Game; onClose: () => void }) {
+  const l = game.state.combat.loot;
+  const items = Object.entries(l?.items ?? {}).sort((a, b) => b[1] - a[1]);
+  const mins = l ? Math.max(1, (game.state.tick - l.since) / 3600) : 1;
+  return (
+    <div class="sheet" onClick={onClose}>
+      <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
+        <div class="sheet-head">
+          <h2 class="grow">Loot History</h2>
+          <button onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <p class="muted small">
+          {fmt(l?.kills ?? 0)} kills in {ticksToDuration(l ? game.state.tick - l.since : 0)} ({(l?.kills ?? 0) / mins >= 1 ? fmt(((l?.kills ?? 0) / mins) * 60) : '<60'} an hour)
+        </p>
+        {Object.entries(l?.currencies ?? {}).map(([cur, q]) => (
+          <div class="card-row">
+            <span class="grow">{displayName('Currency', cur)}</span>
+            <strong>{fmt(q)}</strong>
+          </div>
+        ))}
+        {!items.length && !Object.keys(l?.currencies ?? {}).length && <p class="muted">Nothing yet.</p>}
+        {items.map(([it, q]) => (
+          <div class="card-row">
+            <Icon id={it} size={28} />
+            <span class="grow">{itemName(it, q)}</span>
+            <strong>{fmt(q)}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** An enemy's (or a dungeon's) drop table with chances, like the desktop's View Enemy Drops. */
+function DropsSheet({ title, drops, onClose }: { title: string; drops: Drops; onClose: () => void }) {
+  const list = dropChances(drops).sort((a, b) => b.chance - a.chance);
+  const pct = (x: number) => (x >= 0.1 ? `${Math.round(x * 100)}%` : x >= 0.001 ? `${(x * 100).toFixed(2)}%` : `1 in ${fmt(Math.round(1 / x))}`);
+  return (
+    <div class="sheet" onClick={onClose}>
+      <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
+        <div class="sheet-head">
+          <h2 class="grow">{title}</h2>
+          <button onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        {drops.FixedCurrencies.map((c) => (
+          <div class="card-row">
+            <span class="grow">{displayName('Currency', c.Currency)}</span>
+            <span class="muted small">
+              {fmt(c.MinQuantity)}–{fmt(c.MaxQuantity)} · always
+            </span>
+          </div>
+        ))}
+        {list.map((d) => (
+          <div class="card-row">
+            <Icon id={d.item} size={28} />
+            <span class="grow">
+              {itemName(d.item, d.max)} {d.max > 1 ? <span class="muted small">×{d.min === d.max ? d.min : `${d.min}–${d.max}`}</span> : null}
+            </span>
+            <span class="muted small">{pct(d.chance)}</span>
+          </div>
+        ))}
+        {!list.length && !drops.FixedCurrencies.length && <p class="muted">No drops.</p>}
       </div>
     </div>
   );
@@ -105,6 +207,7 @@ function AreaBrowser({ game }: { game: Game }) {
   const [cat, setCat] = useState(cats[0]);
   const [open, setOpen] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
+  const [drops, setDrops] = useState<string | null>(null);
   const catName = (c: string) => displayName('CombatAreaCategory', c);
   return (
     <>
@@ -116,6 +219,13 @@ function AreaBrowser({ game }: { game: Game }) {
         ))}
       </div>
       {msg && <p class="muted">{msg}</p>}
+      {drops && (
+        <DropsSheet
+          title={isDungeon(drops) ? `${area(drops).DisplayName} rewards` : `${enemyData(drops).DisplayName} drops`}
+          drops={isDungeon(drops) ? (area(drops) as Dungeon).Rewards : enemyData(drops).Drops}
+          onClose={() => setDrops(null)}
+        />
+      )}
       <div class="area-grid">
       {areas
         .filter((a) => a.Category === cat)
@@ -137,9 +247,12 @@ function AreaBrowser({ game }: { game: Game }) {
                 </span>
               </button>
               {open === id && unlocked && isDungeon(id) && (
-                <button class="wide" onClick={() => start(null)}>
-                  Start dungeon
-                </button>
+                <div class="row">
+                  <button class="wide" onClick={() => start(null)}>
+                    Start dungeon
+                  </button>
+                  <button onClick={() => setDrops(id)}>Rewards</button>
+                </div>
               )}
               {open === id &&
                 unlocked &&
@@ -155,6 +268,9 @@ function AreaBrowser({ game }: { game: Game }) {
                           Lv {combatLevel(ef, ef.style)} · {fmt(enemyMaxHp(x))} HP · {ef.style.DisplayName} · killed {fmt(game.state.combat.kills[x] ?? 0)}
                         </div>
                       </div>
+                      <button class="link" onClick={() => setDrops(x)}>
+                        Drops
+                      </button>
                       <button onClick={() => start(x)}>Fight</button>
                     </div>
                   );

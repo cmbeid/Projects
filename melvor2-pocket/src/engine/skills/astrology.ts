@@ -11,13 +11,38 @@ export interface Constellation extends SkillRecipe {
   MinorNodeUnlockKnowledge: number[];
   MinorNodes: string[];
   MajorNodes: string[];
+  MinorNodesPerMajorNode: number;
   SecondaryRequirements: Requirement[] | null;
+}
+
+/** Major nodes picked for a constellation. */
+export const unlockedMajorNodes = (game: Game, id: string) => game.state.astrology.major?.[id] ?? [];
+
+/** Picks still to make: one for every MinorNodesPerMajorNode minor nodes unlocked (ActiveAstrologyConstellation). */
+export function availableMajorPicks(game: Game, id: string): number {
+  const c = constellation(id);
+  const per = Math.max(1, c.MinorNodesPerMajorNode || 1);
+  return Math.max(0, Math.floor(unlockedMinorNodes(game, id).length / per) - unlockedMajorNodes(game, id).length);
+}
+
+export function unlockMajorNode(game: Game, id: string, node: string): string | null {
+  const c = constellation(id);
+  if (!c.MajorNodes.includes(node) || unlockedMajorNodes(game, id).includes(node)) return 'Already unlocked';
+  if (availableMajorPicks(game, id) <= 0) return 'Unlock more minor nodes first';
+  const n = get<AstrologyNode>('AstrologyNode', node);
+  if (!game.requirementsMet(n.UnlockRequirements ?? null)) return 'Locked';
+  ((game.state.astrology.major ??= {})[id] ??= []).push(node);
+  game.bonusesChanged();
+  game.emit();
+  return null;
 }
 
 export interface AstrologyNode {
   Id: string;
   DisplayName: string;
   NodeType: string;
+  Description?: string | null;
+  UnlockRequirements?: Requirement[] | null;
   Bonuses: { Global: unknown[]; Component: { Stat: { StatsType: string; Name: string }; Value: number; LocalContext?: unknown }[] };
 }
 

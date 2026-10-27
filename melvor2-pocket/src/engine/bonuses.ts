@@ -4,10 +4,11 @@ import { NS, all, get, tryGet } from './content';
 import type { Game } from './game';
 import type { Bonus } from './combat/data';
 import { equipmentCap } from './combat/data';
-import { unlockedMinorNodes, type AstrologyNode } from './skills/astrology';
+import { unlockedMajorNodes, unlockedMinorNodes, type AstrologyNode } from './skills/astrology';
 import { shopPurchases } from './shop';
 import { guildBonuses } from './guild';
 import { flowerBonuses } from './skills/farming';
+import type { TriggeredEffect } from './combat/effects';
 
 interface RawBonus extends Bonus {
   Condition?: unknown;
@@ -15,7 +16,7 @@ interface RawBonus extends Bonus {
   FromContext?: unknown;
 }
 
-interface BonusBlock { Global?: RawBonus[]; Component?: RawBonus[] }
+interface BonusBlock { Global?: RawBonus[]; Component?: RawBonus[]; CombatEffect?: TriggeredEffect[] }
 
 interface SetBonus { Id: string; Items: string[]; Bonuses: { ItemCount: number; Modifiers: BonusBlock }[] }
 
@@ -42,26 +43,41 @@ function blockBonuses(block: BonusBlock | null | undefined, times = 1): RawBonus
 }
 
 /** Every bonus currently active, from shop, astrology, equipment, set bonuses and the toolbelt. */
-export function activeBonuses(game: Game, includeEquipment = true): RawBonus[] {
-  const out: RawBonus[] = [];
+/** Every active source of bonuses, as { block, times }: shop, astrology, gear, sets, guild, toolbelt, prayers. */
+function sourceBlocks(game: Game, includeEquipment: boolean): { block: BonusBlock | null | undefined; times: number }[] {
+  const out: { block: BonusBlock | null | undefined; times: number }[] = [];
   for (const p of shopPurchases()) {
     const n = game.state.purchases[NS + p.Id] ?? 0;
-    if (n && p.Provides.Bonuses) out.push(...blockBonuses(p.Provides.Bonuses as BonusBlock, n));
+    if (n && p.Provides.Bonuses) out.push({ block: p.Provides.Bonuses as BonusBlock, times: n });
   }
   for (const c of all<{ Id: string; PerMinorNodeBonuses?: BonusBlock | null }>('AstrologyConstellation')) {
     const nodes = unlockedMinorNodes(game, NS + c.Id);
-    for (const node of nodes) out.push(...blockBonuses(get<AstrologyNode>('AstrologyNode', node).Bonuses as BonusBlock));
+    for (const node of [...nodes, ...unlockedMajorNodes(game, NS + c.Id)]) out.push({ block: get<AstrologyNode>('AstrologyNode', node).Bonuses as BonusBlock, times: 1 });
     // Each unlocked minor node also adds the constellation's own bonus (e.g. +2% knowledge for it).
-    if (nodes.length) out.push(...blockBonuses(c.PerMinorNodeBonuses, nodes.length));
+    if (nodes.length) out.push({ block: c.PerMinorNodeBonuses, times: nodes.length });
   }
   const worn = Object.values(game.state.equipment).map((e) => e.item);
-  if (includeEquipment) for (const it of worn) out.push(...blockBonuses(equipmentCap(it)?.Bonuses as BonusBlock | null));
+  if (includeEquipment) for (const it of worn) out.push({ block: equipmentCap(it)?.Bonuses as BonusBlock | null, times: 1 });
   for (const set of all<SetBonus>('EquipmentSetBonus')) {
     const count = set.Items.filter((i) => worn.includes(i)).length;
-    for (const tier of set.Bonuses) if (count >= tier.ItemCount) out.push(...blockBonuses(tier.Modifiers));
+    for (const tier of set.Bonuses) if (count >= tier.ItemCount) out.push({ block: tier.Modifiers, times: 1 });
   }
-  for (const b of guildBonuses(game)) out.push(...blockBonuses(b.Rewards.Bonuses as BonusBlock | null));
-  for (const t of Object.values(game.state.toolbelt)) if (t.qty > 0) out.push(...blockBonuses(toolbeltCap(t.item)?.Bonuses));
+  for (const b of guildBonuses(game)) out.push({ block: b.Rewards.Bonuses as BonusBlock | null, times: 1 });
+  for (const t of Object.values(game.state.toolbelt)) if (t.qty > 0) out.push({ block: toolbeltCap(t.item)?.Bonuses, times: 1 });
+  return out;
+}
+
+/** Triggered combat effects from every active source (gear, astrology, guild, shop...), conditions resolved. */
+export function activeCombatEffects(game: Game): TriggeredEffect[] {
+  const out: TriggeredEffect[] = [];
+  for (const { block } of sourceBlocks(game, true)) for (const t of block?.CombatEffect ?? []) out.push(t);
+  for (const p of game.state.combat.prayers) for (const t of (tryGet<{ Bonuses: BonusBlock }>('Prayer', p)?.Bonuses?.CombatEffect ?? [])) out.push(t);
+  return out.filter((t) => !t.Condition || conditionHolds(game, t.Condition as Condition));
+}
+
+export function activeBonuses(game: Game, includeEquipment = true): RawBonus[] {
+  const out: RawBonus[] = [];
+  for (const { block, times } of sourceBlocks(game, includeEquipment)) out.push(...blockBonuses(block, times));
   // Flowers: in bloom they give their bonus in full; while growing, only if a bonus scales it in (Deedree's node).
   const whileGrowing = out.filter((b) => b.Stat.Name === 'PercentBonusesWhileGrowing').reduce((s, b) => s + b.Value, 0);
   for (const f of flowerBonuses(game, whileGrowing)) out.push(...blockBonuses(f.block as BonusBlock, f.times));
@@ -91,7 +107,7 @@ export function resolveConditional<T extends Bonus>(game: Game, list: T[]): T[] 
   return out;
 }
 
-function conditionHolds(game: Game, c: Condition): boolean {
+export function conditionHolds(game: Game, c: Condition): boolean {
   const combat = game.state.combat;
   const fighting = game.state.active?.skill === 'Combat' && !!combat.area;
   switch (c.Type.replace(NS, '')) {
