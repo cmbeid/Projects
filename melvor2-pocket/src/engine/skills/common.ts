@@ -22,10 +22,11 @@ export function recipeContext(skill: string, r: SkillRecipe): BonusContext {
 }
 
 /** Roll each chance entry; `flatChance` / `pctChance` are the On…ItemChance bonuses. */
-export function rollItemChances(game: Game, chances: ItemQuantityChance[], doubling: number, flatChance = 0, pctChance = 0): void {
+export function rollItemChances(game: Game, chances: ItemQuantityChance[], doubling: number, flatChance = 0, pctChance = 0, flatQuantity = 0): void {
   for (const c of chances) {
     if (!game.rng.chance((c.Chance + flatChance) * (1 + pctChance))) continue;
-    game.addItem(c.Item, game.rng.chance(doubling) ? c.Quantity * 2 : c.Quantity);
+    const q = Math.max(1, c.Quantity + flatQuantity);
+    game.addItem(c.Item, game.rng.chance(doubling) ? q * 2 : q);
   }
 }
 

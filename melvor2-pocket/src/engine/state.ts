@@ -88,6 +88,9 @@ export interface CombatState {
   slayerBlocks?: Record<string, string>;
   /** Pause Fight: timers stand still until resumed. */
   paused?: boolean;
+  /** The enemy's Ward (it spawns full; each landed hit wears 1 off) and whether its armour has been broken. */
+  enemyWard?: number;
+  enemyArmourBroken?: boolean;
   /** Loot History for the current combat session (since you last started fighting). */
   loot?: { items: Record<string, number>; currencies: Record<string, number>; kills: number; since: number };
   /** Combat effects on each side during the current fight. */
@@ -149,6 +152,12 @@ export interface GameState {
   optIn?: { Astrology?: boolean };
   /** Fishing bait in use: consumed one per catch, its bonuses apply while any is in the bank. */
   fishingBait?: string | null;
+  /** Bank tabs you've made, each with the items you've put in it. */
+  bankTabs?: { name: string; items: string[] }[];
+  /** Woodcutting overgrowth stacks per tree (bushes): each gives +1 items until used up, one per full cut. */
+  overgrowth?: Record<string, number>;
+  /** Event log: notable moments (level-ups, unlocks, completions), newest first, by game tick. */
+  eventLog?: { tick: number; text: string }[];
   /** Equipment loadouts: the slot in use and what each other slot holds. */
   loadouts?: { current: string; saved: Record<string, import('./combat/loadouts').SavedLoadout> };
   stats: {
@@ -165,6 +174,8 @@ export interface GameState {
     raresFound?: Record<string, boolean>;
     itemsSold: number;
     goldFromSales: number;
+    /** Desktop-style statistics by id (WoodcuttingFells, MiningRocksShattered...), and time per skill in ms. */
+    values?: Record<string, number>;
   };
 }
 

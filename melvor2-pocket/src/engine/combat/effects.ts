@@ -86,7 +86,11 @@ export interface FightOps {
   maxHp(side: Side): number;
   maxHit(side: Side): number;
   /** Damage from an effect; returns true if it was fatal. */
-  damage(side: Side, amount: number, source: Side): boolean;
+  damage(side: Side, amount: number, source: Side, effectId: string): boolean;
+  /** A side's current Ward: while it's up, harmful effects and effect damage don't get through. */
+  ward(side: Side): number;
+  /** An effect landed (for guild goals). */
+  applied(effectId: string, source: Side, target: Side): void;
   heal(side: Side, amount: number): void;
   /** Character whose turn is being resolved right now, if any. */
   acting: Side | null;
@@ -132,8 +136,9 @@ export function applyEffect(game: Game, ref: EffectRef, target: Side, source: Si
   const kind = effectKind(ref);
   const data = effectData(kind, ref.Data.Effect);
   if (!data) return;
-  // An immune target (e.g. "immune to Ranged") ignores harmful effects from the attacker it's immune to.
-  if (immune && !data.IsPositive) return;
+  // An immune target (e.g. "immune to Ranged") ignores harmful effects from the attacker it's immune to, and Ward
+  // keeps every harmful effect out while it lasts.
+  if ((immune || ops.ward(target) > 0) && !data.IsPositive) return;
   const list = effectsOn(game, target);
   const existing = list.find((e) => e.id === data.Id);
   const avoid = ops.effectStat(target, 'AvoidanceChance', NS + data.Id);
@@ -181,6 +186,7 @@ export function applyEffect(game: Game, ref: EffectRef, target: Side, source: Si
       break;
   }
   list.push(e);
+  ops.applied(NS + data.Id, source, target);
 }
 
 function remove(game: Game, side: Side, e: ActiveEffect, ops: FightOps): void {
@@ -200,7 +206,7 @@ export function endTurn(game: Game, side: Side, ops: FightOps): boolean {
     const data = effectData(e.kind, NS + e.id);
     if (!data) continue;
     if (e.kind === 'EndOfTurnDamage' && data.DamagePerTurn) {
-      if (ops.damage(side, rollEffectDamage(game, data.DamagePerTurn, e.source, side, ops), e.source)) return true;
+      if (ops.damage(side, rollEffectDamage(game, data.DamagePerTurn, e.source, side, ops), e.source, NS + e.id)) return true;
     } else if (e.kind === 'EndOfTurnHealing' && data.HealingPerTurn) {
       ops.heal(side, rollEffectDamage(game, data.HealingPerTurn, e.source, side, ops));
     } else if (e.kind === 'Stun' || e.kind === 'TurnCounting' || e.kind === 'RandomMagnitude') {
@@ -247,7 +253,7 @@ export function tickDamageOverTime(game: Game, elapsed: number, ops: FightOps): 
       const data = effectData(e.kind, NS + e.id)!;
       e.procLeft = (e.procLeft ?? 0) - elapsed;
       while (e.procLeft <= 0 && effectsOn(game, side).includes(e)) {
-        if (ops.damage(side, e.perProc ?? 1, e.source)) return side;
+        if (ops.damage(side, e.perProc ?? 1, e.source, NS + e.id)) return side;
         e.procs = (e.procs ?? 0) + 1;
         if (e.procs >= (data.ProcCount ?? 1)) remove(game, side, e, ops);
         else e.procLeft += ops.ticks(data.ProcInterval ?? 1000);

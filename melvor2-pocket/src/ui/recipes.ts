@@ -5,7 +5,7 @@ import {
 } from '../engine/content';
 import type { Game } from '../engine/game';
 import type { SkillRecipe } from '../engine/skills/types';
-import { maxHealth, treeHp } from '../engine/skills/woodcutting';
+import { maxHealth, overgrowth, treeHp } from '../engine/skills/woodcutting';
 import { breakChance } from '../engine/skills/mining';
 import { maxSteps, stepsLeft } from '../engine/skills/artisan';
 import { successChance as cookChance } from '../engine/skills/cooking';
@@ -148,7 +148,7 @@ function viewWithoutArt(game: Game, skill: string, r: SkillRecipe): RecipeView {
         icon: w.Product.Item,
         intervalText: `${secs(w.BaseInterval)} / hit`,
         meter: { value: treeHp(game, id), max, label: 'HP' },
-        detail: `${max} hits per cut`,
+        detail: `${max} hits per cut${overgrowth(game, id) > 0 ? ` · Overgrowth ×${overgrowth(game, id)}` : ''}`,
       };
     }
     case 'Mining': {

@@ -13,7 +13,7 @@ import { crafting, fletching, runecrafting, smithing } from './skills/artisan';
 import { beastcrafting } from './skills/artisan';
 import { herblore } from './skills/herblore';
 import { thieving } from './skills/thieving';
-import { hunting } from './skills/hunting';
+import { hunting, journalLevel } from './skills/hunting';
 import { astrology } from './skills/astrology';
 import { agility } from './skills/agility';
 import { combat, onFoodEaten } from './combat/combat';
@@ -105,6 +105,12 @@ export class Game {
   }
 
   private note(text: string, kind: LogEntry['kind']): void {
+    // Notable moments also go in the saved event log, including ones that happen while you're away.
+    if (kind === 'level') {
+      const ev = (this.state.eventLog ??= []);
+      ev.unshift({ tick: this.state.tick, text });
+      if (ev.length > 300) ev.length = 300;
+    }
     if (this.quiet) return;
     this.log.unshift({ tick: this.state.tick, text, kind });
     if (this.log.length > 50) this.log.length = 50;
@@ -177,6 +183,30 @@ export class Game {
         const d = r.Data as { Item?: string; Quantity?: number };
         return this.toolbeltHas(d.Item ?? '', d.Quantity ?? 1);
       }
+      case `${NS}EquipmentItemEquipped`: {
+        const item = (r.Data as { Item?: string }).Item;
+        return Object.values(this.state.equipment).some((e) => e.item === item);
+      }
+      case `${NS}RanchingSameAnimalCount`: {
+        const d = r.Data as { Animal?: string; MinimumCount?: number; SameEnclosure?: boolean };
+        const mine = this.state.ranching.animals.filter((a) => a.animal === d.Animal);
+        const perEnclosure: Record<string, number> = {};
+        for (const a of mine) perEnclosure[a.enclosure] = (perEnclosure[a.enclosure] ?? 0) + 1;
+        const most = d.SameEnclosure ? Math.max(0, ...Object.values(perEnclosure)) : mine.length;
+        return most >= (d.MinimumCount ?? 1);
+      }
+      case `${NS}RanchingAnimalStatistic`: {
+        // The only statistic the demo asks for: hours an animal of a kind has spent alive in your care.
+        const d = r.Data as { Animal?: string; Value?: number };
+        return (this.state.stats.ranchHoursAlive?.[d.Animal ?? ''] ?? 0) >= (d.Value ?? 1);
+      }
+      case `${NS}HuntingMaxLevelAnimals`: {
+        const d = r.Data as { Level?: number; Count?: number };
+        const n = Object.keys(this.state.hunting).filter((a) => journalLevel(this, a) >= (d.Level ?? 1)).length;
+        return n >= (d.Count ?? 1);
+      }
+      case `${NS}HuntingUniqueRareSpeciesFound`:
+        return Object.keys(this.state.stats.raresFound ?? {}).length >= Number((r.Data as { Count?: number }).Count ?? 1);
       default:
         return false; // DemoLocked, and condition types not implemented yet
     }
@@ -230,6 +260,12 @@ export class Game {
   }
 
   /** Called whenever something that grants bonuses changes (shop, astrology, equipment). */
+  /** Count a statistic (by the desktop's id, e.g. 'WoodcuttingFells'). Kept during offline catch-up too. */
+  stat(id: string, n = 1): void {
+    const v = (this.state.stats.values ??= {});
+    v[id] = (v[id] ?? 0) + n;
+  }
+
   bonusesChanged(): void {
     this.bonusVersion++;
   }
@@ -529,6 +565,9 @@ export class Game {
     const h = this.handler(skill);
     const stats = this.state.stats.actions;
     stats[skill] = (stats[skill] ?? 0) + 1;
+    // Time spent training: the action that just finished, online or offline.
+    const spent = (this.state.active?.waitTicks ?? 0) * (1000 / 60);
+    this.stat(`${skill}${this.quiet ? 'Offline' : 'Online'}TimeSpent`, spent);
     const nextMs = h.fire(this, recipe);
     this.signal({ type: 'action', skill, recipe });
     checkUnlocks(this);

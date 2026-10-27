@@ -25,7 +25,8 @@ import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
 import { isBundle, unpackBundle } from '../bundle';
 import { LevelUpPopups, levelUpPopupsOn, setLevelUpPopups } from './LevelUp';
-import { backgroundMode, pageBackground, setBackgroundMode, type BackgroundMode } from '../art/background';
+import { BankPage, bankTabs, moveToTab } from './BankPage';
+import { backgroundMode, pageBackground, raining, setBackgroundMode, setWeatherOn, weatherAt, weatherOn, type BackgroundMode } from '../art/background';
 import { recipeGroups, type RecipeView } from './recipes';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
@@ -376,34 +377,9 @@ function Log({ game }: { game: Game }) {
 }
 
 let itemOrderCache: Map<string, number> | null = null;
-const itemOrder = () => (itemOrderCache ??= new Map(all<Item>('Item').map((it, i) => [`MelvorBase:${it.Id}`, i])));
+export const itemOrder = () => (itemOrderCache ??= new Map(all<Item>('Item').map((it, i) => [`MelvorBase:${it.Id}`, i])));
 
-function BankPage({ game }: { game: Game }) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const entries = Object.entries(game.state.bank).sort((a, b) => (itemOrder().get(a[0]) ?? 0) - (itemOrder().get(b[0]) ?? 0));
-  const value = entries.reduce((s, [id, q]) => s + (item(id).SellsFor?.Quantity ?? 0) * q, 0);
-  const sel = selected && game.count(selected) ? selected : null;
-  return (
-    <div class="page">
-      <h2>Bank</h2>
-      <p class="muted">
-        {entries.length} / {game.bankSlots()} slots · worth {fmt(value)} gold
-      </p>
-      {!entries.length && <p class="muted">Your bank is empty. Train a skill to gather items.</p>}
-      <div class="bank-grid">
-        {entries.map(([id, q]) => (
-          <button class={`bank-slot ${sel === id ? 'sel' : ''}`} onClick={() => setSelected(id)}>
-            <Icon id={id} size={36} />
-            <span class="qty">{q >= 1e6 ? `${(q / 1e6).toFixed(1)}M` : q >= 1e4 ? `${Math.floor(q / 1e3)}K` : q}</span>
-          </button>
-        ))}
-      </div>
-      {sel && <ItemSheet game={game} id={sel} onClose={() => setSelected(null)} />}
-    </div>
-  );
-}
-
-function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClose: () => void }) {
+export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClose: () => void }) {
   const it = item(id);
   const have = game.count(id);
   const price = it.SellsFor?.Quantity ?? 0;
@@ -472,6 +448,23 @@ function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClose: () 
             </button>
           </div>
         )}
+        {bankTabs(game).length > 0 && (
+          <label class="slider">
+            <span>Bank tab</span>
+            <select
+              value={String(bankTabs(game).findIndex((t) => t.items.includes(id)))}
+              onChange={(e) => {
+                const v = Number((e.target as HTMLSelectElement).value);
+                moveToTab(game, [id], v < 0 ? null : v);
+              }}
+            >
+              <option value="-1">No tab</option>
+              {bankTabs(game).map((t, i) => (
+                <option value={String(i)}>{t.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <button class="ghost" onClick={onClose}>
           Close
         </button>
@@ -535,30 +528,91 @@ function FoodSheet({ game, onClose }: { game: Game; onClose: () => void }) {
   );
 }
 
+/** The event log: level-ups, unlocks, completions and other notices, newest first, with how long ago. */
+function EventLog({ game }: { game: Game }) {
+  const list = game.state.eventLog ?? [];
+  const now = game.state.tick;
+  return (
+    <details class="page event-log">
+      <summary>
+        <h2>Event log</h2>
+        <span class="muted small">{list.length} events</span>
+      </summary>
+      {!list.length && <p class="muted">Level-ups, unlocks and completions will show up here.</p>}
+      {list.map((e) => (
+        <div class="card-row small">
+          <span class="grow">{e.text}</span>
+          <span class="muted">{duration(Math.max(0, now - e.tick) * (1000 / 60))} ago</span>
+        </div>
+      ))}
+    </details>
+  );
+}
+
+const statLabel = (id: string, skill: string) => id.slice(skill.length).replace(/([a-z])([A-Z])/g, '$1 $2');
+
+/** Statistics, grouped like the desktop's: general, combat, then each skill's own counters. */
 function StatsPage({ game }: { game: Game }) {
   const s = game.state.stats;
-  const total = [...SKILLS.map((h) => h.skill).filter((s) => s !== 'Combat'), ...PASSIVE_SKILLS, ...COMBAT_SKILLS].reduce((t, skill) => t + game.level(skill), 0);
+  const v = s.values ?? {};
+  const skills = [...SKILLS.map((h) => h.skill).filter((x) => x !== 'Combat'), ...PASSIVE_SKILLS];
+  const total = [...skills, ...COMBAT_SKILLS].reduce((t, skill) => t + game.level(skill), 0);
+  const c = game.state.combat;
+  const kills = Object.values(c.kills).reduce((a, b) => a + b, 0);
+  const found = Object.values(s.itemsFound ?? {}).reduce((a, b) => a + b, 0);
+  const row = (label: string, value: string) => (
+    <>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </>
+  );
   return (
     <div class="page">
       <h2>Statistics</h2>
       <dl class="stats">
-        <dt>Total level</dt>
-        <dd>{total}</dd>
-        <dt>Online playtime</dt>
-        <dd>{duration(s.onlineMs)}</dd>
-        <dt>Offline playtime</dt>
-        <dd>{duration(s.offlineMs)}</dd>
-        <dt>Items sold</dt>
-        <dd>{fmt(s.itemsSold)}</dd>
-        <dt>Gold from sales</dt>
-        <dd>{fmt(s.goldFromSales)}</dd>
-        {SKILLS.map(({ skill }) => (
-          <>
-            <dt>{skill} actions</dt>
-            <dd>{fmt(s.actions[skill] ?? 0)}</dd>
-          </>
-        ))}
+        {row('Total level', fmt(total))}
+        {row('Character age', duration(Date.now() - game.state.createdAt))}
+        {row('Online playtime', duration(s.onlineMs))}
+        {row('Offline playtime', duration(s.offlineMs))}
+        {row('Items found', fmt(found))}
+        {row('Items sold', fmt(s.itemsSold))}
+        {row('Gold from sales', fmt(s.goldFromSales))}
+        {row('Shop purchases', fmt(v.ShopPurchasesMade ?? 0))}
       </dl>
+      <h3>Combat</h3>
+      <dl class="stats">
+        {row('Enemies killed', fmt(kills))}
+        {row('Dungeons completed', fmt(v.CombatTotalDungeonsCompleted ?? Object.values(c.dungeonsDone).reduce((a, b) => a + b, 0)))}
+        {row('Damage dealt', fmt(c.damageDealt))}
+        {row('Damage taken', fmt(c.damageTaken))}
+        {row('Damage soaked by Ward', fmt(v.CombatTotalDamageNegatedByWard ?? 0))}
+        {row('Deaths', fmt(s.deaths ?? 0))}
+        {row('Slayer task kills', fmt(v.SlayerTotalTaskEnemiesKilled ?? 0))}
+        {row('Slayer tasks done', fmt(Object.values(c.slayerTasksDone).reduce((a, b) => a + b, 0)))}
+      </dl>
+      {skills
+        .filter((sk) => (s.actions[sk] ?? 0) > 0 || Object.keys(v).some((k) => k.startsWith(sk)))
+        .map((sk) => {
+          const online = v[`${sk}OnlineTimeSpent`] ?? 0;
+          const offline = v[`${sk}OfflineTimeSpent`] ?? 0;
+          const gained = Object.values(s.itemGained?.[sk] ?? {}).reduce((a, b) => a + b, 0);
+          const own = Object.entries(v).filter(([k]) => k.startsWith(sk) && !k.endsWith('TimeSpent'));
+          return (
+            <details class="stat-skill">
+              <summary>
+                {sk} <span class="muted small">{duration(online + offline)}</span>
+              </summary>
+              <dl class="stats">
+                {row('Time training (online)', duration(online))}
+                {row('Time training (offline)', duration(offline))}
+                {row('Actions', fmt(s.actions[sk] ?? 0))}
+                {(s.failures[sk] ?? 0) > 0 && row('Failed actions', fmt(s.failures[sk] ?? 0))}
+                {gained > 0 && row('Items gained', fmt(gained))}
+                {own.map(([k, n]) => row(statLabel(k, sk), fmt(n)))}
+              </dl>
+            </details>
+          );
+        })}
     </div>
   );
 }
@@ -567,6 +621,7 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void | Promi
   const [text, setText] = useState('');
   const [popups, setPopups] = useState(levelUpPopupsOn());
   const [bgMode, setBgMode] = useState(backgroundMode());
+  const [weather, setWeather] = useState(weatherOn());
   const [msg, setMsg] = useState('');
   return (
     <div class="page">
@@ -757,6 +812,10 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void | Promi
           </select>
         </label>
         <p class="muted small">Needs the game images. Day from 8:00, sunset from 16:00, night from 20:00, as in the game.</p>
+        <label class="toggle">
+          <input type="checkbox" checked={weather} onChange={(e) => { const on = (e.target as HTMLInputElement).checked; setWeatherOn(on); setWeather(on); }} />
+          Weather (some days it rains, as in the game) · today: {weatherAt()}
+        </label>
       </section>
       <section>
         <h3>Notifications</h3>
@@ -841,6 +900,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
   return (
     <div class={`app ${game.state.active ? 'has-statsbar' : ''}`}>
       {bg && <div class={`page-bg ${bg.blur ? 'blur' : ''}`} style={{ backgroundImage: `url(${bg.url})` }} />}
+      {bg && raining() && <div class="rain" aria-hidden="true" />}
       <TopBar game={game} onOpenSkill={openSkill} onOpenFood={() => setFood(true)} />
       <Sidebar
         game={game}
@@ -862,6 +922,7 @@ export function App({ game, offline, onCloseOffline, onSave }: { game: Game; off
             {isUnlocked(game, 'Quests') ? <QuestsPage game={game} /> : <LockedPage game={game} page="Quests" />}
             <GuildOverview game={game} />
             <CompletionLog game={game} />
+            <EventLog game={game} />
             <StatsPage game={game} />
             <SettingsPage game={game} onSave={onSave} />
           </>

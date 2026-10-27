@@ -27,7 +27,15 @@ export interface GuildBonus {
 }
 
 /** What a combat event happened under, for goal conditions like "enemy level 25–49" or "using Crush". */
-export interface GoalContext { enemyLevel?: number; style?: string; stance?: string; onSlayerTask?: boolean; prayerCost?: number }
+export interface GoalContext {
+  enemyLevel?: number;
+  style?: string;
+  stance?: string;
+  onSlayerTask?: boolean;
+  prayerCost?: number;
+  enemyArmour?: number;
+  enemyWard?: number;
+}
 
 let skillsCache: string[] | null = null;
 /** Skills with a guild (those whose config lists tasks). */
@@ -118,6 +126,16 @@ function conditionsMet(game: Game, conds: Requirement[] | null | undefined, ctx:
       case 'TotalPrayerCostActive':
         if ((ctx.prayerCost ?? 0) < Number(d.MinBaseTotalCost ?? 1)) return false;
         break;
+      case 'CharacterHasArmour': {
+        const v = ctx.enemyArmour ?? 0;
+        if (v < Number(d.MinArmour ?? 1) || (d.MaxArmour != null && v > Number(d.MaxArmour))) return false;
+        break;
+      }
+      case 'CharacterHasWard': {
+        const v = ctx.enemyWard ?? 0;
+        if (v < Number(d.MinWard ?? 1) || (d.MaxWard != null && v > Number(d.MaxWard))) return false;
+        break;
+      }
       default:
         if (!game.requirementMet(c)) return false;
     }
@@ -268,9 +286,7 @@ export function describeTask(t: GuildTask): string {
 }
 
 /** Goal types this build can't progress (it doesn't model status effects, ward or lifesteal). */
-export const UNSUPPORTED_GOALS = new Set(['CombatApplyEffect', 'CombatStealHitpoints', 'CombatDamageDealtByEffect', 'CombatDamageNegatedByWard'].map((t) => NS + t));
-const UNSUPPORTED_CONDITIONS = new Set(['CharacterHasArmour', 'CharacterHasWard'].map((t) => NS + t));
-/** False for tasks needing systems this build doesn't have: combat effects, ward/armour checks, or hunting bait. */
-export const isSupported = (t: GuildTask) =>
-  !t.Goal ||
-  (!UNSUPPORTED_GOALS.has(t.Goal.Type) && !t.Goal.Data.UsingBait && !(t.Goal.Data.Conditions ?? []).some((c) => UNSUPPORTED_CONDITIONS.has(c.Type)));
+/** Goal kinds this build doesn't track yet (none left that the demo uses). */
+export const UNSUPPORTED_GOALS = new Set<string>();
+/** False for tasks needing systems this build doesn't have. */
+export const isSupported = (t: GuildTask) => !t.Goal || !UNSUPPORTED_GOALS.has(t.Goal.Type);

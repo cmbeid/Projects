@@ -52,6 +52,7 @@ export function buy(game: Game, p: ShopPurchase): string | null {
   if (p.Costs) spendIngredients(game, p.Costs);
   const id = NS + p.Id;
   game.state.purchases[id] = purchased(game, id) + 1;
+  game.stat('ShopPurchasesMade');
   for (const i of p.Provides.Items) game.addItem(i.Item, i.Quantity);
   for (const c of p.Provides.Currencies) game.addCurrency(c.Currency, c.Quantity);
   game.bonusesChanged();

@@ -262,7 +262,7 @@ export function GuildPanel({ game, skill, open = false }: { game: Game; skill: s
               </span>
             </div>
             {t.Goal && <Bar value={prog} max={max} />}
-            {!isSupported(t) && <div class="muted small">Can't be progressed in this version (needs combat effects, ward or hunting bait).</div>}
+            {!isSupported(t) && <div class="muted small">Can't be progressed in this version.</div>}
           </div>
         );
       })}
