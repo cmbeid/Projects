@@ -49,6 +49,9 @@ let bgBytes = 0;
 const MAX_IMAGE_BYTES = 64 * 1024;
 /** Monster and tree art is bigger, and the combat screen and tree cards show it. */
 const MAX_MONSTER_BYTES = 192 * 1024;
+/** Size oversized monster/tree art is scaled down to (the combat screen shows it at most ~300 px). */
+const ART_WIDTH = 512;
+let shrunk = 0;
 for (const res of wanted) {
   const rel = res.replace('res://', '');
   const imp = byPath.get(`${rel}.import`);
@@ -68,14 +71,20 @@ for (const res of wanted) {
     continue;
   }
   // Icon-sized art only: other backgrounds and full scenes are large and the mobile UI doesn't use them.
-  const limit = res.includes("/Monsters/") || res.includes("/Skills/Woodcutting/") ? MAX_MONSTER_BYTES : MAX_IMAGE_BYTES;
-  if (webp.length > limit || /^res:\/\/Assets\/(Backgrounds|Quests|Shop)\//.test(res)) {
+  const big = res.includes("/Monsters/") || res.includes("/Skills/Woodcutting/");
+  let img = webp;
+  // Oversized monster and tree art is shrunk to fit rather than dropped (the Archery Target is ~370 KB).
+  if (big && img.length > MAX_MONSTER_BYTES) {
+    img = await sharp(webp).resize({ width: ART_WIDTH, height: ART_WIDTH, fit: 'inside', withoutEnlargement: true }).webp({ quality: 85 }).toBuffer();
+    shrunk++;
+  }
+  if (img.length > (big ? MAX_MONSTER_BYTES : MAX_IMAGE_BYTES) || /^res:\/\/Assets\/(Backgrounds|Quests|Shop)\//.test(res)) {
     skipped++;
     continue;
   }
-  index[res] = [offset, webp.length];
-  chunks.push(webp);
-  offset += webp.length;
+  index[res] = [offset, img.length];
+  chunks.push(img);
+  offset += img.length;
 }
 pack.close();
 
@@ -85,4 +94,4 @@ head.write('M2AP', 0, 'latin1');
 head.writeUInt32LE(indexBuf.length, 4);
 const out = path.resolve('data/game-assets.pack');
 fs.writeFileSync(out, Buffer.concat([head, indexBuf, ...chunks]));
-console.log(`${Object.keys(index).length} images (${(offset / 1048576).toFixed(1)} MB, backgrounds ${(bgBytes / 1048576).toFixed(1)} MB), ${skipped} large scenes skipped, ${missing} not found; wrote ${out}`);
+console.log(`${Object.keys(index).length} images (${(offset / 1048576).toFixed(1)} MB, backgrounds ${(bgBytes / 1048576).toFixed(1)} MB), ${shrunk} large monsters/trees shrunk, ${skipped} large scenes skipped, ${missing} not found; wrote ${out}`);
