@@ -123,7 +123,21 @@ describe('offline progress', () => {
   it('caps offline time at 24 hours', () => {
     const g = fresh();
     g.toggle('Woodcutting', id('NormalTree'));
-    expect(g.catchUp(3 * MAX_OFFLINE_MS)?.ms).toBe(MAX_OFFLINE_MS);
+    const s = g.catchUp(3 * MAX_OFFLINE_MS);
+    expect(s?.ms).toBe(MAX_OFFLINE_MS);
+    expect(s?.elapsed).toBe(3 * MAX_OFFLINE_MS);
+  });
+
+  it('summarises offline time per skill, like the desktop', () => {
+    const g = fresh(3);
+    g.toggle('Woodcutting', id('NormalTree'));
+    const s = g.catchUp(g.state.lastUpdate + 60 * 60 * 1000)!;
+    expect(s.active).toBe('Woodcutting');
+    const wc = s.groups.Woodcutting;
+    expect(wc.xp).toBe(s.xp.Woodcutting);
+    expect(wc.gained[id('NormalLogs')] ?? Object.values(wc.gained)[0]).toBeGreaterThan(0);
+    expect(wc.levels?.[1]).toBeGreaterThan(wc.levels?.[0] ?? 99);
+    expect(s.inactiveMs).toBe(0);
   });
 
   it('survives a JSON save round trip mid-action', () => {

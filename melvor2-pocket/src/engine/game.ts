@@ -61,12 +61,34 @@ export type GameEvent =
 
 export interface LogEntry { tick: number; text: string; kind: 'item' | 'level' | 'info' | 'stop' }
 
+/** What one skill (or Combat, or "General" for things no skill did) did while you were away, as the desktop groups it. */
+export interface OfflineGroup {
+  xp: number;
+  levels: [number, number] | null;
+  gained: Record<string, number>;
+  used: Record<string, number>;
+  currencyGained: Record<string, number>;
+  currencyUsed: Record<string, number>;
+  kills: Record<string, number>;
+  dungeons: Record<string, number>;
+}
+
 export interface OfflineSummary {
+  /** Time simulated (capped at MAX_OFFLINE_MS). */
   ms: number;
+  /** Real time away, before the cap. */
+  elapsed: number;
+  /** Simulated time spent with nothing being trained (e.g. the action stopped when its inputs ran out). */
+  inactiveMs: number;
+  /** The skill training when you left. */
+  active: string | null;
+  groups: Record<string, OfflineGroup>;
   xp: Record<string, number>;
   items: Record<string, number>;
   gold: number;
 }
+
+const emptyGroup = (): OfflineGroup => ({ xp: 0, levels: null, gained: {}, used: {}, currencyGained: {}, currencyUsed: {}, kills: {}, dungeons: {} });
 
 export class Game {
   state: GameState;
@@ -75,6 +97,12 @@ export class Game {
   private listeners = new Set<() => void>();
   /** Set while replaying offline time so the log isn't flooded. */
   private quiet = false;
+  /** While replaying offline time: gains and uses per skill, for the welcome-back summary. */
+  private offlineGroups: Record<string, OfflineGroup> | null = null;
+  private offlineGroup(): OfflineGroup {
+    const key = this.itemSource ?? this.state.active?.skill ?? 'General';
+    return (this.offlineGroups![key] ??= emptyGroup());
+  }
 
   constructor(state: GameState = newState()) {
     this.state = state;
@@ -294,6 +322,7 @@ export class Game {
     this.note(`+${quantity} ${itemName(id, quantity)}`, 'item');
     this.state.found[id] = true;
     this.track('item', id, quantity);
+    if (this.offlineGroups) add(this.offlineGroup().gained, id, quantity);
     const st = this.state.stats;
     st.itemsFound[id] = (st.itemsFound[id] ?? 0) + quantity;
     const source = this.itemSource ?? this.state.active?.skill;
@@ -313,10 +342,12 @@ export class Game {
     if (have === quantity) delete this.state.bank[id];
     else this.state.bank[id] = have - quantity;
     this.track('item', id, -quantity);
+    if (this.offlineGroups) add(this.offlineGroup().used, id, quantity);
     return true;
   }
 
   addCurrency(currency: string, quantity: number): void {
+    if (this.offlineGroups && quantity) add(quantity > 0 ? this.offlineGroup().currencyGained : this.offlineGroup().currencyUsed, currency, Math.abs(quantity));
     if (currency === GOLD) {
       this.state.gold += quantity;
       this.track('gold', currency, quantity);
@@ -600,13 +631,35 @@ export class Game {
     const xpBefore = { ...this.state.xp };
     const bankBefore = { ...this.state.bank };
     const goldBefore = this.state.gold;
+    const c = this.state.combat;
+    const killsBefore = { ...c.kills };
+    const dungeonsBefore = { ...c.dungeonsDone };
+    const statsBefore = { ...(this.state.stats.values ?? {}) };
+    const active = this.state.active?.skill ?? null;
     this.quiet = true;
+    const groups: Record<string, OfflineGroup> = (this.offlineGroups = {});
     try {
       this.advanceMs(ms);
     } finally {
       this.quiet = false;
+      this.offlineGroups = null;
     }
     this.state.stats.offlineMs += ms;
+    const group = (k: string) => (groups[k] ??= emptyGroup());
+    for (const [k, v] of Object.entries(this.state.xp)) {
+      const before = xpBefore[k] ?? 0;
+      if (v === before) continue;
+      const g = group(k);
+      g.xp = v - before;
+      const [from, to] = [levelForXp(before), levelForXp(v)];
+      if (to > from) g.levels = [from, to];
+    }
+    for (const [k, v] of Object.entries(c.kills)) if (v > (killsBefore[k] ?? 0)) group('Combat').kills[k] = v - (killsBefore[k] ?? 0);
+    for (const [k, v] of Object.entries(c.dungeonsDone)) if (v > (dungeonsBefore[k] ?? 0)) group('Combat').dungeons[k] = v - (dungeonsBefore[k] ?? 0);
+    // Like the desktop: time away minus the time actions actually ran.
+    const v = this.state.stats.values ?? {};
+    const trained = Object.keys(v).filter((k) => k.endsWith('OfflineTimeSpent')).reduce((t, k) => t + v[k] - (statsBefore[k] ?? 0), 0);
+    const inactiveMs = Math.max(0, ms - trained);
     const xp: Record<string, number> = {};
     for (const [k, v] of Object.entries(this.state.xp)) if (v !== (xpBefore[k] ?? 0)) xp[k] = v - (xpBefore[k] ?? 0);
     const items: Record<string, number> = {};
@@ -615,6 +668,8 @@ export class Game {
       if (d) items[k] = d;
     }
     this.emit();
-    return { ms, xp, items, gold: this.state.gold - goldBefore };
+    return { ms, elapsed, inactiveMs: inactiveMs < 1000 ? 0 : inactiveMs, active, groups, xp, items, gold: this.state.gold - goldBefore };
   }
 }
+
+const add = (r: Record<string, number>, k: string, n: number) => (r[k] = (r[k] ?? 0) + n);
