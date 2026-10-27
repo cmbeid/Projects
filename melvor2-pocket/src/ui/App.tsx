@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
-import { NS, all, get, item, itemName, type Item } from '../engine/content';
-import { Game, OfflineSummary, PASSIVE_SKILLS, SKILLS } from '../engine/game';
+import { NS, all, displayName, get, item, itemName, tryGet, type Item } from '../engine/content';
+import { Game, OfflineSummary, PASSIVE_SKILLS, SKILLS, type OfflineGroup } from '../engine/game';
 import { FarmingPage } from './FarmingPage';
 import { RanchingPage } from './RanchingPage';
 import { ShopPage } from './ShopPage';
@@ -849,26 +849,76 @@ function SettingsPage({ game, onSave }: { game: Game; onSave: () => void | Promi
   );
 }
 
+/** One line of the summary: icon and name, the gain, and its hourly rate, as on the desktop. */
+function SummaryRow({ icon, name, n, sign = '+', hours }: { icon: preact.ComponentChildren; name: string; n: number; sign?: string; hours: number }) {
+  return (
+    <div class="summary-row">
+      {icon}
+      <span class="grow">{name}</span>
+      <strong class={sign === '+' ? 'gain' : 'loss'}>
+        {sign}
+        {fmt(n)}
+      </strong>
+      {hours > 0 && <small class="muted rate">{(n / hours).toLocaleString(undefined, { maximumFractionDigits: 2 })} /hr</small>}
+    </div>
+  );
+}
+
+const PASSIVE_GROUPS = new Set<string>(PASSIVE_SKILLS);
+
+function OfflineGroupCard({ name, g, hours }: { name: string; g: OfflineGroup; hours: number }) {
+  const currencyIcon = (id: string) => <Art path={tryGet<{ Icon?: string }>('Currency', id)?.Icon} fallbackItem={id} size={22} />;
+  const sections: [string, preact.ComponentChildren[]][] = [
+    ['Experience Gained', g.xp ? [<SummaryRow icon={<SkillBadge skill={name} size={22} />} name={`${name} XP`} n={g.xp} hours={hours} />] : []],
+    ['Levels Gained', g.levels ? [<SummaryRow icon={<SkillBadge skill={name} size={22} />} name={`${name} levels (${g.levels[0]} → ${g.levels[1]})`} n={g.levels[1] - g.levels[0]} hours={hours} />] : []],
+    ['Dungeons Completed', Object.entries(g.dungeons).map(([id, n]) => <SummaryRow icon={<Icon id={id} size={22} />} name={displayName('Dungeon', id)} n={n} hours={hours} />)],
+    ['Enemies Slain', Object.entries(g.kills).map(([id, n]) => <SummaryRow icon={<Art path={tryGet<{ Sprite?: string }>('Enemy', id)?.Sprite} fallbackItem={id} size={22} />} name={displayName('Enemy', id)} n={n} hours={hours} />)],
+    ['Items Gained', Object.entries(g.gained).map(([id, n]) => <SummaryRow icon={<Icon id={id} size={22} />} name={itemName(id, n)} n={n} hours={hours} />)],
+    ['Items Used', Object.entries(g.used).map(([id, n]) => <SummaryRow icon={<Icon id={id} size={22} />} name={itemName(id, n)} n={n} sign="−" hours={hours} />)],
+    ['Currency Gained', Object.entries(g.currencyGained).map(([id, n]) => <SummaryRow icon={currencyIcon(id)} name={displayName('Currency', id)} n={n} hours={hours} />)],
+    ['Currency Used', Object.entries(g.currencyUsed).map(([id, n]) => <SummaryRow icon={currencyIcon(id)} name={displayName('Currency', id)} n={n} sign="−" hours={hours} />)],
+  ];
+  const shown = sections.filter(([, rows]) => rows.length);
+  return (
+    <div class={`summary-card ${PASSIVE_GROUPS.has(name) ? 'passive' : ''}`}>
+      <div class="summary-head">
+        <SkillBadge skill={name} size={28} /> <strong>{name}</strong>
+      </div>
+      {shown.map(([title, rows]) => (
+        <>
+          <h4>{title}</h4>
+          {rows}
+        </>
+      ))}
+      {!shown.length && <p class="muted center">Nothing interesting happened.</p>}
+    </div>
+  );
+}
+
 function OfflineModal({ s, onClose }: { s: OfflineSummary; onClose: () => void }) {
-  const items = Object.entries(s.items);
+  const hours = s.ms / 3_600_000;
+  const groups = { ...s.groups };
+  if (s.active && !groups[s.active]) groups[s.active] = { xp: 0, levels: null, gained: {}, used: {}, currencyGained: {}, currencyUsed: {}, kills: {}, dungeons: {} };
+  // Like the desktop: the skill you left training first, active skills before passive ones.
+  const rank = (k: string) => (k === s.active ? 0 : k === 'General' ? 3 : PASSIVE_GROUPS.has(k) ? 2 : 1);
+  const names = Object.keys(groups).sort((a, b) => rank(a) - rank(b));
   return (
     <div class="sheet" onClick={onClose}>
       <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
         <h2>Welcome back</h2>
-        <p class="muted">You were away for {duration(s.ms)}.</p>
-        {Object.entries(s.xp).map(([skill, xp]) => (
-          <div class="row-item">
-            <SkillBadge skill={skill} size={24} /> +{fmt(xp)} {skill} XP
-          </div>
+        <p class="center">
+          <strong>You were away for {duration(s.elapsed)}</strong>
+        </p>
+        {s.elapsed > s.ms && <p class="muted small center">Only the first {duration(s.ms)} counted (the offline limit).</p>}
+        {s.inactiveMs > 0 && (
+          <p class="small center warn">
+            You were inactive for <strong>{duration(s.inactiveMs)}</strong> while training offline.
+          </p>
+        )}
+        {names.map((n) => (
+          <OfflineGroupCard name={n} g={groups[n]} hours={hours} />
         ))}
-        {s.gold !== 0 && <div class="row-item">+{fmt(s.gold)} gold</div>}
-        {items.map(([id, q]) => (
-          <div class="row-item">
-            <Icon id={id} size={24} /> {q > 0 ? '+' : ''}
-            {fmt(q)} {itemName(id, Math.abs(q))}
-          </div>
-        ))}
-        {!items.length && !Object.keys(s.xp).length && <p class="muted">Nothing was running while you were away.</p>}
+        {!names.length && <p class="muted">Nothing was running while you were away.</p>}
         <button onClick={onClose}>Continue</button>
       </div>
     </div>
