@@ -12,13 +12,13 @@ let sfxGain: GainNode | null = null;
 let musicGain: GainNode | null = null;
 const buffers = new Map<string, Promise<AudioBuffer | null>>();
 
-export interface SoundSettings { sfx: number; music: number; track: string }
+export interface SoundSettings { sfx: number; music: number; track: string; muteHidden: boolean }
 const SETTINGS_KEY = 'melvor2-pocket-sound';
 export const settings: SoundSettings = (() => {
   try {
-    return { sfx: 0.6, music: 0.4, track: 'shuffle', ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') };
+    return { sfx: 0.6, music: 0.4, track: 'shuffle', muteHidden: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') };
   } catch {
-    return { sfx: 0.6, music: 0.4, track: 'shuffle' };
+    return { sfx: 0.6, music: 0.4, track: 'shuffle', muteHidden: true };
   }
 })();
 
@@ -71,10 +71,19 @@ export function unlockAudioOnFirstTap(): void {
       musicGain.connect(ctx.destination);
       startMusic();
     }
-    void ctx.resume();
+    if (!(settings.muteHidden && document.hidden)) void ctx.resume();
   };
   window.addEventListener('pointerdown', start, { passive: true });
   window.addEventListener('keydown', start);
+  // With "mute in background" on, all audio pauses while the app isn't visible and picks up where it left off.
+  document.addEventListener('visibilitychange', applyVisibility);
+}
+
+/** Pause or resume all audio for the page's visibility and the "mute in background" setting. */
+export function applyVisibility(): void {
+  if (!ctx) return;
+  if (settings.muteHidden && document.hidden) void ctx.suspend();
+  else void ctx.resume();
 }
 
 function qoaToBuffer(bytes: Uint8Array): AudioBuffer {
