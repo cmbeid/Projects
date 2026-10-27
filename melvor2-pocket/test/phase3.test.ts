@@ -169,3 +169,19 @@ describe('beastcrafting and agility', () => {
     expect(fresh().handler('Agility').recipes()).toHaveLength(0);
   });
 });
+
+describe('woodcutting overgrowth', () => {
+  it("Deedree's first major node spreads overgrowth onto bushes while cutting trees", async () => {
+    const { overgrowth } = await import('../src/engine/skills/woodcutting');
+    const g = fresh();
+    g.state.optIn = { Astrology: true };
+    g.state.astrology.knowledge[id('Deedree')] = 1e9;
+    g.state.xp.Woodcutting = 1e9;
+    expect(unlockMajorNode(g, id('Deedree'), id('DeedreeMajor1'))).toBeNull();
+    g.toggle('Woodcutting', id('NormalTree'));
+    g.advance(60 * 60 * 10); // ten minutes of hits at 8% each
+    const bushes = Object.keys(g.state.overgrowth ?? {});
+    expect(bushes.length).toBeGreaterThan(0);
+    expect(overgrowth(g, bushes[0])).toBeGreaterThan(0);
+  });
+});

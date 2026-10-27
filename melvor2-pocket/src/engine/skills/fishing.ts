@@ -37,9 +37,11 @@ export const fishing: SkillHandler = {
     if ((game.rng.chance(fishChance(game, r)) || game.rng.chance(b('JunkRerollChance'))) && r.RandomProducts.length) {
       const p = game.rng.weighted(r.RandomProducts);
       const q = game.rng.intInclusive(p.MinQuantity, p.MaxQuantity);
+      game.stat('FishingFishCaught');
       game.addItem(p.Item, game.rng.chance(doubling) ? q * 2 : q);
     } else {
       const q = game.rng.chance(doubling) ? 2 : 1;
+      game.stat('FishingJunkCaught');
       const toGold = b('JunkToGP');
       const price = item(r.JunkItem).SellsFor;
       // With a JunkToGP bonus the junk is sold on the spot for that multiple of its price.
@@ -51,6 +53,7 @@ export const fishing: SkillHandler = {
       for (const s of [...r.SpecialProducts].sort((x, y) => x.Chance - y.Chance)) {
         if (game.rng.next() <= s.Chance * (1 + b('IncreasedSpecialProductChance'))) {
           game.addItem(s.Item, game.rng.chance(doubling) ? s.Quantity * 2 : s.Quantity);
+          game.stat('FishingSpecialItemsCaught');
           return true;
         }
       }

@@ -120,7 +120,11 @@ export const thieving: SkillHandler = {
         return null;
       }
       // A stun avoidance bonus lets you carry straight on.
-      if (game.rng.chance(b('StunAvoidanceChance'))) return interval(game, r);
+      if (game.rng.chance(b('StunAvoidanceChance'))) {
+        game.stat('ThievingStunsAvoided');
+        return interval(game, r);
+      }
+      game.stat('ThievingTotalStunnedCount');
       t.stunned = true;
       return Math.max(250, Math.floor((BASE_STUN_INTERVAL + b('FlatStunInterval')) * (1 + b('PercentStunInterval'))));
     }

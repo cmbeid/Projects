@@ -50,6 +50,7 @@ export const mining: SkillHandler = {
       game.state.rockProgress[id] = minimum;
     }
     if (broke) {
+      game.stat('MiningRocksBroken');
       if (early) questEvent(game, 'MiningEarlyBreak', (d) => (goalMatches(d, 'Recipe', NS + r.Id) ? 1 : 0));
       let q = r.Product.Quantity + Math.floor(b('FlatProductQuantity'));
       if (game.rng.chance(b('AdditionalProductQuantityChance'))) q++;
@@ -58,6 +59,7 @@ export const mining: SkillHandler = {
       if (game.rng.chance(b('ShatterChance'))) {
         q *= 3;
         xpMult = 2;
+        game.stat('MiningRocksShattered');
       }
       game.addItem(r.Product.Item, q);
       game.addXp(SKILL, r.BaseExperience * xpMult);

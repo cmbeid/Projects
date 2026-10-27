@@ -50,3 +50,43 @@ export function pageBackground(page: string, now = new Date()): { url: string; b
   const url = assetUrl(p?.TimeOfDayBackgrounds?.find((b) => b.Segment === segment)?.Texture);
   return url ? { url, blur: p!.ApplyBackgroundBlur } : undefined;
 }
+
+// ---- weather: the desktop rolls Clear or Rain (weights 9 : 1) each time a new day begins ---------------------------
+
+const WEATHER_KEY = 'melvor2-pocket-weather';
+export function weatherOn(): boolean {
+  try {
+    return localStorage.getItem(WEATHER_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+export function setWeatherOn(on: boolean): void {
+  try {
+    localStorage.setItem(WEATHER_KEY, on ? 'on' : 'off');
+  } catch {
+    // Private mode etc.: the choice just won't persist.
+  }
+}
+
+interface WeatherType { Id: string; Weight: number }
+
+/** Today's weather: a day starts at the first segment (8:00), and its weather is a fixed roll for that date. */
+export function weatherAt(now = new Date()): string {
+  const types = all<WeatherType>('WeatherType');
+  if (!types.length) return 'Clear';
+  const first = Math.min(...all<Segment>('DaySegment').map((s) => s.StartTime));
+  const day = new Date(now.getTime() - first * 1000);
+  // A small hash of the date, so every device shows the same weather on the same day.
+  let h = day.getFullYear() * 372 + day.getMonth() * 31 + day.getDate();
+  h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+  let roll = ((h ^ (h >>> 16)) >>> 0) % types.reduce((t, w) => t + w.Weight, 0);
+  for (const w of types) {
+    if (roll < w.Weight) return w.Id;
+    roll -= w.Weight;
+  }
+  return types[0].Id;
+}
+
+export const raining = (now = new Date()) => weatherOn() && backgroundMode() !== 'off' && weatherAt(now) === 'Rain';

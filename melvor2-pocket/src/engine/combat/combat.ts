@@ -15,7 +15,7 @@ import {
   style as styleData, triangleBonuses, weaponCap, type Dungeon, type CombatArea,
 } from './data';
 import {
-  combatLevel, type Fighter, accuracyRating, addStats, applyBonuses, attackInterval, finishStats, evasionRating, hitChance, maxHit, minHit, reduceDamage,
+  combatLevel, type Fighter, accuracyRating, addStats, applyBonuses, attackInterval, finishStats, evasionRating, hitChance, maxHit, minHit, armour, resistance,
 } from './stats';
 
 export const SPAWN_INTERVAL_MS = 3000;
@@ -340,6 +340,7 @@ function onSlayerKill(game: Game, enemyId: string): void {
   const reward = 0.1 * hp ** 1.15 * (1 + slayerMod(game, t.master, 'PercentRewardCurrency', cur)) + slayerMod(game, t.master, 'FlatRewardCurrency', cur);
   game.addCurrency(cur, Math.max(1, Math.floor(reward)));
   t.left--;
+  game.stat('SlayerTotalTaskEnemiesKilled');
   if (t.left === 0) {
     const done = game.state.combat.slayerTasksDone;
     done[t.master] = (done[t.master] ?? 0) + 1;
@@ -406,6 +407,8 @@ function spawn(game: Game): void {
   c.enemy = pickEnemy(game);
   c.enemyHp = enemyMaxHp(c.enemy);
   c.phase = 'fighting';
+  c.enemyWard = enemyMaxWard(c.enemy);
+  c.enemyArmourBroken = false;
   clearEffects(game);
   const e = liveEnemyFighter(game);
   c.playerLeft = toTicks(attackInterval(playerFighter(game, e.style.Id)));
@@ -437,6 +440,7 @@ function enemyKilled(game: Game): void {
     if (c.dungeonStage >= d.Enemies.length) {
       rollDrops(game, d.Rewards);
       c.dungeonsDone[c.area!] = (c.dungeonsDone[c.area!] ?? 0) + 1;
+      game.stat('CombatTotalDungeonsCompleted');
       c.dungeonStage = 0;
       game.notice(`${d.DisplayName} complete!`);
     }
@@ -551,7 +555,11 @@ function fightOps(game: Game): FightOps {
     hp: (s) => (s === 'player' ? game.hp() : c.enemyHp),
     maxHp: (s) => fighter(s).maxHp,
     maxHit: (s) => maxHit(fighter(s)),
-    damage: (s, amount, source) => effectDamage(game, s, amount, source),
+    damage: (s, amount, source, effectId) => effectDamage(game, s, amount, source, effectId),
+    ward: (s) => (s === 'enemy' ? c.enemyWard ?? 0 : 0),
+    applied: (effectId, source, target) => {
+      if (source === 'player' && target === 'enemy') questEvent(game, 'CombatApplyEffect', (d) => (goalMatches(d, 'Effect', effectId) ? 1 : 0), combatContext(game));
+    },
     heal: (s, amount) => {
       if (s === 'player') game.heal(amount);
       else c.enemyHp = Math.min(fighter('enemy').maxHp, c.enemyHp + amount);
@@ -579,11 +587,38 @@ function fightOps(game: Game): FightOps {
 }
 
 /** Damage from an effect (ModifyEffectDamage), with effect lifesteal. Handles a death; returns true if one happened. */
-function effectDamage(game: Game, target: Side, amount: number, source: Side): boolean {
+function effectDamage(game: Game, target: Side, amount: number, source: Side, effectId: string): boolean {
+  // Ward soaks effect damage entirely while it lasts.
+  if (target === 'enemy' && (game.state.combat.enemyWard ?? 0) > 0) return false;
   const src = source === 'player' ? playerFighter(game) : liveEnemyFighter(game);
   const tgt = target === 'player' ? playerFighter(game) : liveEnemyFighter(game);
   const dealt = Math.max(1, Math.floor(amount * (1 + (src.mods.PercentDamageDealt ?? 0)) * (1 + (tgt.mods.PercentDamageTaken ?? 0))));
-  return applyDamage(game, target, dealt);
+  if (source === 'player' && target === 'enemy') {
+    const n = Math.min(dealt, game.state.combat.enemyHp);
+    questEvent(game, 'CombatDamageDealtByEffect', (d) => (goalMatches(d, 'CombatEffect', effectId) ? n : 0), combatContext(game));
+  }
+  // Effect lifesteal (e.g. a bleed that feeds its source) heals whoever applied it.
+  const steal = fightOps(game).effectStat(source, 'EffectLifesteal', effectId);
+  const died = applyDamage(game, target, dealt);
+  if (steal > 0 && !died && game.state.active?.skill === 'Combat') fightOps(game).heal(source, Math.max(1, Math.floor(dealt * steal)));
+  return died;
+}
+
+/** An enemy's Ward pool (Will-o'-Wisps, Spirit Stags) and armour, from its stats. */
+const enemyStat = (id: string, stat: string) => enemyData(id).Stats.Stats.find((s) => s.Stat === NS + stat)?.Value ?? 0;
+export const enemyMaxWard = (id: string) => enemyStat(id, 'MaximumWard');
+
+/**
+ * Attack damage after the defender's modifiers (CharacterComponent.ModifyAttackDamage): damage dealt/taken bonuses,
+ * resistance, the Ward's share still up, then armour (unless broken). Also reports what the Ward soaked.
+ */
+function modifyAttackDamage(raw: number, a: Fighter, d: Fighter, wardShare: number, armourBroken: boolean, resistShift = 0): { dealt: number; negated: number; armourValue: number } {
+  const base = raw * (1 + (a.mods.PercentDamageDealt ?? 0)) * (1 + (d.mods.PercentDamageTaken ?? 0));
+  const res = Math.max(0, Math.min(1, resistance(a, d, d.mods.ResistanceCombatTriangle ?? 0) + resistShift));
+  const afterRes = base * (1 - res);
+  const afterWard = afterRes * (1 - wardShare);
+  const armourValue = armour(d);
+  return { dealt: Math.max(Math.floor(afterWard - (armourBroken ? 0 : armourValue)), 1), negated: Math.floor(afterRes - afterWard), armourValue };
 }
 
 /** Take HP off a side and handle death (enemy killed, or you die). Returns true if that side died. */
@@ -640,6 +675,8 @@ function performAttack(game: Game, side: Side, atk: FullAttack, a: Fighter, d: F
   const dTriggers = triggersFor(game, foe);
   const immune = targetStat(game, foe, 'ImmunityFrom', a, aElement) > 0;
   const extraTaken = targetStat(game, foe, 'PercentDamageTakenFromAttacks', a, aElement);
+  // Resistance changes against this attacker (e.g. Exsanguinate: −1% resistance a stack).
+  const resistShift = targetStat(game, foe, 'PercentResistance', a, aElement);
   let attacks = 0;
   let hits = 0;
   for (const hit of atk.Hits) {
@@ -675,7 +712,20 @@ function performAttack(game: Game, side: Side, atk: FullAttack, a: Fighter, d: F
         if (game.rng.chance(d.mods.AttackDamageNegationChance ?? 0)) raw = 0;
         if (raw > 0) {
           const dd: Fighter = { ...d, mods: { ...d.mods, PercentDamageTaken: (d.mods.PercentDamageTaken ?? 0) + extraTaken } };
-          dealt = Math.min(ops.hp(foe), reduceDamage(raw, a, dd, dd.mods.ResistanceCombatTriangle ?? 0));
+          const maxWard = foe === 'enemy' ? enemyMaxWard(c.enemy!) : 0;
+          const wardShare = maxWard > 0 ? (c.enemyWard ?? 0) / maxWard : 0;
+          const m = modifyAttackDamage(raw, a, dd, wardShare, foe === 'enemy' && !!c.enemyArmourBroken, resistShift);
+          dealt = Math.min(ops.hp(foe), m.dealt);
+          if (foe === 'enemy') {
+            if (m.negated > 0) {
+              questEvent(game, 'CombatDamageNegatedByWard', () => m.negated, combatContext(game));
+              game.stat('CombatTotalDamageNegatedByWard', m.negated);
+            }
+            // A hit at least as big as the armour breaks it for the rest of the fight.
+            if (m.armourValue > 0 && m.dealt >= m.armourValue) c.enemyArmourBroken = true;
+            // Each landed hit wears 1 Ward off (2 with a double ward damage bonus).
+            if ((c.enemyWard ?? 0) > 0) c.enemyWard = Math.max(0, (c.enemyWard ?? 0) - (game.rng.chance(a.mods.DoubleWardDamageChance ?? 0) ? 2 : 1));
+          }
         }
         hits++;
       }
@@ -693,7 +743,11 @@ function performAttack(game: Game, side: Side, atk: FullAttack, a: Fighter, d: F
         // Lifesteal (unless disabled) heals the attacker; reflection hurts it.
         const ls = (a.mods.DisableLifesteal ?? 0) > 0 ? 0 : a.stats.Lifesteal ?? 0;
         if (applyDamage(game, foe, dealt)) return false;
-        if (ls > 0) ops.heal(side, Math.max(1, Math.floor(dealt * ls)));
+        if (ls > 0) {
+          const healed = Math.max(1, Math.floor(dealt * ls));
+          ops.heal(side, healed);
+          if (side === 'player') questEvent(game, 'CombatStealHitpoints', () => healed, combatContext(game));
+        }
         const reflect = d.mods.PercentAttackReflect ?? 0;
         if (reflect > 0 && Math.floor(dealt * reflect) > 0 && applyDamage(game, side, Math.floor(dealt * reflect))) return false;
       }
@@ -924,5 +978,7 @@ export function combatContext(game: Game): GoalContext {
     stance: NS + p.stance.Id,
     onSlayerTask: !!c.slayer && c.slayer.left > 0 && c.slayer.enemy === c.enemy,
     prayerCost: c.prayers.reduce((s, x) => s + prayerData(x).Cost.Quantity, 0),
+    enemyArmour: e ? armour(e) : undefined,
+    enemyWard: c.enemy ? enemyMaxWard(c.enemy) : undefined,
   };
 }

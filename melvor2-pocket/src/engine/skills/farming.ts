@@ -249,6 +249,7 @@ export function harvest(game: Game, plotId: string): void {
   const doubling = mod(game, 'FarmingAction', 'DoublingChance', { entity: SKILL, recipe: NS + r.Id, category: r.Category });
   game.addItem(r.Product.Item, game.rng.chance(doubling) ? q * 2 : q);
   game.addXp(SKILL, r.BaseExperience);
+  game.stat('FarmingProductsHarvested');
   game.itemSource = null;
   questEvent(game, 'FarmingHarvestRecipe', (d) =>
     goalMatches(d, 'Recipe', p.recipe ?? undefined) && goalMatches(d, 'Category', r.Category) ? 1 : 0,

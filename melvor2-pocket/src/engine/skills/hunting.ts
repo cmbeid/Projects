@@ -154,7 +154,11 @@ function trap(game: Game, id: string, a: HuntingAnimal, s: HuntState, baited: bo
       : 0,
   );
   questEvent(game, 'HuntingTrapAnimalLocation', (d) => (goalMatches(d, 'Location', a.Location) ? 1 : 0));
-  if (s.species) (game.state.stats.raresFound ??= {})[s.species] = true;
+  if (s.species) {
+    (game.state.stats.raresFound ??= {})[s.species] = true;
+    game.stat('HuntingAnimalsSpeciesTrapped');
+  }
+  game.stat('HuntingAnimalsTrapped');
   // Size/weight roll: each is uniform in [0.5, 1.3] + journal level / 100; rewards scale with their average.
   const j = journalLevel(game, id) / 100;
   const mult = (game.rng.range(0.5 + j, 1.3 + j) + game.rng.range(0.5 + j, 1.3 + j)) / 2;
@@ -216,7 +220,10 @@ export const hunting: SkillHandler = {
         if (!game.rng.chance(keepTrap)) game.removeItem(traps[0], 1);
       }
       const baited = usingBait(game, a);
-      if (baited) game.removeItem(a.PreferredBait!, 1);
+      if (baited) {
+        game.removeItem(a.PreferredBait!, 1);
+        game.stat('HuntingAnimalsTrappedUsingBait');
+      }
       if (game.rng.chance(chance)) {
         trap(game, id, a, s, baited);
         s.phase = 'idle';
@@ -229,6 +236,7 @@ export const hunting: SkillHandler = {
         return surveyInterval(game, a);
       }
       game.failed(SKILL, `${a.DisplayName} escaped`);
+      game.stat('HuntingAnimalsEscaped');
       s.failedThisHunt = true;
       s.trapFails = (s.trapFails ?? 0) + 1;
       // Usually the animal flees and must be tracked further; a reattempt bonus lets you try the trap again at once.

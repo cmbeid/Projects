@@ -59,3 +59,23 @@ describe('Mastery Guild', () => {
     expect(tasks.length).toBe(860);
   });
 });
+
+describe('guild requirement types', () => {
+  it('understands equipped items, rare species, journal levels and ranching counts', async () => {
+    const { Game } = await import('../src/engine/game');
+    const { newState } = await import('../src/engine/state');
+    const { equip } = await import('../src/engine/combat/combat');
+    const g = new Game(newState(0, 1));
+    const req = (Type: string, Data: Record<string, unknown>) => g.requirementMet({ Type: `MelvorBase:${Type}`, Data } as never);
+    expect(req('EquipmentItemEquipped', { Item: 'MelvorBase:StoneHelmet' })).toBe(false);
+    g.addItem('MelvorBase:StoneHelmet', 1);
+    equip(g, 'MelvorBase:StoneHelmet');
+    expect(req('EquipmentItemEquipped', { Item: 'MelvorBase:StoneHelmet' })).toBe(true);
+    expect(req('HuntingUniqueRareSpeciesFound', { Count: 1 })).toBe(false);
+    g.state.stats.raresFound = { 'MelvorBase:Something': true };
+    expect(req('HuntingUniqueRareSpeciesFound', { Count: 1 })).toBe(true);
+    expect(req('RanchingAnimalStatistic', { Animal: 'MelvorBase:Chicken', Value: 100 })).toBe(false);
+    g.state.stats.ranchHoursAlive = { 'MelvorBase:Chicken': 120 };
+    expect(req('RanchingAnimalStatistic', { Animal: 'MelvorBase:Chicken', Value: 100 })).toBe(true);
+  });
+});

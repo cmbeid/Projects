@@ -37,6 +37,7 @@ export const cooking: SkillHandler = {
     if (!preserved) spendIngredients(game, r.Ingredients);
     else for (const ing of r.Ingredients.Items) questEvent(game, 'PreserveCookingItem', (d) => (goalMatches(d, 'Item', ing.Item) ? ing.Quantity : 0));
     if (success) {
+      game.stat('CookingRecipesCooked');
       const roll = game.rng.next();
       let cumulative = 0;
       for (const p of [...r.Products].sort((a, b) => a.Chance - b.Chance)) {

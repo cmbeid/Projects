@@ -167,6 +167,7 @@ export function buyAnimal(game: Game, encId: string, animalId: string): string |
   if (missing) return missing;
   spendIngredients(game, r.PurchaseCosts);
   const now = game.state.tick;
+  game.stat('RanchingAnimalsPurchased');
   game.state.ranching.animals.push({
     id: game.state.ranching.nextId++,
     animal: animalId,
@@ -188,6 +189,7 @@ export function pet(game: Game, id: number): void {
   if (!a || game.state.tick < a.petDueAt) return;
   a.petDueAt = game.state.tick + ticks(PET_INTERVAL_MS);
   game.addXp(SKILL, PET_XP);
+  game.stat('RanchingAnimalsPet');
   questEvent(game, 'RanchingPetAnimal', (d) => (goalMatches(d, 'Animal', a.animal) && goalMatches(d, 'Variant', a.variant) ? 1 : 0));
   game.emit();
 }
@@ -252,6 +254,7 @@ function processAnimals(game: Game): void {
     if (now >= a.diesAt) {
       st.animals = st.animals.filter((x) => x !== a);
       game.notice(`Your ${r.DisplayName.Singular} died of old age.`);
+      game.stat('RanchingAnimalsDied');
     }
   }
 }
