@@ -12,7 +12,7 @@ let sfxGain: GainNode | null = null;
 let musicGain: GainNode | null = null;
 const buffers = new Map<string, Promise<AudioBuffer | null>>();
 
-export interface SoundSettings { sfx: number; music: number; track: string; muteHidden: boolean }
+export interface SoundSettings { sfx: number; music: number; track: string; muteHidden: boolean; muted?: boolean }
 const SETTINGS_KEY = 'melvor2-pocket-sound';
 export const settings: SoundSettings = (() => {
   try {
@@ -28,8 +28,8 @@ export function saveSettings(): void {
   } catch {
     // Private mode etc.: settings just won't persist.
   }
-  if (sfxGain) sfxGain.gain.value = settings.sfx;
-  if (musicGain) musicGain.gain.value = settings.music;
+  if (sfxGain) sfxGain.gain.value = settings.muted ? 0 : settings.sfx;
+  if (musicGain) musicGain.gain.value = settings.muted ? 0 : settings.music;
   if (settings.track === 'off') stopMusic();
   else if (!musicSource) startMusic();
 }
@@ -64,10 +64,10 @@ export function unlockAudioOnFirstTap(): void {
     if (!ctx) {
       ctx = new AudioContext();
       sfxGain = ctx.createGain();
-      sfxGain.gain.value = settings.sfx;
+      sfxGain.gain.value = settings.muted ? 0 : settings.sfx;
       sfxGain.connect(ctx.destination);
       musicGain = ctx.createGain();
-      musicGain.gain.value = settings.music;
+      musicGain.gain.value = settings.muted ? 0 : settings.music;
       musicGain.connect(ctx.destination);
       startMusic();
     }
@@ -125,7 +125,7 @@ let burstCount = 0;
 export function playSound(path: string | null | undefined): void {
   // Never queue sounds while hidden or paused: a suspended context would play them all at once on return.
   const live = () => !!ctx && ctx.state === 'running' && !document.hidden;
-  if (!path || !live() || !packs.sounds || settings.sfx <= 0) return;
+  if (!path || !live() || !packs.sounds || settings.sfx <= 0 || settings.muted) return;
   const now = performance.now();
   if (now - (lastPlayed.get(path) ?? 0) < 150) return;
   // A catch-up after a short gap can fire many different sounds in one frame; play only a few.
@@ -256,3 +256,9 @@ export function levelUpSound(skill: string): string | undefined {
 }
 
 export const questSound = () => Object.keys(packs.sounds?.index ?? {}).find((k) => k.endsWith('/QuestComplete.wav'));
+
+/** The top bar's mute button: silences everything without touching the volume settings. */
+export function toggleMute(): void {
+  settings.muted = !settings.muted;
+  saveSettings();
+}
