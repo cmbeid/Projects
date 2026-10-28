@@ -481,3 +481,27 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 .fighter.you .hit-splat { top: 10%; font-size: 17px; }
 .fighter.you .hit-splat.crit { font-size: 21px; }
 @keyframes splat { 0% { opacity: 0; translate: 0 8px; scale: .7; } 15% { opacity: 1; translate: 0 0; scale: 1.1; } 30% { scale: 1; } 100% { opacity: 0; translate: 0 -36px; } }
+
+.places { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 4px 0; font-size: 12.5px; }
+.places > .muted { width: 62px; }
+.place-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 4px; border-radius: 12px; background: #23262d; max-width: 100%; }
+.place-chip > .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.sell-picker { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.sell-picker input[type=range] { flex: 1; }
+.sell-picker .qty-input { width: 90px; flex: none; }
+
+.loot-summary { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; font-size: 14px; }
+.loot-summary .gold { color: #e8b84a; }
+.loot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; margin-bottom: 8px; }
+.loot-cell { position: relative; display: flex; align-items: center; justify-content: center; height: 54px; background: #1b1e24; border: 1px solid #2b2e33; border-radius: 6px; }
+.loot-cell .qty { position: absolute; right: 3px; bottom: 1px; font-size: 11.5px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; margin: 6px 0 10px; }
+.icon-tile { position: relative; height: 48px; padding: 0; display: flex; align-items: center; justify-content: center; background: #1b1e24; border: 2px solid #2b2e33; border-radius: 6px; }
+.icon-tile.on { border-color: #5fbf6a; background: #1f3a24; }
+.icon-tile.locked img { opacity: .35; filter: grayscale(1); }
+.icon-tile.demo { background: #15171b; }
+.icon-tile.picked { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tile-q { font-size: 22px; font-weight: 800; color: #555b66; }
+.tile-lock { position: absolute; right: 2px; bottom: 0; font-size: 11px; }
+.pick-detail { display: flex; flex-direction: column; gap: 6px; padding: 10px; margin-bottom: 10px; background: #1b1e24; border: 1px solid #2b2e33; border-radius: 8px; }

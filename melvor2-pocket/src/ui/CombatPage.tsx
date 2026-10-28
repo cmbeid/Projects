@@ -1,15 +1,16 @@
 import { useState } from 'preact/hooks';
-import { NS, all, displayName, itemName } from '../engine/content';
+import { NS, all, displayName, item, itemName, tryGet } from '../engine/content';
 import type { Game } from '../engine/game';
 import { type Bonus, type Drops, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
 import {
   areaEnemies, blockSlayerEnemy, dropChances, effectsView, liveEnemyFighter, togglePause, enemyFighter, enemyMaxHp, extendSlayerTask, fight, newSlayerTask, playerFighter, prayerPoints, slayerBlockCost,
-  slayerBlockSlots, slayerExtensionCost, slayerRerollCost, slayerTaskRange, togglePrayer, unblockSlayerEnemy,
+  slayerBlockSlots, slayerExtensionCost, resetLoot, slayerRerollCost, slayerTaskRange, togglePrayer, unblockSlayerEnemy,
 } from '../engine/combat/combat';
 import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit } from '../engine/combat/stats';
-import { HpBar, Icon, TimerBar, fmt, ticksToDuration, type BarMarker } from './common';
+import { Art, HpBar, Icon, SkillBadge, TimerBar, fmt, ticksToDuration, type BarMarker } from './common';
 import { assetUrl } from '../art/assets';
 import { EquipmentView } from './Equipment';
+import { describeRequirement } from '../engine/navigation';
 import { CombatStatsSheet } from './CombatStats';
 import { HitSplats } from './HitSplats';
 
@@ -135,10 +136,17 @@ function FightView({ game }: { game: Game }) {
 }
 
 /** Loot History: what this combat session has dropped, as on the desktop. */
+/** The desktop's Loot History: value and kill rate per enemy, the loot collected as an icon grid, and the XP gained. */
 function LootHistory({ game, onClose }: { game: Game; onClose: () => void }) {
   const l = game.state.combat.loot;
   const items = Object.entries(l?.items ?? {}).sort((a, b) => b[1] - a[1]);
-  const mins = l ? Math.max(1, (game.state.tick - l.since) / 3600) : 1;
+  const currencies = Object.entries(l?.currencies ?? {});
+  const xp = Object.entries(l?.xp ?? {}).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]);
+  const ticks = l ? game.state.tick - l.since : 0;
+  const hours = Math.max(ticks, 1) / 216000;
+  const value = items.reduce((s, [id, q]) => s + (item(id).SellsFor?.Quantity ?? 0) * q, 0) + (l?.currencies[`${NS}GoldPieces`] ?? 0);
+  const totalItems = items.reduce((s, [, q]) => s + q, 0);
+  const enemies = Object.entries(l?.enemies ?? {}).sort((a, b) => b[1] - a[1]);
   return (
     <div class="sheet" onClick={onClose}>
       <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
@@ -148,29 +156,72 @@ function LootHistory({ game, onClose }: { game: Game; onClose: () => void }) {
             ✕
           </button>
         </div>
-        <p class="muted small">
-          {fmt(l?.kills ?? 0)} kills in {ticksToDuration(l ? game.state.tick - l.since : 0)} ({(l?.kills ?? 0) / mins >= 1 ? fmt(((l?.kills ?? 0) / mins) * 60) : '<60'} an hour)
-        </p>
-        {Object.entries(l?.currencies ?? {}).map(([cur, q]) => (
-          <div class="card-row">
-            <span class="grow">{displayName('Currency', cur)}</span>
-            <strong>{fmt(q)}</strong>
-          </div>
-        ))}
-        {!items.length && !Object.keys(l?.currencies ?? {}).length && <p class="muted">Nothing yet.</p>}
-        {items.map(([it, q]) => (
-          <div class="card-row">
-            <Icon id={it} size={28} />
-            <span class="grow">{itemName(it, q)}</span>
-            <strong>{fmt(q)}</strong>
-          </div>
-        ))}
+        <div class="loot-summary">
+          <span>
+            Total value <strong class="gold">{fmt(value)} gold</strong>
+          </span>
+          <span>
+            Total items <strong>{fmt(totalItems)}</strong>
+          </span>
+        </div>
+        <dl class="stats">
+          {enemies.map(([id, n]) => (
+            <>
+              <dt>{enemyData(id).DisplayName}</dt>
+              <dd>×{fmt(n)}</dd>
+            </>
+          ))}
+          <dt>Time spent fighting</dt>
+          <dd>{ticksToDuration(ticks)}</dd>
+          <dt>Kills per hour</dt>
+          <dd>{ticks >= 600 ? fmt(Math.round(((l?.kills ?? 0) / hours) * 100) / 100) : '–'}</dd>
+          <dt>Gold per hour</dt>
+          <dd>{ticks >= 600 ? fmt(Math.round(value / hours)) : '–'}</dd>
+        </dl>
+        <h3>Loot collected</h3>
+        {!items.length && !currencies.length && <p class="muted">Nothing yet.</p>}
+        <div class="loot-grid">
+          {currencies.map(([cur, q]) => (
+            <div class="loot-cell" title={displayName('Currency', cur)}>
+              <Art path={tryGet<{ Icon?: string }>('Currency', cur)?.Icon} fallbackItem={cur} size={36} />
+              <span class="qty">{fmt(q)}</span>
+            </div>
+          ))}
+          {items.map(([it, q]) => (
+            <div class="loot-cell" title={itemName(it, q)}>
+              <Icon id={it} size={36} />
+              <span class="qty">{fmt(q)}</span>
+            </div>
+          ))}
+        </div>
+        {xp.length > 0 && (
+          <>
+            <h3>Experience gained</h3>
+            <div class="loot-grid">
+              {xp.map(([skill, v]) => (
+                <div class="loot-cell" title={skill}>
+                  <SkillBadge skill={skill} size={32} />
+                  <span class="qty">{fmt(Math.floor(v))}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <div class="row">
+          <button
+            class="danger"
+            onClick={() => {
+              if (confirm('Start the loot history over?')) resetLoot(game);
+            }}
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-/** An enemy's (or a dungeon's) drop table with chances, like the desktop's View Enemy Drops. */
 function DropsSheet({ title, drops, onClose }: { title: string; drops: Drops; onClose: () => void }) {
   const list = dropChances(drops).sort((a, b) => b.chance - a.chance);
   const pct = (x: number) => (x >= 0.1 ? `${Math.round(x * 100)}%` : x >= 0.001 ? `${(x * 100).toFixed(2)}%` : `1 in ${fmt(Math.round(1 / x))}`);
@@ -300,68 +351,124 @@ function AreaBrowser({ game }: { game: Game }) {
   );
 }
 
+interface GridEntry { id: string; name: string; icon?: string; state: 'on' | 'ok' | 'locked' | 'demo' }
+
+/** The desktop's prayer and spell grids: icons, the active ones lit, locked ones dimmed and demo-only ones as "?". */
+function IconGrid({ entries, picked, onPick }: { entries: GridEntry[]; picked: string | null; onPick: (id: string) => void }) {
+  return (
+    <div class="icon-grid">
+      {entries.map((e) => (
+        <button class={`icon-tile ${e.state} ${picked === e.id ? 'picked' : ''}`} onClick={() => onPick(e.id)} aria-label={e.state === 'demo' ? 'Not in demo' : e.name}>
+          {e.state === 'demo' ? <span class="tile-q">?</span> : <Art path={e.icon} fallbackItem={e.id} size={34} />}
+          {e.state === 'locked' && <span class="tile-lock">🔒</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PrayerMagicView({ game }: { game: Game }) {
   const [msg, setMsg] = useState('');
+  const [prayerPick, setPrayerPick] = useState<string | null>(null);
+  const [book, setBook] = useState(`${NS}StandardSpells`);
+  const [spellPick, setSpellPick] = useState<string | null>(null);
   const c = game.state.combat;
   const p = playerFighter(game);
-  const spells = allSpells().filter((s) => !game.isDemoLocked(s.UnlockRequirements));
+  const prayers = allPrayers();
+  const prayerState = (x: (typeof prayers)[number]): GridEntry['state'] =>
+    game.isDemoLocked(x.UnlockRequirements) ? 'demo' : !game.requirementsMet(x.UnlockRequirements) ? 'locked' : c.prayers.includes(NS + x.Id) ? 'on' : 'ok';
+  const pr = prayers.find((x) => NS + x.Id === prayerPick && prayerState(x) !== 'demo');
+  const books = all<{ Id: string; DisplayName: string; Requirements: never[] | null }>('SpellBook');
+  const spells = allSpells().filter((s) => s.Book === book);
+  const spellState = (s: (typeof spells)[number]): GridEntry['state'] =>
+    game.isDemoLocked(s.UnlockRequirements) ? 'demo' : !game.requirementsMet(s.UnlockRequirements) ? 'locked' : c.spell === NS + s.Id ? 'on' : 'ok';
+  const sp = spells.find((s) => NS + s.Id === spellPick && spellState(s) !== 'demo');
+  const unmet = (reqs: unknown) => ((reqs ?? []) as never[]).map((r) => describeRequirement(game, r)).filter((r) => !r.done).map((r) => r.text);
+  const iconOf = (x: unknown) => (x as { Icon?: string }).Icon;
   return (
     <>
-      <h3>Prayer · {fmt(prayerPoints(game))} points</h3>
-      <p class="muted small">Bury bones from the bank for prayer points. Each active prayer costs points every enemy attack.</p>
+      <div class="card-row">
+        <h3 class="grow">Prayers</h3>
+        <span class="muted small">{fmt(prayerPoints(game))} prayer points</span>
+      </div>
+      <IconGrid
+        entries={prayers.map((x) => ({ id: NS + x.Id, name: x.DisplayName, icon: iconOf(x), state: prayerState(x) }))}
+        picked={prayerPick}
+        onPick={(id) => setPrayerPick(prayerPick === id ? null : id)}
+      />
+      {prayerPick && !pr && <p class="muted small">This prayer is not in the demo.</p>}
+      {pr && (
+        <div class="pick-detail">
+          <div class="card-row">
+            <Art path={iconOf(pr)} fallbackItem={NS + pr.Id} size={32} />
+            <strong class="grow">{pr.DisplayName}</strong>
+            <span class="muted small">{pr.Cost.Quantity} pt per enemy attack</span>
+          </div>
+          <ul class="bonus-list">
+            {pr.Bonuses.Component.map((b) => (
+              <li>{bonusLabel(b)}</li>
+            ))}
+          </ul>
+          {unmet(pr.UnlockRequirements).map((t) => (
+            <div class="need small">Needs {t}</div>
+          ))}
+          <button class={c.prayers.includes(NS + pr.Id) ? 'on' : ''} disabled={prayerState(pr) === 'locked'} onClick={() => setMsg(togglePrayer(game, NS + pr.Id) ?? '')}>
+            {c.prayers.includes(NS + pr.Id) ? 'Turn off' : 'Activate'}
+          </button>
+        </div>
+      )}
+      <p class="muted small">Bury bones from the bank for prayer points.</p>
       {msg && <p class="muted">{msg}</p>}
-      {allPrayers()
-        .filter((x) => !game.isDemoLocked(x.UnlockRequirements))
-        .map((x) => {
-          const id = NS + x.Id;
-          const on = c.prayers.includes(id);
-          const ok = game.requirementsMet(x.UnlockRequirements);
+      <h3>Spellbook {p.style.UsesSpells ? '' : <span class="muted small">(equip a staff or wand to cast)</span>}</h3>
+      <div class="chips">
+        {books.map((b) => {
+          const demo = game.isDemoLocked(b.Requirements);
           return (
-            <div class="card-row prayer">
-              <div class="grow">
-                <div>{x.DisplayName}</div>
-                <div class="muted small">
-                  {x.Bonuses.Component.map((b) => bonusLabel(b)).join(', ')}
-                </div>
-              </div>
-              <button class={on ? 'on' : ''} disabled={!ok} onClick={() => setMsg(togglePrayer(game, id) ?? '')}>
-                {ok ? (on ? 'On' : `${x.Cost.Quantity} pt`) : 'Locked'}
-              </button>
-            </div>
+            <button class={book === NS + b.Id ? 'on' : ''} disabled={demo} onClick={() => setBook(NS + b.Id)}>
+              {b.DisplayName}
+              {demo ? ' 🔒' : ''}
+            </button>
           );
         })}
-      <h3>Spells {p.style.UsesSpells ? '' : '(equip a staff or wand to cast)'}</h3>
-      {spells.map((s) => {
-        const id = NS + s.Id;
-        const ok = game.requirementsMet(s.UnlockRequirements);
-        return (
+      </div>
+      <IconGrid
+        entries={spells.map((s) => ({ id: NS + s.Id, name: s.DisplayName, icon: iconOf(s), state: spellState(s) }))}
+        picked={spellPick}
+        onPick={(id) => setSpellPick(spellPick === id ? null : id)}
+      />
+      {spellPick && !sp && spells.some((s) => NS + s.Id === spellPick) && <p class="muted small">This spell is not in the demo.</p>}
+      {sp && (
+        <div class="pick-detail">
           <div class="card-row">
-            <div class="grow">
-              <div>
-                {s.DisplayName} <span class="muted small">{displayName('SpellBook', s.Book)}</span>
-              </div>
-              <div class="ingredients">
-                {s.RuneCosts.map((r) => (
-                  <span class={game.count(r.Item) < r.Quantity ? 'short' : ''}>
-                    <Icon id={r.Item} size={16} />
-                    {fmt(game.count(r.Item))}/{r.Quantity}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <button
-              class={c.spell === id ? 'on' : ''}
-              disabled={!ok}
-              onClick={() => {
-                c.spell = c.spell === id ? null : id;
-                game.emit();
-              }}
-            >
-              {ok ? (c.spell === id ? 'Selected' : 'Select') : 'Locked'}
-            </button>
+            <Art path={iconOf(sp)} fallbackItem={NS + sp.Id} size={32} />
+            <strong class="grow">{sp.DisplayName}</strong>
+            <span class="muted small">
+              {displayName('Element', (sp as { Element?: string }).Element ?? '')} · max hit {sp.Stats.Stats.find((x) => x.Stat === `${NS}SpellMaxHit`)?.Value ?? 0}
+            </span>
           </div>
-        );
-      })}
+          <div class="ingredients">
+            {sp.RuneCosts.map((r) => (
+              <span class={game.count(r.Item) < r.Quantity ? 'short' : ''}>
+                <Icon id={r.Item} size={16} />
+                {fmt(game.count(r.Item))}/{r.Quantity}
+              </span>
+            ))}
+          </div>
+          {unmet(sp.UnlockRequirements).map((t) => (
+            <div class="need small">Needs {t}</div>
+          ))}
+          <button
+            class={c.spell === NS + sp.Id ? 'on' : ''}
+            disabled={spellState(sp) === 'locked'}
+            onClick={() => {
+              c.spell = c.spell === NS + sp.Id ? null : NS + sp.Id;
+              game.emit();
+            }}
+          >
+            {c.spell === NS + sp.Id ? 'Selected' : 'Select'}
+          </button>
+        </div>
+      )}
     </>
   );
 }

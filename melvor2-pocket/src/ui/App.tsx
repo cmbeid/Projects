@@ -28,6 +28,7 @@ import { isBundle, unpackBundle } from '../bundle';
 import { ItemToasts, itemToastsOn, setItemToasts } from './ItemToasts';
 import { LevelUpPopups, levelUpPopupsOn, setLevelUpPopups } from './LevelUp';
 import { BankPage, bankTabs, moveToTab } from './BankPage';
+import { itemPlaces, type ItemPlace } from '../engine/itemSources';
 import { ItemBonuses } from './Equipment';
 import { backgroundMode, pageBackground, raining, setBackgroundMode, setWeatherOn, weatherAt, weatherOn, type BackgroundMode } from '../art/background';
 import { recipeGroups, type RecipeView } from './recipes';
@@ -385,6 +386,67 @@ function Log({ game }: { game: Game }) {
 let itemOrderCache: Map<string, number> | null = null;
 export const itemOrder = () => (itemOrderCache ??= new Map(all<Item>('Item').map((it, i) => [`MelvorBase:${it.Id}`, i])));
 
+/** "Found in" / "Used in", as the desktop's item details: a chip per skill or page, naming what within it. */
+function ItemPlacesRows({ id }: { id: string }) {
+  const places = itemPlaces(id);
+  const row = (label: string, list: ItemPlace[]) => {
+    if (!list.length) return null;
+    const pages = [...new Set(list.map((p) => p.page))];
+    return (
+      <div class="places">
+        <span class="muted small">{label}</span>
+        {pages.map((pg) => {
+          const details = list.filter((p) => p.page === pg && p.detail).map((p) => p.detail!);
+          return (
+            <span class="place-chip" title={details.join(', ')}>
+              {pageIconUrl(pg) ? <img src={pageIconUrl(pg)} width={18} height={18} alt="" /> : <SkillBadge skill={pg} size={18} />}
+              <span>{pg === 'Bank' ? 'Items' : pg}</span>
+              {details.length > 0 && <span class="muted">{details.slice(0, 2).join(', ')}{details.length > 2 ? ` +${details.length - 2}` : ''}</span>}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+  return (
+    <>
+      {row('Found in', places.found)}
+      {row('Used in', places.used)}
+    </>
+  );
+}
+
+/** Pick how many to sell, like the desktop's slider and number box with All but 1 / All. */
+function SellPicker({ game, id, have, price }: { game: Game; id: string; have: number; price: number }) {
+  const [want, setWant] = useState(1);
+  const n = Math.max(1, Math.min(have, Math.floor(want) || 1));
+  return (
+    <div class="sell-picker">
+      <div class="row">
+        <input type="range" min={1} max={have} value={n} onInput={(e) => setWant(Number((e.target as HTMLInputElement).value))} />
+        <input class="text qty-input" type="number" inputMode="numeric" min={1} max={have} value={n} onInput={(e) => setWant(Number((e.target as HTMLInputElement).value))} />
+      </div>
+      <div class="row">
+        <button onClick={() => setWant(1)}>1</button>
+        <button onClick={() => setWant(Math.max(1, Math.floor(have / 2)))}>Half</button>
+        <button onClick={() => setWant(have - 1)} disabled={have < 2}>
+          All but 1
+        </button>
+        <button onClick={() => setWant(have)}>All</button>
+      </div>
+      <button
+        class={n === have ? 'danger' : ''}
+        onClick={() => {
+          game.sell(id, n);
+          setWant(1);
+        }}
+      >
+        Sell {fmt(n)} for {fmt(price * n)} gold
+      </button>
+    </div>
+  );
+}
+
 export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClose: () => void }) {
   const it = item(id);
   const have = game.count(id);
@@ -441,6 +503,7 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
           </div>
         </div>
         {it.Description && <p class="muted">{it.Description}</p>}
+        <ItemPlacesRows id={id} />
         <ItemBonuses game={game} id={id} />
         {(openableCap(id) || toolbeltCap(id) || upgradesFrom(id).length > 0) && (
           <div class="row">
@@ -482,18 +545,7 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
             </button>
           </div>
         )}
-        {price > 0 && (
-          <div class="row">
-            <button onClick={() => game.sell(id, 1)}>Sell 1</button>
-            <button onClick={() => game.sell(id, Math.max(1, Math.floor(have / 2)))}>Sell half</button>
-            <button class="danger" onClick={() => game.sell(id, have - 1)} disabled={have < 2}>
-              All but 1
-            </button>
-            <button class="danger" onClick={() => game.sell(id, have)}>
-              Sell all ({fmt(price * have)})
-            </button>
-          </div>
-        )}
+        {price > 0 && have > 0 && <SellPicker game={game} id={id} have={have} price={price} />}
         {bankTabs(game).length > 0 && (
           <label class="slider">
             <span>Bank tab</span>

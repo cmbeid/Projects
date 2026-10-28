@@ -423,7 +423,10 @@ function enemyKilled(game: Game): void {
   const c = game.state.combat;
   const id = c.enemy!;
   c.kills[id] = (c.kills[id] ?? 0) + 1;
-  if (c.loot) c.loot.kills++;
+  if (c.loot) {
+    c.loot.kills++;
+    (c.loot.enemies ??= {})[id] = (c.loot.enemies[id] ?? 0) + 1;
+  }
   const styleId = playerFighter(game).style.Id;
   questEvent(game, 'CombatKillEnemy', (d) => (goalMatches(d, 'Enemy', id) && goalMatches(d, 'PlayerCombatStyle', NS + styleId) ? 1 : 0), combatContext(game));
   rollDrops(game, enemyData(id).Drops);
@@ -919,7 +922,7 @@ export const combat: SkillHandler = {
     const c = game.state.combat;
     // Paused: nothing moves; check back in a second.
     if (c.paused) {
-      c.pending = 60;
+      c.pending = 0;
       return 1000;
     }
     const elapsed = c.pending;
@@ -956,8 +959,31 @@ export function dropChances(d: Drops): { item: string; chance: number; min: numb
   return out;
 }
 
+/** Start the loot history over (the desktop's Reset). */
+export function resetLoot(game: Game): void {
+  game.state.combat.loot = { items: {}, currencies: {}, kills: 0, since: game.state.tick };
+  game.emit();
+}
+
 export function togglePause(game: Game): void {
-  game.state.combat.paused = !game.state.combat.paused;
+  const c = game.state.combat;
+  const a = game.state.active;
+  if (a?.skill === 'Combat') {
+    // Settle the turn time that ran before pausing, then re-check on the next tick. Pausing and resuming both restart
+    // the wait, so time spent paused never comes off the turn timers.
+    if (!c.paused) {
+      const since = Math.max(0, c.pending - a.ticksLeft);
+      if (c.phase === 'spawning') c.spawnLeft -= since;
+      else {
+        c.playerLeft -= since;
+        c.enemyLeft -= since;
+      }
+    }
+    // Resuming, the one-tick wait is fight time and counts; pausing, it doesn't.
+    c.pending = c.paused ? 1 : 0;
+    a.waitTicks = a.ticksLeft = 1;
+  }
+  c.paused = !c.paused;
   game.emit();
 }
 

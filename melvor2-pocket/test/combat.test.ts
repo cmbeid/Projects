@@ -5,7 +5,7 @@ import { unlockEverything } from '../src/engine/navigation';
 import {
   accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, resistance,
 } from '../src/engine/combat/stats';
-import { areaEnemies, bury, enemyFighter, equip, fight, newSlayerTask, playerFighter, prayerPoints, togglePrayer, unequip } from '../src/engine/combat/combat';
+import { areaEnemies, bury, enemyFighter, equip, fight, newSlayerTask, playerFighter, prayerPoints, togglePause, togglePrayer, unequip } from '../src/engine/combat/combat';
 
 const id = (s: string) => `MelvorBase:${s}`;
 /** Mechanics tests start with every page unlocked; progression gating has its own tests. */
@@ -60,6 +60,29 @@ describe('combat formulas (worked by hand from the game code)', () => {
 });
 
 describe('fighting', () => {
+  it('time spent paused never comes off the turn timers', () => {
+    const hitTicks = (pauseAt?: number, pauseFor = 0) => {
+      const g = fresh(5);
+      fight(g, 'MelvorBase:GolbinForest', null);
+      const hits: number[] = [];
+      g.events.add((e) => {
+        if (e.type === 'hit' && e.target === 'enemy') hits.push(g.state.tick);
+      });
+      for (let t = 0; t < 900 && hits.length < 2; t++) {
+        if (t === pauseAt) {
+          togglePause(g);
+          g.advance(pauseFor);
+          togglePause(g);
+        }
+        g.advance(1);
+      }
+      return hits;
+    };
+    const plain = hitTicks();
+    // Pause for 7 s part-way through the first turn: every attack lands exactly 7 s later.
+    expect(hitTicks(plain[0] - 100, 420)).toEqual(plain.map((t) => t + 420));
+  });
+
   it('kills Golbins for loot and combat XP, eating food when low', () => {
     const g = fresh(4);
     g.addItem(id('StoneSword'), 1);

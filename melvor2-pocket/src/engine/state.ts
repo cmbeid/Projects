@@ -92,7 +92,15 @@ export interface CombatState {
   enemyWard?: number;
   enemyArmourBroken?: boolean;
   /** Loot History for the current combat session (since you last started fighting). */
-  loot?: { items: Record<string, number>; currencies: Record<string, number>; kills: number; since: number };
+  loot?: {
+    items: Record<string, number>;
+    currencies: Record<string, number>;
+    kills: number;
+    since: number;
+    /** Kills by enemy, and XP gained by skill, since `since`. */
+    enemies?: Record<string, number>;
+    xp?: Record<string, number>;
+  };
   /** Combat effects on each side during the current fight. */
   effects?: { player: import('./combat/effects').ActiveEffect[]; enemy: import('./combat/effects').ActiveEffect[] };
   slayerTasksDone: Record<string, number>;
