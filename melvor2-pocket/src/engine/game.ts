@@ -266,13 +266,16 @@ export class Game {
   /** Record a gain/loss for the stats bar: only while the active action is doing it, not offline or passives. */
   private track(kind: TrackEvent['kind'], id: string, amount: number): void {
     const a = this.state.active;
-    if (!a || this.quiet || this.itemSource || this.manual) return;
+    if (!a || this.quiet || this.itemSource || !this.advancing) return;
     this.tracker.sync(`${a.skill}|${a.recipe}`, this.state.tick);
     this.tracker.add({ tick: this.state.tick, kind, id, amount });
   }
 
-  /** Set during player actions (selling, eating) so they don't count towards action rates. */
-  private manual = false;
+  /**
+   * Set while the simulation runs. Only then do gains and losses count towards action rates: anything else is the
+   * player's own doing (selling, eating, opening, burying, equipping, buying...).
+   */
+  private advancing = false;
 
   private lastGuildCheck = -Infinity;
 
@@ -412,13 +415,11 @@ export class Game {
     const q = Math.min(quantity, this.count(id));
     const price = item(id).SellsFor;
     if (q <= 0 || !price) return 0;
-    this.manual = true;
     this.removeItem(id, q);
     const gold = price.Quantity * q;
     this.addCurrency(price.Currency, gold);
     this.state.stats.itemsSold += q;
     this.state.stats.goldFromSales += gold;
-    this.manual = false;
     checkUnlocks(this);
     this.emit();
     return gold;
@@ -492,18 +493,24 @@ export class Game {
   /** Advance the simulation. Jumps straight to each timer firing, so long offline gaps are cheap. */
   advance(ticks: number): void {
     let left = Math.floor(ticks);
-    while (left > 0) {
-      const a = this.state.active;
-      // Background systems (ranching, ...) schedule events at absolute ticks; step to whichever comes first.
-      const passiveAt = this.nextPassiveTick();
-      let step = left;
-      if (a) step = Math.min(step, a.ticksLeft);
-      if (passiveAt != null) step = Math.min(step, Math.max(0, passiveAt - this.state.tick));
-      if (a) a.ticksLeft -= step;
-      left -= step;
-      this.state.tick += step;
-      if (passiveAt != null && this.state.tick >= passiveAt) this.runPassives();
-      if (a && this.state.active === a && a.ticksLeft === 0) this.fire(a.skill, a.recipe);
+    const outer = this.advancing;
+    this.advancing = true;
+    try {
+      while (left > 0) {
+        const a = this.state.active;
+        // Background systems (ranching, ...) schedule events at absolute ticks; step to whichever comes first.
+        const passiveAt = this.nextPassiveTick();
+        let step = left;
+        if (a) step = Math.min(step, a.ticksLeft);
+        if (passiveAt != null) step = Math.min(step, Math.max(0, passiveAt - this.state.tick));
+        if (a) a.ticksLeft -= step;
+        left -= step;
+        this.state.tick += step;
+        if (passiveAt != null && this.state.tick >= passiveAt) this.runPassives();
+        if (a && this.state.active === a && a.ticksLeft === 0) this.fire(a.skill, a.recipe);
+      }
+    } finally {
+      this.advancing = outer;
     }
     this.state.rng = this.rng.state;
   }
@@ -585,9 +592,7 @@ export class Game {
   eat(id: string): void {
     const heal = this.foodHealing(id);
     if (!heal || this.hp() >= this.maxHp()) return;
-    this.manual = true;
     const ate = this.removeItem(id, 1);
-    this.manual = false;
     if (!ate) return;
     this.heal(heal);
     this.emit();
