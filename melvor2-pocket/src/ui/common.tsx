@@ -1,4 +1,5 @@
 // Small shared UI pieces.
+import { useState } from 'preact/hooks';
 import { itemIcon, skillGlyph, skillIconUrl } from '../art/icons';
 import { assetUrl } from '../art/assets';
 
@@ -42,22 +43,30 @@ export function Bar({ value, max = 1, color }: { value: number; max?: number; co
 
 /**
  * A timer bar (attack or action progress) that fills smoothly on its own: a CSS animation over the whole cycle,
- * started part-way through, so it doesn't wait for the screen to redraw. A new cycle (`cycle`: the tick it ends on) restarts it.
+ * started part-way through, so it doesn't wait for the screen to redraw. A new cycle (`cycle`: the tick it ends on)
+ * restarts it.
  */
 export function TimerBar({ elapsed, total, cycle, paused, color }: { elapsed: number; total: number; cycle: number | string; paused?: boolean; color?: string }) {
   return (
     <div class="bar">
-      <div
-        key={cycle}
-        class="timer-fill"
-        style={{
-          background: color,
-          animationDuration: `${Math.max(1, total) * (1000 / 60)}ms`,
-          animationDelay: `${-Math.max(0, Math.min(elapsed, total)) * (1000 / 60)}ms`,
-          animationPlayState: paused ? 'paused' : 'running',
-        }}
-      />
+      <TimerFill key={cycle} elapsed={elapsed} total={total} paused={paused} color={color} />
     </div>
+  );
+}
+
+/** One cycle's fill. Its start offset is fixed when it mounts: changing it on a running animation would skip ahead. */
+function TimerFill({ elapsed, total, paused, color }: { elapsed: number; total: number; paused?: boolean; color?: string }) {
+  const [start] = useState(() => ({ elapsed, total }));
+  return (
+    <div
+      class="timer-fill"
+      style={{
+        background: color,
+        animationDuration: `${Math.max(1, start.total) * (1000 / 60)}ms`,
+        animationDelay: `${-Math.max(0, Math.min(start.elapsed, start.total)) * (1000 / 60)}ms`,
+        animationPlayState: paused ? 'paused' : 'running',
+      }}
+    />
   );
 }
 
