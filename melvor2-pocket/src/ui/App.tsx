@@ -20,7 +20,7 @@ import { buryCap, equipmentCap } from '../engine/combat/data';
 const COMBAT_SKILLS = ['Attack', 'Strength', 'Defence', 'Hitpoints', 'Ranged', 'Magic', 'Prayer', 'Slayer'];
 import { LEVEL_CAP, levelProgress } from '../engine/xp';
 import { pageIconUrl, skillGlyph } from '../art/icons';
-import { Art, Bar, Icon, SkillBadge, duration, fmt } from './common';
+import { Art, Bar, Icon, TimerBar, SkillBadge, duration, fmt } from './common';
 import { exportSave, forceRefresh, forgetAssets, forgetContent, importSave, storeAssets, wipe } from '../save';
 import { clearAssetPack, hasAssetPack, loadAssetPack } from '../art/assets';
 import { SoundSettings } from './SoundSettings';
@@ -52,7 +52,7 @@ function TopBar({ game, onOpenSkill, onOpenFood }: { game: Game; onOpenSkill: (s
         <button class="active" onClick={() => onOpenSkill(a.skill)}>
           <SkillBadge skill={a.skill} size={22} />
           <span class="active-name">{name}</span>
-          <Bar value={1 - a.ticksLeft / a.waitTicks} color={skillGlyph(a.skill).color} />
+          <TimerBar elapsed={a.waitTicks - a.ticksLeft} total={a.waitTicks} cycle={game.state.tick + a.ticksLeft} color={skillGlyph(a.skill).color} />
         </button>
       ) : (
         <span class="idle">Idle</span>
@@ -363,7 +363,7 @@ function RecipeCard({ game, skill, r }: { game: Game; skill: string; r: RecipeVi
           </label>
         )}
         {r.meter && !r.locked && <Bar value={r.meter.value} max={r.meter.max} color="#5fbf6a" />}
-        {running && <Bar value={1 - a!.ticksLeft / a!.waitTicks} />}
+        {running && <TimerBar elapsed={a!.waitTicks - a!.ticksLeft} total={a!.waitTicks} cycle={game.state.tick + a!.ticksLeft} />}
       </div>
       {!r.locked && <span class={`go ${running ? 'stop' : ''}`}>{running ? 'Stop' : 'Start'}</span>}
     </button>

@@ -40,6 +40,27 @@ export function Bar({ value, max = 1, color }: { value: number; max?: number; co
   );
 }
 
+/**
+ * A timer bar (attack or action progress) that fills smoothly on its own: a CSS animation over the whole cycle,
+ * started part-way through, so it doesn't wait for the screen to redraw. A new cycle (`cycle`: the tick it ends on) restarts it.
+ */
+export function TimerBar({ elapsed, total, cycle, paused, color }: { elapsed: number; total: number; cycle: number | string; paused?: boolean; color?: string }) {
+  return (
+    <div class="bar">
+      <div
+        key={cycle}
+        class="timer-fill"
+        style={{
+          background: color,
+          animationDuration: `${Math.max(1, total) * (1000 / 60)}ms`,
+          animationDelay: `${-Math.max(0, Math.min(elapsed, total)) * (1000 / 60)}ms`,
+          animationPlayState: paused ? 'paused' : 'running',
+        }}
+      />
+    </div>
+  );
+}
+
 export interface BarMarker { at: number; kind: 'eat' | 'hit'; label: string; icon?: preact.ComponentChildren }
 
 /**

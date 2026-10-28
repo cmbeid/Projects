@@ -464,3 +464,7 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 .opened-row .good { color: var(--good); }
 .combat-stats { max-height: 65vh; overflow-y: auto; }
 .combat-stats h3 { margin: 14px 0 6px; font-size: 14px; }
+
+/* Timer bars animate themselves; the delay is fixed when a cycle starts, so redraws don't nudge them. */
+.bar > .timer-fill { width: 100%; transform-origin: left; transform: scaleX(0); transition: none; animation-name: timer-fill; animation-timing-function: linear; animation-fill-mode: both; }
+@keyframes timer-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
