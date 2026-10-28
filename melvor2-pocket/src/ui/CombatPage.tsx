@@ -11,6 +11,7 @@ import { HpBar, Icon, TimerBar, fmt, ticksToDuration, type BarMarker } from './c
 import { assetUrl } from '../art/assets';
 import { EquipmentView } from './Equipment';
 import { CombatStatsSheet } from './CombatStats';
+import { HitSplats } from './HitSplats';
 
 type Sub = 'fight' | 'gear' | 'prayer' | 'slayer';
 
@@ -69,6 +70,7 @@ function FightView({ game }: { game: Game }) {
         {e && c.phase === 'fighting' ? (
           <>
             <div class="enemy-art">
+              <HitSplats game={game} side="enemy" />
               {assetUrl(enemyData(c.enemy!).Sprite) ? <img class="enemy-sprite" src={assetUrl(enemyData(c.enemy!).Sprite)} alt="" /> : <Icon id={c.enemy!} size={96} />}
             </div>
             <div class="card-row">
@@ -87,6 +89,7 @@ function FightView({ game }: { game: Game }) {
         )}
       </div>
       <div class="fighter you">
+        <HitSplats game={game} side="player" />
         <div class="card-row">
           <strong class="grow">You</strong>
           <span class="muted small">{p.stance.DisplayName}</span>

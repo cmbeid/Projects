@@ -687,6 +687,7 @@ function performAttack(game: Game, side: Side, atk: FullAttack, a: Fighter, d: F
         !immune && !avoided && (!atk.IsAvoidable || game.rng.chance(hitChance(accuracyRating(a, dark), evasionRating(d, a.stance, dark), a.mods.FlatHitChance ?? 0)));
       attacks++;
       let dealt = 0;
+      let crit = false;
       if (landed) {
         const max = maxHit(a, a.mods.MaxHitCombatTriangle ?? 0);
         let raw = 0;
@@ -708,7 +709,10 @@ function performAttack(game: Game, side: Side, atk: FullAttack, a: Fighter, d: F
               raw += Math.floor(game.rng.intInclusive(minHit(a, max), max) * pct);
           }
         }
-        if (game.rng.chance(Math.max(0, Math.min(1, a.mods.FlatCriticalHitChance ?? 0)))) raw = Math.floor(raw * Math.max(1, 1.5 + (a.mods.FlatCriticalHitMultiplier ?? 0)));
+        if (game.rng.chance(Math.max(0, Math.min(1, a.mods.FlatCriticalHitChance ?? 0)))) {
+          raw = Math.floor(raw * Math.max(1, 1.5 + (a.mods.FlatCriticalHitMultiplier ?? 0)));
+          crit = true;
+        }
         if (game.rng.chance(d.mods.AttackDamageNegationChance ?? 0)) raw = 0;
         if (raw > 0) {
           const dd: Fighter = { ...d, mods: { ...d.mods, PercentDamageTaken: (d.mods.PercentDamageTaken ?? 0) + extraTaken } };
@@ -730,6 +734,8 @@ function performAttack(game: Game, side: Side, atk: FullAttack, a: Fighter, d: F
         hits++;
       }
       lastDamage = dealt;
+      // For the fight screen's hit / miss splats.
+      game.signal({ type: 'hit', target: foe, damage: dealt, landed, crit });
       if (side === 'player' && dealt > 0) {
         const gctx = combatContext(game);
         questEvent(game, 'CombatDamageEnemy', () => dealt, gctx);
