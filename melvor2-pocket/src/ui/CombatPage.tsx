@@ -10,11 +10,12 @@ import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, 
 import { Art, HpBar, Icon, SkillBadge, TimerBar, fmt, ticksToDuration, type BarMarker } from './common';
 import { assetUrl } from '../art/assets';
 import { EquipmentView } from './Equipment';
+import { pageIconUrl } from '../art/icons';
 import { describeRequirement } from '../engine/navigation';
 import { CombatStatsSheet } from './CombatStats';
 import { HitSplats } from './HitSplats';
 
-type Sub = 'fight' | 'gear' | 'prayer' | 'slayer';
+type Sub = 'fight' | 'gear' | 'stats' | 'spells' | 'prayers' | 'slayer';
 
 const words = (s: string) => s.replace(NS, '').replace(/([a-z])([A-Z])/g, '$1 $2');
 
@@ -367,7 +368,7 @@ function IconGrid({ entries, picked, onPick }: { entries: GridEntry[]; picked: s
   );
 }
 
-function PrayerMagicView({ game }: { game: Game }) {
+function PrayerMagicView({ game, show }: { game: Game; show: 'prayers' | 'spells' }) {
   const [msg, setMsg] = useState('');
   const [prayerPick, setPrayerPick] = useState<string | null>(null);
   const [book, setBook] = useState(`${NS}StandardSpells`);
@@ -387,6 +388,8 @@ function PrayerMagicView({ game }: { game: Game }) {
   const iconOf = (x: unknown) => (x as { Icon?: string }).Icon;
   return (
     <>
+      {show === 'prayers' && (
+        <>
       <div class="card-row">
         <h3 class="grow">Prayers</h3>
         <span class="muted small">{fmt(prayerPoints(game))} prayer points</span>
@@ -419,6 +422,10 @@ function PrayerMagicView({ game }: { game: Game }) {
       )}
       <p class="muted small">Bury bones from the bank for prayer points.</p>
       {msg && <p class="muted">{msg}</p>}
+        </>
+      )}
+      {show === 'spells' && (
+        <>
       <h3>Spellbook {p.style.UsesSpells ? '' : <span class="muted small">(equip a staff or wand to cast)</span>}</h3>
       <div class="chips">
         {books.map((b) => {
@@ -468,6 +475,8 @@ function PrayerMagicView({ game }: { game: Game }) {
             {c.spell === NS + sp.Id ? 'Selected' : 'Select'}
           </button>
         </div>
+      )}
+        </>
       )}
     </>
   );
@@ -535,29 +544,45 @@ function SlayerView({ game }: { game: Game }) {
   );
 }
 
+/** The desktop's combat panel tabs: an icon each, with a short label underneath for touch. */
+const TABS: { id: Sub; label: string; icon: () => preact.ComponentChildren }[] = [
+  { id: 'fight', label: 'Areas', icon: () => <PageIcon page="Combat" /> },
+  { id: 'gear', label: 'Equipment', icon: () => <SkillBadge skill="Defence" size={26} /> },
+  { id: 'stats', label: 'Stats', icon: () => <span class="tab-emoji">📊</span> },
+  { id: 'spells', label: 'Spellbook', icon: () => <SkillBadge skill="Magic" size={26} /> },
+  { id: 'prayers', label: 'Prayers', icon: () => <SkillBadge skill="Prayer" size={26} /> },
+  { id: 'slayer', label: 'Slayer', icon: () => <SkillBadge skill="Slayer" size={26} /> },
+];
+
+function PageIcon({ page }: { page: string }) {
+  const url = pageIconUrl(page);
+  return url ? <img src={url} width={26} height={26} alt="" /> : <SkillBadge skill={page} size={26} />;
+}
+
 export function CombatPage({ game }: { game: Game }) {
   const [sub, setSub] = useState<Sub>('fight');
-  const subs: [Sub, string][] = [
-    ['fight', 'Fight'],
-    ['gear', 'Equipment'],
-    ['prayer', 'Prayer & Magic'],
-    ['slayer', 'Slayer'],
-  ];
   return (
     <div class="page">
       <h2>Combat</h2>
       <FightView game={game} />
-      <div class="chips">
-        {subs.map(([id, label]) => (
-          <button class={sub === id ? 'on' : ''} onClick={() => setSub(id)}>
-            {label}
-          </button>
-        ))}
+      <div class="combat-panel">
+        <div class="panel-tabs" role="tablist">
+          {TABS.map((t) => (
+            <button role="tab" aria-selected={sub === t.id} class={sub === t.id ? 'on' : ''} onClick={() => setSub(t.id)}>
+              {t.icon()}
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+        <div class="panel-body">
+          {sub === 'fight' && <AreaBrowser game={game} />}
+          {sub === 'gear' && <EquipmentView game={game} />}
+          {sub === 'stats' && <CombatStatsSheet game={game} inline />}
+          {sub === 'spells' && <PrayerMagicView game={game} show="spells" />}
+          {sub === 'prayers' && <PrayerMagicView game={game} show="prayers" />}
+          {sub === 'slayer' && <SlayerView game={game} />}
+        </div>
       </div>
-      {sub === 'fight' && <AreaBrowser game={game} />}
-      {sub === 'gear' && <EquipmentView game={game} />}
-      {sub === 'prayer' && <PrayerMagicView game={game} />}
-      {sub === 'slayer' && <SlayerView game={game} />}
     </div>
   );
 }
