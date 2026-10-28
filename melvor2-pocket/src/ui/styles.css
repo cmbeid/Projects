@@ -505,3 +505,13 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 .tile-q { font-size: 22px; font-weight: 800; color: #555b66; }
 .tile-lock { position: absolute; right: 2px; bottom: 0; font-size: 11px; }
 .pick-detail { display: flex; flex-direction: column; gap: 6px; padding: 10px; margin-bottom: 10px; background: #1b1e24; border: 1px solid #2b2e33; border-radius: 8px; }
+
+/* Combat panel: the desktop's row of icon tabs over one panel. */
+.combat-panel { margin-top: 10px; background: #1a1d22; border: 1px solid #2b2e33; border-radius: 10px; overflow: hidden; }
+.panel-tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 6px; background: #121417; border-bottom: 1px solid #2b2e33; }
+.panel-tabs button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; min-height: 52px; background: #20242a; border: 1px solid #2f333a; border-radius: 6px; font-size: 10.5px; }
+.panel-tabs button.on { background: #1f3a24; border-color: #5fbf6a; color: #fff; }
+.panel-tabs button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.panel-tabs .tab-emoji { font-size: 20px; line-height: 26px; }
+.panel-body { padding: 10px; }
+.combat-stats-inline .combat-stats { max-height: none; }

@@ -109,7 +109,7 @@ function FighterStats({ f, foe, element, foeElement, darkness, matchup, showAll 
 }
 
 /** You and the current (or given) enemy, like the desktop's stats panel with its "View my / enemy stats" switch. */
-export function CombatStatsSheet({ game, onClose, enemyId }: { game: Game; onClose: () => void; enemyId?: string }) {
+export function CombatStatsSheet({ game, onClose, enemyId, inline }: { game: Game; onClose?: () => void; enemyId?: string; inline?: boolean }) {
   const c = game.state.combat;
   const fighting = c.phase === 'fighting' && !!c.enemy;
   const foeId = fighting ? c.enemy! : enemyId;
@@ -130,15 +130,8 @@ export function CombatStatsSheet({ game, onClose, enemyId }: { game: Game; onClo
     return [...triangle(p.style.Id, e.style.Id, who), ...el].map(describeBonus);
   };
   const enemySide = side === 'enemy' && e;
-  return (
-    <div class="sheet" onClick={onClose}>
-      <div class="sheet-body" onClick={(ev) => ev.stopPropagation()}>
-        <div class="sheet-head">
-          <h2 class="grow">Combat stats</h2>
-          <button onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
+  const body = (
+    <>
         <div class="chips">
           <button class={!enemySide ? 'on' : ''} onClick={() => setSide('player')}>
             You
@@ -159,6 +152,19 @@ export function CombatStatsSheet({ game, onClose, enemyId }: { game: Game; onClo
             <FighterStats f={p} foe={e} element={mine} foeElement={theirs} darkness={darkness} matchup={matchup('Player')} showAll={showAll} />
           )}
         </div>
+    </>
+  );
+  if (inline) return <div class="combat-stats-inline">{body}</div>;
+  return (
+    <div class="sheet" onClick={onClose}>
+      <div class="sheet-body" onClick={(ev) => ev.stopPropagation()}>
+        <div class="sheet-head">
+          <h2 class="grow">Combat stats</h2>
+          <button onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        {body}
       </div>
     </div>
   );
