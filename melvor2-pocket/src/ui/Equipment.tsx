@@ -13,6 +13,7 @@ import { ToolbeltPanel } from './ExtrasPages';
 import { currentLoadout, loadoutSlots, loadoutUnlocked, swapLoadout } from '../engine/combat/loadouts';
 import { describeRequirement } from '../engine/navigation';
 import { describeBlock } from '../engine/describe';
+import { CombatStatsSheet } from './CombatStats';
 
 interface SlotData { Id: string; DisplayName: string; FitsType: string; GridPosition: { X: number; Y: number }; UnlockRequirements: never[] | null }
 interface CombatStat { DisplayName: string; IsPercent: boolean }
@@ -136,6 +137,7 @@ export function ItemBonuses({ game, id }: { game: Game; id: string }) {
 
 export function EquipmentView({ game }: { game: Game }) {
   const [slot, setSlot] = useState<string | null>(null);
+  const [allStats, setAllStats] = useState(false);
   const slots = (equipmentSlots() as unknown as SlotData[]).filter((s) => game.requirementsMet(s.UnlockRequirements));
   const rows = Math.max(...slots.map((s) => s.GridPosition.Y)) + 1;
   const occupied = occupiedSlots(game);
@@ -204,11 +206,13 @@ export function EquipmentView({ game }: { game: Game }) {
             {powerRating(p)} / {protectionRating(p)}
           </dd>
         </dl>
+        <button onClick={() => setAllStats(true)}>View all stats</button>
       </div>
       <div class="equip-toolbelt">
         <ToolbeltPanel game={game} entity="Combat" />
       </div>
       {slot && <EquipSheet game={game} slot={slot} onClose={() => setSlot(null)} />}
+      {allStats && <CombatStatsSheet game={game} onClose={() => setAllStats(false)} />}
     </div>
   );
 }

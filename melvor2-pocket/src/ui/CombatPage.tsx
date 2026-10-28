@@ -10,6 +10,7 @@ import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, 
 import { Bar, HpBar, Icon, fmt, ticksToDuration, type BarMarker } from './common';
 import { assetUrl } from '../art/assets';
 import { EquipmentView } from './Equipment';
+import { CombatStatsSheet } from './CombatStats';
 
 type Sub = 'fight' | 'gear' | 'prayer' | 'slayer';
 
@@ -44,7 +45,7 @@ function EffectChips({ game, side }: { game: Game; side: 'player' | 'enemy' }) {
 }
 
 function FightView({ game }: { game: Game }) {
-  const [sheet, setSheet] = useState<'loot' | null>(null);
+  const [sheet, setSheet] = useState<'loot' | 'stats' | null>(null);
   const c = game.state.combat;
   const fighting = game.state.active?.skill === 'Combat';
   if (!fighting || !c.area) return null;
@@ -113,11 +114,13 @@ function FightView({ game }: { game: Game }) {
           {c.paused ? '▶ Resume' : '❚❚ Pause'}
         </button>
         <button onClick={() => setSheet('loot')}>Loot</button>
+        <button onClick={() => setSheet('stats')}>Stats</button>
         <button class="danger run" onClick={() => game.stop('You ran away.')}>
           Run away
         </button>
       </div>
       {sheet === 'loot' && <LootHistory game={game} onClose={() => setSheet(null)} />}
+      {sheet === 'stats' && <CombatStatsSheet game={game} onClose={() => setSheet(null)} />}
     </div>
   );
 }
