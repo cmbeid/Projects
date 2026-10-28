@@ -7,7 +7,7 @@ import {
   slayerBlockSlots, slayerExtensionCost, slayerRerollCost, slayerTaskRange, togglePrayer, unblockSlayerEnemy,
 } from '../engine/combat/combat';
 import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit } from '../engine/combat/stats';
-import { Bar, HpBar, Icon, fmt, ticksToDuration, type BarMarker } from './common';
+import { HpBar, Icon, TimerBar, fmt, ticksToDuration, type BarMarker } from './common';
 import { assetUrl } from '../art/assets';
 import { EquipmentView } from './Equipment';
 import { CombatStatsSheet } from './CombatStats';
@@ -52,6 +52,11 @@ function FightView({ game }: { game: Game }) {
   const e = c.enemy && c.phase === 'fighting' ? liveEnemyFighter(game) : c.enemy ? enemyFighter(c.enemy) : null;
   const p = playerFighter(game, e?.style.Id);
   const pInt = Math.round(attackInterval(p) / (1000 / 60));
+  const eInt = e ? Math.round(attackInterval(e) / (1000 / 60)) : 1;
+  // The engine only counts the turn timers down when an event fires; ticks since the last one are still to come off.
+  const since = Math.max(0, (c.pending ?? 0) - (game.state.active?.ticksLeft ?? 0));
+  const pLeft = c.playerLeft - since;
+  const eLeft = c.enemyLeft - since;
   const food = game.state.selectedFood;
   const youMarks: BarMarker[] = [];
   if (food) youMarks.push({ at: game.autoEatAt(), kind: 'eat', label: `Auto-eat at ${game.autoEatAt()} HP`, icon: <Icon id={food} size={14} /> });
@@ -74,7 +79,7 @@ function FightView({ game }: { game: Game }) {
             <div class="muted small">
               {fmt(c.enemyHp)} / {fmt(e.maxHp)} HP · max hit {maxHit(e)} · {e.style.DisplayName}
             </div>
-            <Bar value={Math.round(attackInterval(e) / (1000 / 60)) - c.enemyLeft} max={Math.round(attackInterval(e) / (1000 / 60))} color="#9a7ae0" />
+            <TimerBar elapsed={eInt - eLeft} total={eInt} cycle={game.state.tick + eLeft} paused={c.paused} color="#9a7ae0" />
             <EffectChips game={game} side="enemy" />
           </>
         ) : (
@@ -90,7 +95,7 @@ function FightView({ game }: { game: Game }) {
         <div class="muted small">
           {game.hp()} / {game.maxHp()} HP · {food ? `${itemName(food, 2)} ×${fmt(game.count(food))} · auto-eat at ${game.autoEatAt()} HP` : 'no food'}
         </div>
-        {c.phase === 'fighting' && <Bar value={pInt - c.playerLeft} max={pInt} color="#e8b84a" />}
+        {c.phase === 'fighting' && <TimerBar elapsed={pInt - pLeft} total={pInt} cycle={game.state.tick + pLeft} paused={c.paused} color="#e8b84a" />}
         <EffectChips game={game} side="player" />
         {e && (
           <div class="muted small">
