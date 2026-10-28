@@ -105,7 +105,7 @@ export function currentStance(game: Game): string {
   return allowed.includes(game.state.combat.stance) ? game.state.combat.stance : allowed[0];
 }
 
-function triangle(playerStyle: string, enemyStyle: string, who: 'Player' | 'Enemy'): Bonus[] {
+export function triangle(playerStyle: string, enemyStyle: string, who: 'Player' | 'Enemy'): Bonus[] {
   return triangleBonuses()
     .filter((t) => t.PlayerStyle === playerStyle && t.EnemyStyle === enemyStyle)
     .flatMap((t) => t.Bonuses.Component)
@@ -474,14 +474,14 @@ function currentAreaEffect(game: Game): AreaEffect | null {
 }
 
 /** Your element: the spell's when casting, else the weapon's. */
-function playerElement(game: Game): string | undefined {
+export function playerElement(game: Game): string | undefined {
   const st = styleData(stanceData(currentStance(game)).CombatStyle);
   if (st.UsesSpells && game.state.combat.spell) return (spellData(game.state.combat.spell) as { Element?: string }).Element;
   return (weaponCap(weaponOf(game)) as { Elements?: string[] } | undefined)?.Elements?.[0];
 }
 
 /** Elemental matchup bonuses for the current fight (e.g. Air vs Earth: +15% max hit). */
-function elementalBonuses(game: Game): Bonus[] {
+export function elementalBonuses(game: Game): Bonus[] {
   const enemy = game.state.combat.enemy;
   if (!enemy) return [];
   const mine = playerElement(game);
