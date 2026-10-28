@@ -437,6 +437,8 @@ export class Game {
     const pct = mod(this, 'Experience', 'PercentXPGained', { entity: skill });
     this.state.xp[skill] = this.xp(skill) + amount * (1 + pct);
     this.track('xp', skill, amount * (1 + pct));
+    const loot = this.state.active?.skill === 'Combat' ? this.state.combat.loot : undefined;
+    if (loot) (loot.xp ??= {})[skill] = (loot.xp[skill] ?? 0) + amount * (1 + pct);
     const after = this.level(skill);
     if (after > before) {
       this.note(`${skill} level ${after}!`, 'level');
