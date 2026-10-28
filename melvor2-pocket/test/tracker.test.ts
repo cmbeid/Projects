@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Game, msToTicks } from '../src/engine/game';
 import { newState } from '../src/engine/state';
 import { unlockEverything } from '../src/engine/navigation';
+import { open } from '../src/engine/items';
 
 const id = (s: string) => `MelvorBase:${s}`;
 const HOUR = 60 * 60 * 60;
@@ -14,6 +15,21 @@ describe('stats bar rates', () => {
     g.advance(msToTicks(1000) * 3 * 200);
     const r = g.tracker.rates(g.state.tick, HOUR);
     expect(r.xp.Woodcutting).toBeCloseTo(3600, -1);
+    expect(r.items[id('NormalLog')]).toBeCloseTo(1200, -1);
+  });
+
+  it('leaves out what the player does by hand (opening, selling) while training', () => {
+    const g = new Game(newState(0, 1));
+    unlockEverything(g);
+    g.toggle('Woodcutting', id('NormalTree'));
+    g.advance(msToTicks(1000) * 30);
+    g.addItem(id('Geode'), 5);
+    open(g, id('Geode'), 5);
+    g.sell(id('NormalLog'), 1);
+    g.advance(msToTicks(1000) * 30);
+    const r = g.tracker.rates(g.state.tick, HOUR);
+    expect(r.items[id('Geode')] ?? 0).toBe(0);
+    expect(r.items[id('GeodeDust')] ?? 0).toBe(0);
     expect(r.items[id('NormalLog')]).toBeCloseTo(1200, -1);
   });
 
