@@ -468,3 +468,16 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 /* Timer bars animate themselves; the delay is fixed when a cycle starts, so redraws don't nudge them. */
 .bar > .timer-fill { width: 100%; transform-origin: left; transform: scaleX(0); transition: none; animation-name: timer-fill; animation-timing-function: linear; animation-fill-mode: both; }
 @keyframes timer-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Hit splats: float up from the middle of the fighter and fade. */
+.enemy-art, .fighter.you { position: relative; }
+.hit-splats { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.hit-splat { position: absolute; top: 40%; transform: translateX(-50%); font-weight: 800; font-size: 20px; white-space: nowrap;
+  text-shadow: 0 1px 3px #000, 0 0 2px #000; animation: splat 1.2s ease-out forwards; }
+.hit-splat.hit { color: #ff6b6b; }
+.hit-splat.crit { color: #ffd34d; font-size: 26px; }
+.hit-splat.miss { color: #9fb4c8; font-size: 17px; }
+.hit-splat.zero { color: #ccc; }
+.fighter.you .hit-splat { top: 10%; font-size: 17px; }
+.fighter.you .hit-splat.crit { font-size: 21px; }
+@keyframes splat { 0% { opacity: 0; translate: 0 8px; scale: .7; } 15% { opacity: 1; translate: 0 0; scale: 1.1; } 30% { scale: 1; } 100% { opacity: 0; translate: 0 -36px; } }

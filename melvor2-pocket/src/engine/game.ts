@@ -58,6 +58,8 @@ export type GameEvent =
   | { type: 'levelUp'; skill: string; from: number; to: number }
   | { type: 'questComplete' }
   | { type: 'attack'; weaponType?: string }
+  /** One hit of an attack on `target`: missed, or landed for `damage` (0 when negated), maybe a critical. */
+  | { type: 'hit'; target: 'player' | 'enemy'; damage: number; landed: boolean; crit: boolean }
   | { type: 'item'; id: string; quantity: number; bank: number };
 
 export interface LogEntry { tick: number; text: string; kind: 'item' | 'level' | 'info' | 'stop' }
