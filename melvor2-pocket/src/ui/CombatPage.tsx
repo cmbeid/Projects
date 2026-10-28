@@ -55,7 +55,8 @@ function FightView({ game }: { game: Game }) {
   const pInt = Math.round(attackInterval(p) / (1000 / 60));
   const eInt = e ? Math.round(attackInterval(e) / (1000 / 60)) : 1;
   // The engine only counts the turn timers down when an event fires; ticks since the last one are still to come off.
-  const since = Math.max(0, (c.pending ?? 0) - (game.state.active?.ticksLeft ?? 0));
+  // While paused the wait is the pause check, not turn time.
+  const since = c.paused ? 0 : Math.max(0, (c.pending ?? 0) - (game.state.active?.ticksLeft ?? 0));
   const pLeft = c.playerLeft - since;
   const eLeft = c.enemyLeft - since;
   const food = game.state.selectedFood;
