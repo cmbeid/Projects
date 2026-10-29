@@ -1,10 +1,56 @@
 import { useState } from 'preact/hooks';
-import { NS, displayName, get } from '../engine/content';
+import { NS, displayName, get, itemName } from '../engine/content';
+import { describeBlock } from '../engine/describe';
+import { describeRequirement } from '../engine/navigation';
 import type { Game } from '../engine/game';
 import { buy, buyBlockReason, purchased, shopPurchases, shopVisible } from '../engine/shop';
-import { Costs, Icon } from './common';
+import { Costs, Icon, fmt } from './common';
 
 interface Subcategory { Id: string; DisplayName: string; Category: string }
+
+type Purchase = ReturnType<typeof shopPurchases>[number];
+
+/** What a purchase gives (items, currency, bonuses), its buy limit, and every requirement with whether you meet it. */
+function ShopDetails({ game, p, owned }: { game: Game; p: Purchase; owned: number }) {
+  const prov = p.Provides as { Items: { Item: string; Quantity: number }[]; Currencies?: { Currency: string; Quantity: number }[]; Bonuses?: Parameters<typeof describeBlock>[0] };
+  const gives = [
+    ...prov.Items.map((i) => `+${fmt(i.Quantity)} ${itemName(i.Item, i.Quantity)}`),
+    ...(prov.Currencies ?? []).map((c) => `+${fmt(c.Quantity)} ${displayName('Currency', c.Currency)}`),
+    ...describeBlock(prov.Bonuses),
+  ];
+  const reqs = [...(p.Requirements ?? [])].map((r) => describeRequirement(game, r));
+  return (
+    <div class="shop-details">
+      {gives.length > 0 && (
+        <>
+          <div class="muted small">Provides</div>
+          <ul class="bonus-list">
+            {gives.map((g) => (
+              <li>{g}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {reqs.length > 0 && (
+        <>
+          <div class="muted small">Requirements</div>
+          <ul class="req-list">
+            {reqs.map((r) => (
+              <li class={r.done ? 'done' : 'unmet'}>
+                {r.done ? '✓' : '✗'} {r.text}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {(p as { ShowBuyLimit?: boolean }).ShowBuyLimit && p.DefaultBuyLimit > 0 && (
+        <div class="muted small">
+          Buy limit: {owned} / {p.DefaultBuyLimit}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ShopPage({ game }: { game: Game }) {
   const visible = shopPurchases().filter((p) => shopVisible(game, p));
@@ -44,13 +90,13 @@ export function ShopPage({ game }: { game: Game }) {
                       {reason === 'Owned' ? 'Owned' : reason === 'Locked' ? 'Locked' : owned && p.DefaultBuyLimit !== 1 ? `Buy (${owned})` : 'Buy'}
                     </button>
                   </div>
+                  <ShopDetails game={game} p={p} owned={owned} />
                   {reason !== 'Owned' && p.Costs && <Costs items={p.Costs.Items} gold={gold} have={(i) => game.count(i)} />}
                 </div>
               );
             })}
         </section>
       ))}
-      <p class="muted small">Upgrades that grant bonuses are recorded now; their effects arrive with the bonus system.</p>
     </div>
   );
 }

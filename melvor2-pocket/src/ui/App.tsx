@@ -416,33 +416,23 @@ function ItemPlacesRows({ id }: { id: string }) {
   );
 }
 
-/** Pick how many to sell, like the desktop's slider and number box with All but 1 / All. */
-function SellPicker({ game, id, have, price }: { game: Game; id: string; have: number; price: number }) {
-  const [want, setWant] = useState(1);
-  const n = Math.max(1, Math.min(have, Math.floor(want) || 1));
+/** Pick how many, like the desktop's slider and number box with All but 1 / All. Opening, burying and selling use it. */
+function QuantityPicker({ n, have, set }: { n: number; have: number; set: (n: number) => void }) {
+  const pick = (e: Event) => set(Number((e.target as HTMLInputElement).value));
   return (
     <div class="sell-picker">
       <div class="row">
-        <input type="range" min={1} max={have} value={n} onInput={(e) => setWant(Number((e.target as HTMLInputElement).value))} />
-        <input class="text qty-input" type="number" inputMode="numeric" min={1} max={have} value={n} onInput={(e) => setWant(Number((e.target as HTMLInputElement).value))} />
+        <input type="range" min={1} max={have} value={n} onInput={pick} />
+        <input class="text qty-input" type="number" inputMode="numeric" min={1} max={have} value={n} onInput={pick} />
       </div>
       <div class="row">
-        <button onClick={() => setWant(1)}>1</button>
-        <button onClick={() => setWant(Math.max(1, Math.floor(have / 2)))}>Half</button>
-        <button onClick={() => setWant(have - 1)} disabled={have < 2}>
+        <button onClick={() => set(1)}>1</button>
+        <button onClick={() => set(Math.max(1, Math.floor(have / 2)))}>Half</button>
+        <button onClick={() => set(have - 1)} disabled={have < 2}>
           All but 1
         </button>
-        <button onClick={() => setWant(have)}>All</button>
+        <button onClick={() => set(have)}>All</button>
       </div>
-      <button
-        class={n === have ? 'danger' : ''}
-        onClick={() => {
-          game.sell(id, n);
-          setWant(1);
-        }}
-      >
-        Sell {fmt(n)} for {fmt(price * n)} gold
-      </button>
     </div>
   );
 }
@@ -452,6 +442,8 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
   const have = game.count(id);
   const price = it.SellsFor?.Quantity ?? 0;
   const [opened, setOpened] = useState<{ n: number; got: Record<string, number> } | null>(null);
+  const [want, setWant] = useState(1);
+  const n = Math.max(1, Math.min(have, Math.floor(want) || 1));
   const openN = (n: number) => {
     const count = Math.min(n, have);
     setOpened({ n: count, got: openItem(game, id, count) });
@@ -483,8 +475,8 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
             {!Object.keys(opened.got).length && <p class="muted">Nothing (is your bank full?)</p>}
           </div>
           <div class="row">
-            {have > 0 && <button onClick={() => openN(1)}>Open another</button>}
-            {have > 1 && <button onClick={() => openN(have)}>Open all ({fmt(have)})</button>}
+            {have > 0 && <button onClick={() => openN(n)}>Open {fmt(n)} more</button>}
+            {have > 1 && n < have && <button onClick={() => openN(have)}>Open all ({fmt(have)})</button>}
             <button onClick={onClose}>Close</button>
           </div>
         </div>
@@ -505,10 +497,10 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
         {it.Description && <p class="muted">{it.Description}</p>}
         <ItemPlacesRows id={id} />
         <ItemBonuses game={game} id={id} />
+        {have > 1 && (openableCap(id) || buryCap(id) || price > 0) && <QuantityPicker n={n} have={have} set={setWant} />}
         {(openableCap(id) || toolbeltCap(id) || upgradesFrom(id).length > 0) && (
           <div class="row">
-            {openableCap(id) && <button onClick={() => openN(1)}>Open 1</button>}
-            {openableCap(id) && <button onClick={() => openN(have)}>Open all</button>}
+            {openableCap(id) && have > 0 && <button onClick={() => openN(n)}>Open {fmt(n)}</button>}
             {toolbeltCap(id) && (
               <button
                 onClick={() => {
@@ -527,8 +519,11 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
         )}
         {(buryCap(id) || equipmentCap(id)) && (
           <div class="row">
-            {buryCap(id) && <button onClick={() => bury(game, id, 1)}>Bury 1</button>}
-            {buryCap(id) && <button onClick={() => bury(game, id, have)}>Bury all (+{fmt(buryCap(id)!.CurrencyGain.Quantity * have)} prayer)</button>}
+            {buryCap(id) && have > 0 && (
+              <button onClick={() => bury(game, id, n)}>
+                Bury {fmt(n)} (+{fmt(buryCap(id)!.CurrencyGain.Quantity * n)} prayer)
+              </button>
+            )}
             {equipmentCap(id) && <button onClick={() => equip(game, id)}>Equip</button>}
           </div>
         )}
@@ -545,7 +540,11 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
             </button>
           </div>
         )}
-        {price > 0 && have > 0 && <SellPicker game={game} id={id} have={have} price={price} />}
+        {price > 0 && have > 0 && (
+          <button class={n === have ? 'danger' : ''} onClick={() => game.sell(id, n)}>
+            Sell {fmt(n)} for {fmt(price * n)} gold
+          </button>
+        )}
         {bankTabs(game).length > 0 && (
           <label class="slider">
             <span>Bank tab</span>
