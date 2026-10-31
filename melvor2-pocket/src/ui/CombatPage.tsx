@@ -1,10 +1,11 @@
 import { useState } from 'preact/hooks';
 import { NS, all, displayName, item, itemName, tryGet } from '../engine/content';
+const elementName = (id?: string) => (id ? tryGet<{ DisplayName: string }>('Element', id)?.DisplayName ?? id.replace(NS, '') : 'matching');
 import type { Game } from '../engine/game';
-import { type Bonus, type Drops, type Dungeon, allPrayers, allSlayerMasters, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
+import { type Bonus, type Drops, type Dungeon, allPrayers, allSlayerMasters, prayerChargedOn, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
 import {
-  areaEnemies, blockSlayerEnemy, dropChances, effectsView, liveEnemyFighter, togglePause, enemyFighter, enemyMaxHp, extendSlayerTask, fight, newSlayerTask, playerFighter, prayerPoints, slayerBlockCost,
-  slayerBlockSlots, slayerExtensionCost, resetLoot, slayerRerollCost, slayerTaskRange, togglePrayer, unblockSlayerEnemy,
+  areaEnemies, blockSlayerEnemy, darkness, dropChances, effectsView, liveEnemyFighter, togglePause, enemyFighter, enemyMaxHp, extendSlayerTask, fight, newSlayerTask, playerFighter, prayerPoints, slayerBlockCost,
+  slayerBlockSlots, slayerExtensionCost, resetLoot, slayerRerollCost, slayerTaskRange, spellAllowed, togglePrayer, unblockSlayerEnemy,
 } from '../engine/combat/combat';
 import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit } from '../engine/combat/stats';
 import { Art, HpBar, Icon, SkillBadge, TimerBar, fmt, ticksToDuration, type BarMarker } from './common';
@@ -105,7 +106,7 @@ function FightView({ game }: { game: Game }) {
         <EffectChips game={game} side="player" />
         {e && (
           <div class="muted small">
-            Hit {Math.round(hitChance(accuracyRating(p, area(c.area).Darkness), evasionRating(e, p.stance)) * 100)}% · {minHit(p, maxHit(p))}–{maxHit(p)} dmg ·
+            Hit {Math.round(hitChance(accuracyRating(p, darkness(game, c.area)), evasionRating(e, p.stance)) * 100)}% · {minHit(p, maxHit(p))}–{maxHit(p)} dmg ·
             enemy hits you {Math.round(hitChance(accuracyRating(e), evasionRating(p, e.stance)) * 100)}%
           </div>
         )}
@@ -382,7 +383,13 @@ function PrayerMagicView({ game, show }: { game: Game; show: 'prayers' | 'spells
   const books = all<{ Id: string; DisplayName: string; Requirements: never[] | null }>('SpellBook');
   const spells = allSpells().filter((s) => s.Book === book);
   const spellState = (s: (typeof spells)[number]): GridEntry['state'] =>
-    game.isDemoLocked(s.UnlockRequirements) ? 'demo' : !game.requirementsMet(s.UnlockRequirements) ? 'locked' : c.spell === NS + s.Id ? 'on' : 'ok';
+    game.isDemoLocked(s.UnlockRequirements)
+      ? 'demo'
+      : !game.requirementsMet(s.UnlockRequirements) || !spellAllowed(game, NS + s.Id)
+        ? 'locked'
+        : c.spell === NS + s.Id
+          ? 'on'
+          : 'ok';
   const sp = spells.find((s) => NS + s.Id === spellPick && spellState(s) !== 'demo');
   const unmet = (reqs: unknown) => ((reqs ?? []) as never[]).map((r) => describeRequirement(game, r)).filter((r) => !r.done).map((r) => r.text);
   const iconOf = (x: unknown) => (x as { Icon?: string }).Icon;
@@ -405,7 +412,7 @@ function PrayerMagicView({ game, show }: { game: Game; show: 'prayers' | 'spells
           <div class="card-row">
             <Art path={iconOf(pr)} fallbackItem={NS + pr.Id} size={32} />
             <strong class="grow">{pr.DisplayName}</strong>
-            <span class="muted small">{pr.Cost.Quantity} pt per enemy attack</span>
+            <span class="muted small">{pr.Cost.Quantity} pt per {prayerChargedOn(pr) === 'player' ? 'attack you make' : 'enemy attack'}</span>
           </div>
           <ul class="bonus-list">
             {pr.Bonuses.Component.map((b) => (
@@ -464,6 +471,7 @@ function PrayerMagicView({ game, show }: { game: Game; show: 'prayers' | 'spells
           {unmet(sp.UnlockRequirements).map((t) => (
             <div class="need small">Needs {t}</div>
           ))}
+          {!spellAllowed(game, NS + sp.Id) && <div class="need small">Needs a {elementName((sp as { Element?: string }).Element)} weapon equipped</div>}
           <button
             class={c.spell === NS + sp.Id ? 'on' : ''}
             disabled={spellState(sp) === 'locked'}
