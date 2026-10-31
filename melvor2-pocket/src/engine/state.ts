@@ -64,6 +64,8 @@ export interface RanchAnimal {
   hunger: number;
   /** Tick when the animal next wants petting. */
   petDueAt: number;
+  /** Which of its treats it got at the last daily treat time (each adds its satisfaction). */
+  treats?: Record<string, boolean>;
 }
 
 export interface RanchingState {
@@ -75,6 +77,9 @@ export interface RanchingState {
   carry: Record<string, number>;
   /** Enclosure upkeep by land plot: 1 = fully maintained, losing 1% an hour while animals live there; when it next drops. */
   maintenance?: Record<string, { value: number; nextAt: number }>;
+  /** Treats are handed out once a day (BaseTreatCooldown); ones you block are never given. */
+  treatNextAt?: number;
+  blockedTreats?: Record<string, boolean>;
 }
 
 export interface CombatState {

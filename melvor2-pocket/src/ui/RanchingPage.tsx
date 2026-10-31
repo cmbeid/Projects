@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks';
 import { NS, itemName } from '../engine/content';
 import type { Game } from '../engine/game';
 import {
-  animalsIn, buyAnimal, buyLand, build, enclosure, enclosureIds, happiness, land, landIds, maintenance, pet, ranchAnimal, repair, repairCost, variant,
+  animalsIn, blockTreat, buyAnimal, buyLand, build, enclosure, enclosureIds, happiness, land, landIds, maintenance, pet, ranchAnimal, removeAllAnimals,
+  removeAnimal, repair, repairAll, repairCost, variant,
 } from '../engine/skills/ranching';
 import { Bar, Costs, Icon, fmt, ticksToDuration } from './common';
 
@@ -16,9 +17,29 @@ export function RanchingPage({ game }: { game: Game }) {
   const owned = game.state.ranching.land;
   const nextLand = landIds().find((l) => !owned.some((o) => o.land === l) && !game.isDemoLocked(land(l).Requirements));
   const now = game.state.tick;
+  const needRepair = owned.filter((o) => o.enclosure && maintenance(game, o.land) < 1).length;
+  // Every treat your animals eat, with a switch to stop handing it out.
+  const treats = [...new Set(game.state.ranching.animals.flatMap((a) => (ranchAnimal(a.animal).Treats ?? []).map((t) => t.Item)))];
   return (
     <>
       {msg && <p class="muted">{msg}</p>}
+      {needRepair > 1 && <button onClick={() => act(repairAll(game))}>Repair all ({needRepair} enclosures)</button>}
+      {treats.length > 0 && (
+        <div class="card">
+          <strong>Treats</strong>
+          <div class="muted small">Given once a day; each adds satisfaction. Tap to stop giving one.</div>
+          <div class="chips">
+            {treats.map((t) => {
+              const off = !!game.state.ranching.blockedTreats?.[t];
+              return (
+                <button class={off ? '' : 'on'} onClick={() => blockTreat(game, t, !off)}>
+                  <Icon id={t} size={18} /> {itemName(t)} ({fmt(game.count(t))}){off ? ' · off' : ''}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {owned.map((slot) => {
         const e = slot.enclosure ? enclosure(slot.enclosure) : null;
         if (!e) {
@@ -91,10 +112,19 @@ export function RanchingPage({ game }: { game: Game }) {
                     <div class="muted small">
                       Happiness {Math.round(happiness(game, a) * 100)}% · next produce in {ticksToDuration(a.nextProductAt - now)} · lives{' '}
                       {ticksToDuration(a.diesAt - now)}
+                      {(r.Treats ?? []).length > 0 &&
+                        ` · treats: ${(r.Treats ?? []).map((t) => `${itemName(t.Item)} ${a.treats?.[t.Item] ? '✓' : '✗'}`).join(', ')}`}
                     </div>
                     <Bar value={happiness(game, a)} max={1} color="#e8b84a" />
                   </div>
                   {wantsPet && <button onClick={() => pet(game, a.id)}>Pet</button>}
+                  <button
+                    class="small"
+                    aria-label="Remove animal"
+                    onClick={() => confirm(`Remove this ${r.DisplayName.Singular}? You won't get anything back.`) && removeAnimal(game, a.id)}
+                  >
+                    ✕
+                  </button>
                 </div>
               );
             })}
@@ -115,6 +145,11 @@ export function RanchingPage({ game }: { game: Game }) {
                   </div>
                 );
               })}
+            {animals.length > 1 && (
+              <button class="danger small" onClick={() => confirm(`Remove all ${animals.length} animals from ${e.DisplayName}? You won't get anything back.`) && removeAllAnimals(game, slot.land)}>
+                Remove all animals
+              </button>
+            )}
             {upgrade && !game.isDemoLocked(upgrade.Requirements) && (
               <div class="card-row">
                 <div class="grow">
