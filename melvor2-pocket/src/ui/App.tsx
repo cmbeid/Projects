@@ -482,6 +482,8 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
         </div>
       </div>
     );
+  // Sold, eaten or otherwise used up: nothing left to show.
+  if (!have) return null;
   return (
     <div class="sheet" onClick={onClose}>
       <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
