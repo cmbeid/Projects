@@ -119,11 +119,14 @@ export function protectionRating(f: Fighter): number {
   return Math.max(Math.floor((f.protection + (f.mods.FlatProtectionRating ?? 0)) * (1 + (f.mods.PercentProtectionRating ?? 0))), 0);
 }
 
-/** Share of damage resisted: clamp(prot / (power + prot), 0, 0.7), then the combat triangle. */
-export function resistance(attacker: Fighter, defender: Fighter, triangle = 0): number {
+/**
+ * Share of damage resisted (ResistanceStats.ComputeResistance): clamp((prot / (power + prot) + flat) × (1 + percent),
+ * 0, 0.7), then the combat triangle.
+ */
+export function resistance(attacker: Fighter, defender: Fighter, triangle = 0, flat = 0, percent = 0): number {
   const power = powerRating(attacker);
   const prot = protectionRating(defender);
-  const r = Math.max(0, Math.min(0.7, prot / (power + prot)));
+  const r = Math.max(0, Math.min(0.7, (prot / (power + prot) + flat) * (1 + percent)));
   return Math.max(0, Math.min(1, r * (1 + triangle)));
 }
 

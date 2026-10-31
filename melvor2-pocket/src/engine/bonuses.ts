@@ -86,7 +86,7 @@ export function activeBonuses(game: Game, includeEquipment = true): RawBonus[] {
   return resolveConditional(game, out);
 }
 
-interface Condition { Type: string; Data: { Area?: string | null; Category?: string | null; Slot?: string | null } }
+interface Condition { Type: string; Data: { Area?: string | null; Category?: string | null; Slot?: string | null; Style?: string | null; Stance?: string | null } }
 interface Scaling { Type: string; Data: { Experience?: { Entity: string } } }
 
 /**
@@ -120,6 +120,11 @@ export function conditionHolds(game: Game, c: Condition): boolean {
     }
     case 'EquipmentSlotEquipped':
       return !!c.Data.Slot && !!game.state.equipment[c.Data.Slot];
+    // The player's current stance and its combat style (e.g. Stinger arrows: +15% while using Ranged).
+    case 'CharacterUsingCombatStyle':
+      return tryGet<{ CombatStyle: string }>('AttackStance', combat.stance)?.CombatStyle === c.Data.Style;
+    case 'CharacterUsingStance':
+      return combat.stance === c.Data.Stance;
     default:
       return false;
   }
@@ -128,7 +133,7 @@ export function conditionHolds(game: Game, c: Condition): boolean {
 /** The state conditional bonuses read, so the cache can tell when to recompute them. */
 export function conditionKey(game: Game): string {
   const c = game.state.combat;
-  return [game.state.active?.skill, c.area, c.enemy, c.slayer?.enemy, c.slayer?.left ? 1 : 0, Object.keys(game.state.equipment).join(','), game.level('Strength')].join('|');
+  return [game.state.active?.skill, c.stance, c.area, c.enemy, c.slayer?.enemy, c.slayer?.left ? 1 : 0, Object.keys(game.state.equipment).join(','), game.level('Strength')].join('|');
 }
 
 function matches(b: RawBonus, statsType: string, ctx: BonusContext): boolean {

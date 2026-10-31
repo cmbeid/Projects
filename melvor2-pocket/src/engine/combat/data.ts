@@ -124,8 +124,13 @@ export interface Prayer {
   FitsInSlot: string;
   Bonuses: Bonuses;
   Cost: { Currency: string; Quantity: number };
+  /** Whose attack turn charges it: the player's or the enemy's. */
+  ConsumesOn?: { Type: string; Data: { Character?: { Component?: string } } } | null;
   UnlockRequirements: Requirement[] | null;
 }
+
+/** The side whose attack turns a prayer is charged on. */
+export const prayerChargedOn = (p: Prayer): 'player' | 'enemy' => (p.ConsumesOn?.Data?.Character?.Component === 'Player' ? 'player' : 'enemy');
 
 export interface SlayerMaster {
   Id: string;

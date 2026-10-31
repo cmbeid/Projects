@@ -4,8 +4,8 @@ import { useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { NS, all, tryGet } from '../engine/content';
 import type { Game } from '../engine/game';
-import { type AttackStance, area, enemy as enemyData } from '../engine/combat/data';
-import { elementalBonuses, enemyFighter, liveEnemyFighter, playerElement, playerFighter, triangle } from '../engine/combat/combat';
+import { type AttackStance, enemy as enemyData } from '../engine/combat/data';
+import { darkness as playerDarkness, elementalBonuses, enemyFighter, liveEnemyFighter, playerElement, playerFighter, triangle } from '../engine/combat/combat';
 import {
   type Fighter, accuracyRating, armour, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit, powerRating, protectionRating, resistance,
 } from '../engine/combat/stats';
@@ -39,12 +39,14 @@ interface SideProps {
   foe?: Fighter;
   element?: string;
   foeElement?: string;
+  /** Darkness on this fighter (only ever the player) and on its foe. */
   darkness: number;
+  foeDarkness: number;
   matchup: string[];
   showAll: boolean;
 }
 
-function FighterStats({ f, foe, element, foeElement, darkness, matchup, showAll }: SideProps) {
+function FighterStats({ f, foe, element, foeElement, darkness, foeDarkness, matchup, showAll }: SideProps) {
   const acc = accuracyRating(f, darkness);
   const max = maxHit(f);
   return (
@@ -57,7 +59,7 @@ function FighterStats({ f, foe, element, foeElement, darkness, matchup, showAll 
         <Row k="Hit" v={`${minHit(f, max)}–${max}`} />
         <Row k="Attack interval" v={seconds(f)} />
         <Row k={`Accuracy (${f.stance.DisplayName})`} v={fmt(acc)} />
-        {foe && <Row k="Hit chance" v={pct(hitChance(acc, evasionRating(foe, f.stance, darkness)))} />}
+        {foe && <Row k="Hit chance" v={pct(hitChance(acc, evasionRating(foe, f.stance, foeDarkness)))} />}
         {darkness > 0 && <Row k="Darkness" v={`${darkness} / 20 (−${darkness * 5}%)`} />}
       </Section>
       {foe && (
@@ -115,7 +117,7 @@ export function CombatStatsSheet({ game, onClose, enemyId, inline }: { game: Gam
   const foeId = fighting ? c.enemy! : enemyId;
   const [side, setSide] = useState<'player' | 'enemy'>('player');
   const [showAll, setShowAll] = useState(false);
-  const darkness = fighting && c.area ? area(c.area).Darkness ?? 0 : 0;
+  const darkness = fighting && c.area ? playerDarkness(game, c.area) : 0;
   const p = playerFighter(game, foeId ? enemyFighter(foeId).style.Id : undefined);
   const e = foeId ? (fighting ? liveEnemyFighter(game, undefined, p.style.Id) : enemyFighter(foeId, undefined, p.style.Id)) : undefined;
   const mine = playerElement(game);
@@ -147,9 +149,9 @@ export function CombatStatsSheet({ game, onClose, enemyId, inline }: { game: Gam
         </div>
         <div class="combat-stats">
           {enemySide ? (
-            <FighterStats f={e} foe={p} element={theirs} foeElement={mine} darkness={darkness} matchup={matchup('Enemy')} showAll={showAll} />
+            <FighterStats f={e} foe={p} element={theirs} foeElement={mine} darkness={0} foeDarkness={darkness} matchup={matchup('Enemy')} showAll={showAll} />
           ) : (
-            <FighterStats f={p} foe={e} element={mine} foeElement={theirs} darkness={darkness} matchup={matchup('Player')} showAll={showAll} />
+            <FighterStats f={p} foe={e} element={mine} foeElement={theirs} darkness={darkness} foeDarkness={0} matchup={matchup('Player')} showAll={showAll} />
           )}
         </div>
     </>
