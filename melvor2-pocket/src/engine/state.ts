@@ -182,6 +182,8 @@ export interface GameState {
     /** Hours each ranching animal type has spent alive, and rare hunting species found (guild tasks). */
     ranchHoursAlive?: Record<string, number>;
     raresFound?: Record<string, boolean>;
+    /** Rare species trapped, by species. */
+    speciesTrapped?: Record<string, number>;
     itemsSold: number;
     goldFromSales: number;
     /** Desktop-style statistics by id (WoodcuttingFells, MiningRocksShattered...), and time per skill in ms. */

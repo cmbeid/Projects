@@ -65,6 +65,11 @@ export const astrology: SkillHandler = {
   recipes: () => configList(SKILL, 'Constellations'),
   recipe: constellation,
   interval: (_game, id) => Math.floor(constellation(id).BaseInterval),
+  // Each constellation also needs its secondary requirements (e.g. Deedree: Woodcutting 8 or Farming 6) to study it.
+  canStart(game, id) {
+    const req = constellation(id).SecondaryRequirements;
+    return req?.length && !game.requirementsMet(req) ? 'Requirements not met' : null;
+  },
   fire(game, id) {
     const c = constellation(id);
     const before = unlockedMinorNodes(game, id).length;

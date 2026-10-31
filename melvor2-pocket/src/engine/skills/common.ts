@@ -13,7 +13,7 @@ export function recipeGetter<T extends SkillRecipe>(type: string): (id: string) 
 
 /** Looks up bonuses for one skill action (e.g. 'WoodcuttingAction') in a recipe/category context. */
 export function bonusReader(game: Game, statsType: string, ctx: BonusContext) {
-  return (name: string) => mod(game, statsType, name, ctx);
+  return (name: string, extra?: BonusContext) => mod(game, statsType, name, extra ? { ...ctx, ...extra } : ctx);
 }
 
 /** Context for a recipe: its id and category, under the skill entity. */
@@ -22,10 +22,21 @@ export function recipeContext(skill: string, r: SkillRecipe): BonusContext {
 }
 
 /** Roll each chance entry; `flatChance` / `pctChance` are the On…ItemChance bonuses. */
-export function rollItemChances(game: Game, chances: ItemQuantityChance[], doubling: number, flatChance = 0, pctChance = 0, flatQuantity = 0): void {
+/**
+ * Roll each chance product. Bonus names are looked up per item, so bonuses scoped to one item apply only to it (e.g. axe
+ * bindings: +bird nest chance).
+ */
+export function rollItemChances(
+  game: Game,
+  chances: ItemQuantityChance[],
+  doubling: number,
+  b?: (name: string, extra?: BonusContext) => number,
+  names: [chance: string, percent: string, quantity?: string] = ['', ''],
+): void {
   for (const c of chances) {
-    if (!game.rng.chance((c.Chance + flatChance) * (1 + pctChance))) continue;
-    const q = Math.max(1, c.Quantity + flatQuantity);
+    const get = (name?: string) => (b && name ? b(name, { item: c.Item }) : 0);
+    if (!game.rng.chance((c.Chance + get(names[0])) * (1 + get(names[1])))) continue;
+    const q = Math.max(1, c.Quantity + get(names[2]));
     game.addItem(c.Item, game.rng.chance(doubling) ? q * 2 : q);
   }
 }

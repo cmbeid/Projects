@@ -33,6 +33,7 @@ export interface FarmingRecipe extends SkillRecipe {
   Regrows: number;
   RegrowInterval: number;
   /** Flowers give these bonuses for GrownInterval once grown, instead of a harvest. */
+  FreeAutoWateringRequirements?: Requirement[] | null;
   BonusesWhenGrown?: { Global?: unknown[]; Component?: unknown[] } | null;
   GrownInterval?: number;
   AutomationRequirements?: Requirement[] | null;
@@ -119,6 +120,10 @@ export function automationCost(game: Game, r: FarmingRecipe): Ingredients {
   };
 }
 
+/** Sprinklers: once their requirement is met, automated watering costs nothing. */
+export const freeWatering = (game: Game, r: FarmingRecipe) =>
+  !!r.FreeAutoWateringRequirements?.length && game.requirementsMet(r.FreeAutoWateringRequirements);
+
 function payAutomation(game: Game, r: FarmingRecipe): boolean {
   if (!automationUnlocked(game, r)) return false;
   const cost = automationCost(game, r);
@@ -155,6 +160,7 @@ export function processFarming(game: Game): void {
           // Grown: the flower now gives its bonus for GrownInterval.
           p.providingUntil = p.readyAt + Math.round((r.GrownInterval ?? 0) * ticksPerMs);
           game.addXp(SKILL, r.BaseExperience);
+          game.toolbeltTrigger('FarmingRecipeGrown', { entity: SKILL, category: r.Category, recipe: p.recipe ?? undefined });
           questEvent(game, 'FarmingHarvestRecipe', (d) => (goalMatches(d, 'Recipe', p.recipe ?? undefined) && goalMatches(d, 'Category', r.Category) ? 1 : 0));
           game.bonusesChanged();
         }
@@ -173,7 +179,7 @@ export function processFarming(game: Game): void {
       p.autoCheckedAt = now;
       const r = farmingRecipe(p.auto.replant);
       if (!missingIngredients(game, r.Ingredients) && payAutomation(game, r) && plant(game, id, p.auto.replant) === null) {
-        if (p.auto.water && category(plot(id).Category).CanWater && payAutomation(game, r)) water(game, id);
+        if (p.auto.water && category(plot(id).Category).CanWater && (freeWatering(game, r) || payAutomation(game, r))) water(game, id);
         if (p.auto.compost && category(plot(id).Category).CanCompost && game.count(p.auto.compost) > 0 && payAutomation(game, r)) compost(game, id, p.auto.compost);
       }
     }
@@ -250,6 +256,8 @@ export function harvest(game: Game, plotId: string): void {
   game.addItem(r.Product.Item, game.rng.chance(doubling) ? q * 2 : q);
   game.addXp(SKILL, r.BaseExperience);
   game.stat('FarmingProductsHarvested');
+  // Crops "grow" (FarmingRecipeGrown) when they're collected here; scarecrows and pods protected them until then.
+  game.toolbeltTrigger('FarmingRecipeGrown', { entity: SKILL, category: r.Category, recipe: p.recipe ?? undefined });
   game.itemSource = null;
   questEvent(game, 'FarmingHarvestRecipe', (d) =>
     goalMatches(d, 'Recipe', p.recipe ?? undefined) && goalMatches(d, 'Category', r.Category) ? 1 : 0,
@@ -337,7 +345,9 @@ export function processMill(game: Game): void {
       return;
     }
     millSpend(game, r.Ingredients);
-    game.addItem(r.Product.Item, r.Product.Quantity);
+    // Production upgrades: +25% flour per batch each.
+    const pct = mod(game, 'GrainMill', 'PercentProductQuantity', { entity: SKILL, recipe: m.recipe });
+    game.addItem(r.Product.Item, Math.floor(r.Product.Quantity * (1 + pct)));
     game.addXp(SKILL, r.BaseExperience);
     m.readyAt += Math.round(GRAIN_MILL_INTERVAL_MS * ticksPerMs);
     // Like the game, the mill stops as soon as it can't afford the next batch.

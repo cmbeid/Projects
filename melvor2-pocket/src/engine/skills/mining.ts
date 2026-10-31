@@ -31,7 +31,7 @@ export const mining: SkillHandler = {
     const b = bonus(game, r);
     const doubling = b('DoublingChance');
     const p = breakChance(r, game);
-    rollItemChances(game, r.RandomProductsPerHit, doubling, b('FlatOnHitItemChance'), b('PercentOnHitItemChance'));
+    rollItemChances(game, r.RandomProductsPerHit, doubling, b, ['FlatOnHitItemChance', 'PercentOnHitItemChance']);
     // By-products the desktop rolls on every hit: the skill's stone and essence items, at bonus-given chances.
     for (const [list, chance] of [['StoneItems', b('StoneItemChance')], ['EssenceItems', b('EssenceItemChance')]] as const) {
       if (chance <= 0) continue;

@@ -36,9 +36,28 @@ export const fishingBaitCap = (itemId: string) =>
 export const toolbeltCap = (itemId: string) =>
   (tryGet<{ Capabilities: Record<string, unknown> | null }>('Item', itemId)?.Capabilities ?? {})[`${NS}Toolbelt`] as ToolbeltCap | undefined;
 
+/**
+ * Global bonuses name a stat group instead of a stat, and feed every stat in it (e.g. GlobalPercentActionInterval →
+ * each skill's PercentInterval, as ArtisanActionStats lists it). They become bonuses with that stat's name and a
+ * wildcard StatsType (or the one owner type), so mod() picks them up wherever that stat is read.
+ */
+const STAT_GROUPS: Record<string, { StatsType: string; Name: string }> = {
+  GlobalPercentActionInterval: { StatsType: '*', Name: 'PercentInterval' },
+  GlobalFlatAutoEatThreshold: { StatsType: `${NS}CombatFood`, Name: 'FlatAutoEatThreshold' },
+  GlobalFlatAutoEatLimit: { StatsType: `${NS}CombatFood`, Name: 'FlatAutoEatLimit' },
+  GlobalFlatAutoEatEfficiency: { StatsType: `${NS}CombatFood`, Name: 'FlatAutoEatEfficiency' },
+};
+
+function withStat(b: RawBonus): RawBonus | null {
+  if (b.Stat) return b;
+  const group = (b as { StatGroup?: string }).StatGroup;
+  const stat = group ? STAT_GROUPS[group] : undefined;
+  return stat ? { ...b, Stat: stat, LocalContext: null } : null;
+}
+
 function blockBonuses(block: BonusBlock | null | undefined, times = 1): RawBonus[] {
   if (!block) return [];
-  const list = [...(block.Global ?? []), ...(block.Component ?? [])];
+  const list = [...(block.Global ?? []), ...(block.Component ?? [])].map(withStat).filter((b): b is RawBonus => !!b);
   return times === 1 ? list : list.map((b) => ({ ...b, Value: b.Value * times }));
 }
 
@@ -137,7 +156,7 @@ export function conditionKey(game: Game): string {
 }
 
 function matches(b: RawBonus, statsType: string, ctx: BonusContext): boolean {
-  if (b.Stat.StatsType !== NS + statsType) return false;
+  if (b.Stat.StatsType !== NS + statsType && b.Stat.StatsType !== '*') return false;
   const lc = (b.LocalContext ?? {}) as Record<string, unknown>;
   const comp = lc.Component as { Entity?: string } | undefined;
   if (comp?.Entity && ctx.entity && comp.Entity !== NS + ctx.entity) return false;

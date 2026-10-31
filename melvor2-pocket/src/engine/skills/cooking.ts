@@ -47,6 +47,7 @@ export const cooking: SkillHandler = {
         break;
       }
       game.addXp(SKILL, r.BaseExperience);
+      game.toolbeltTrigger('CookRecipe', { entity: SKILL, category: r.Category, recipe: NS + r.Id });
       questEvent(game, 'CookRecipe', (d) =>
         goalMatches(d, 'Recipe', NS + r.Id) && goalMatches(d, 'Category', r.Category) && goalMatches(d, 'Subcategory', r.Subcategory ?? undefined) ? 1 : 0,
       );

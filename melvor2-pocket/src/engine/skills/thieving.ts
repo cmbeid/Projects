@@ -111,7 +111,9 @@ export const thieving: SkillHandler = {
       return interval(game, r);
     }
     const b = bonus(game, r);
-    if (!game.rng.chance(successChance(game, r))) {
+    const success = game.rng.chance(successChance(game, r));
+    game.toolbeltTrigger('ThievingActionPerformed', { entity: SKILL, recipe: NS + r.Id, recipeType: r.RecipeType, success });
+    if (!success) {
       game.failed(SKILL, r.DisplayName);
       // Damage is a uniform roll from 1 to the target's Damage, unless a damage avoidance bonus dodges it.
       const died = r.Damage > 0 && !game.rng.chance(b('DamageAvoidanceChance')) && game.damage(game.rng.intInclusive(1, r.Damage));

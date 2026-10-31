@@ -257,6 +257,7 @@ function processAnimals(game: Game): void {
       const fed = meal.every((e) => game.count(e.Item) >= e.Quantity);
       if (fed && !game.rng.chance(mod(game, 'RanchingAction', 'FoodPreservationChance', ctx))) for (const e of meal) game.removeItem(e.Item, e.Quantity);
       a.hunger = fed ? 1 : Math.max(0, a.hunger - 0.1);
+      if (fed) game.toolbeltTrigger('RanchingAnimalFed', { entity: SKILL });
       // A starving animal, or one in a ruined enclosure, produces nothing.
       const producing = a.hunger > 0 && maintenance(game, a.land ?? '') > 0;
       const doubled = game.rng.chance(mod(game, 'RanchingAction', 'DoublingChance', ctx)) ? 2 : 1;

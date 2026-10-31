@@ -32,6 +32,8 @@ const LEGACY_TOOLS = /^(Copper|Iron|Steel|Mithril|Adamant|Rune|Dawnsteel|Dragon)
 
 /** Hidden when the demo hides it (e.g. alpha-only purchases) or it's a refunded legacy tool. */
 export function shopVisible(game: Game, p: ShopPurchase): boolean {
+  // The demo has no bonfires, so the bonfire unlock would do nothing.
+  if (p.Id === 'UnlockBonfire' && !all('FiremakingBonfire').length) return false;
   if (LEGACY_TOOLS.test(p.Id) || game.isDemoLocked(p.DisplayRequirements) || game.isDemoLocked(p.Requirements)) return false;
   // Purchases (and their category) stay hidden until their display requirements are met, e.g. a finished quest.
   const sub = tryGet<{ Category: string }>('ShopSubcategory', p.Subcategory);

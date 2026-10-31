@@ -14,11 +14,11 @@ import { beastcrafting } from './skills/artisan';
 import { herblore } from './skills/herblore';
 import { thieving } from './skills/thieving';
 import { hunting, journalLevel } from './skills/hunting';
-import { astrology } from './skills/astrology';
+import { astrology, unlockedMajorNodes } from './skills/astrology';
 import { agility } from './skills/agility';
 import { combat, onFoodEaten } from './combat/combat';
 import type { Bonus } from './combat/data';
-import { BASE_BANK_SLOTS, activeBonuses, activeCombatEffects, conditionKey, mod } from './bonuses';
+import { BASE_BANK_SLOTS, activeBonuses, activeCombatEffects, conditionHolds, conditionKey, mod, toolbeltCap } from './bonuses';
 import type { TriggeredEffect } from './combat/effects';
 import { goalActive, goalMatches, questEvent } from './quests';
 import { checkUnlocks, isUnlocked, unlockEverything } from './navigation';
@@ -238,6 +238,21 @@ export class Game {
         const n = Object.keys(this.state.hunting).filter((a) => journalLevel(this, a) >= (d.Level ?? 1)).length;
         return n >= (d.Count ?? 1);
       }
+      case `${NS}DungeonStatistic`: {
+        // Dungeon completions (e.g. 10 Hobgolbin Camps for the combat bank space).
+        const d = r.Data as { Dungeon?: string; Value?: number };
+        return (this.state.combat.dungeonsDone[d.Dungeon ?? ''] ?? 0) >= (d.Value ?? 1);
+      }
+      case `${NS}HuntingAnimalSpecies`: {
+        // Rare species trapped (a Tame Elk unlocks the Elk for ranching).
+        const d = r.Data as { Species?: string; Value?: number };
+        const n = this.state.stats.speciesTrapped?.[d.Species ?? ''] ?? (this.state.stats.raresFound?.[d.Species ?? ''] ? 1 : 0);
+        return n >= (d.Value ?? 1);
+      }
+      case `${NS}AstrologyMajorNodeUnlocked`: {
+        const node = (r.Data as { MajorNode?: string }).MajorNode ?? '';
+        return all<{ Id: string }>('AstrologyConstellation').some((c) => unlockedMajorNodes(this, NS + c.Id).includes(node));
+      }
       case `${NS}HuntingUniqueRareSpeciesFound`:
         return Object.keys(this.state.stats.raresFound ?? {}).length >= Number((r.Data as { Count?: number }).Count ?? 1);
       default:
@@ -432,7 +447,40 @@ export class Game {
     this.note(`Failed: ${what}`, 'info');
   }
 
+  /**
+   * A toolbelt item with a matching ConsumesOn trigger loses one, unless a toolbelt preservation roll saves it
+   * (ActiveToolbeltSlot), e.g. oven mitts per basic recipe cooked, a lockpick per chest attempt, a scarecrow per crop.
+   */
+  toolbeltTrigger(type: string, at: { entity?: string; category?: string; recipe?: string; recipeType?: string; success?: boolean } = {}): void {
+    for (const [slot, t] of Object.entries(this.state.toolbelt)) {
+      const cap = toolbeltCap(t.item) as { ConsumesOn?: { Type: string; Data: Record<string, unknown> }[] | null } | undefined;
+      for (const trig of cap?.ConsumesOn ?? []) {
+        if (trig.Type !== NS + type) continue;
+        const d = trig.Data as {
+          Component?: { Entity?: string }; Category?: string | null; Recipe?: string | null; RecipeType?: string | null; Chance?: number | null;
+          SuccessfulActionOnly?: boolean; FailedActionOnly?: boolean; Conditions?: { Type: string; Data: Record<string, unknown> }[] | null;
+        };
+        if (at.entity && d.Component?.Entity && d.Component.Entity !== NS + at.entity) continue;
+        if (d.Category && d.Category !== at.category) continue;
+        if (d.Recipe && d.Recipe !== at.recipe) continue;
+        if (d.RecipeType && d.RecipeType !== at.recipeType) continue;
+        if ((d.SuccessfulActionOnly && at.success === false) || (d.FailedActionOnly && at.success === true)) continue;
+        if (d.Conditions?.length && !d.Conditions.every((c) => conditionHolds(this, c as never))) continue;
+        if (d.Chance != null && !this.rng.chance(d.Chance)) continue;
+        if (this.rng.chance(mod(this, 'Toolbelt', 'PreservationChance', {}))) continue;
+        t.qty--;
+        if (t.qty <= 0) {
+          delete this.state.toolbelt[slot];
+          this.notice(`Your ${itemName(t.item, 1)} ran out.`);
+          this.bonusesChanged();
+        }
+        break;
+      }
+    }
+  }
+
   addXp(skill: string, amount: number): void {
+    if (amount > 0) this.toolbeltTrigger('GainExperience', { entity: skill });
     const before = this.level(skill);
     // PercentXPGained bonuses (astrology nodes, gear, shop) scale every XP gain for the skill.
     const pct = mod(this, 'Experience', 'PercentXPGained', { entity: skill });
@@ -570,18 +618,25 @@ export class Game {
     return Math.round(pct * this.maxHp());
   }
 
+  /** HP auto-eating fills up to (100% plus limit bonuses) and the share of each food's healing it gets. */
+  private autoEatLimit(): number {
+    return Math.min(1, Math.max(0, 1 + mod(this, 'CombatFood', 'FlatAutoEatLimit', { entity: 'Combat' }))) * this.maxHp();
+  }
+
+  autoEatHealing(id: string): number {
+    const eff = Math.max(0.01, 1 + mod(this, 'CombatFood', 'FlatAutoEatEfficiency', { entity: 'Combat' }));
+    return Math.max(1, Math.floor(this.foodHealing(id) * eff));
+  }
+
   private autoEat(): void {
     const food = this.state.selectedFood;
     if (!food || this.hp() > this.autoEatAt()) return;
     const have = this.count(food);
-    const heal = this.foodHealing(food);
-    if (!have || !heal) return;
-    const n = Math.min(have, Math.max(1, Math.floor((this.maxHp() - this.hp()) / heal)));
-    // Each food eaten can be preserved by FoodPreservationChance bonuses.
-    let eaten = 0;
-    const keep = mod(this, 'CombatFood', 'FoodPreservationChance', { entity: 'Combat' });
-    for (let i = 0; i < n; i++) if (!this.rng.chance(keep)) eaten++;
-    this.removeItem(food, eaten);
+    const heal = this.autoEatHealing(food);
+    if (!have || !this.foodHealing(food)) return;
+    // FoodComponent: eat enough to reach the limit, in one batch that a single preservation roll can save.
+    const n = Math.min(have, Math.max(1, Math.floor((this.autoEatLimit() - this.hp()) / heal)));
+    if (!this.rng.chance(mod(this, 'CombatFood', 'FoodPreservationChance', { entity: 'Combat' }))) this.removeItem(food, n);
     const before = this.hp();
     this.heal(n * heal);
     if (this.state.active?.skill === 'Combat') questEvent(this, 'CombatHealFromAutoEat', () => this.hp() - before, this.combatContext());

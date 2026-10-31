@@ -6,7 +6,9 @@ import type { SkillHandler, SkillRecipe } from './types';
 import { bonusReader } from './common';
 import { goalMatches, questEvent } from '../quests';
 
-const baseBonus = (game: Game, a: HuntingAnimal) => bonusReader(game, 'HuntingAction', { entity: SKILL, animal: NS + a.Id, location: a.Location });
+// Tool and trap type let tool upgrades (tracking sticks, binoculars, whistles) and trap-type nodes apply.
+const baseBonus = (game: Game, a: HuntingAnimal) =>
+  bonusReader(game, 'HuntingAction', { entity: SKILL, animal: NS + a.Id, location: a.Location, tool: a.Tool, trapType: a.TrapType });
 
 interface Mod { Stat: { StatsType: string; Name: string }; Value: number }
 interface ModBlock { Global?: Mod[]; Component?: Mod[] }
@@ -53,6 +55,7 @@ const MAX_SURVEY_FAILS = 2;
 export interface HuntingAnimal extends SkillRecipe {
   Location: string;
   TrapType: string;
+  Tool?: string;
   EnableTrapless: boolean;
   TraplessBonuses: { Stat: { Name: string }; Value: number }[] | null;
   AverageSize: number;
@@ -156,6 +159,8 @@ function trap(game: Game, id: string, a: HuntingAnimal, s: HuntState, baited: bo
   questEvent(game, 'HuntingTrapAnimalLocation', (d) => (goalMatches(d, 'Location', a.Location) ? 1 : 0));
   if (s.species) {
     (game.state.stats.raresFound ??= {})[s.species] = true;
+    const caught = (game.state.stats.speciesTrapped ??= {});
+    caught[s.species] = (caught[s.species] ?? 0) + 1;
     game.stat('HuntingAnimalsSpeciesTrapped');
   }
   game.stat('HuntingAnimalsTrapped');
