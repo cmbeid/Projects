@@ -76,7 +76,8 @@ export function BankPage({ game }: { game: Game }) {
   const all_ = Object.entries(game.state.bank);
   const value = all_.reduce((s, [id, n]) => s + price(id) * n, 0);
   const pickedValue = picked.reduce((s, id) => s + price(id) * game.count(id), 0);
-  const sel = selected && game.count(selected) ? selected : null;
+  // The sheet stays up when the last one is used, so an opened chest can still show what came out of it.
+  const sel = selected;
   const tagCats = all<{ Id: string; DisplayName: string }>('BankTagCategory').filter((c) => all_.some(([id]) => tagsOf(id).some((t) => t.BankTag === NS + c.Id)));
   const toggle = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
   return (
