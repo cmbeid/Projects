@@ -534,3 +534,7 @@ input.text { flex: 1; min-height: 40px; background: var(--panel); color: var(--t
 
 .stop-after .row { gap: 6px; align-items: center; }
 .stop-after select { min-height: 40px; }
+
+.imbuements { display: flex; flex-direction: column; gap: 8px; }
+.imbuement { border: 1px solid #2f333a; border-radius: 8px; padding: 8px; }
+.imbuement.on { border-color: #5fbf6a; }
