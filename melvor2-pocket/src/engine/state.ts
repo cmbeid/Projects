@@ -43,7 +43,9 @@ export interface PlotState {
 export interface RanchAnimal {
   id: number;
   animal: string;
+  /** The enclosure type it lives in (kept for display), and the land plot that enclosure stands on. */
   enclosure: string;
+  land?: string;
   variant: string;
   bornAt: number;
   grownAt: number;
@@ -61,7 +63,7 @@ export interface RanchingState {
   nextId: number;
   /** Fractional products waiting to round up into whole items. */
   carry: Record<string, number>;
-  /** Enclosure upkeep: 1 = fully maintained, losing 1% an hour while animals live there; when it next drops. */
+  /** Enclosure upkeep by land plot: 1 = fully maintained, losing 1% an hour while animals live there; when it next drops. */
   maintenance?: Record<string, { value: number; nextAt: number }>;
 }
 

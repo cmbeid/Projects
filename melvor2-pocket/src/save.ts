@@ -1,5 +1,6 @@
 // Save storage: one record in IndexedDB, with base64 export/import for moving saves between devices.
 import { GameState, SAVE_VERSION, newState } from './engine/state';
+import { fixRanchingLand } from './engine/skills/ranching';
 
 const DB = 'melvor2-pocket';
 const STORE = 'saves';
@@ -33,7 +34,9 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
 function migrate(s: Partial<GameState>): GameState {
   const base = newState();
   const legacy = (s.version ?? 1) < 2;
-  return { ...base, ...s, stats: { ...base.stats, ...s.stats }, version: SAVE_VERSION, legacyUnlockAll: legacy || s.legacyUnlockAll } as GameState;
+  const out = { ...base, ...s, stats: { ...base.stats, ...s.stats }, version: SAVE_VERSION, legacyUnlockAll: legacy || s.legacyUnlockAll } as GameState;
+  fixRanchingLand(out.ranching);
+  return out;
 }
 
 export async function load(): Promise<GameState | null> {
