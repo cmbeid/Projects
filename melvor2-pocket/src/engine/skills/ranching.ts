@@ -128,6 +128,8 @@ export function happiness(game: Game, a: RanchAnimal): number {
   const safety = maintenance(game, a.land ?? '');
   let satisfaction = (a.hunger >= 0.5 ? 0.5 : 0) + (safety >= 0.5 ? 0.4 : 0);
   if (r.RequiresPets && game.state.tick < a.petDueAt) satisfaction += 0.04;
+  // Treats it got today each add their satisfaction (e.g. a honeycomb for a bear).
+  for (const t of r.Treats ?? []) if (a.treats?.[t.Item]) satisfaction += t.Satisfaction;
   const pack = animalsIn(game, a.land ?? '').filter((x) => x.animal === a.animal).length;
   for (const b of r.PackSatisfactionBonuses) if (pack >= b.AnimalCount) satisfaction += b.Satisfaction;
   const flat = ranchMod(game, 'FlatHappiness', { animal: a.animal });
@@ -202,8 +204,54 @@ export function buyAnimal(game: Game, landId: string, animalId: string): string 
     hunger: 1,
     petDueAt: now,
   });
+  // A new animal gets its treats straight away (ActiveRanchingAnimal.Init); the daily treat timer starts with the first.
+  game.state.ranching.treatNextAt ??= now + ticks(TREAT_INTERVAL_MS);
+  giveTreats(game, game.state.ranching.animals[game.state.ranching.animals.length - 1]);
   game.emit();
   return null;
+}
+
+/** RanchingPassiveComponent.BaseTreatCooldown: treats are handed out once a day. */
+export const TREAT_INTERVAL_MS = 86_400_000;
+
+/** Give an animal its treats (ActiveRanchingAnimal.ConsumeTreats): each one you have and haven't blocked. */
+function giveTreats(game: Game, a: RanchAnimal): void {
+  const r = ranchAnimal(a.animal);
+  if (!r.Treats?.length) return;
+  const blocked = game.state.ranching.blockedTreats ?? {};
+  a.treats = {};
+  for (const t of r.Treats) a.treats[t.Item] = !blocked[t.Item] && game.removeItem(t.Item, t.Quantity);
+}
+
+export function blockTreat(game: Game, item: string, blocked: boolean): void {
+  const b = (game.state.ranching.blockedTreats ??= {});
+  if (blocked) b[item] = true;
+  else delete b[item];
+  game.emit();
+}
+
+/** Remove an animal from its enclosure (no refund, as on the desktop). */
+export function removeAnimal(game: Game, id: number): void {
+  const st = game.state.ranching;
+  const a = st.animals.find((x) => x.id === id);
+  if (!a) return;
+  st.animals = st.animals.filter((x) => x !== a);
+  game.stat('RanchingAnimalsYeeted');
+  game.emit();
+}
+
+export function removeAllAnimals(game: Game, landId: string): void {
+  for (const a of animalsIn(game, landId)) removeAnimal(game, a.id);
+}
+
+/** Repair every enclosure that needs it, while you can pay. Returns why one couldn't be repaired, if any. */
+export function repairAll(game: Game): string | null {
+  let reason: string | null = null;
+  for (const slot of game.state.ranching.land) {
+    if (!slot.enclosure || maintenance(game, slot.land) >= 1) continue;
+    reason = repair(game, slot.land) ?? reason;
+  }
+  return reason;
 }
 
 export function pet(game: Game, id: number): void {
@@ -224,6 +272,8 @@ export function nextRanchingEvent(game: Game): number | null {
       if (t !== Infinity && (next == null || t < next)) next = t;
     }
   }
+  const t = game.state.ranching.treatNextAt;
+  if (t != null && game.state.ranching.animals.length && (next == null || t < next)) next = t;
   // Occupied enclosures wear down on their own timer.
   for (const [landId, m] of Object.entries(game.state.ranching.maintenance ?? {})) {
     if (animalsIn(game, landId).length && (next == null || m.nextAt < next)) next = m.nextAt;
@@ -235,9 +285,20 @@ export function processRanching(game: Game): void {
   game.itemSource = SKILL;
   try {
     processMaintenance(game);
+    processTreats(game);
     processAnimals(game);
   } finally {
     game.itemSource = null;
+  }
+}
+
+function processTreats(game: Game): void {
+  const st = game.state.ranching;
+  if (!st.animals.length) return;
+  st.treatNextAt ??= game.state.tick + ticks(TREAT_INTERVAL_MS);
+  while (game.state.tick >= st.treatNextAt) {
+    st.treatNextAt += ticks(TREAT_INTERVAL_MS);
+    for (const a of st.animals) giveTreats(game, a);
   }
 }
 
