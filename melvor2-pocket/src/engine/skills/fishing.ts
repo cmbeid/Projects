@@ -4,7 +4,7 @@ import type { SkillHandler } from './types';
 import { bonusReader, recipeGetter, recipeList } from './common';
 import { mod } from '../bonuses';
 import { goalMatches, questEvent } from '../quests';
-import { NS, item } from '../content';
+import { NS, item, tryGet, type Requirement } from '../content';
 
 const SKILL = 'Fishing';
 const recipe = recipeGetter<FishingRecipe>('FishingRecipe');
@@ -21,6 +21,35 @@ function rollInterval(game: Game, r: FishingRecipe): number {
   return Math.max(250, game.rng.range(lo, hi));
 }
 
+/** Whether you can pick a priority fish at this spot's location. */
+export function canPrioritise(game: Game, recipeId: string): boolean {
+  const loc = tryGet<{ PriorityRequirements?: Requirement[] | null }>('FishingLocation', recipe(recipeId).Location);
+  return !!loc?.PriorityRequirements?.length && game.requirementsMet(loc.PriorityRequirements);
+}
+
+export function setPriority(game: Game, recipeId: string, itemId: string | null): void {
+  const m = (game.state.fishingPriority ??= {});
+  if (itemId) m[recipeId] = itemId;
+  else delete m[recipeId];
+  game.emit();
+}
+
+/**
+ * FishingActionComponent.RollForPriorityProduct: with a priority fish chosen, a first roll (fish chance, then which fish)
+ * pays out only if it lands on that fish; otherwise the normal catch follows.
+ */
+function rollPriority(game: Game, r: FishingRecipe, doubling: number): boolean {
+  const want = game.state.fishingPriority?.[NS + r.Id];
+  if (!want || !canPrioritise(game, NS + r.Id) || !r.RandomProducts.length) return false;
+  if (!game.rng.chance(fishChance(game, r))) return false;
+  const p = game.rng.weighted(r.RandomProducts);
+  if (p.Item !== want) return false;
+  const q = game.rng.intInclusive(p.MinQuantity, p.MaxQuantity);
+  game.stat('FishingFishCaught');
+  game.addItem(p.Item, game.rng.chance(doubling) ? q * 2 : q);
+  return true;
+}
+
 export const fishing: SkillHandler = {
   skill: SKILL,
   recipes: () => recipeList(SKILL),
@@ -34,7 +63,9 @@ export const fishing: SkillHandler = {
     const bait = game.state.fishingBait;
     if (bait && game.count(bait) > 0 && !game.rng.chance(mod(game, 'FishingBait', 'PreservationChance', { entity: SKILL }))) game.removeItem(bait, 1);
     // A miss gives junk, unless a junk reroll bonus turns it into a fish after all.
-    if ((game.rng.chance(fishChance(game, r)) || game.rng.chance(b('JunkRerollChance'))) && r.RandomProducts.length) {
+    if (rollPriority(game, r, doubling)) {
+      // caught the priority fish
+    } else if ((game.rng.chance(fishChance(game, r)) || game.rng.chance(b('JunkRerollChance'))) && r.RandomProducts.length) {
       const p = game.rng.weighted(r.RandomProducts);
       const q = game.rng.intInclusive(p.MinQuantity, p.MaxQuantity);
       game.stat('FishingFishCaught');

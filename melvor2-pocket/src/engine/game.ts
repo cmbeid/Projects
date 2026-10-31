@@ -543,6 +543,26 @@ export class Game {
   }
 
   /** Start (or toggle off) an action. Only one action runs at a time, as in the game. */
+  /** Count a completed action towards the active "stop after" target, and stop when it's reached. */
+  private stopAfterReached(skill: string, xpBefore: number): boolean {
+    const a = this.state.active;
+    const u = a?.until;
+    if (!a || !u || a.skill !== skill) return false;
+    if (u.kind === 'actions' && this.xp(skill) > xpBefore) u.done++;
+    const reached = u.kind === 'actions' ? u.done >= u.n : this.count(u.item) >= u.n;
+    if (!reached) return false;
+    this.stop(u.kind === 'actions' ? `Finished ${u.n} action${u.n === 1 ? '' : 's'}` : `You have ${u.n} ${itemName(u.item, u.n)}`);
+    return true;
+  }
+
+  /** Set (or clear) the active action's "stop after" target. */
+  setStopAfter(until: { kind: 'actions'; n: number } | { kind: 'item'; n: number; item: string } | null): void {
+    const a = this.state.active;
+    if (!a) return;
+    a.until = until ? (until.kind === 'actions' ? { kind: 'actions', n: Math.max(1, Math.floor(until.n)), done: 0 } : { ...until, n: Math.max(1, Math.floor(until.n)) }) : null;
+    this.emit();
+  }
+
   toggle(skill: string, recipe: string): void {
     const a = this.state.active;
     if (a && a.skill === skill && a.recipe === recipe) {
@@ -698,8 +718,10 @@ export class Game {
     // Time spent training: the action that just finished, online or offline.
     const spent = (this.state.active?.waitTicks ?? 0) * (1000 / 60);
     this.stat(`${skill}${this.quiet ? 'Offline' : 'Online'}TimeSpent`, spent);
+    const xpBefore = this.xp(skill);
     const nextMs = h.fire(this, recipe);
     this.signal({ type: 'action', skill, recipe });
+    if (this.stopAfterReached(skill, xpBefore)) return;
     checkUnlocks(this);
     // State-based guild tasks (levels, items owned, gear) are checked about once a second of game time, and every
     // ten seconds while catching up on time away (they only need to be noticed, not to the second).

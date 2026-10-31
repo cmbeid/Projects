@@ -7,7 +7,14 @@ export interface ActiveAction {
   recipe: string;
   waitTicks: number;
   ticksLeft: number;
+  /**
+   * Desktop "Action until X": stop after N completed actions (ones that gave XP, e.g. a full smith or a log cut), or once
+   * you hold N of an item.
+   */
+  until?: StopAfter | null;
 }
+
+export type StopAfter = { kind: 'actions'; n: number; done: number } | { kind: 'item'; n: number; item: string };
 
 export interface HuntState {
   phase: 'idle' | 'surveying' | 'tracking' | 'trapping';
@@ -21,6 +28,9 @@ export interface HuntState {
   failedThisHunt?: boolean;
   /** Use the animal's preferred bait while hunting it (the desktop's per-animal bait toggle). */
   bait?: boolean;
+  /** The trap you picked for this animal (HuntingSelectTrapView), and whether to hunt it without one (trapless toggle). */
+  trap?: string | null;
+  noTrap?: boolean;
   /** Failed trap attempts in a row: each adds the trap's fail bonus again until a catch. */
   trapFails?: number;
 }
@@ -162,6 +172,8 @@ export interface GameState {
   optIn?: { Astrology?: boolean };
   /** Fishing bait in use: consumed one per catch, its bonuses apply while any is in the bank. */
   fishingBait?: string | null;
+  /** Priority fish per fishing spot (needs the location's PriorityRequirements, e.g. Journeyman Angler). */
+  fishingPriority?: Record<string, string>;
   /**
    * Bank options, as on the desktop: locked items can't be sold; a placeholder keeps an item's slot (at 0) when the last
    * one goes; auto placeholders do that for every item; and actions stop when a new item won't fit (on unless turned off).
