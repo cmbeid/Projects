@@ -9,7 +9,7 @@ import { CombatPage } from './CombatPage';
 import { CompletionLog, GuildOverview, GuildPanel, QuestsPage, ToolbeltPanel } from './ExtrasPages';
 import { StatsBar } from './StatsBar';
 import { OPT_IN_SKILLS, describeRequirement, isDemoLockedPage, isUnlocked, navRequirements } from '../engine/navigation';
-import { open as openItem, openableCap, upgrade, upgradesFrom, equipTool } from '../engine/items';
+import { open as openItem, openableCap, upgrade, upgradesAffordable, upgradesFrom, equipTool } from '../engine/items';
 import { fishingBaitCap, toolbeltCap } from '../engine/bonuses';
 import { describeBlock, describeBonus } from '../engine/describe';
 import { distractions } from '../engine/skills/thieving';
@@ -437,6 +437,47 @@ function QuantityPicker({ n, have, set }: { n: number; have: number; set: (n: nu
   );
 }
 
+/** An item upgrade: its cost, how many to make (up to what you can afford), and why it can't be made. */
+function UpgradeRow({ game, u }: { game: Game; u: ReturnType<typeof upgradesFrom>[number] }) {
+  const [times, setTimes] = useState(1);
+  const [msg, setMsg] = useState('');
+  const can = upgradesAffordable(game, u);
+  const n = Math.max(1, Math.min(times, can || 1));
+  return (
+    <div class="upgrade-row">
+      <div class="row">
+        <Icon id={u.UpgradedItem} size={28} />
+        <strong class="grow">{itemName(u.UpgradedItem)}</strong>
+        <span class="muted small">can make {fmt(can)}</span>
+      </div>
+      <div class="ingredients">
+        {u.Costs.Items.map((c) => (
+          <span class={game.count(c.Item) < c.Quantity * n ? 'short' : ''}>
+            <Icon id={c.Item} size={16} />
+            {fmt(game.count(c.Item))}/{fmt(c.Quantity * n)}
+          </span>
+        ))}
+        {u.Costs.Currencies.map((c) => (
+          <span class={game.currency(c.Currency) < c.Quantity * n ? 'short' : ''}>
+            {fmt(c.Quantity * n)} {c.Currency === 'MelvorBase:GoldPieces' ? 'gold' : c.Currency.replace('MelvorBase:', '')}
+          </span>
+        ))}
+      </div>
+      {can > 1 && <QuantityPicker n={n} have={can} set={setTimes} />}
+      <button
+        disabled={!can}
+        onClick={() => {
+          const err = upgrade(game, u, n);
+          setMsg(err ?? '');
+        }}
+      >
+        Upgrade {fmt(n)} into {fmt(u.QuantityPerUpgrade * n)} {itemName(u.UpgradedItem, u.QuantityPerUpgrade * n)}
+      </button>
+      {msg && <p class="need small">{msg}</p>}
+    </div>
+  );
+}
+
 export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClose: () => void }) {
   const it = item(id);
   const have = game.count(id);
@@ -482,8 +523,9 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
         </div>
       </div>
     );
-  // Sold, eaten or otherwise used up: nothing left to show.
-  if (!have) return null;
+  // Sold, eaten or otherwise used up: nothing left to show (unless a placeholder keeps its slot).
+  if (!have && !(id in game.state.bank)) return null;
+  const locked = game.isLocked(id);
   return (
     <div class="sheet" onClick={onClose}>
       <div class="sheet-body" onClick={(e) => e.stopPropagation()}>
@@ -497,6 +539,14 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
           </div>
         </div>
         {it.Description && <p class="muted">{it.Description}</p>}
+        <div class="chips">
+          <button class={locked ? 'on' : ''} onClick={() => game.setBankOption('locked', id, !locked)}>
+            {locked ? '🔒 Locked' : '🔓 Lock'}
+          </button>
+          <button class={game.keepsPlaceholder(id) ? 'on' : ''} onClick={() => game.setBankOption('placeholders', id, !game.state.bankOptions?.placeholders?.[id])}>
+            {game.keepsPlaceholder(id) ? 'Placeholder on' : 'Placeholder'}
+          </button>
+        </div>
         <ItemPlacesRows id={id} />
         <ItemBonuses game={game} id={id} />
         {have > 1 && (openableCap(id) || buryCap(id) || price > 0) && <QuantityPicker n={n} have={have} set={setWant} />}
@@ -514,11 +564,11 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
                 Equip to toolbelt
               </button>
             )}
-            {upgradesFrom(id).map((u) => (
-              <button onClick={() => upgrade(game, u)}>Upgrade to {itemName(u.UpgradedItem)}</button>
-            ))}
           </div>
         )}
+        {upgradesFrom(id).map((u) => (
+          <UpgradeRow game={game} u={u} />
+        ))}
         {(buryCap(id) || equipmentCap(id)) && (
           <div class="row">
             {buryCap(id) && have > 0 && (
@@ -543,8 +593,8 @@ export function ItemSheet({ game, id, onClose }: { game: Game; id: string; onClo
           </div>
         )}
         {price > 0 && have > 0 && (
-          <button class={n === have ? 'danger' : ''} onClick={() => game.sell(id, n)}>
-            Sell {fmt(n)} for {fmt(price * n)} gold
+          <button class={n === have ? 'danger' : ''} disabled={locked} onClick={() => game.sell(id, n)}>
+            {locked ? 'Locked: unlock to sell' : `Sell ${fmt(n)} for ${fmt(price * n)} gold`}
           </button>
         )}
         {bankTabs(game).length > 0 && (
@@ -590,7 +640,7 @@ function LockedPage({ game, page }: { game: Game; page: string }) {
 }
 
 function FoodSheet({ game, onClose }: { game: Game; onClose: () => void }) {
-  const foods = Object.keys(game.state.bank).filter((id) => game.foodHealing(id) > 0);
+  const foods = Object.keys(game.state.bank).filter((id) => game.count(id) > 0 && game.foodHealing(id) > 0);
   return (
     <div class="sheet" onClick={onClose}>
       <div class="sheet-body" onClick={(e) => e.stopPropagation()}>

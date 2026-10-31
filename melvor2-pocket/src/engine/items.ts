@@ -55,13 +55,23 @@ export function upgradesFrom(id: string): ItemUpgrade[] {
   return itemUpgrades().filter((u) => u.RootItems.includes(id) || u.Costs.Items.some((c) => c.Item === id));
 }
 
-export function upgrade(game: Game, u: ItemUpgrade): string | null {
+/** How many times an upgrade can be paid for right now. */
+export function upgradesAffordable(game: Game, u: ItemUpgrade): number {
+  let n = Infinity;
+  for (const c of u.Costs.Items) n = Math.min(n, Math.floor(game.count(c.Item) / c.Quantity));
+  for (const c of u.Costs.Currencies) n = Math.min(n, Math.floor(game.currency(c.Currency) / c.Quantity));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Upgrade up to `times` times (desktop "Select Upgrade (N)"). Returns why none could be made, or null. */
+export function upgrade(game: Game, u: ItemUpgrade, times = 1): string | null {
   if (game.isDemoLocked(u.Requirements)) return 'Not in demo';
   if (!game.requirementsMet(u.Requirements)) return 'Locked';
   const missing = missingIngredients(game, u.Costs);
   if (missing) return missing;
-  spendIngredients(game, u.Costs);
-  game.addItem(u.UpgradedItem, u.QuantityPerUpgrade);
+  const n = Math.max(1, Math.min(times, upgradesAffordable(game, u)));
+  for (let i = 0; i < n; i++) spendIngredients(game, u.Costs);
+  game.addItem(u.UpgradedItem, u.QuantityPerUpgrade * n);
   game.emit();
   return null;
 }
@@ -76,7 +86,7 @@ export function toolbeltItem(game: Game, slot: string) {
 
 /** Bank items that fit a toolbelt slot. */
 export function fitsToolbelt(game: Game, slot: ToolbeltSlot): string[] {
-  return Object.keys(game.state.bank).filter((i) => toolbeltCap(i)?.FitsInSlot === slot.FitsType);
+  return Object.keys(game.state.bank).filter((i) => game.count(i) > 0 && toolbeltCap(i)?.FitsInSlot === slot.FitsType);
 }
 
 export function equipTool(game: Game, slotId: string, itemId: string): string | null {

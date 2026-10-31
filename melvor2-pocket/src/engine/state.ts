@@ -162,6 +162,11 @@ export interface GameState {
   optIn?: { Astrology?: boolean };
   /** Fishing bait in use: consumed one per catch, its bonuses apply while any is in the bank. */
   fishingBait?: string | null;
+  /**
+   * Bank options, as on the desktop: locked items can't be sold; a placeholder keeps an item's slot (at 0) when the last
+   * one goes; auto placeholders do that for every item; and actions stop when a new item won't fit (on unless turned off).
+   */
+  bankOptions?: { locked?: Record<string, boolean>; placeholders?: Record<string, boolean>; autoPlaceholders?: boolean; keepGoingWhenFull?: boolean };
   /** Bank tabs you've made, each with the items you've put in it. */
   bankTabs?: { name: string; items: string[] }[];
   /** Woodcutting overgrowth stacks per tree (bushes): each gives +1 items until used up, one per full cut. */

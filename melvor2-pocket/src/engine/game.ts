@@ -139,7 +139,7 @@ export class Game {
 
   private note(text: string, kind: LogEntry['kind']): void {
     // Notable moments also go in the saved event log, including ones that happen while you're away.
-    if (kind === 'level') {
+    if (kind === 'level' || kind === 'stop') {
       const ev = (this.state.eventLog ??= []);
       ev.unshift({ tick: this.state.tick, text });
       if (ev.length > 300) ev.length = 300;
@@ -338,7 +338,10 @@ export class Game {
   addItem(id: string, quantity: number): boolean {
     if (quantity <= 0) return false;
     if (!(id in this.state.bank) && Object.keys(this.state.bank).length >= this.bankSlots()) {
-      this.note(`Bank full: lost ${quantity} ${itemName(id, quantity)}`, 'stop');
+      // Desktop StopActionOnBankFull (on by default): the item is lost and the action stops.
+      const lost = `Bank full: lost ${quantity} ${itemName(id, quantity)}`;
+      if (this.state.active && !this.state.bankOptions?.keepGoingWhenFull) this.stop(lost);
+      else this.note(lost, 'stop');
       return false;
     }
     this.state.bank[id] = (this.state.bank[id] ?? 0) + quantity;
@@ -361,10 +364,37 @@ export class Game {
     return true;
   }
 
+  isLocked(id: string): boolean {
+    return !!this.state.bankOptions?.locked?.[id];
+  }
+
+  /** Whether an item keeps its bank slot at 0 when the last one goes. */
+  keepsPlaceholder(id: string): boolean {
+    const o = this.state.bankOptions;
+    return !!(o?.placeholders?.[id] || o?.autoPlaceholders);
+  }
+
+  setBankOption(kind: 'locked' | 'placeholders', id: string, on: boolean): void {
+    const o = (this.state.bankOptions ??= {});
+    const map = (o[kind] ??= {});
+    if (on) map[id] = true;
+    else delete map[id];
+    // Dropping a placeholder frees its empty slot.
+    if (kind === 'placeholders' && !on && this.state.bank[id] === 0 && !o.autoPlaceholders) delete this.state.bank[id];
+    this.emit();
+  }
+
+  /** Clear every empty placeholder slot. */
+  clearPlaceholders(): void {
+    for (const [id, n] of Object.entries(this.state.bank)) if (n <= 0) delete this.state.bank[id];
+    if (this.state.bankOptions) this.state.bankOptions.placeholders = {};
+    this.emit();
+  }
+
   removeItem(id: string, quantity: number): boolean {
     const have = this.count(id);
     if (have < quantity) return false;
-    if (have === quantity) delete this.state.bank[id];
+    if (have === quantity && !this.keepsPlaceholder(id)) delete this.state.bank[id];
     else this.state.bank[id] = have - quantity;
     this.track('item', id, -quantity);
     if (this.offlineGroups) add(this.offlineGroup().used, id, quantity);
@@ -429,7 +459,7 @@ export class Game {
   sell(id: string, quantity: number): number {
     const q = Math.min(quantity, this.count(id));
     const price = item(id).SellsFor;
-    if (q <= 0 || !price) return 0;
+    if (q <= 0 || !price || this.isLocked(id)) return 0;
     this.removeItem(id, q);
     const gold = price.Quantity * q;
     this.addCurrency(price.Currency, gold);
