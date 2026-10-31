@@ -143,7 +143,7 @@ describe('prayer and slayer', () => {
   it('slayer tasks reward Slayer XP and coins per task kill', () => {
     const g = fresh(10);
     expect(newSlayerTask(g, id('Kuren'))).toBeNull();
-    const task = g.state.combat.slayer!;
+    const task = g.state.combat.slayerTasks![id('Kuren')];
     expect(task.left).toBeGreaterThanOrEqual(15);
     g.addItem(id('Shrimp'), 2000);
     g.state.selectedFood = id('Shrimp');

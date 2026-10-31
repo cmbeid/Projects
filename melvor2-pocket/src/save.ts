@@ -31,11 +31,17 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
 }
 
 /** Fill in fields added after a save was written, so old saves keep loading. */
-function migrate(s: Partial<GameState>): GameState {
+export function migrate(s: Partial<GameState>): GameState {
   const base = newState();
   const legacy = (s.version ?? 1) < 2;
   const out = { ...base, ...s, stats: { ...base.stats, ...s.stats }, version: SAVE_VERSION, legacyUnlockAll: legacy || s.legacyUnlockAll } as GameState;
   fixRanchingLand(out.ranching);
+  // One slayer task per master now: move an old single task under its master.
+  const old = out.combat.slayer;
+  if (old) {
+    if (old.left > 0) (out.combat.slayerTasks ??= {})[old.master] ??= { enemy: old.enemy, left: old.left, extended: old.extended };
+    out.combat.slayer = null;
+  }
   return out;
 }
 

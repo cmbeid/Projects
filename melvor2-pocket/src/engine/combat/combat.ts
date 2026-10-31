@@ -2,7 +2,8 @@
 import { NS, all, itemName, tryGet, type Requirement } from '../content';
 import type { Game } from '../game';
 import type { SkillHandler, SkillRecipe } from '../skills/types';
-import { conditionHolds, mod, resolveConditional } from '../bonuses';
+import type { SlayerTask } from '../state';
+import { activeImbuement, conditionHolds, mod, resolveConditional } from '../bonuses';
 import {
   type EffectRef, type FightOps, type Side, type TriggeredEffect, afterAttack, afterDefended, applyEffect, clearEffects, effectData, effectModifiers,
   effectsOn, endTurn, fireTriggers, isStunned, nextProc, other, sideOf, tickDamageOverTime,
@@ -83,6 +84,8 @@ export function equip(game: Game, itemId: string): string | null {
     game.state.equipment[slot] = { item: itemId, qty };
   }
   if (game.state.combat.spell && !spellAllowed(game, game.state.combat.spell)) ensureSpell(game);
+  const imb = game.state.combat.imbuement ? tryGet<{ Element: string }>('Imbuement', game.state.combat.imbuement) : undefined;
+  if (imb && !weaponElements(game).includes(imb.Element)) game.state.combat.imbuement = null;
   game.bonusesChanged();
   game.emit();
   return null;
@@ -242,6 +245,7 @@ function chargePrayers(game: Game, side: Side): void {
     game.notice('You ran out of prayer points.');
     game.bonusesChanged();
   }
+  startSlayerTasks(game);
 }
 
 // ---- prayer, slayer, burying --------------------------------------------------------------------
@@ -311,12 +315,18 @@ export function slayerBlockSlots(game: Game, masterId: string): { id: string; un
   return (m.BlockSlots ?? []).map((s) => ({ id: s.Id, unlocked: game.requirementsMet(s.UnlockRequirements), enemy: blocks[s.Id] }));
 }
 
-export function extendSlayerTask(game: Game): string | null {
-  const t = game.state.combat.slayer;
-  if (!t || t.left <= 0) return 'No task to extend';
+/** A master's current task, if it has one going. */
+export function slayerTask(game: Game, masterId: string): SlayerTask | null {
+  const t = game.state.combat.slayerTasks?.[masterId];
+  return t && t.left > 0 ? t : null;
+}
+
+export function extendSlayerTask(game: Game, masterId: string): string | null {
+  const t = slayerTask(game, masterId);
+  if (!t) return 'No task to extend';
   if (t.extended) return 'Already extended';
-  const m = slayerMaster(t.master);
-  const cost = slayerExtensionCost(game, t.master);
+  const m = slayerMaster(masterId);
+  const cost = slayerExtensionCost(game, masterId);
   if (game.currency(m.RerollCost.Currency) < cost) return `Need ${cost} slayer coins`;
   game.addCurrency(m.RerollCost.Currency, -cost);
   t.left += m.BaseTaskLength;
@@ -325,15 +335,15 @@ export function extendSlayerTask(game: Game): string | null {
   return null;
 }
 
-/** Block the current task's enemy from this master's future tasks (replacing a slot's old block if all are full). */
-export function blockSlayerEnemy(game: Game): string | null {
-  const t = game.state.combat.slayer;
+/** Block a master's current task enemy from its future tasks (replacing a slot's old block if all are full). */
+export function blockSlayerEnemy(game: Game, masterId: string): string | null {
+  const t = slayerTask(game, masterId);
   if (!t) return 'No task';
-  const slots = slayerBlockSlots(game, t.master).filter((s) => s.unlocked);
+  const slots = slayerBlockSlots(game, masterId).filter((s) => s.unlocked);
   if (!slots.length) return 'No block slots unlocked yet';
   const slot = slots.find((s) => !s.enemy) ?? slots[0];
-  const m = slayerMaster(t.master);
-  const cost = slayerBlockCost(game, t.master);
+  const m = slayerMaster(masterId);
+  const cost = slayerBlockCost(game, masterId);
   if (game.currency(m.BlockCost.Currency) < cost) return `Need ${cost} slayer coins`;
   game.addCurrency(m.BlockCost.Currency, -cost);
   (game.state.combat.slayerBlocks ??= {})[slot.id] = t.enemy;
@@ -346,43 +356,83 @@ export function unblockSlayerEnemy(game: Game, slotId: string): void {
   game.emit();
 }
 
+/** Enemies a master can give tasks for: in its areas, in the demo, and not blocked. */
+function slayerOptions(game: Game, masterId: string): string[] {
+  const m = slayerMaster(masterId);
+  const blocked = new Set(slayerBlockSlots(game, masterId).map((s) => s.enemy));
+  return m.Areas.filter((a) => !game.isDemoLocked(area(a).UnlockRequirements))
+    .flatMap((a) => areaEnemies(a))
+    .filter((e) => !game.isDemoLocked(enemyData(e).Requirements) && !blocked.has(e));
+}
+
+/** Roll a master's next task (ActiveSlayerMaster.SetNewTask). Returns false if it has no enemies to give. */
+function setNewTask(game: Game, masterId: string): boolean {
+  const options = slayerOptions(game, masterId);
+  const tasks = (game.state.combat.slayerTasks ??= {});
+  if (!options.length) {
+    delete tasks[masterId];
+    return false;
+  }
+  const [min, max] = slayerTaskRange(game, masterId);
+  tasks[masterId] = { enemy: options[game.rng.intInclusive(0, options.length - 1)], left: game.rng.intInclusive(min, max) };
+  game.state.rng = game.rng.state;
+  return true;
+}
+
+/** Get a task from a master, or reroll its current one for slayer coins. */
 export function newSlayerTask(game: Game, masterId: string): string | null {
   const m = slayerMaster(masterId);
   if (game.isDemoLocked(m.UnlockRequirements)) return 'Not in demo';
   if (!game.requirementsMet(m.UnlockRequirements)) return 'Locked';
-  const c = game.state.combat;
-  if (c.slayer && c.slayer.left > 0) {
+  if (!slayerOptions(game, masterId).length) return 'No enemies available';
+  if (slayerTask(game, masterId)) {
     // Rerolling an active task costs slayer coins.
     const cost = slayerRerollCost(game, masterId);
     if (game.currency(m.RerollCost.Currency) < cost) return `Need ${cost} slayer coins`;
     game.addCurrency(m.RerollCost.Currency, -cost);
   }
-  const blocked = new Set(slayerBlockSlots(game, masterId).map((s) => s.enemy));
-  const options = m.Areas.filter((a) => !game.isDemoLocked(area(a).UnlockRequirements))
-    .flatMap((a) => areaEnemies(a))
-    .filter((e) => !game.isDemoLocked(enemyData(e).Requirements) && !blocked.has(e));
-  if (!options.length) return 'No enemies available';
-  const [min, max] = slayerTaskRange(game, masterId);
-  c.slayer = { master: masterId, enemy: options[game.rng.intInclusive(0, options.length - 1)], left: game.rng.intInclusive(min, max) };
-  game.state.rng = game.rng.state;
+  setNewTask(game, masterId);
+  game.bonusesChanged();
   game.emit();
   return null;
 }
 
+/** Every unlocked master starts with a task (ActiveSlayerMaster.StartInitialTask). */
+export function startSlayerTasks(game: Game): void {
+  for (const m of allSlayerMasters()) {
+    const id = NS + m.Id;
+    if (slayerTask(game, id) || game.isDemoLocked(m.UnlockRequirements) || !game.requirementsMet(m.UnlockRequirements)) continue;
+    setNewTask(game, id);
+  }
+}
+
+/**
+ * A kill counts for every master whose task is that enemy: Slayer XP and coins each, and a finished task is replaced
+ * straight away. With Auto Slayer on, if you were fighting the finished task you move on to the new task's enemy.
+ */
 function onSlayerKill(game: Game, enemyId: string): void {
-  const t = game.state.combat.slayer;
-  if (!t || t.enemy !== enemyId || t.left <= 0) return;
-  const hp = enemyMaxHp(enemyId);
-  game.addXp('Slayer', hp / 8 + 4);
-  const cur = slayerMaster(t.master).RewardCurrency;
-  const reward = 0.1 * hp ** 1.15 * (1 + slayerMod(game, t.master, 'PercentRewardCurrency', cur)) + slayerMod(game, t.master, 'FlatRewardCurrency', cur);
-  game.addCurrency(cur, Math.max(1, Math.floor(reward)));
-  t.left--;
-  game.stat('SlayerTotalTaskEnemiesKilled');
-  if (t.left === 0) {
-    const done = game.state.combat.slayerTasksDone;
-    done[t.master] = (done[t.master] ?? 0) + 1;
-    game.notice('Slayer task complete!');
+  const c = game.state.combat;
+  for (const [masterId, t] of Object.entries(c.slayerTasks ?? {})) {
+    if (t.enemy !== enemyId || t.left <= 0) continue;
+    const hp = enemyMaxHp(enemyId);
+    game.addXp('Slayer', hp / 8 + 4);
+    const cur = slayerMaster(masterId).RewardCurrency;
+    const reward = 0.1 * hp ** 1.15 * (1 + slayerMod(game, masterId, 'PercentRewardCurrency', cur)) + slayerMod(game, masterId, 'FlatRewardCurrency', cur);
+    game.addCurrency(cur, Math.max(1, Math.floor(reward)));
+    t.left--;
+    game.stat('SlayerTotalTaskEnemiesKilled');
+    if (t.left > 0) continue;
+    c.slayerTasksDone[masterId] = (c.slayerTasksDone[masterId] ?? 0) + 1;
+    game.notice(`Slayer task complete! (${slayerMaster(masterId).DisplayName})`);
+    if (setNewTask(game, masterId) && c.autoSlayer && !isDungeon(c.area!)) {
+      const next = c.slayerTasks![masterId].enemy;
+      const nextArea = slayerMaster(masterId).Areas.find((a) => areaEnemies(a).includes(next));
+      if (nextArea) {
+        c.area = nextArea;
+        c.selectedEnemy = next;
+      }
+    }
+    game.bonusesChanged();
   }
 }
 
@@ -399,8 +449,8 @@ export function spellAllowed(game: Game, spellId: string): boolean {
 }
 
 /**
- * With a weapon that can't cast the selected spell, switch to a default one for its element: the best unlocked spell of
- * that element, else the first of it.
+ * With a weapon that can't cast the selected spell, switch to a default one for its element: as on the desktop
+ * (SelectDefaultSpellForElement), the first spell of that element.
  */
 export function ensureSpell(game: Game): void {
   const c = game.state.combat;
@@ -408,8 +458,34 @@ export function ensureSpell(game: Game): void {
   const el = weaponElements(game)[0];
   const ofElement = allSpells().filter((s) => (s as { Element?: string }).Element === el && !game.isDemoLocked(s.UnlockRequirements));
   const unlocked = ofElement.filter((s) => game.requirementsMet(s.UnlockRequirements));
-  const pick = unlocked[unlocked.length - 1] ?? ofElement[0];
+  const pick = unlocked[0] ?? ofElement[0];
   c.spell = pick ? NS + pick.Id : null;
+}
+
+/** Select an imbuement (or none). It must be unlocked and match an element your weapon allows. */
+export function setImbuement(game: Game, id: string | null): string | null {
+  const c = game.state.combat;
+  if (id) {
+    const imb = tryGet<{ Element: string; UnlockRequirements: Requirement[] | null }>('Imbuement', id);
+    if (!imb) return 'Unknown imbuement';
+    if (game.isDemoLocked(imb.UnlockRequirements)) return 'Not in demo';
+    if (!game.requirementsMet(imb.UnlockRequirements)) return 'Magic level too low';
+    if (!weaponElements(game).includes(imb.Element)) return 'Your weapon can’t use this element';
+  }
+  c.imbuement = c.imbuement === id ? null : id;
+  game.bonusesChanged();
+  game.emit();
+  return null;
+}
+
+/** An imbuement's runes are paid at the start of each attack turn (ConsumeImbuementCosts), with its own preservation. */
+function chargeImbuement(game: Game): void {
+  const imb = activeImbuement(game);
+  if (!imb) return;
+  const preserve = mod(game, 'MagicSpell', 'RunePreservationChance', { entity: 'Combat', element: imb.Element });
+  if (!game.rng.chance(preserve)) for (const r of imb.RuneCosts) game.removeItem(r.Item, r.Quantity);
+  // Out of runes: its bonuses stop.
+  if (!activeImbuement(game)) game.bonusesChanged();
 }
 
 // ---- the fight ---------------------------------------------------------------------------------
@@ -513,8 +589,8 @@ function spawn(game: Game): void {
   c.enemyArmourBroken = false;
   clearEffects(game);
   const e = liveEnemyFighter(game);
-  c.playerLeft = toTicks(attackInterval(playerFighter(game, e.style.Id)));
-  c.enemyLeft = toTicks(attackInterval(e));
+  c.playerLeft = c.playerTurn = toTicks(attackInterval(playerFighter(game, e.style.Id)));
+  c.enemyLeft = c.enemyTurn = toTicks(attackInterval(e));
   game.toolbeltTrigger('CharacterFightStarted', { entity: 'Combat' });
   // AtStartOfFight triggers (e.g. a slime's regeneration, a passive's opening buff).
   const ops = fightOps(game);
@@ -556,8 +632,8 @@ function enemyKilled(game: Game): void {
 
 // ---- the fight: turns, attacks and combat effects (CharacterComponent.PerformAttack) ---------------------------
 
-interface AttackHit { Count: number; Damage: { Character: string; Formula: { Type: string; Data: { Percent?: number; Damage?: number } } }[] }
-interface FullAttack {
+interface AttackHit { Count: number; Interval?: number; Damage: { Character: string; Formula: { Type: string; Data: { Percent?: number; Damage?: number } } }[] }
+export interface FullAttack {
   Id: string;
   DisplayName: string;
   Hits: AttackHit[];
@@ -945,13 +1021,30 @@ function finishTurn(game: Game, side: Side): boolean {
   return !died && game.state.combat.phase === 'fighting' && game.state.active?.skill === 'Combat';
 }
 
+/**
+ * Multi-hit attacks space their hits by each hit's Interval, and the next turn only starts after the last one
+ * (CharacterComponent's hit timer). The hits still land together here, so the time between them goes on the next turn.
+ */
+export function hitSpacing(atk: FullAttack): number {
+  let ms = 0;
+  let first = true;
+  for (const h of atk.Hits) {
+    for (let i = 0; i < h.Count; i++) {
+      if (!first) ms += h.Interval ?? 0;
+      first = false;
+    }
+  }
+  return Math.round(ms / TICK_MS);
+}
+
 function playerTurn(game: Game): boolean {
   const c = game.state.combat;
   const e = liveEnemyFighter(game);
   const p = playerFighter(game, e.style.Id);
-  c.playerLeft = toTicks(attackInterval(p));
+  c.playerLeft = c.playerTurn = toTicks(attackInterval(p));
   acting = 'player';
   chargePrayers(game, 'player');
+  chargeImbuement(game);
   // A stunned character loses its turn (the turn still ends, so the stun counts down).
   if (isStunned(game, 'player')) return finishTurn(game, 'player');
   const cost = attackCost(game, p);
@@ -965,6 +1058,9 @@ function playerTurn(game: Game): boolean {
   game.signal({ type: 'attack', weaponType: weaponCap(weaponOf(game))?.Type });
   game.toolbeltTrigger('CharacterAttacked', { entity: 'Combat' });
   const enemyAsDefender = liveEnemyFighter(game, undefined, p.style.Id);
+  const spacing = hitSpacing(atk);
+  c.playerLeft += spacing;
+  c.playerTurn = c.playerLeft;
   if (!performAttack(game, 'player', atk, p, enemyAsDefender, playerElement(game))) {
     acting = null;
     return game.state.active?.skill === 'Combat';
@@ -979,11 +1075,13 @@ function enemyTurn(game: Game): boolean {
   const p0 = playerFighter(game);
   const e = liveEnemyFighter(game, stanceId, p0.style.Id);
   const p = playerFighter(game, e.style.Id);
-  c.enemyLeft = toTicks(attackInterval(e));
+  c.enemyLeft = c.enemyTurn = toTicks(attackInterval(e));
   acting = 'enemy';
   chargePrayers(game, 'enemy');
   if (isStunned(game, 'enemy')) return finishTurn(game, 'enemy');
   const atk = attackData(rollAttack(e0.Attacks, game)) as unknown as FullAttack;
+  c.enemyLeft += hitSpacing(atk);
+  c.enemyTurn = c.enemyLeft;
   if (!performAttack(game, 'enemy', atk, e, p, (e0 as { Element?: string }).Element)) {
     acting = null;
     return game.state.active?.skill === 'Combat';

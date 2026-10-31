@@ -79,8 +79,8 @@ describe('parity: combat', () => {
     expect(spellAllowed(g, id('WaterStrike'))).toBe(false);
     g.state.combat.spell = id('WaterStrike');
     ensureSpell(g);
-    // The best Air spell unlocked at this Magic level.
-    expect(spellAllowed(g, g.state.combat.spell!)).toBe(true);
+    // The first Air spell, as the desktop's default.
+    expect(g.state.combat.spell).toBe(id('AirStrike'));
   });
 
   it('the second ring slot stays locked in the demo', () => {

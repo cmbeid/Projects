@@ -82,6 +82,8 @@ export interface RanchingState {
   blockedTreats?: Record<string, boolean>;
 }
 
+export interface SlayerTask { enemy: string; left: number; extended?: boolean }
+
 export interface CombatState {
   area: string | null;
   selectedEnemy: string | null;
@@ -92,15 +94,25 @@ export interface CombatState {
   spawnLeft: number;
   playerLeft: number;
   enemyLeft: number;
+  /** Length of each side's current turn in ticks (attack interval plus any multi-hit spacing), for the fight bars. */
+  playerTurn?: number;
+  enemyTurn?: number;
   pending: number;
   stance: string;
   spell: string | null;
+  /** The selected imbuement: its bonuses apply while you can pay its runes each attack turn. */
+  imbuement?: string | null;
   prayers: string[];
   dungeonStage: number;
   dungeonCount: number;
   kills: Record<string, number>;
   dungeonsDone: Record<string, number>;
+  /** Older saves' single slayer task; moved into slayerTasks on load. */
   slayer: { master: string; enemy: string; left: number; extended?: boolean } | null;
+  /** One task per slayer master, all progressing together (ActiveSlayerMaster.CurrentTask). */
+  slayerTasks?: Record<string, SlayerTask>;
+  /** Auto Slayer: when a task you're fighting finishes, switch to the next task's enemy. */
+  autoSlayer?: boolean;
   /** Enemies blocked from slayer tasks, by block slot id (each master has its own slots). */
   slayerBlocks?: Record<string, string>;
   /** Pause Fight: timers stand still until resumed. */

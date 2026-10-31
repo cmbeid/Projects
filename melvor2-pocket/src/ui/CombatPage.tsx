@@ -5,7 +5,7 @@ import type { Game } from '../engine/game';
 import { type Bonus, type Drops, type Dungeon, allPrayers, allSlayerMasters, prayerChargedOn, allSpells, area, enemy as enemyData, isDungeon } from '../engine/combat/data';
 import {
   areaEnemies, blockSlayerEnemy, darkness, dropChances, effectsView, liveEnemyFighter, togglePause, enemyFighter, enemyMaxHp, extendSlayerTask, fight, newSlayerTask, playerFighter, prayerPoints, slayerBlockCost,
-  slayerBlockSlots, slayerExtensionCost, resetLoot, slayerRerollCost, slayerTaskRange, spellAllowed, togglePrayer, unblockSlayerEnemy,
+  slayerBlockSlots, slayerExtensionCost, resetLoot, slayerRerollCost, slayerTask, slayerTaskRange, spellAllowed, setImbuement, weaponElements, togglePrayer, unblockSlayerEnemy,
 } from '../engine/combat/combat';
 import { accuracyRating, attackInterval, combatLevel, evasionRating, hitChance, maxHit, minHit } from '../engine/combat/stats';
 import { Art, HpBar, Icon, SkillBadge, TimerBar, fmt, ticksToDuration, type BarMarker } from './common';
@@ -13,6 +13,8 @@ import { assetUrl } from '../art/assets';
 import { EquipmentView } from './Equipment';
 import { pageIconUrl } from '../art/icons';
 import { describeRequirement } from '../engine/navigation';
+import { describeBlock } from '../engine/describe';
+import { activeImbuement } from '../engine/bonuses';
 import { CombatStatsSheet } from './CombatStats';
 import { HitSplats } from './HitSplats';
 
@@ -55,8 +57,9 @@ function FightView({ game }: { game: Game }) {
   if (!fighting || !c.area) return null;
   const e = c.enemy && c.phase === 'fighting' ? liveEnemyFighter(game) : c.enemy ? enemyFighter(c.enemy) : null;
   const p = playerFighter(game, e?.style.Id);
-  const pInt = Math.round(attackInterval(p) / (1000 / 60));
-  const eInt = e ? Math.round(attackInterval(e) / (1000 / 60)) : 1;
+  // A turn can run longer than the attack interval when the last attack hit several times.
+  const pInt = c.playerTurn ?? Math.round(attackInterval(p) / (1000 / 60));
+  const eInt = c.enemyTurn ?? (e ? Math.round(attackInterval(e) / (1000 / 60)) : 1);
   // The engine only counts the turn timers down when an event fires; ticks since the last one are still to come off.
   // While paused the wait is the pause check, not turn time.
   const since = c.paused ? 0 : Math.max(0, (c.pending ?? 0) - (game.state.active?.ticksLeft ?? 0));
@@ -484,67 +487,136 @@ function PrayerMagicView({ game, show }: { game: Game; show: 'prayers' | 'spells
           </button>
         </div>
       )}
+      <Imbuements game={game} />
         </>
       )}
     </>
   );
 }
 
+/**
+ * Imbuements (MagicSpellsComponent): one at a time, of an element your weapon allows. Its runes are paid at the start of
+ * each of your attack turns; its bonuses and effects apply while you can pay.
+ */
+function Imbuements({ game }: { game: Game }) {
+  const [msg, setMsg] = useState('');
+  const c = game.state.combat;
+  const list = all<{ Id: string; DisplayName: string; Icon?: string; Element: string; RuneCosts: { Item: string; Quantity: number }[]; UnlockRequirements: never[] | null; Bonuses: Parameters<typeof describeBlock>[0] }>(
+    'Imbuement',
+  ).filter((i) => !game.isDemoLocked(i.UnlockRequirements));
+  if (!list.length) return null;
+  const active = activeImbuement(game);
+  return (
+    <>
+      <h3>Imbuements</h3>
+      {msg && <p class="need small">{msg}</p>}
+      {c.imbuement && !active && <p class="need small">Your imbuement is off: you need its runes and a weapon of its element.</p>}
+      <div class="imbuements">
+        {list.map((i) => {
+          const on = c.imbuement === NS + i.Id;
+          const locked = !game.requirementsMet(i.UnlockRequirements);
+          const wrongElement = !weaponElements(game).includes(i.Element);
+          return (
+            <div class={`imbuement ${on ? 'on' : ''}`}>
+              <div class="card-row">
+                <Art path={i.Icon} fallbackItem={NS + i.Id} size={28} />
+                <strong class="grow">{i.DisplayName}</strong>
+                <button disabled={!on && (locked || wrongElement)} class={on ? 'on' : ''} onClick={() => setMsg(setImbuement(game, NS + i.Id) ?? '')}>
+                  {on ? 'On' : 'Use'}
+                </button>
+              </div>
+              <ul class="bonus-list small">
+                {describeBlock(i.Bonuses).map((t) => (
+                  <li>{t}</li>
+                ))}
+                {((i.Bonuses as { CombatEffect?: unknown[] } | null)?.CombatEffect ?? []).length > 0 && <li>Applies a combat effect when you hit</li>}
+              </ul>
+              <div class="ingredients">
+                {i.RuneCosts.map((r) => (
+                  <span class={game.count(r.Item) < r.Quantity ? 'short' : ''}>
+                    <Icon id={r.Item} size={16} />
+                    {fmt(game.count(r.Item))}/{r.Quantity} per turn
+                  </span>
+                ))}
+              </div>
+              {locked && <div class="need small">Needs Magic level {(i.UnlockRequirements?.[0] as { Data?: { Level?: number } } | undefined)?.Data?.Level ?? '?'}</div>}
+              {!locked && wrongElement && <div class="muted small">Needs a {elementName(i.Element)} weapon</div>}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/** One task per slayer master, all counting kills at once; Auto Slayer moves you on to the next task's enemy. */
 function SlayerView({ game }: { game: Game }) {
   const [msg, setMsg] = useState('');
-  const t = game.state.combat.slayer;
+  const c = game.state.combat;
   return (
     <>
       <p class="muted">
         Slayer level {game.level('Slayer')} · {fmt(game.currency(`${NS}SlayerCoins`))} slayer coins
       </p>
-      {t && t.left > 0 && (
-        <div class="card">
-          <strong>
-            Task: {t.left} × {enemyData(t.enemy).DisplayName}
-          </strong>
-          <div class="muted small">From {displayName('SlayerMaster', t.master)}. Kill them in any area they appear in.</div>
-          <div class="row">
-            <button disabled={!!t.extended} onClick={() => setMsg(extendSlayerTask(game) ?? '')}>
-              {t.extended ? 'Extended' : `Extend (${fmt(slayerExtensionCost(game, t.master))})`}
-            </button>
-            <button
-              disabled={!slayerBlockSlots(game, t.master).some((s) => s.unlocked)}
-              onClick={() => setMsg(blockSlayerEnemy(game) ?? '')}
-            >
-              Block enemy ({fmt(slayerBlockCost(game, t.master))})
-            </button>
-          </div>
-        </div>
-      )}
+      <label class="toggle">
+        <input
+          type="checkbox"
+          checked={!!c.autoSlayer}
+          onChange={() => {
+            c.autoSlayer = !c.autoSlayer;
+            game.emit();
+          }}
+        />
+        Auto Slayer: when the task you're fighting is done, move on to the next one
+      </label>
       {msg && <p class="muted">{msg}</p>}
       {allSlayerMasters()
         .filter((m) => !game.isDemoLocked(m.UnlockRequirements))
         .map((m) => {
           const id = NS + m.Id;
           const [min, max] = slayerTaskRange(game, id);
-          const active = t && t.left > 0;
+          const t = slayerTask(game, id);
+          const unlocked = game.requirementsMet(m.UnlockRequirements);
           return (
-            <div class="card-row">
-              <div class="grow">
-                <div>{m.DisplayName}</div>
-                <div class="muted small">
-                  {min}–{max} kills · {m.Areas.map((a) => area(a).DisplayName).join(', ')} · done {game.state.combat.slayerTasksDone[id] ?? 0}
-                </div>
-                {slayerBlockSlots(game, id).map((s) => (
-                  <div class="muted small">
-                    Block slot: {!s.unlocked ? 'locked' : s.enemy ? enemyData(s.enemy).DisplayName : 'empty'}
-                    {s.enemy && (
-                      <button class="link" onClick={() => unblockSlayerEnemy(game, s.id)}>
-                        {' '}unblock
-                      </button>
-                    )}
-                  </div>
-                ))}
+            <div class="card">
+              <div class="card-row">
+                <strong class="grow">{m.DisplayName}</strong>
+                <span class="muted small">done {game.state.combat.slayerTasksDone[id] ?? 0}</span>
               </div>
-              <button disabled={!game.requirementsMet(m.UnlockRequirements)} onClick={() => setMsg(newSlayerTask(game, id) ?? '')}>
-                {active ? `Reroll (${fmt(slayerRerollCost(game, id))})` : 'New task'}
-              </button>
+              {t ? (
+                <div>
+                  Task: <strong>{t.left}</strong> × {enemyData(t.enemy).DisplayName}
+                  {c.enemy === t.enemy && <span class="good small"> · fighting</span>}
+                </div>
+              ) : (
+                <div class="muted small">{unlocked ? 'No task yet.' : 'Locked.'}</div>
+              )}
+              <div class="muted small">
+                {min}–{max} kills · {m.Areas.map((a) => area(a).DisplayName).join(', ')}
+              </div>
+              {slayerBlockSlots(game, id).map((s) => (
+                <div class="muted small">
+                  Block slot: {!s.unlocked ? 'locked' : s.enemy ? enemyData(s.enemy).DisplayName : 'empty'}
+                  {s.enemy && (
+                    <button class="link" onClick={() => unblockSlayerEnemy(game, s.id)}>
+                      {' '}unblock
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div class="row">
+                <button disabled={!unlocked} onClick={() => setMsg(newSlayerTask(game, id) ?? '')}>
+                  {t ? `Reroll (${fmt(slayerRerollCost(game, id))})` : 'Get task'}
+                </button>
+                {t && (
+                  <button disabled={!!t.extended} onClick={() => setMsg(extendSlayerTask(game, id) ?? '')}>
+                    {t.extended ? 'Extended' : `Extend (${fmt(slayerExtensionCost(game, id))})`}
+                  </button>
+                )}
+                {t && slayerBlockSlots(game, id).some((s) => s.unlocked) && (
+                  <button onClick={() => setMsg(blockSlayerEnemy(game, id) ?? '')}>Block ({fmt(slayerBlockCost(game, id))})</button>
+                )}
+              </div>
             </div>
           );
         })}

@@ -83,7 +83,25 @@ function sourceBlocks(game: Game, includeEquipment: boolean): { block: BonusBloc
   }
   for (const b of guildBonuses(game)) out.push({ block: b.Rewards.Bonuses as BonusBlock | null, times: 1 });
   for (const t of Object.values(game.state.toolbelt)) if (t.qty > 0) out.push({ block: toolbeltCap(t.item)?.Bonuses, times: 1 });
+  const imb = activeImbuement(game);
+  if (imb) out.push({ block: imb.Bonuses, times: 1 });
   return out;
+}
+
+interface Imbuement { Id: string; Element: string; RuneCosts: { Item: string; Quantity: number }[]; UnlockRequirements: unknown; Bonuses: BonusBlock }
+
+/**
+ * The imbuement in effect (MagicSpellsComponent): selected, unlocked, of an element your weapon allows, and affordable
+ * (its runes are paid at the start of each of your attack turns).
+ */
+export function activeImbuement(game: Game): Imbuement | null {
+  const id = game.state.combat.imbuement;
+  const imb = id ? tryGet<Imbuement>('Imbuement', id) : undefined;
+  if (!imb) return null;
+  const weapon = game.state.equipment[`${NS}Weapon`]?.item;
+  const elements = (weapon ? (tryGet<{ Capabilities: Record<string, unknown> | null }>('Item', weapon)?.Capabilities?.[`${NS}Weapon`] as { Elements?: string[] } | undefined)?.Elements : undefined) ?? [];
+  if (!elements.includes(imb.Element) || !game.requirementsMet(imb.UnlockRequirements as never)) return null;
+  return imb.RuneCosts.every((r) => game.count(r.Item) >= r.Quantity) ? imb : null;
 }
 
 /** Triggered combat effects from every active source (gear, astrology, guild, shop...), conditions resolved. */
@@ -131,7 +149,7 @@ export function conditionHolds(game: Game, c: Condition): boolean {
   const fighting = game.state.active?.skill === 'Combat' && !!combat.area;
   switch (c.Type.replace(NS, '')) {
     case 'FightingSlayerTask':
-      return fighting && !!combat.slayer && combat.slayer.left > 0 && combat.enemy === combat.slayer.enemy;
+      return fighting && Object.values(combat.slayerTasks ?? {}).some((t) => t.left > 0 && t.enemy === combat.enemy);
     case 'CombatInArea': {
       if (!fighting) return false;
       const a = tryGet<{ Category?: string }>('CombatArea', combat.area!) ?? tryGet<{ Category?: string }>('Dungeon', combat.area!);
@@ -152,7 +170,7 @@ export function conditionHolds(game: Game, c: Condition): boolean {
 /** The state conditional bonuses read, so the cache can tell when to recompute them. */
 export function conditionKey(game: Game): string {
   const c = game.state.combat;
-  return [game.state.active?.skill, c.stance, c.area, c.enemy, c.slayer?.enemy, c.slayer?.left ? 1 : 0, Object.keys(game.state.equipment).join(','), game.level('Strength')].join('|');
+  return [game.state.active?.skill, c.stance, c.area, c.enemy, c.imbuement && activeImbuement(game) ? 1 : 0, Object.values(c.slayerTasks ?? {}).filter((t) => t.left > 0).map((t) => t.enemy).join('+'), Object.keys(game.state.equipment).join(','), game.level('Strength')].join('|');
 }
 
 function matches(b: RawBonus, statsType: string, ctx: BonusContext): boolean {
