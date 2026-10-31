@@ -4,6 +4,7 @@ import type { SkillHandler } from './types';
 import { questEvent, goalMatches } from '../quests';
 import { NS, all } from '../content';
 import { mod } from '../bonuses';
+import type { BonusContext } from '../bonuses';
 import { bonusReader, recipeContext, recipeGetter, recipeList, rollItemChances } from './common';
 
 const SKILL = 'Woodcutting';
@@ -23,7 +24,7 @@ export const overgrowth = (game: Game, id: string) => game.state.overgrowth?.[id
 function bonus(game: Game, r: WoodcuttingRecipe) {
   const base = baseBonus(game, r);
   const stacked = overgrowth(game, NS + r.Id) > 0 ? all<Overgrowth>('OvergrowthEffect').filter((o) => o.AppliesToCategory === r.Category) : [];
-  return (name: string) => base(name) + stacked.reduce((s, o) => s + o.Bonuses.filter((b) => b.Stat.Name === name).reduce((t, b) => t + b.Value, 0), 0);
+  return (name: string, extra?: BonusContext) => base(name, extra) + stacked.reduce((s, o) => s + o.Bonuses.filter((b) => b.Stat.Name === name).reduce((t, b) => t + b.Value, 0), 0);
 }
 
 /** Each hit can spread overgrowth: one stack onto every unlocked tree of the effect's category (WoodcuttingActionComponent). */
@@ -63,7 +64,7 @@ export const woodcutting: SkillHandler = {
     const b = bonus(game, r);
     const doubling = b('DoublingChance');
     const max = maxHealth(r, game);
-    rollItemChances(game, r.RandomProductsPerHit, doubling, b('FlatOnHitItemChance'), b('PercentOnHitItemChance'), b('FlatOnHitItemQuantity'));
+    rollItemChances(game, r.RandomProductsPerHit, doubling, b, ['FlatOnHitItemChance', 'PercentOnHitItemChance', 'FlatOnHitItemQuantity']);
 
     let hp = Math.min(treeHp(game, id), max);
     let dmg = 1;
@@ -89,7 +90,7 @@ export const woodcutting: SkillHandler = {
       game.state.treeHp[id] = hp;
     } else {
       game.stat('WoodcuttingFells');
-      rollItemChances(game, r.RandomProductsPerCut, doubling, b('FlatOnCutItemChance'), b('PercentOnCutItemChance'), b('FlatOnCutItemQuantity'));
+      rollItemChances(game, r.RandomProductsPerCut, doubling, b, ['FlatOnCutItemChance', 'PercentOnCutItemChance', 'FlatOnCutItemQuantity']);
       const q = r.Product.Quantity + Math.floor(b('FlatProductQuantity'));
       game.addItem(r.Product.Item, game.rng.chance(doubling) ? q * 2 : q);
       game.addXp(SKILL, r.BaseExperience);

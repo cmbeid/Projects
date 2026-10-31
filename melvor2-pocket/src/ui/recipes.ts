@@ -14,6 +14,10 @@ import { huntState, trapChance, trapsFor, type HuntingAnimal } from '../engine/s
 
 const fmtCount = (n: number) => Math.floor(n).toLocaleString();
 import { knowledge, unlockedMinorNodes, type Constellation } from '../engine/skills/astrology';
+import { describeRequirement } from '../engine/navigation';
+
+/** "or" when the requirements are alternatives (IsOr), else "and". */
+const q2or = (reqs: { Data: { IsOr?: boolean } }[]) => (reqs.slice(1).some((q) => q.Data.IsOr) ? ' or ' : ' and ');
 
 export interface IngredientView { item: string; need: number; have: number }
 
@@ -125,7 +129,11 @@ function viewWithoutArt(game: Game, skill: string, r: SkillRecipe): RecipeView {
         ...base(game, skill, r),
         icon: `${NS}Stardust`,
         intervalText: secs(c.BaseInterval),
-        detail: `${k} knowledge · ${unlocked}/${c.MinorNodes.length} star nodes`,
+        detail: `${k} knowledge · ${unlocked}/${c.MinorNodes.length} star nodes${
+          c.SecondaryRequirements?.length && !game.requirementsMet(c.SecondaryRequirements)
+            ? ` · Needs ${c.SecondaryRequirements.map((q) => describeRequirement(game, q).text).join(q2or(c.SecondaryRequirements))}`
+            : ''
+        }`,
         meter: next ? { value: k - prev, max: next - prev, label: 'Next node' } : undefined,
       };
     }

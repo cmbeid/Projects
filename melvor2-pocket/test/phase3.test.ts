@@ -172,6 +172,10 @@ describe('astrology', () => {
   it('can be played when the player opts in, since its data is complete', () => {
     const g = fresh();
     g.state.optIn = { Astrology: true };
+    // Deedree also needs Woodcutting 8 or Farming 6 (its secondary requirements).
+    g.toggle('Astrology', id('Deedree'));
+    expect(g.state.active).toBeNull();
+    g.addXp('Woodcutting', 1e4);
     g.toggle('Astrology', id('Deedree'));
     expect(g.state.active?.skill).toBe('Astrology');
     g.advance(msToTicks(3000) * 20);

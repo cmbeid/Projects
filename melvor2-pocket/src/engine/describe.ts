@@ -81,6 +81,12 @@ function fill(template: string, b: DescribableBonus): string {
 /** One bonus as the game would phrase it, or a plain fallback when there's no template. */
 export function describeBonus(b: DescribableBonus): string {
   const data = contentData();
+  // Global bonuses name a stat group rather than a stat (e.g. AutoEat2's GlobalFlatAutoEatThreshold).
+  const group = (b as { StatGroup?: string }).StatGroup;
+  if (!b.Stat) {
+    const g = ((data.GlobalModifierDescriptions ?? []) as GlobalDescription[]).find((d) => d.StatGroup === group);
+    return g ? fill(g.TemplateString, b) : `${formatValue(b.Value, '+0.##;-#.##')} ${words(group ?? '')}`;
+  }
   const set = Object.entries(b.LocalContext ?? {})
     .filter(([, v]) => v != null && v !== 'Placeholder:Placeholder')
     .map(([k]) => k)

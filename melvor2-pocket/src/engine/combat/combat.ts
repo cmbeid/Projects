@@ -515,6 +515,7 @@ function spawn(game: Game): void {
   const e = liveEnemyFighter(game);
   c.playerLeft = toTicks(attackInterval(playerFighter(game, e.style.Id)));
   c.enemyLeft = toTicks(attackInterval(e));
+  game.toolbeltTrigger('CharacterFightStarted', { entity: 'Combat' });
   // AtStartOfFight triggers (e.g. a slime's regeneration, a passive's opening buff).
   const ops = fightOps(game);
   fireTriggers(game, triggersFor(game, 'player'), 'player', 'AtStartOfFight', ops);
@@ -962,6 +963,7 @@ function playerTurn(game: Game): boolean {
   const atk = attackData(playerAttackId(game, p)) as unknown as FullAttack;
   payAttack(game, cost.items, atk.Hits.reduce((n, h) => n + h.Count, 0));
   game.signal({ type: 'attack', weaponType: weaponCap(weaponOf(game))?.Type });
+  game.toolbeltTrigger('CharacterAttacked', { entity: 'Combat' });
   const enemyAsDefender = liveEnemyFighter(game, undefined, p.style.Id);
   if (!performAttack(game, 'player', atk, p, enemyAsDefender, playerElement(game))) {
     acting = null;
