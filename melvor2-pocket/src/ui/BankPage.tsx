@@ -43,6 +43,33 @@ export function moveToTab(game: Game, items: string[], tab: number | null): void
   game.emit();
 }
 
+/** Desktop bank settings: stop actions when the bank is full, and automatic placeholders. */
+function BankOptions({ game }: { game: Game }) {
+  const o = game.state.bankOptions ?? {};
+  const set = (k: 'keepGoingWhenFull' | 'autoPlaceholders', v: boolean) => {
+    (game.state.bankOptions ??= {})[k] = v;
+    if (k === 'autoPlaceholders' && !v) game.clearPlaceholders();
+    game.emit();
+  };
+  const empty = Object.values(game.state.bank).filter((n) => n <= 0).length;
+  return (
+    <details class="bank-options">
+      <summary class="small muted">Bank options</summary>
+      <label class="small">
+        <input type="checkbox" checked={!o.keepGoingWhenFull} onChange={() => set('keepGoingWhenFull', !o.keepGoingWhenFull)} /> Stop actions when the bank is full
+      </label>
+      <label class="small">
+        <input type="checkbox" checked={!!o.autoPlaceholders} onChange={() => set('autoPlaceholders', !o.autoPlaceholders)} /> Keep a placeholder when you run out of an item
+      </label>
+      {empty > 0 && (
+        <button class="small" onClick={() => game.clearPlaceholders()}>
+          Clear {empty} placeholder{empty === 1 ? '' : 's'}
+        </button>
+      )}
+    </details>
+  );
+}
+
 export function BankPage({ game }: { game: Game }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [prefs, setPrefs] = useState(loadPrefs());
@@ -75,7 +102,11 @@ export function BankPage({ game }: { game: Game }) {
   entries = entries.sort(by[prefs.sort] ?? by.default);
   const all_ = Object.entries(game.state.bank);
   const value = all_.reduce((s, [id, n]) => s + price(id) * n, 0);
-  const pickedValue = picked.reduce((s, id) => s + price(id) * game.count(id), 0);
+  // Selling a selection skips locked items, and can keep one of each ("All but 1").
+  const [keepOne, setKeepOne] = useState(false);
+  const sellable = picked.filter((id) => !game.isLocked(id));
+  const sellQty = (id: string) => Math.max(0, game.count(id) - (keepOne ? 1 : 0));
+  const pickedValue = sellable.reduce((s, id) => s + price(id) * sellQty(id), 0);
   // The sheet stays up when the last one is used, so an opened chest can still show what came out of it.
   const sel = selected;
   const tagCats = all<{ Id: string; DisplayName: string }>('BankTagCategory').filter((c) => all_.some(([id]) => tagsOf(id).some((t) => t.BankTag === NS + c.Id)));
@@ -86,6 +117,7 @@ export function BankPage({ game }: { game: Game }) {
       <p class="muted">
         {all_.length} / {game.bankSlots()} slots · worth {fmt(value)} gold
       </p>
+      <BankOptions game={game} />
       <div class="chips bank-tabs">
         <button class={tab == null ? 'on' : ''} onClick={() => setTab(null)}>
           All
@@ -160,8 +192,12 @@ export function BankPage({ game }: { game: Game }) {
       {all_.length > 0 && !entries.length && <p class="muted">Nothing here{tab != null ? ' yet: open an item and move it to this tab' : ''}.</p>}
       <div class="bank-grid">
         {entries.map(([id, n]) => (
-          <button class={`bank-slot ${sel === id || picked.includes(id) ? 'sel' : ''}`} onClick={() => (picking ? toggle(id) : setSelected(id))}>
+          <button
+            class={`bank-slot ${sel === id || picked.includes(id) ? 'sel' : ''} ${n <= 0 ? 'placeholder' : ''}`}
+            onClick={() => (picking ? toggle(id) : setSelected(id))}
+          >
             <Icon id={id} size={36} />
+            {game.isLocked(id) && <span class="lock">🔒</span>}
             <span class="qty">{n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ? `${Math.floor(n / 1e3)}K` : n}</span>
             {picked.includes(id) && <span class="pick">✓</span>}
           </button>
@@ -171,16 +207,21 @@ export function BankPage({ game }: { game: Game }) {
         <div class="bank-picked">
           <span class="grow small">
             {picked.length} selected · {fmt(pickedValue)} gold
+            {picked.length > sellable.length && ` · ${picked.length - sellable.length} locked`}
           </span>
+          <label class="small">
+            <input type="checkbox" checked={keepOne} onChange={() => setKeepOne(!keepOne)} /> All but 1
+          </label>
           <button
             class="danger"
+            disabled={!pickedValue}
             onClick={() => {
-              if (!confirm(`Sell ${picked.length} item stacks for ${fmt(pickedValue)} gold?`)) return;
-              for (const id of picked) game.sell(id, game.count(id));
+              if (!confirm(`Sell ${sellable.length} item stacks${keepOne ? ' (keeping 1 of each)' : ''} for ${fmt(pickedValue)} gold?`)) return;
+              for (const id of sellable) game.sell(id, sellQty(id));
               setPicked([]);
             }}
           >
-            Sell all
+            Sell
           </button>
           {tabs.length > 0 && (
             <select
