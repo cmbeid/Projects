@@ -3,7 +3,7 @@ import { NS, displayName, get, itemName } from '../engine/content';
 import { describeBlock } from '../engine/describe';
 import { describeRequirement } from '../engine/navigation';
 import type { Game } from '../engine/game';
-import { buy, buyBlockReason, purchased, shopPurchases, shopVisible } from '../engine/shop';
+import { buy, buyBlockReason, maxBuyable, purchased, shopPurchases, shopVisible } from '../engine/shop';
 import { Costs, Icon, fmt } from './common';
 
 interface Subcategory { Id: string; DisplayName: string; Category: string }
@@ -52,11 +52,15 @@ function ShopDetails({ game, p, owned }: { game: Game; p: Purchase; owned: numbe
   );
 }
 
+/** The desktop's shop quantity options; 0 is Max. They apply to purchases that allow bulk buying. */
+const QTYS = [1, 10, 100, 1000, 0];
+
 export function ShopPage({ game }: { game: Game }) {
   const visible = shopPurchases().filter((p) => shopVisible(game, p));
   const cats = [...new Set(visible.map((p) => get<Subcategory>('ShopSubcategory', p.Subcategory).Category))];
   const [cat, setCat] = useState(cats[0]);
   const [msg, setMsg] = useState('');
+  const [qty, setQty] = useState(1);
   const subs = [...new Set(visible.map((p) => p.Subcategory))].filter((s) => get<Subcategory>('ShopSubcategory', s).Category === cat);
   return (
     <div class="page">
@@ -65,6 +69,14 @@ export function ShopPage({ game }: { game: Game }) {
         {cats.map((c) => (
           <button class={c === cat ? 'on' : ''} onClick={() => setCat(c)}>
             {displayName('ShopCategory', c)}
+          </button>
+        ))}
+      </div>
+      <div class="chips shop-qty">
+        <span class="muted small">Buy</span>
+        {QTYS.map((q) => (
+          <button class={qty === q ? 'on' : ''} onClick={() => setQty(q)}>
+            {q === 0 ? 'Max' : `×${q}`}
           </button>
         ))}
       </div>
@@ -78,6 +90,9 @@ export function ShopPage({ game }: { game: Game }) {
               const reason = buyBlockReason(game, p);
               const owned = purchased(game, NS + p.Id);
               const gold = p.Costs?.Currencies.find((c) => c.Currency === `${NS}GoldPieces`)?.Quantity;
+              // Bulk purchases buy the chosen quantity (Max: as many as you can afford).
+              const bulk = !!p.AllowBulkPurchase && qty !== 1;
+              const n = p.AllowBulkPurchase ? Math.max(1, qty === 0 ? maxBuyable(game, p) : qty) : 1;
               return (
                 <div class={`card ${reason === 'Owned' ? 'owned' : ''}`}>
                   <div class="card-row">
@@ -86,8 +101,16 @@ export function ShopPage({ game }: { game: Game }) {
                       <strong>{p.DisplayName}</strong>
                       {p.Description && <div class="muted small">{p.Description.replace(/\[[^\]]+\]/g, '')}</div>}
                     </div>
-                    <button disabled={!!reason} onClick={() => setMsg(buy(game, p) ?? `Bought ${p.DisplayName}.`)}>
-                      {reason === 'Owned' ? 'Owned' : reason === 'Locked' ? 'Locked' : owned && p.DefaultBuyLimit !== 1 ? `Buy (${owned})` : 'Buy'}
+                    <button
+                      disabled={!!reason}
+                      onClick={() => {
+                        const before = purchased(game, NS + p.Id);
+                        const err = buy(game, p, n);
+                        const got = purchased(game, NS + p.Id) - before;
+                        setMsg(err ?? `Bought ${p.DisplayName}${got > 1 ? ` ×${got}` : ''}.`);
+                      }}
+                    >
+                      {reason === 'Owned' ? 'Owned' : reason === 'Locked' ? 'Locked' : bulk ? `Buy ×${n}` : owned && p.DefaultBuyLimit !== 1 ? `Buy (${owned})` : 'Buy'}
                     </button>
                   </div>
                   <ShopDetails game={game} p={p} owned={owned} />

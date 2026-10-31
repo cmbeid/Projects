@@ -35,7 +35,7 @@ function bonus(game: Game, a: HuntingAnimal) {
   if (trapless(game, a)) {
     for (const m of a.TraplessBonuses ?? []) mods.push({ m: { Stat: { StatsType: `${NS}HuntingAction`, Name: m.Stat.Name }, Value: m.Value }, times: 1 });
   } else {
-    const trap = trapsFor(game, a)[0];
+    const trap = activeTrap(game, a);
     const cap = trap ? trapCap(trap) : undefined;
     for (const m of block(cap?.TrapBonuses)) mods.push({ m, times: 1 });
     if (s.trapFails) for (const m of block(cap?.FailBonuses)) mods.push({ m, times: s.trapFails });
@@ -106,8 +106,30 @@ export function trapsFor(game: Game, a: HuntingAnimal): string[] {
     .filter((id) => game.count(id) > 0);
 }
 
-function trapless(game: Game, a: HuntingAnimal): boolean {
-  return a.EnableTrapless && trapsFor(game, a).length === 0;
+/**
+ * The trap used on this animal: the one you picked if you still have it, else the first you own. None when hunting
+ * trapless (by choice, or because you own no trap and the animal allows it).
+ */
+export function activeTrap(game: Game, a: HuntingAnimal): string | null {
+  const s = game.state.hunting[NS + a.Id];
+  if (a.EnableTrapless && s?.noTrap) return null;
+  const traps = trapsFor(game, a);
+  return s?.trap && traps.includes(s.trap) ? s.trap : (traps[0] ?? null);
+}
+
+export function trapless(game: Game, a: HuntingAnimal): boolean {
+  return a.EnableTrapless && activeTrap(game, a) === null;
+}
+
+/** Pick a trap (or null for the default), or switch trapless hunting on or off. */
+export function chooseTrap(game: Game, animalId: string, choice: { trap: string | null } | { noTrap: boolean }): void {
+  const s = huntState(game, animalId);
+  if ('trap' in choice) {
+    s.trap = choice.trap;
+    s.noTrap = false;
+  } else s.noTrap = choice.noTrap;
+  game.bonusesChanged();
+  game.emit();
 }
 
 export function trapChance(game: Game, a: HuntingAnimal): number {
@@ -213,16 +235,16 @@ export const hunting: SkillHandler = {
       s.step += s.requiredSteps - s.step > 1 && game.rng.chance(bonus(game, a)('SkipTrackingStepChance')) ? 2 : 1;
       if (s.step >= s.requiredSteps) s.phase = 'trapping';
     } else {
-      const traps = trapsFor(game, a);
+      const trapItem = activeTrap(game, a);
       // Roll with this attempt's bonuses (trap, bait, fail streak) before anything is used up.
       const chance = trapChance(game, a);
       const keepTrap = bonus(game, a)('PreservationChance');
-      if (!a.EnableTrapless || traps.length) {
-        if (!traps.length) {
+      if (!trapless(game, a)) {
+        if (!trapItem) {
           game.stop('You ran out of traps.');
           return null;
         }
-        if (!game.rng.chance(keepTrap)) game.removeItem(traps[0], 1);
+        if (!game.rng.chance(keepTrap)) game.removeItem(trapItem, 1);
       }
       const baited = usingBait(game, a);
       if (baited) {

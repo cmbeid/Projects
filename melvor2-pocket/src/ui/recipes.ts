@@ -10,7 +10,7 @@ import { breakChance } from '../engine/skills/mining';
 import { maxSteps, stepsLeft } from '../engine/skills/artisan';
 import { successChance as cookChance } from '../engine/skills/cooking';
 import { maxStages, stage as thievingStage, successChance, type ThievingRecipe } from '../engine/skills/thieving';
-import { huntState, trapChance, trapsFor, type HuntingAnimal } from '../engine/skills/hunting';
+import { activeTrap, chooseTrap, huntState, trapChance, trapsFor, trapless, type HuntingAnimal } from '../engine/skills/hunting';
 
 const fmtCount = (n: number) => Math.floor(n).toLocaleString();
 import { knowledge, unlockedMinorNodes, type Constellation } from '../engine/skills/astrology';
@@ -40,6 +40,8 @@ export interface RecipeView {
   makes?: number;
   /** A per-recipe switch shown on the card, e.g. Hunting's "Use bait". */
   option?: { label: string; on: boolean; toggle: () => void };
+  /** A per-recipe pick shown on the card, e.g. Hunting's trap (with "No trap" for trapless hunting). */
+  choice?: { label: string; value: string; options: { value: string; label: string }[]; pick: (value: string) => void };
 }
 
 function ingredientViews(game: Game, ing: Ingredients): IngredientView[] {
@@ -105,7 +107,19 @@ function viewWithoutArt(game: Game, skill: string, r: SkillRecipe): RecipeView {
         ...base(game, skill, r),
         icon: h.Products[0]?.Item ?? id,
         intervalText: `${secs(h.BaseMinTrapInterval)}–${secs(h.BaseMaxTrapInterval)} trap`,
-        detail: `${Math.round(trapChance(game, h) * 100)}% trap${h.EnableTrapless && !traps.length ? ' (trapless)' : traps.length ? '' : ' · needs a trap'}${st?.trapped ? ` · caught ${st.trapped}` : ''}${phase}`,
+        detail: `${Math.round(trapChance(game, h) * 100)}% trap${trapless(game, h) ? ' (trapless)' : traps.length ? '' : ' · needs a trap'}${st?.trapped ? ` · caught ${st.trapped}` : ''}${phase}`,
+        choice:
+          traps.length > 1 || (traps.length && h.EnableTrapless)
+            ? {
+                label: 'Trap',
+                value: trapless(game, h) ? 'none' : (activeTrap(game, h) ?? ''),
+                options: [
+                  ...traps.map((t) => ({ value: t, label: `${itemName(t)} (${fmtCount(game.count(t))})` })),
+                  ...(h.EnableTrapless ? [{ value: 'none', label: 'No trap (trapless)' }] : []),
+                ],
+                pick: (v) => chooseTrap(game, id, v === 'none' ? { noTrap: true } : { trap: v }),
+              }
+            : undefined,
         meter: st?.phase === 'tracking' ? { value: st.step, max: st.requiredSteps, label: 'Tracking' } : undefined,
         option: h.PreferredBait
           ? {

@@ -14,6 +14,7 @@ export interface ShopPurchase {
   Requirements: Requirement[] | null;
   DisplayRequirements: Requirement[] | null;
   Costs: Ingredients | null;
+  AllowBulkPurchase?: boolean;
   Provides: {
     Items: ItemQuantity[];
     Currencies: { Currency: string; Quantity: number }[];
@@ -48,15 +49,27 @@ export function buyBlockReason(game: Game, p: ShopPurchase): string | null {
   return p.Costs ? missingIngredients(game, p.Costs) : null;
 }
 
-export function buy(game: Game, p: ShopPurchase): string | null {
+/** How many of a purchase you could buy right now (up to its buy limit and what you can afford). */
+export function maxBuyable(game: Game, p: ShopPurchase): number {
+  let n = p.DefaultBuyLimit > 0 ? p.DefaultBuyLimit - purchased(game, NS + p.Id) : Infinity;
+  for (const c of p.Costs?.Items ?? []) if (c.Quantity > 0) n = Math.min(n, Math.floor(game.count(c.Item) / c.Quantity));
+  for (const c of p.Costs?.Currencies ?? []) if (c.Quantity > 0) n = Math.min(n, Math.floor(game.currency(c.Currency) / c.Quantity));
+  return Number.isFinite(n) ? Math.max(0, n) : 1e6;
+}
+
+/** Buy a purchase, `qty` times for bulk purchases (AllowBulkPurchase), stopping when one can't be bought. */
+export function buy(game: Game, p: ShopPurchase, qty = 1): string | null {
   const reason = buyBlockReason(game, p);
   if (reason) return reason;
-  if (p.Costs) spendIngredients(game, p.Costs);
+  const times = p.AllowBulkPurchase ? Math.max(1, Math.floor(qty)) : 1;
   const id = NS + p.Id;
-  game.state.purchases[id] = purchased(game, id) + 1;
-  game.stat('ShopPurchasesMade');
-  for (const i of p.Provides.Items) game.addItem(i.Item, i.Quantity);
-  for (const c of p.Provides.Currencies) game.addCurrency(c.Currency, c.Quantity);
+  for (let i = 0; i < times && !buyBlockReason(game, p); i++) {
+    if (p.Costs) spendIngredients(game, p.Costs);
+    game.state.purchases[id] = purchased(game, id) + 1;
+    game.stat('ShopPurchasesMade');
+    for (const it of p.Provides.Items) game.addItem(it.Item, it.Quantity);
+    for (const c of p.Provides.Currencies) game.addCurrency(c.Currency, c.Quantity);
+  }
   game.bonusesChanged();
   game.emit();
   return null;

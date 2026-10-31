@@ -32,6 +32,7 @@ import { itemPlaces, type ItemPlace } from '../engine/itemSources';
 import { ItemBonuses } from './Equipment';
 import { backgroundMode, pageBackground, raining, setBackgroundMode, setWeatherOn, weatherAt, weatherOn, type BackgroundMode } from '../art/background';
 import { recipeGroups, type RecipeView } from './recipes';
+import { canPrioritise, setPriority } from '../engine/skills/fishing';
 
 type Tab = 'skills' | 'bank' | 'combat' | 'shop' | 'more';
 /** Which game page's icon each tab uses. */
@@ -185,8 +186,10 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
       {skill === 'Farming' && <FarmingPage game={game} />}
       {skill === 'Ranching' && <RanchingPage game={game} />}
       {skill === 'Fishing' && <FishingBait game={game} />}
+      {skill === 'Fishing' && a?.skill === 'Fishing' && <FishingPriority game={game} recipeId={a.recipe} />}
       {skill === 'Thieving' && <ThievingDistractions game={game} />}
       {skill === 'Astrology' && <MajorNodes game={game} />}
+      {a?.skill === skill && skill !== 'Combat' && <StopAfterPanel game={game} />}
       {!PASSIVE_SKILLS.includes(skill) && (() => {
         const groups = recipeGroups(game, skill)
           .map((g) => ({ ...g, recipes: g.recipes.filter((r) => showLocked || r.locked !== 'demo') }))
@@ -227,6 +230,40 @@ function SkillPage({ game, skill, onBack }: { game: Game; skill: string; onBack:
       </label>}
       <Log game={game} />
     </div>
+  );
+}
+
+/** The desktop's "Action until X": stop the running action after N actions, or once you have N of its product. */
+function StopAfterPanel({ game }: { game: Game }) {
+  const a = game.state.active!;
+  const product = recipeGroups(game, a.skill)
+    .flatMap((g) => g.recipes)
+    .find((r) => r.id === a.recipe)?.icon;
+  const item = product && tryGet('Item', product) ? product : null;
+  const u = a.until;
+  const [kind, setKind] = useState<'actions' | 'item'>(u?.kind ?? 'actions');
+  const [n, setN] = useState(u ? u.n : kind === 'item' && item ? game.count(item) + 100 : 100);
+  return (
+    <section class="card stop-after">
+      <div class="row">
+        <strong class="grow">Stop after</strong>
+        {u && (
+          <span class="muted small">
+            {u.kind === 'actions' ? `${fmt(u.done)} / ${fmt(u.n)} actions` : `${fmt(game.count(u.item))} / ${fmt(u.n)} ${itemName(u.item, u.n)}`}
+          </span>
+        )}
+      </div>
+      <div class="row">
+        <select value={kind} onChange={(e) => setKind((e.target as HTMLSelectElement).value as 'actions' | 'item')}>
+          <option value="actions">actions</option>
+          {item && <option value="item">I have (item)</option>}
+        </select>
+        <input class="text qty-input" type="number" inputMode="numeric" min={1} value={n} onInput={(e) => setN(Number((e.target as HTMLInputElement).value))} />
+        {kind === 'item' && item && <Icon id={item} size={24} />}
+        <button onClick={() => game.setStopAfter(kind === 'item' && item ? { kind, n, item } : { kind: 'actions', n })}>Set</button>
+        {u && <button onClick={() => game.setStopAfter(null)}>Clear</button>}
+      </div>
+    </section>
   );
 }
 
@@ -300,6 +337,33 @@ function ThievingDistractions({ game }: { game: Game }) {
 }
 
 /** Fishing bait, as on the desktop: pick one; it's used up one per catch and its bonus applies while you have some. */
+/** Pick a fish to prioritise at the spot you're fishing (desktop FishingPrioritySelect). */
+function FishingPriority({ game, recipeId }: { game: Game; recipeId: string }) {
+  const r = get<{ RandomProducts: { Item: string }[] }>('FishingRecipe', recipeId);
+  if (r.RandomProducts.length < 2) return null;
+  const allowed = canPrioritise(game, recipeId);
+  const cur = game.state.fishingPriority?.[recipeId] ?? null;
+  return (
+    <section class="card">
+      <strong>Priority fish</strong>
+      {!allowed ? (
+        <p class="muted small">Reach the Journeyman Angler guild rank to choose a fish to prioritise here.</p>
+      ) : (
+        <div class="chips">
+          <button class={!cur ? 'on' : ''} onClick={() => setPriority(game, recipeId, null)}>
+            None
+          </button>
+          {r.RandomProducts.map((p) => (
+            <button class={cur === p.Item ? 'on' : ''} onClick={() => setPriority(game, recipeId, p.Item)}>
+              <Icon id={p.Item} size={18} /> {itemName(p.Item)}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function FishingBait({ game }: { game: Game }) {
   const baits = all<{ Id: string; Capabilities: Record<string, unknown> | null }>('Item').filter((i) => i.Capabilities?.[`${NS}FishingBait`]);
   const sel = game.state.fishingBait ?? null;
@@ -356,6 +420,16 @@ function RecipeCard({ game, skill, r }: { game: Game; skill: string; r: RecipeVi
               </span>
             ))}
           </div>
+        )}
+        {r.choice && !r.locked && (
+          <label class="card-option" onClick={(e) => e.stopPropagation()}>
+            {r.choice.label}{' '}
+            <select value={r.choice.value} onChange={(e) => r.choice!.pick((e.target as HTMLSelectElement).value)}>
+              {r.choice.options.map((o) => (
+                <option value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
         )}
         {r.option && !r.locked && (
           <label class="card-option" onClick={(e) => e.stopPropagation()}>
