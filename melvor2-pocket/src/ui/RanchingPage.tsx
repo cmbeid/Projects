@@ -58,7 +58,7 @@ export function RanchingPage({ game }: { game: Game }) {
             </div>
           );
         }
-        const animals = animalsIn(game, slot.enclosure!);
+        const animals = animalsIn(game, slot.land);
         const upgrade = e.UpgradesTo ? enclosure(e.UpgradesTo) : null;
         return (
           <div class="card">
@@ -69,12 +69,12 @@ export function RanchingPage({ game }: { game: Game }) {
               </span>
             </div>
             <div class="card-row">
-              <span class={`small grow ${maintenance(game, slot.enclosure!) < 0.75 ? 'warn' : 'muted'}`}>
-                Maintenance {Math.round(maintenance(game, slot.enclosure!) * 100)}%
+              <span class={`small grow ${maintenance(game, slot.land) < 0.75 ? 'warn' : 'muted'}`}>
+                Maintenance {Math.round(maintenance(game, slot.land) * 100)}%
               </span>
-              {maintenance(game, slot.enclosure!) < 1 && (
-                <button onClick={() => setMsg(repair(game, slot.enclosure!) ?? '')}>
-                  Repair ({[...repairCost(game, slot.enclosure!).Items.map((i) => `${i.Quantity} ${itemName(i.Item, i.Quantity)}`), ...repairCost(game, slot.enclosure!).Currencies.map((c) => `${c.Quantity} gold`)].join(', ')})
+              {maintenance(game, slot.land) < 1 && (
+                <button onClick={() => setMsg(repair(game, slot.land) ?? '')}>
+                  Repair ({[...repairCost(game, slot.land).Items.map((i) => `${i.Quantity} ${itemName(i.Item, i.Quantity)}`), ...repairCost(game, slot.land).Currencies.map((c) => `${c.Quantity} gold`)].join(', ')})
                 </button>
               )}
             </div>
@@ -109,7 +109,7 @@ export function RanchingPage({ game }: { game: Game }) {
                       <div class="muted small">Eats {r.Eats.map((x) => `${x.Quantity} ${itemName(x.Item, x.Quantity)}`).join(', ')} per hour</div>
                       <Costs items={r.PurchaseCosts.Items} gold={goldOf(r.PurchaseCosts)} have={(i) => game.count(i)} />
                     </div>
-                    <button onClick={() => act(buyAnimal(game, slot.enclosure!, aid))} disabled={!game.requirementsMet(r.Requirements)}>
+                    <button onClick={() => act(buyAnimal(game, slot.land, aid))} disabled={!game.requirementsMet(r.Requirements)}>
                       Buy
                     </button>
                   </div>

@@ -224,7 +224,7 @@ export class Game {
         const d = r.Data as { Animal?: string; MinimumCount?: number; SameEnclosure?: boolean };
         const mine = this.state.ranching.animals.filter((a) => a.animal === d.Animal);
         const perEnclosure: Record<string, number> = {};
-        for (const a of mine) perEnclosure[a.enclosure] = (perEnclosure[a.enclosure] ?? 0) + 1;
+        for (const a of mine) perEnclosure[a.land ?? a.enclosure] = (perEnclosure[a.land ?? a.enclosure] ?? 0) + 1;
         const most = d.SameEnclosure ? Math.max(0, ...Object.values(perEnclosure)) : mine.length;
         return most >= (d.MinimumCount ?? 1);
       }

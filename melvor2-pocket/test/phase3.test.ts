@@ -6,7 +6,7 @@ import { get } from '../src/engine/content';
 import { successChance, type ThievingRecipe } from '../src/engine/skills/thieving';
 import { huntState } from '../src/engine/skills/hunting';
 import { buyPlot, harvest, harvestQuantity, isReady, plant, plotState, farmingRecipe, water } from '../src/engine/skills/farming';
-import { buyAnimal, buyLand, build, animalsIn, maintenance, repair, repairCost } from '../src/engine/skills/ranching';
+import { buyAnimal, buyLand, build, animalsIn, fixRanchingLand, maintenance, repair, repairCost } from '../src/engine/skills/ranching';
 import { availableMajorPicks, knowledge, unlockMajorNode, unlockedMinorNodes } from '../src/engine/skills/astrology';
 import { mod } from '../src/engine/bonuses';
 import { buy, shopPurchases } from '../src/engine/shop';
@@ -95,13 +95,48 @@ describe('shop and ranching', () => {
     expect(buy(g, mill)).toBeNull();
     expect(buyLand(g, id('Land1'))).toBeNull();
     expect(build(g, id('Land1'), id('ChickenCoopI'))).toBeNull();
-    expect(buyAnimal(g, id('ChickenCoopI'), id('Chicken'))).toBeNull();
-    expect(buyAnimal(g, id('ChickenCoopI'), id('Chicken'))).toBeNull();
-    expect(buyAnimal(g, id('ChickenCoopI'), id('Chicken'))).toBe('Enclosure is full');
+    expect(buyAnimal(g, id('Land1'), id('Chicken'))).toBeNull();
+    expect(buyAnimal(g, id('Land1'), id('Chicken'))).toBeNull();
+    expect(buyAnimal(g, id('Land1'), id('Chicken'))).toBe('Enclosure is full');
     g.advance(10 * HOUR);
     expect(g.count(id('Egg'))).toBeGreaterThan(0);
     expect(g.count(id('Grain'))).toBe(1000 - 2 * 10 * 10);
-    expect(animalsIn(g, id('ChickenCoopI')).every((a) => a.variant !== id('ChickenChild'))).toBe(true);
+    expect(animalsIn(g, id('Land1')).every((a) => a.variant !== id('ChickenChild'))).toBe(true);
+  });
+});
+
+describe('two enclosures of the same kind', () => {
+  it('keep their own animals and upkeep', () => {
+    const g = fresh();
+    g.state.gold = 1e9;
+    for (const [it, n] of [['NormalLog', 10000], ['Grain', 10000]] as const) g.addItem(id(it), n);
+    g.state.purchases[id('GrainMill')] = 1;
+    g.state.xp.Ranching = 1e7;
+    for (const l of ['Land1', 'Land2']) {
+      expect(buyLand(g, id(l))).toBeNull();
+      expect(build(g, id(l), id('ChickenCoopI'))).toBeNull();
+    }
+    expect(buyAnimal(g, id('Land1'), id('Chicken'))).toBeNull();
+    expect(buyAnimal(g, id('Land1'), id('Chicken'))).toBeNull();
+    expect(buyAnimal(g, id('Land1'), id('Chicken'))).toBe('Enclosure is full');
+    expect(buyAnimal(g, id('Land2'), id('Chicken'))).toBeNull();
+    expect(animalsIn(g, id('Land1'))).toHaveLength(2);
+    expect(animalsIn(g, id('Land2'))).toHaveLength(1);
+    g.advance(10 * HOUR + 10);
+    expect(repair(g, id('Land1'))).toBeNull();
+    expect(maintenance(g, id('Land1'))).toBe(1);
+    expect(maintenance(g, id('Land2'))).toBeCloseTo(0.9, 5);
+  });
+
+  it('repairs saves that kept animals by enclosure kind', () => {
+    const g = fresh();
+    const st = g.state.ranching;
+    st.land = [{ land: id('Land1'), enclosure: id('ChickenCoopI') }, { land: id('Land2'), enclosure: id('ChickenCoopI') }];
+    st.maintenance = { [id('ChickenCoopI')]: { value: 0.8, nextAt: 99 } };
+    for (let i = 0; i < 3; i++) st.animals.push({ id: i, animal: id('Chicken'), enclosure: id('ChickenCoopI'), variant: id('ChickenChild'), bornAt: 0, grownAt: 1, diesAt: 9e9, nextProductAt: 1, hunger: 1, petDueAt: 0 });
+    fixRanchingLand(st);
+    expect(st.animals.map((a) => a.land)).toEqual([id('Land1'), id('Land1'), id('Land2')]);
+    expect(st.maintenance).toEqual({ [id('Land1')]: { value: 0.8, nextAt: 99 }, [id('Land2')]: { value: 0.8, nextAt: 99 } });
   });
 });
 
@@ -114,13 +149,13 @@ describe('enclosure maintenance', () => {
     g.state.xp.Ranching = 1e7;
     expect(buyLand(g, id('Land1'))).toBeNull();
     expect(build(g, id('Land1'), id('ChickenCoopI'))).toBeNull();
-    expect(buyAnimal(g, id('ChickenCoopI'), id('Chicken'))).toBeNull();
+    expect(buyAnimal(g, id('Land1'), id('Chicken'))).toBeNull();
     g.advance(10 * HOUR + 10);
-    expect(maintenance(g, id('ChickenCoopI'))).toBeCloseTo(0.9, 5);
+    expect(maintenance(g, id('Land1'))).toBeCloseTo(0.9, 5);
     const logs = g.count(id('NormalLog'));
-    expect(repairCost(g, id('ChickenCoopI')).Items[0].Quantity).toBeGreaterThan(0);
-    expect(repair(g, id('ChickenCoopI'))).toBeNull();
-    expect(maintenance(g, id('ChickenCoopI'))).toBe(1);
+    expect(repairCost(g, id('Land1')).Items[0].Quantity).toBeGreaterThan(0);
+    expect(repair(g, id('Land1'))).toBeNull();
+    expect(maintenance(g, id('Land1'))).toBe(1);
     expect(g.count(id('NormalLog'))).toBeLessThan(logs);
   });
 });
